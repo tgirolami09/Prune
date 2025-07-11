@@ -188,6 +188,7 @@ void dump_table(ofstream& file, info magic, int square){
         assert(table[key] == res_mask || table[key] == 0);
         table[key] = res_mask;
     }
+    file << magic.magic << " ";
     file << table.size() << " ";
     for(big i:table)
         file << i << " ";
