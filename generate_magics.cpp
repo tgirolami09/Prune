@@ -23,16 +23,19 @@ std::mt19937_64 e2(42);
 std::uniform_int_distribution<big> dist(0, MAX_BIG);
 /*
 0   1   2   3   4   5   6   7
-8
-16
-24
-32
-40
-48
-56
+8                           15
+16                          23
+24                          31
+32                          39
+40                          47
+48                          55
+56  57  58  59  60  61  62  63
 */
 big clipped_row[8];
 big clipped_col[8];
+big clipped_diag[15];
+big clipped_idiag[15];
+big clipped_mask = (MAX_BIG >> 16 << 8) & (~0x8181818181818181);
 void init(){
     big row = MAX_BIG >> (8*7+2) << 1;
     big col = 0x0001010101010100ULL;
@@ -44,13 +47,26 @@ void init(){
         row <<= 8;
         col <<= 1;
     }
+    big diag = 0;
+    big idiag = 0;
+    for(int i=0; i<15; i++){
+        diag <<= 8;
+        if(i < 8)diag |= 1 << i;
+        idiag <<= 8;
+        if(i < 8)idiag |= 1 << (7-i);
+        clipped_diag[i] = diag&clipped_mask;
+        clipped_idiag[i] = idiag&clipped_mask;
+        /*print_mask(clipped_diag[i]);
+        printf("\n");
+        print_mask(clipped_idiag[i]);
+        printf("\n");*/
+    }
 }
 big generate(){
     return dist(e2);
 }
-big generate_mask(big id, big square){
-    big mask = (clipped_row[square>>3]|clipped_col[square&7])&(~(1ULL<<square));
-    //print_mask(mask);
+
+big apply_id(big id, big mask){
     big square_mask = 1;
     for(int i=0; i<64; i++){
         if(mask&square_mask){
@@ -62,7 +78,24 @@ big generate_mask(big id, big square){
     }
     return mask;
 }
-big usefull(big mask, int square){
+
+big rook_mask(big id, big square){
+    big mask = (clipped_row[square>>3]|clipped_col[square&7])&(~(1ULL<<square));
+    return apply_id(id, mask);
+}
+
+big bishop_mask(big id, big square){
+    int col = square&7;
+    int row = square>>3;
+    big mask = (clipped_diag[col+row]|clipped_idiag[row-col+7])&(~(1ULL<<square));
+    return apply_id(id, mask);
+}
+
+big get_mask(bool is_rook, big id, big square){
+    return (is_rook?rook_mask:bishop_mask)(id, square);
+}
+
+big usefull_rook(big mask, int square){
     big mask_square = 1ULL << square;
     int col = square&7;
     int row = square >> 3;
@@ -88,6 +121,32 @@ big usefull(big mask, int square){
     }
     return cur_mask;
 }
+
+big usefull_bishop(big mask, int square){
+    big cur_mask=0;
+    vector<int> poss;
+    if((square&7) != 0)
+        poss.push_back(+7), poss.push_back(-9);
+    if((square&7) != 7)
+        poss.push_back(+9), poss.push_back(-7);
+    for(int direction:poss){
+        int cur_square = square;
+        big p;
+        do{
+            cur_square += direction;
+            if(cur_square < 0 || cur_square >= 64)break;
+            p = 1ULL << cur_square;
+            cur_mask |= p;
+        }while(clipped_mask&(1ULL<<cur_square) && (p&mask) == 0);
+        //cur_mask |= (1ULL << cur_square);
+    }
+    return cur_mask&(~(1ULL << square));
+}
+
+big get_usefull(bool is_rook, big mask, int square){
+    return (is_rook?usefull_rook:usefull_bishop)(mask, square);
+}
+
 class node{
 public:
     int right, left;
@@ -149,16 +208,14 @@ public:
     int decR;
     big magic;
 };
-info test_magic(big magic, int square){
-    int col = square & 7;
-    int row = square >> 3;
-    int nbBits = 10+(col%7 == 0)+(row%7 == 0);
+info test_magic(big magic, int square, bool is_rook){
+    int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
     creux tree[63];
     for(int i=0; i<63; i++)tree[i] = creux(64-i);
     for(big id=0; id<(1<<nbBits); id++){
-        big mask = generate_mask(id, square);
+        big mask = get_mask(is_rook, id, square);
         big res = mask*magic;
-        big res_mask = usefull(mask, square);
+        big res_mask = get_usefull(is_rook, mask, square);
         for(int i=0; i<63; i++){
             tree[i].push(res&(MAX_BIG >> i), res_mask);
         }
@@ -174,17 +231,29 @@ info test_magic(big magic, int square){
     //printf("\n");
     return res;
 }
-int dump_table(ofstream& file, info magic, int square){
+int dump_table(ofstream& file, info magic, int square, bool is_rook){
     vector<big> table(1<<magic.minimum);
     vector<big> last_mask(1<<magic.minimum);
     int col = square & 7;
     int row = square >> 3;
     int nbBits = 10+(col%7 == 0)+(row%7 == 0);
     for(big id=0; id<(1<<nbBits); id++){
-        big mask = generate_mask(id, square);
+        big mask = get_mask(is_rook, id, square);
         big res = mask*magic.magic;
-        big res_mask = usefull(mask, square);
-        big key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR-magic.minimum);
+        big res_mask = get_usefull(is_rook, mask, square);
+        big key;
+        if(magic.minimum == 0)
+            key = 0;
+        else
+            key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR-magic.minimum);
+        if(key >= table.size()){
+            print_mask(mask);
+            printf("%lu\n", res_mask);
+            printf("%lu\n", (res&(MAX_BIG>>magic.decR)));
+            printf("%d\n", (64-magic.decR-magic.minimum));
+            printf("%lu\n", key);
+            assert(false);
+        }
         if(table[key] != res_mask && table[key] != 0){
             printf("magic:%lu\n", magic.magic);
             printf("id:%ld\n", id);
@@ -217,44 +286,50 @@ int dump_table(ofstream& file, info magic, int square){
 }
 int main(int argc, char* argv[]){
     init();
-    vector<info> best(64, {20, 0, 1});
-    int totLength=(1<<20)*64;
+    vector<vector<info>> best(2, vector<info>(64, {20, 0, 1}));
+    int totLength=(1<<20)*64*2;
     int ok=0;
     while(1){
         big magic = generate();
         bool change=false;
-        for(int square=0; square<64; square++){
-            info r=test_magic(magic, square);
-            if(r.minimum < best[square].minimum){
-                change=true;
-                totLength += (1<<r.minimum)-(1<<best[square].minimum);
-                if(best[square].minimum == 20)
-                    ok++;
-                printf("magic = %16lx\tcase = %2d\tneeded bits = %2d\tdecRight = %2d\n", magic, square, r.minimum, r.decR);
-                best[square] = r;
+        for(int is_rook=0; is_rook < 2; is_rook++){
+            for(int square=0; square<64; square++){
+                info r=test_magic(magic, square, is_rook);
+                if(r.minimum < best[is_rook][square].minimum){
+                    change=true;
+                    totLength += (1<<r.minimum)-(1<<best[is_rook][square].minimum);
+                    if(best[is_rook][square].minimum == 20)
+                        ok++;
+                    printf("magic = %16lx\tis_rook: %1d\tcase = %2d\tneeded bits = %2d\tdecRight = %2d\n", magic, is_rook, square, r.minimum, r.decR);
+                    best[is_rook][square] = r;
+                }
             }
         }
-        if(change && ok==64){
+        if(change && ok==128){
             ofstream file(argv[1]);
             int place_lost=0;
-            for(int square=0; square < 64; square++){
-                place_lost += dump_table(file, best[square], square);
+            for(int is_rook=0; is_rook<2; is_rook++){
+                for(int square=0; square < 64; square++){
+                    place_lost += dump_table(file, best[is_rook][square], square, is_rook);
+                }
             }
             file.close();
             printf("%d/%d->%.2f ", place_lost, totLength, place_lost*100.0/totLength);
             int maxi=0;
             int mini=20;
-            for(info i:best){
-                maxi = max(maxi, i.minimum);
-                mini = min(mini, i.minimum);
+            for(int is_rook=0; is_rook < 2; is_rook++){
+                for(info i:best[is_rook]){
+                    maxi = max(maxi, i.minimum);
+                    mini = min(mini, i.minimum);
+                }
+                printf("max: %2d min: %2d => ", maxi, mini);
+                vector<int> occ(maxi-mini+1, 0);
+                for(info i:best[is_rook])
+                    occ[i.minimum-mini]++;
+                for(int t=0; t<maxi-mini+1; t++)
+                    printf("%2d ", occ[t]);
+                printf("\n");
             }
-            printf("max: %2d min: %2d => ", maxi, mini);
-            vector<int> occ(maxi-mini+1, 0);
-            for(info i:best)
-                occ[i.minimum-mini]++;
-            for(int t=0; t<maxi-mini+1; t++)
-                printf("%2d ", occ[t]);
-            printf("\n");
         }
     }
 }

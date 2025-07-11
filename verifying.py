@@ -30,12 +30,17 @@ def print_mask(mask):
 
 def get_moves(mask, case):
     #print_mask(mask)
+    if is_rook.cget('text') == 'rook':
+        case += 64
     key = (mask*constants[case][0] & (MAX_BIG >> constants[case][1])) >> (64-constants[case][1]-constants[case][2])
     #print(key)
     return table[case][key]
 
 clipped_row = [0]*8
 clipped_col = [0]*8
+clipped_diag = [0]*15
+clipped_idiag = [0]*15
+clipped_mask = (MAX_BIG >> 16 << 8) & (MAX_BIG-0x8181818181818181);
 def init_lines():
     row = MAX_BIG >> (8*7+2) << 1
     col = 0x0001010101010100
@@ -44,6 +49,15 @@ def init_lines():
         clipped_col[i] = col
         row <<= 8
         col <<= 1
+    diag = 0
+    idiag = 0
+    for i in range(15):
+        diag <<= 8
+        if(i < 8):diag |= 1 << i
+        idiag <<= 8
+        if(i < 8):idiag |= 1 << (7-i)
+        clipped_diag[i] = diag&clipped_mask
+        clipped_idiag[i] = idiag&clipped_mask
 
 place_tower = -1
 types = [0]*64
@@ -56,7 +70,11 @@ def recalculate():
     else:
         col = place_tower & 7
         row = place_tower >> 3
-        mask = pieces&((clipped_col[col]|clipped_row[row])&(MAX_BIG-(1 << place_tower)))
+        if is_rook.cget('text') == 'rook':
+            mask_pos_moves = clipped_col[col]|clipped_row[row]
+        else:
+            mask_pos_moves = clipped_diag[col+row]|clipped_idiag[row-col+7]
+        mask = pieces&(mask_pos_moves&(MAX_BIG-(1 << place_tower)))
         moves = get_moves(mask, place_tower)
         for index in range(64):
             mask_square = 1 << index
@@ -89,30 +107,40 @@ def get_command(index):
         recalculate()
     return _command        
 
+def change_rook():
+    if is_rook.cget('text') == 'rook':
+        is_rook.config(text='bishop')
+    else:
+        is_rook.config(text='rook')
+    recalculate()
+
 pieces = 0
 init_lines()
 cellSize = 50
 size = 8*50
 fen = Tk()
-fen.geometry(f'{size}x{size}')
+fen.geometry(f'{size}x{size+cellSize}')
 
-def make_label(i):
+def make_label(command):
     lbl = Label(fen, bg=white, borderwidth=1, relief="solid")
-    lbl.bind("<Button-1>", lambda e: get_command(i)())
+    lbl.bind("<Button-1>", lambda e: command)
     return lbl
 
 if sys.platform=="darwin":
-    buttons = [make_label(i) for i in range(64)]
-
+    buttons = [make_label(get_command(i)) for i in range(64)]
+    is_rook = make_label(change_rook)
 else:
     buttons = [Button(fen, bg=white, command=get_command(i)) for i in range(64)]
+    is_rook = Button(fen, bg=white, command=change_rook)
 x = 0
 y = 0
 for button in buttons:
-    button.place(x=x*cellSize, y=y*cellSize, width=50, height=50)
+    button.place(x=x*cellSize, y=y*cellSize, width=cellSize, height=cellSize)
     x += 1
     if(x >= 8):
         x = 0
         y += 1
 
+is_rook.place(x=7*cellSize//2, y=y*cellSize, width=cellSize, height=cellSize)
+is_rook.config(text='rook')
 fen.mainloop()
