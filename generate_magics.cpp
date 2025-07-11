@@ -186,6 +186,7 @@ void dump_table(ofstream& file, info magic, int square){
         big res_mask = usefull(mask, square);
         big key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR-magic.minimum);
         if(table[key] != res_mask && table[key] != 0){
+            printf("magic:%lu\n", magic.magic);
             printf("id:%ld\n", id);
             printf("res:%ld\nmask:\n", res);
             print_mask(mask);
@@ -210,8 +211,9 @@ void dump_table(ofstream& file, info magic, int square){
 }
 int main(int argc, char* argv[]){
     init();
-    vector<info> best(64, {20, 0});
+    vector<info> best(64, {20, 0, 1});
     int totLength=(1<<20)*64;
+    int ok=0;
     while(1){
         big magic = generate();
         bool change=false;
@@ -220,11 +222,13 @@ int main(int argc, char* argv[]){
             if(r.minimum < best[square].minimum){
                 change=true;
                 totLength += (1<<r.minimum)-(1<<best[square].minimum);
-                printf("magic = %16lx\tcase = %d\tneeded bits = %2d\tdecRight = %d\ttotal size=%d\n", magic, square, r.minimum, r.decR, totLength);
+                if(best[square].minimum == 20)
+                    ok++;
+                printf("nbGoods:%d magic = %16lx\tcase = %d\tneeded bits = %2d\tdecRight = %d\ttotal size=%d\n", ok, magic, square, r.minimum, r.decR, totLength);
                 best[square] = r;
             }
         }
-        if(change){
+        if(change && ok==64){
             ofstream file(argv[1]);
             for(int square=0; square < 64; square++){
                 dump_table(file, best[square], square);
