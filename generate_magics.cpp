@@ -293,15 +293,23 @@ int main(int argc, char* argv[]){
         big magic = generate();
         bool change=false;
         for(int is_rook=0; is_rook < 2; is_rook++){
+            bool is_rook_printed=false;
             for(int square=0; square<64; square++){
                 info r=test_magic(magic, square, is_rook);
                 if(r.minimum < best[is_rook][square].minimum){
-                    change=true;
                     totLength += (1<<r.minimum)-(1<<best[is_rook][square].minimum);
                     if(best[is_rook][square].minimum == 20)
                         ok++;
-                    printf("magic = %16lx\tis_rook: %1d\tcase = %2d\tneeded bits = %2d\tdecRight = %2d\n", magic, is_rook, square, r.minimum, r.decR);
+                    if(change){
+                        if(is_rook_printed)
+                            printf("%*ccase = %2d needed bits = %2d decRight = %2d\n", 36, ' ', square, r.minimum, r.decR);
+                        else
+                            printf("%*cis_rook: %1d case = %2d needed bits = %2d decRight = %2d\n", 25, ' ', is_rook, square, r.minimum, r.decR);
+                    }else
+                        printf("magic = %16lx is_rook: %1d case = %2d needed bits = %2d decRight = %2d\n", magic, is_rook, square, r.minimum, r.decR);
                     best[is_rook][square] = r;
+                    change=true;
+                    is_rook_printed = true;
                 }
             }
         }
@@ -314,15 +322,15 @@ int main(int argc, char* argv[]){
                 }
             }
             file.close();
-            printf("%d/%d->%.2f ", place_lost, totLength, place_lost*100.0/totLength);
-            int maxi=0;
-            int mini=20;
+            printf("%d/%d->%.2f\n", place_lost, totLength, place_lost*100.0/totLength);
             for(int is_rook=0; is_rook < 2; is_rook++){
+                int maxi=0;
+                int mini=20;
                 for(info i:best[is_rook]){
                     maxi = max(maxi, i.minimum);
                     mini = min(mini, i.minimum);
                 }
-                printf("max: %2d min: %2d => ", maxi, mini);
+                printf("\tmin: %2d max: %2d => ", mini, maxi);
                 vector<int> occ(maxi-mini+1, 0);
                 for(info i:best[is_rook])
                     occ[i.minimum-mini]++;
