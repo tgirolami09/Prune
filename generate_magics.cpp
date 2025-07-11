@@ -242,15 +242,19 @@ int main(int argc, char* argv[]){
             }
             file.close();
             printf("%d/%d->%.2f ", place_lost, totLength, place_lost*100.0/totLength);
-            int som=0;
             int maxi=0;
             int mini=20;
             for(info i:best){
-                som += i.minimum;
                 maxi = max(maxi, i.minimum);
                 mini = min(mini, i.minimum);
             }
-            printf("mean: %2.2f max: %2d min: %2d\n", (double)som/best.size(), maxi, mini);
+            printf("max: %2d min: %2d => ", maxi, mini);
+            vector<int> occ(maxi-mini+1, 0);
+            for(info i:best)
+                occ[i.minimum-mini]++;
+            for(int t=0; t<maxi-mini+1; t++)
+                printf("%2d ", occ[t]);
+            printf("\n");
         }
     }
 }
