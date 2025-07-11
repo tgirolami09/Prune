@@ -10,7 +10,7 @@ using namespace std;
 const big MAX_BIG = ~((big)0);
 void print_mask(big mask){
     int col=0;
-    for(int row=0; row<=64; row+=8){
+    for(int row=8; row<=64; row+=8){
         for(; col<row; col++){
             printf("%d", (int)mask&1);
             mask >>= 1;
@@ -19,7 +19,7 @@ void print_mask(big mask){
     }
 }
 std::random_device rd;
-std::mt19937_64 e2(rd());
+std::mt19937_64 e2(42);
 std::uniform_int_distribution<big> dist(0, MAX_BIG);
 /*
 0   1   2   3   4   5   6   7
@@ -78,12 +78,12 @@ big usefull(big mask, int square){
     }
     bef = mask&cur_mask;
     for(int i=1; i<row; i++){
-        cur_mask |= mask_square << 8*i;
+        cur_mask |= mask_square >> 8*i;
         if((mask&cur_mask) != bef)break;
     }
     bef = mask&cur_mask;
     for(int i=row+1; i<7; i++){
-        cur_mask |= cur_mask << (i-col)*8;
+        cur_mask |= mask_square << (i-col)*8;
         if((mask&cur_mask) != bef)break;
     }
     return cur_mask;
@@ -112,36 +112,35 @@ public:
         valid = 0;
         depthMax = depth;
     }
-    void _push(big x, int id, born curL, born curR, int T, int depth){
-        if(Ns[T].last != -1){
-            if(mapping[Ns[T].last] != mapping[id]){
-                valid = max(valid, depth+1);
-            }
-        }
-        Ns[T].last = id;
-        if(curL+1 == curR)return;
-        assert(depth < depthMax);
-        born mid = curL+(curR-curL)/2;
-        born nL=curL, nR=curR;
-        int nT;
-        if(x >= mid){
-            nL = mid;
-            nT = Ns[T].right;
-        }else{
-            nR = mid;
-            nT = Ns[T].left;
-        }if(nT == -1){
-            nT = Ns.size();
-            nbNodesPerDepth[depth]++;
-            Ns.push_back(node());
-            if(x >= mid)Ns[T].right = nT;
-            else Ns[T].left = nT;
-        }
-        _push(x, id, nL, nR, nT, depth+1);
-    }
     void push(big x, big res){
         mapping.push_back(res);
-        _push(x, mapping.size()-1, 0, ((born)1ULL)<<depthMax, 0, 0);
+        born curL=0, curR=((born)1)<<depthMax;
+        int T=0;
+        int depth=0;
+        int id=mapping.size()-1;
+        while(1){
+            if(Ns[T].last != -1 && mapping[Ns[T].last] != mapping[id])
+                valid = max(valid, depth+1);
+            Ns[T].last = id;
+            if(curL+1 == curR)return;
+            born mid = (curL+curR)/2;
+            int nT;
+            if(x >= mid){
+                curL = mid;
+                nT = Ns[T].right;
+            }else{
+                curR = mid;
+                nT = Ns[T].left;
+            }if(nT == -1){
+                nT = Ns.size();
+                nbNodesPerDepth[depth]++;
+                Ns.push_back(node());
+                if(x >= mid)Ns[T].right = nT;
+                else Ns[T].left = nT;
+            }
+            depth++;
+            T = nT;
+        }
     }
 };
 class info{
@@ -177,6 +176,7 @@ info test_magic(big magic, int square){
 }
 void dump_table(ofstream& file, info magic, int square){
     vector<big> table(1<<magic.minimum);
+    vector<big> last_mask(1<<magic.minimum);
     int col = square & 7;
     int row = square >> 3;
     int nbBits = 10+(col%7 == 0)+(row%7 == 0);
@@ -184,9 +184,24 @@ void dump_table(ofstream& file, info magic, int square){
         big mask = generate_mask(id, square);
         big res = mask*magic.magic;
         big res_mask = usefull(mask, square);
-        int key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR+magic.minimum);
-        assert(table[key] == res_mask || table[key] == 0);
+        big key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR-magic.minimum);
+        if(table[key] != res_mask && table[key] != 0){
+            printf("id:%ld\n", id);
+            printf("res:%ld\nmask:\n", res);
+            print_mask(mask);
+            printf("\nlast_mask:\n");
+            print_mask(last_mask[key]);
+            printf("key:%ld\nlast usefull:\n", key);
+            print_mask(table[key]);
+            printf("\nusefull\n");
+            print_mask(res_mask);
+            printf("\n");
+            printf("square:%d\n", square);
+            printf("decr:%d minimum:%d\n", magic.decR, magic.minimum);
+            assert(false);
+        }
         table[key] = res_mask;
+        last_mask[key] = mask;
     }
     file << magic.magic << " ";
     file << table.size() << " ";
@@ -197,23 +212,24 @@ int main(int argc, char* argv[]){
     init();
     vector<info> best(64, {20, 0});
     int totLength=(1<<20)*64;
-    try{
-        while(1){
-            big magic = generate();
-            for(int square=0; square<64; square++){
-                info r=test_magic(magic, square);
-                if(r.minimum < best[square].minimum){
-                    totLength += (1<<r.minimum)-(1<<best[square].minimum);
-                    printf("magic = %16lx\tcase = %d\tneeded bits = %d\tdecRight = %d\n", magic, square, r.minimum, r.decR);
-                    best[square] = r;
-                }
+    while(1){
+        big magic = generate();
+        bool change=false;
+        for(int square=0; square<64; square++){
+            info r=test_magic(magic, square);
+            if(r.minimum < best[square].minimum){
+                change=true;
+                totLength += (1<<r.minimum)-(1<<best[square].minimum);
+                printf("magic = %16lx\tcase = %d\tneeded bits = %2d\tdecRight = %d\ttotal size=%d\n", magic, square, r.minimum, r.decR, totLength);
+                best[square] = r;
             }
         }
-    }catch(int error){
-        printf("error code : %d", error);
-        ofstream file(argv[1]);
-        for(int square=0; square < 64; square++){
-            dump_table(file, best[square], square);
+        if(change){
+            ofstream file(argv[1]);
+            for(int square=0; square < 64; square++){
+                dump_table(file, best[square], square);
+            }
+            file.close();
         }
     }
 }
