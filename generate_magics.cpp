@@ -241,7 +241,16 @@ int main(int argc, char* argv[]){
                 place_lost += dump_table(file, best[square], square);
             }
             file.close();
-            printf("%d/%d->%.2f\n", place_lost, totLength, place_lost*100.0/totLength);
+            printf("%d/%d->%.2f ", place_lost, totLength, place_lost*100.0/totLength);
+            int som=0;
+            int maxi=0;
+            int mini=20;
+            for(info i:best){
+                som += i.minimum;
+                maxi = max(maxi, i.minimum);
+                mini = min(mini, i.minimum);
+            }
+            printf("mean: %2.2f max: %2d min: %2d\n", (double)som/best.size(), maxi, mini);
         }
     }
 }
