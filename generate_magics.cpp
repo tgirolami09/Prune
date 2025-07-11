@@ -174,7 +174,7 @@ info test_magic(big magic, int square){
     //printf("\n");
     return res;
 }
-void dump_table(ofstream& file, info magic, int square){
+int dump_table(ofstream& file, info magic, int square){
     vector<big> table(1<<magic.minimum);
     vector<big> last_mask(1<<magic.minimum);
     int col = square & 7;
@@ -206,8 +206,12 @@ void dump_table(ofstream& file, info magic, int square){
     }
     file << magic.magic << " ";
     file << table.size() << " ";
-    for(big i:table)
+    int res=0;
+    for(big i:table){
         file << i << " ";
+        if(i == 0)res++;
+    }
+    return res;
 }
 int main(int argc, char* argv[]){
     init();
@@ -224,16 +228,18 @@ int main(int argc, char* argv[]){
                 totLength += (1<<r.minimum)-(1<<best[square].minimum);
                 if(best[square].minimum == 20)
                     ok++;
-                printf("nbGoods:%d magic = %16lx\tcase = %d\tneeded bits = %2d\tdecRight = %d\ttotal size=%d\n", ok, magic, square, r.minimum, r.decR, totLength);
+                printf("magic = %16lx\tcase = %2d\tneeded bits = %2d\tdecRight = %2d\n", magic, square, r.minimum, r.decR);
                 best[square] = r;
             }
         }
         if(change && ok==64){
             ofstream file(argv[1]);
+            int place_lost=0;
             for(int square=0; square < 64; square++){
-                dump_table(file, best[square], square);
+                place_lost += dump_table(file, best[square], square);
             }
             file.close();
+            printf("%d/%d->%.2f\n", place_lost, totLength, place_lost*100.0/totLength);
         }
     }
 }
