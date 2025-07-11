@@ -205,6 +205,8 @@ int dump_table(ofstream& file, info magic, int square){
         last_mask[key] = mask;
     }
     file << magic.magic << " ";
+    file << magic.decR << " ";
+    file << magic.minimum << " ";
     file << table.size() << " ";
     int res=0;
     for(big i:table){
