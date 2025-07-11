@@ -96,7 +96,16 @@ size = 8*50
 fen = Tk()
 fen.geometry(f'{size}x{size}')
 
-buttons = [Button(fen, bg=white, command=get_command(i)) for i in range(64)]
+def make_label(i):
+    lbl = Label(fen, bg=white, borderwidth=1, relief="solid")
+    lbl.bind("<Button-1>", lambda e: get_command(i)())
+    return lbl
+
+if sys.platform=="darwin":
+    buttons = [make_label(i) for i in range(64)]
+
+else:
+    buttons = [Button(fen, bg=white, command=get_command(i)) for i in range(64)]
 x = 0
 y = 0
 for button in buttons:
