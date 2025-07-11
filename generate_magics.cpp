@@ -63,27 +63,27 @@ big generate_mask(big id, big square){
     return mask;
 }
 big usefull(big mask, int square){
-    big cur_mask = 1ULL << square;
+    big mask_square = 1ULL << square;
     int col = square&7;
     int row = square >> 3;
-    big mask_square = cur_mask;
-    for(int i=1; i < col; i++){
+    big cur_mask = 0;
+    for(int i=1; i <= col; i++){
         cur_mask |= mask_square >> i;
         if(mask&cur_mask)break;
     }
     big bef=mask&cur_mask;
-    for(int i=col+1; i<7; i++){
+    for(int i=col+1; i<8; i++){
         cur_mask |= mask_square << (i-col);
         if((mask & cur_mask) != bef)break;
     }
     bef = mask&cur_mask;
-    for(int i=1; i<row; i++){
+    for(int i=1; i<=row; i++){
         cur_mask |= mask_square >> 8*i;
         if((mask&cur_mask) != bef)break;
     }
     bef = mask&cur_mask;
-    for(int i=row+1; i<7; i++){
-        cur_mask |= mask_square << (i-col)*8;
+    for(int i=row+1; i<8; i++){
+        cur_mask |= mask_square << (i-row)*8;
         if((mask&cur_mask) != bef)break;
     }
     return cur_mask;
