@@ -20,8 +20,7 @@ with open(file) as f:
         if(index >= len(L)):break
 print(len(constants))
 print(len(table))
-for line in table:
-    print(len(line))
+
 def print_mask(mask):
     for i in range(8):
         for i in range(8):
