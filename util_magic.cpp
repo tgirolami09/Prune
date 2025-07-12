@@ -203,7 +203,7 @@ int dump_entire(vector<vector<info>> table, char* name){
     return place_lost;
 }
 
-vector<vector<info>> load(const char* name){
+vector<vector<info>> load_info(const char* name){
     ifstream file(name);
     if(file.good()){ // exist
         vector<info> bests;
@@ -233,6 +233,24 @@ vector<vector<info>> load(const char* name){
             return res;
         }
     }else return {};
+}
+
+void load_whole(info* constants, big** table, char* name){
+    ifstream file(name);
+    big magic;
+    int decR, minimum, size;
+    big mask;
+    int current = 0;
+    while(file >> magic){
+        file >> decR >> minimum >> size;
+        constants[current] = {minimum, decR, magic};
+        table[current] = (big*)calloc(size, sizeof(big));
+        for(int i=0; i<size; i++){
+            file >> mask;
+            table[current][i] = mask;
+        }
+        current++;
+    }
 }
 
 void print_table(vector<vector<info>> table){

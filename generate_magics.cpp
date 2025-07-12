@@ -104,7 +104,7 @@ int main(int argc, char* argv[]){
     init_lines();
     vector<vector<info>> best;
     if(argc > 2)
-        best = load(argv[2]);
+        best = load_info(argv[2]);
     if(best.size() == 0)
         best = vector<vector<info>>(2, vector<info>(64, {20, 0, 1}));
     else
