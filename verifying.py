@@ -59,26 +59,44 @@ def init_lines():
         clipped_diag[i] = diag&clipped_mask
         clipped_idiag[i] = idiag&clipped_mask
 
-place_tower = -1
+place_piece = -1
 types = [0]*64
 
+def propagate(mask, square, directions):
+    for dir in directions:
+        counter = 0
+        col, row = (square&7)+dir[0], (square >> 3)+dir[1]
+        while 0 <= col < 8 and 0 <= row < 8 and mask&(1 << ((row << 3) | col)):
+            counter += 1
+            col += dir[0]
+            row += dir[1]
+        yield counter
+
+def nb_poss(mask, square):
+    res = 1
+    directions = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
+    for d, m in zip(directions, propagate(mask, square, directions)):
+        res *= max(m, 1)
+    return res
+
 def recalculate():
-    global place_tower
-    if place_tower == -1:
+    global place_piece
+    if place_piece == -1:
         for id, b in enumerate(buttons):
             b.config(bg=[white, blue][types[id]])
     else:
-        col = place_tower & 7
-        row = place_tower >> 3
+        col = place_piece & 7
+        row = place_piece >> 3
         if is_rook.cget('text') == 'rook':
             mask_pos_moves = clipped_col[col]|clipped_row[row]
         else:
             mask_pos_moves = clipped_diag[col+row]|clipped_idiag[row-col+7]
-        mask = pieces&(mask_pos_moves&(MAX_BIG-(1 << place_tower)))
-        moves = get_moves(mask, place_tower)
+        mask = pieces&(mask_pos_moves&(MAX_BIG-(1 << place_piece)))
+        fen.title(f"{place_piece} : {nb_poss(get_moves(0, place_piece), place_piece)}/{len(table[place_piece+64 if is_rook.cget('text') == 'rook' else place_piece])}")
+        moves = get_moves(mask, place_piece)
         for index in range(64):
             mask_square = 1 << index
-            if(index == place_tower):
+            if(index == place_piece):
                 color = yellow
             elif (moves & mask_square) and (pieces & mask_square):
                 color = violet
@@ -92,17 +110,17 @@ def recalculate():
 
 def get_command(index):
     def _command():
-        global pieces, place_tower
-        if place_tower != -1:
+        global pieces, place_piece
+        if place_piece != -1:
             if types[index] == 2:
                 types[index] = 0
-                place_tower = -1
+                place_piece = -1
             else:
                 pieces ^= 1 << index
                 types[index] ^= 1
         else:
             pieces ^= 1 << index
-            if types[index] == 1:place_tower = index
+            if types[index] == 1:place_piece = index
             types[index] += 1
         recalculate()
     return _command        
