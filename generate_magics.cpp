@@ -300,13 +300,14 @@ int main(int argc, char* argv[]){
                     totLength += (1<<r.minimum)-(1<<best[is_rook][square].minimum);
                     if(best[is_rook][square].minimum == 20)
                         ok++;
+                    string display_rook = is_rook?"  rook":"bishop";
                     if(change){
                         if(is_rook_printed)
-                            printf("%*ccase = %2d needed bits = %2d decRight = %2d\n", 36, ' ', square, r.minimum, r.decR);
+                            printf("%*ccase = %2d needed bits = %2d decRight = %2d\n", 32, ' ', square, r.minimum, r.decR);
                         else
-                            printf("%*cis_rook: %1d case = %2d needed bits = %2d decRight = %2d\n", 25, ' ', is_rook, square, r.minimum, r.decR);
+                            printf("%*c%s case = %2d needed bits = %2d decRight = %2d\n", 25, ' ', display_rook.c_str(), square, r.minimum, r.decR);
                     }else
-                        printf("magic = %16lx is_rook: %1d case = %2d needed bits = %2d decRight = %2d\n", magic, is_rook, square, r.minimum, r.decR);
+                        printf("magic = %16lx %s case = %2d needed bits = %2d decRight = %2d\n", magic, display_rook.c_str(), square, r.minimum, r.decR);
                     best[is_rook][square] = r;
                     change=true;
                     is_rook_printed = true;
