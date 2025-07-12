@@ -111,7 +111,6 @@ def recalculate():
 def get_command(index):
     def _command():
         global pieces, place_piece
-        print(f"Index is {index}")
         if place_piece != -1:
             if types[index] == 2:
                 types[index] = 0
