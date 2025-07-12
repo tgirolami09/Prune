@@ -111,6 +111,7 @@ def recalculate():
 def get_command(index):
     def _command():
         global pieces, place_piece
+        print(f"Index is {index}")
         if place_piece != -1:
             if types[index] == 2:
                 types[index] = 0
@@ -139,14 +140,19 @@ size = 8*50
 fen = Tk()
 fen.geometry(f'{size}x{size+cellSize}')
 
-def make_label(command):
+def make_board_label(i):
     lbl = Label(fen, bg=white, borderwidth=1, relief="solid")
-    lbl.bind("<Button-1>", lambda e: command)
+    lbl.bind("<Button-1>", lambda e: get_command(i)())
+    return lbl
+
+def make_type_change_label():
+    lbl = Label(fen, bg=white, borderwidth=1, relief="solid")
+    lbl.bind("<Button-1>", lambda e: change_rook())
     return lbl
 
 if sys.platform=="darwin":
-    buttons = [make_label(get_command(i)) for i in range(64)]
-    is_rook = make_label(change_rook)
+    buttons = [make_board_label(i) for i in range(64)]
+    is_rook = make_type_change_label()
 else:
     buttons = [Button(fen, bg=white, command=get_command(i)) for i in range(64)]
     is_rook = Button(fen, bg=white, command=change_rook)
