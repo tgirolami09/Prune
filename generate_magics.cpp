@@ -112,7 +112,10 @@ int main(int argc, char* argv[]){
         print_table(best);
         ok=best[0][0].minimum != 20?128:64;
     }
-    int totLength=(1<<20)*64*2;
+    int totLength=0;
+    for(vector<info> board:best)
+        for(info i:board)
+            totLength += 1 << i.minimum;
     while(1){
         big magic = generate();
         bool change=false;

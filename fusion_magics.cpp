@@ -1,9 +1,9 @@
-#include "util_magic.cpp"
+#include "util_magic.hpp"
 
 int main(int argc, char** argv){
     assert(argc > 3);
-    vector<vector<info>> table1=load(argv[2]);
-    vector<vector<info>> table2=load(argv[3]);
+    vector<vector<info>> table1=load_info(argv[2]);
+    vector<vector<info>> table2=load_info(argv[3]);
     vector<vector<info>> table_fusion(2, vector<info>(64));
     for(int is_rook=0; is_rook < 2; is_rook++){
         for(int square=0; square<64; square++){
