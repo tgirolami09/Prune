@@ -45,16 +45,16 @@ class GameState{
             for(; id<fen.size(); id++){
                 if(fen[id] == ' ')break;
 
-                bool isWhite = true;
+                bool isBlack = true;
                 if(isupper(fen[id])){
-                    isWhite = false;
+                    isBlack = false;
                 }
 
                 bool isKing = true;
                 if(tolower(fen[id]) == 'q'){
                     isKing = false;
                 }
-                castlingRights[isWhite][isKing] = 1;
+                castlingRights[isBlack][isKing] = 1;
             }
         }
         id++;
