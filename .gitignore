@@ -1,2 +1,6 @@
+*
+!*.*
+*.out
+*.txt
 build
 .vscode
