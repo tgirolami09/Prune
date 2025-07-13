@@ -1,17 +1,11 @@
-#include <map>
-#include <vector>
 #include <string>
-
+#include <strings.h>
 // #include "util_magic.cpp"
-#include "Const.hpp"
-#include "Functions.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
-#include "Evaluator.hpp"
 #include "BestMoveFinder.hpp"
 
-// #include <strings.h>
 #include <iostream>
 
 // big* table[128]; // [bishop, rook]

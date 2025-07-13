@@ -1,3 +1,7 @@
+#ifndef CONST_HPP
+#define CONST_HPP
+#include <cstdint>
+#include <map>
 #define big uint64_t
 
 using namespace std;
@@ -14,3 +18,4 @@ const int SPACE=12;
 
 map<char, int> piece_to_id = {{'r', ROOK}, {'n', KNIGHT}, {'b', BISHOP}, {'q', QUEEN}, {'k', KING}, {'p', PAWN}};
 map<int, char> id_to_piece = {{ROOK, 'r'}, {KNIGHT, 'n'}, {BISHOP, 'b'}, {QUEEN, 'q'}, {KING, 'k'}, {PAWN, 'p'}, {SPACE, ' '}};
+#endif

@@ -1,3 +1,7 @@
+#ifndef BESTMOVEFINDER_HPP
+#define BESTMOVEFINDER_HPP
+#include "Move.hpp"
+#include "GameState.hpp"
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
@@ -6,3 +10,4 @@ class BestMoveFinder{
         return {};
     }
 };
+#endif

@@ -1,3 +1,12 @@
+#ifndef GAMESATE_HPP
+#define GAMESATE_HPP
+#include "Move.hpp"
+#include <cctype>
+#include <string>
+#include <vector>
+#include <cstdlib>
+#include "Const.hpp"
+#include "Functions.hpp"
 using namespace std;
 
 //Represents a state in the game
@@ -146,3 +155,4 @@ class GameState{
         printf("−−/\n");
     }
 };
+#endif

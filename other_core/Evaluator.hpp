@@ -1,3 +1,6 @@
+#ifndef EVALUATOR_HPP
+#define EVALUATOR_HPP
+#include "GameState.hpp"
 //Class to evaluate a position
 class Evaluator{
     //All the logic for evaluating a position
@@ -6,3 +9,4 @@ class Evaluator{
         return 10;
     }
 };
+#endif

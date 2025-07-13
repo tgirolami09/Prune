@@ -1,3 +1,5 @@
+#ifndef FUNCTIONS_HPP
+#define FUNCTIONS_HPP
 int col(int square){
     return square&7;
 }
@@ -13,3 +15,4 @@ int color(int piece){
 int type(int piece){
     return (piece-(piece%2));
 }
+#endif
