@@ -256,7 +256,17 @@ void load_whole(info* constants, big** table, char* name){
 void print_table(vector<vector<info>> table){
     for(int is_rook=0; is_rook<2; is_rook++){
         printf(is_rook?"rook\n":"bishop\n");
-        for(int square=0; square < 64; square++)
-            printf("\tcase: %2d magic: %16llx bits needed: %2d dec right: %2d\n", square, table[is_rook][square].magic, table[is_rook][square].minimum, table[is_rook][square].decR);
+        for(int row=0; row<8; row++){
+            for(int col=0; col<8; col++)
+                printf("%16llx ", table[is_rook][row << 3 | col].magic);
+            printf("\n");
+        }
+        for(int row=0; row<8; row++){
+            for(int col=0; col<8; col++)
+                printf("%2d ", table[is_rook][row << 3 | col].minimum);
+            printf("\n");
+        }
+        //for(int square=0; square < 64; square++)
+        //    printf("\tcase: %2d magic: %16llx bits needed: %2d dec right: %2d\n", square, table[is_rook][square].magic, table[is_rook][square].minimum, table[is_rook][square].decR);
     }
 }

@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <random>
-#include "util_magic.cpp"
+#include "util_magic.hpp"
 using namespace std;
 
 std::random_device rd;
@@ -105,12 +105,14 @@ int main(int argc, char* argv[]){
     vector<vector<info>> best;
     if(argc > 2)
         best = load_info(argv[2]);
-    if(best.size() == 0)
-        best = vector<vector<info>>(2, vector<info>(64, {20, 0, 1}));
-    else
-        print_table(best);
-    int totLength=(1<<20)*64*2;
     int ok=0;
+    if(best.size() == 0){
+        best = vector<vector<info>>(2, vector<info>(64, {20, 0, 1}));
+    }else{
+        print_table(best);
+        ok=best[0][0].minimum != 20?128:64;
+    }
+    int totLength=(1<<20)*64*2;
     while(1){
         big magic = generate();
         bool change=false;
