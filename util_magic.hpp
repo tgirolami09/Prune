@@ -154,20 +154,20 @@ int dump_table(ofstream& file, info magic, int square, bool is_rook){
             key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR-magic.minimum);
         if(key >= table.size()){
             print_mask(mask);
-            printf("%lu\n", res_mask);
-            printf("%lu\n", (res&(MAX_BIG>>magic.decR)));
+            printf("%llu\n", res_mask);
+            printf("%llu\n", (res&(MAX_BIG>>magic.decR)));
             printf("%d\n", (64-magic.decR-magic.minimum));
-            printf("%lu\n", key);
+            printf("%llu\n", key);
             assert(false);
         }
         if(table[key] != res_mask && table[key] != 0){
-            printf("magic:%lu\n", magic.magic);
-            printf("id:%ld\n", id);
-            printf("res:%ld\nmask:\n", res);
+            printf("magic:%llu\n", magic.magic);
+            printf("id:%llu\n", id);
+            printf("res:%llu\nmask:\n", res);
             print_mask(mask);
             printf("\nlast_mask:\n");
             print_mask(last_mask[key]);
-            printf("key:%ld\nlast usefull:\n", key);
+            printf("key:%llu\nlast usefull:\n", key);
             print_mask(table[key]);
             printf("\nusefull\n");
             print_mask(res_mask);
@@ -257,6 +257,6 @@ void print_table(vector<vector<info>> table){
     for(int is_rook=0; is_rook<2; is_rook++){
         printf(is_rook?"rook\n":"bishop\n");
         for(int square=0; square < 64; square++)
-            printf("\tcase: %2d magic: %16lx bits needed: %2d dec right: %2d\n", square, table[is_rook][square].magic, table[is_rook][square].minimum, table[is_rook][square].decR);
+            printf("\tcase: %2d magic: %16llx bits needed: %2d dec right: %2d\n", square, table[is_rook][square].magic, table[is_rook][square].minimum, table[is_rook][square].decR);
     }
 }

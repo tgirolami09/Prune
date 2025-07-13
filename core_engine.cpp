@@ -1,4 +1,4 @@
-#include "util_magic.cpp"
+#include "util_magic.hpp"
 #include <strings.h>
 #include <map>
 //#define ALTERNATE_COLOR
