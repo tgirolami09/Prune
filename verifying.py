@@ -18,8 +18,15 @@ with open(file) as f:
         table.append(L[index+1:index+1+L[index]])
         index += L[index]+1
         if(index >= len(L)):break
-print(len(constants))
-print(len(table))
+for add in range(0, 128, 64):
+    for row in range(8):
+        for col in range(8):
+            print(f'{constants[row*8+col+add][0]:016x} ', end='')
+        print()
+    for row in range(8):
+        for col in range(8):
+            print(f'{constants[row*8+col+add][2]:2d} ', end='')
+        print()
 
 def print_mask(mask):
     for i in range(8):
