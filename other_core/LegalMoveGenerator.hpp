@@ -88,14 +88,16 @@ class LegalMoveGenerator{
         }
         vector<Move> moves;
         big* allFriendlyPieces = state.friendlyPieces();
-        big knightMask = allFriendlyPieces[KNIGHT/2];
-        for (int pos = 0;pos<64;++pos){
+        big knightMask = allFriendlyPieces[KNIGHT];
+        ubyte* pos;
+        int nbPos=places(knightMask, pos);
+        for (int p = 0;p<nbPos;++p){
             //Friendly knight at position 'pos'
-            if (knightMask & (1ul<< pos)){
+            if (knightMask & (1ul<< pos[p])){
                 //Get the end positions that are allowed given the state of the king 
-                big knightEndMask = KnightMoves[pos] & (moveMask | captureMask);
+                big knightEndMask = KnightMoves[pos[p]] & (moveMask | captureMask);
 
-                vector<Move> intermediateMoves = maskToMoves(pos,knightEndMask);
+                vector<Move> intermediateMoves = maskToMoves(pos[p], knightEndMask);
                 moves.insert(moves.end(),intermediateMoves.begin(),intermediateMoves.end());
             }
         }
