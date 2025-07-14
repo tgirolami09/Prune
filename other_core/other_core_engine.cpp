@@ -3,7 +3,6 @@
 // #include "util_magic.cpp"
 #include "Move.hpp"
 #include "GameState.hpp"
-#include "LegalMoveGenerator.hpp"
 #include "BestMoveFinder.hpp"
 
 #include <iostream>
