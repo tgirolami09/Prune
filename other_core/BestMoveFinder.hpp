@@ -5,7 +5,6 @@
 #include "Evaluator.hpp"
 #include "LegalMoveGenerator.hpp"
 #include <cmath>
-#include <map>
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
@@ -43,7 +42,8 @@ class BestMoveFinder{
         Move bestMove;
         float alpha=-INFINITY;
         float beta=INFINITY;
-        vector<Move> moves=generator.generateLegalMoves(state);
+        bool inCheck;
+        vector<Move> moves=generator.generateLegalMoves(state, inCheck);
         if(moves.size() == 0)
             return {}; // no possible moves
         for(Move move:moves){
