@@ -19,9 +19,11 @@ int color(int piece){
 int type(int piece){
     return (piece-(piece%2));
 }
+
 const int countbit(const big board){
     return __builtin_popcountll(board);
 }
+
 int places(big mask, ubyte*& positions){
     int nbBits = countbit(mask);
     positions = (ubyte*)malloc(nbBits);
@@ -50,4 +52,13 @@ void print_mask(big mask){
         printf("\n");
     }
 }
+
+big addBitToMask(big mask, int pos){
+    return mask | 1ul << pos;
+}
+
+big removeBitFromMask(big mask, int pos){
+    return mask & 0ul << pos;
+}
+
 #endif

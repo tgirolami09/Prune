@@ -1,8 +1,55 @@
+#include "Functions.hpp"
 using namespace std;
 
 
 //Class to generate legal moves
 class LegalMoveGenerator{
+    int KnightOffSets[8] = {15, 17, -17, -15, 10, -6, 6, -10};
+
+    big KnightMoves[64] = {0}; //Knight moves for each position of the board
+
+    bool knightWasPrecomputed = false;
+
+    void PrecomputeKnightMoveData(){
+        knightWasPrecomputed = true;
+        for (int file = 0; file<8; ++file){
+            for (int rank = 0; rank<8; ++rank){
+                int squareIndex = rank * 8 + file;
+
+                //Precompute knight moves
+                big knightMoveMask;
+
+                for (int distVertical = 1; distVertical<=2; ++distVertical){
+                    for (int directionVertical = 0; directionVertical<=1; ++directionVertical){
+                        //0 is up and 1 is down
+
+                        int VerticalSign = (directionVertical==0 ? 1 : -1);
+                        int targetRank = row(squareIndex) + distVertical * VerticalSign; //This is 1-indexed
+                        if (targetRank < 1 || 8 < targetRank){
+                            continue; //Move is not possible
+                        }
+
+                        for (int directionHorizontal = 0; directionHorizontal<=1; ++directionHorizontal){
+                            //0 is left and 1 is right
+                            int distHorizontal = (distVertical==1 ? 2 : 1);
+                            int HorizontalSign = (directionHorizontal==0 ? -1 : 1); //this is right 
+                            int targetFile = col(squareIndex) + distHorizontal * HorizontalSign; //This is 1-indexed
+                            if (targetFile < 1 || 8 < targetFile){
+                                continue; //Move is not possible
+                            }
+
+                            int targetSquare = squareIndex;
+                            targetSquare += ( (distVertical * 8 * VerticalSign) + (distHorizontal * HorizontalSign) );
+
+                            knightMoveMask = addBitToMask(knightMoveMask,targetSquare);
+                            }
+                    }
+                }
+                KnightMoves[squareIndex] = knightMoveMask;
+            }
+        }  
+    }
+    
     //Transforms a bitboard of valid end positions into a list of the corresponding moves
     vector<Move> maskToMoves(int start, big mask){
         vector<Move> res;
@@ -31,8 +78,25 @@ class LegalMoveGenerator{
         return {};
     }
 
+    //Does not take pins into account
     vector<Move> knightMoves(GameState state, big moveMask, big captureMask){
-        return {};
+        if (!knightWasPrecomputed){
+            PrecomputeKnightMoveData();
+        }
+        vector<Move> moves;
+        big* allFriendlyPieces = state.friendlyPieces();
+        big knightMask = allFriendlyPieces[KNIGHT/2];
+        for (int pos = 0;pos<64;++pos){
+            //Friendly knight at position 'pos'
+            if (knightMask & (1ul<< pos)){
+                //Get the end positions that are allowed given the state of the king 
+                big knightEndMask = KnightMoves[pos] & (moveMask | captureMask);
+
+                vector<Move> intermediateMoves = maskToMoves(pos,knightEndMask);
+                moves.insert(moves.end(),intermediateMoves.begin(),intermediateMoves.end());
+            }
+        }
+        return moves;
     }
 
     vector<Move> slidingMoves(GameState state, big moveMask, big captureMask){
