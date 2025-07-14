@@ -35,11 +35,12 @@ class GameState{
             char c=fen[id];
             if(isalpha(c)){
                 int piece=piece_to_id[tolower(c)];
+                int color_p;
                 if(isupper(c))
-                    piece += WHITE;
+                    color_p = WHITE;
                 else
-                    piece += BLACK;
-                boardRepresentation[color(piece)][type(piece)/2] |= 1ULL << dec;
+                    color_p = BLACK;
+                boardRepresentation[color_p][piece] |= 1ULL << dec;
                 dec--;
             }else if(isdigit(c)){
                 dec -= c-'0';
@@ -123,7 +124,7 @@ class GameState{
                 big mask = 1ULL << (63-(row << 3 | col));
                 int piece = SPACE;
                 for(int i=0; i< 12; i++){
-                    if(boardRepresentation[(i>5)][i%6] & mask){
+                    if(boardRepresentation[i >= nbPieces][i%nbPieces] & mask){
                         piece = i;
                         break;
                     }
@@ -132,8 +133,8 @@ class GameState{
                 if(piece == SPACE)
                     c = ' ';
                 else{
-                    c=id_to_piece[piece&(~1)];
-                    if((piece&1) == WHITE){
+                    c=id_to_piece[type(piece)];
+                    if(color(piece) == WHITE){
                         c = toupper(c);
                     }
                 }

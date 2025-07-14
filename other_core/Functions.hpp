@@ -17,7 +17,7 @@ int color(int piece){
 }
 
 int type(int piece){
-    return (piece-(piece%2));
+    return piece/2;
 }
 
 const int countbit(const big board){
