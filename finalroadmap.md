@@ -53,11 +53,11 @@ On fait une Pull Request pour merger la nouvelle branche avec main
     4. en fonction de ce qu'elle attaque ?
     5. en fonction de si elle est cloué
     6. en fonction du nombre de coups qu'il faudrait pour la libérer (sans se faire manger ?) (définition de  libérer):
-    7. fait-elle une triple répétition ?
 
         1. pour attaquer une pièce adverse ?
         2. pour aller au centre ?
         3. pour défendre une pièce attaqué ?
+    7. fait-elle une triple répétition ?
     8. en fonction de si la position est ouverte
     9. en fonction de la couleur où est la structure de pions pour les fous
     10. en fonction de si la pièce est fixé (doit absolument défendre un pion)
