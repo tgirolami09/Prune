@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <map>
 #define big uint64_t
-
+#define ubyte uint8_t
 using namespace std;
 
 const int WHITE=0;
