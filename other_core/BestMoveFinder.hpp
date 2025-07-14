@@ -8,12 +8,12 @@
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
+    LegalMoveGenerator generator;
+    Evaluator eval;
     float negamax(int deep, GameState state, float alpha, float beta){
-        Evaluator eval;
         if(deep == 0)
             return eval.positionEvaluator(state);
         float max_eval=-INFINITY;
-        LegalMoveGenerator generator;
         bool isCheck;
         vector<Move> moves=generator.generateLegalMoves(state, isCheck);
         if(moves.size() == 0){
@@ -37,8 +37,6 @@ class BestMoveFinder{
     }
     public : Move bestMove(GameState state, float alloted_time){
         //Calls evaluator here to determine what to look at
-        Evaluator eval;
-        LegalMoveGenerator generator;
         Move bestMove;
         float alpha=-INFINITY;
         float beta=INFINITY;
