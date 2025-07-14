@@ -58,7 +58,7 @@ big addBitToMask(big mask, int pos){
 }
 
 big removeBitFromMask(big mask, int pos){
-    return mask & 0ul << pos;
+    return mask & ~(1ul << pos);
 }
 
 #endif
