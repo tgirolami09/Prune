@@ -2,6 +2,7 @@
 #define EVALUATOR_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
+#include <climits>
 #include <cmath>
 const int value_pieces[5] = {1, 3, 3, 5, 9};
 //Class to evaluate a position
@@ -10,8 +11,8 @@ const big mask_forward[64] = {
 };
 class Evaluator{
     //All the logic for evaluating a position
-    const float MINIMUM=-INFINITY;
-    const float MAXIMUM=INFINITY;
+    const int MINIMUM=-INT_MAX;
+    const int MAXIMUM=INT_MAX;
     big* reverse_all(big* pieces){
         big* res=(big*)calloc(6, sizeof(big));
         for(int i=0; i<6; i++){
@@ -19,8 +20,8 @@ class Evaluator{
         }
         return res;
     }
-    float score(big* pieces, big* other){
-        float score=0;
+    int score(big* pieces, big* other){
+        int score=0;
         for(int i=0; i<5; i++)
             score += countbit(pieces[i])*value_pieces[i];
         ubyte* pawns;
@@ -33,8 +34,9 @@ class Evaluator{
         return score;
     }
 
-    public : int positionEvaluator(GameState state){
-        float scoreFriends, scoreEnemies;
+public:
+    int positionEvaluator(GameState state){
+        int scoreFriends, scoreEnemies;
         if(state.friendlyColor() == BLACK)
             scoreFriends=score(reverse_all(state.friendlyPieces()), reverse_all(state.enemyPieces()));
         else scoreFriends=score(state.friendlyPieces(), state.enemyPieces());
@@ -44,6 +46,12 @@ class Evaluator{
             scoreEnemies=score(state.enemyPieces(), state.friendlyPieces());
         return scoreFriends-scoreEnemies;
         return scoreFriends/scoreEnemies;
+    }
+    int score_move(Move move, GameState state){
+        int score=value_pieces[state.getPiece(move.end_pos)];
+
+        if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
+        return score;
     }
 };
 #endif

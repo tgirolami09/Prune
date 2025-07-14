@@ -112,6 +112,16 @@ class GameState{
 
     }
 
+    int getPiece(int square){
+        big mask=1ULL << square;
+        for(int c=0; c<2; c++){
+            for(int p=0; p<nbPieces; p++){
+                if(mask&boardRepresentation[c][p])return p;
+            }
+        }
+        return SPACE;
+    }
+
     void print(){
         printf("/−");
         for(int i=1; i<7; i++){
