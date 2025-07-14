@@ -1,4 +1,7 @@
+#ifndef LEGALMOVEGENERATOR_HPP
+#define LEGALMOVEGENERATOR_HPP
 #include "Functions.hpp"
+#include "GameState.hpp"
 using namespace std;
 
 
@@ -42,7 +45,7 @@ class LegalMoveGenerator{
                             targetSquare += ( (distVertical * 8 * VerticalSign) + (distHorizontal * HorizontalSign) );
 
                             knightMoveMask = addBitToMask(knightMoveMask,targetSquare);
-                            }
+                        }
                     }
                 }
                 KnightMoves[squareIndex] = knightMoveMask;
@@ -129,3 +132,4 @@ class LegalMoveGenerator{
         return legalMoves;
     }
 };
+#endif
