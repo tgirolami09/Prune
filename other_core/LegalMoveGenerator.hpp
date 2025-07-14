@@ -113,7 +113,7 @@ class LegalMoveGenerator{
         //All allowed spots for a piece to capture another one (not allowed if there is a checker)
         big captureMask = -1; //Totaly true
 
-        vector<big> currentMasks = kingInCheck(state);
+        vector<big> currentMasks = kingInCheck(state, inCheck);
         moveMask = currentMasks[0];
         captureMask = currentMasks[1];
 
