@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <cassert>
+#include <cstring>
 using namespace std;
 #define big uint64_t
 #define born __uint128_t
@@ -61,15 +62,16 @@ public:
 
 big apply_id(big id, big mask){
     big square_mask = 1;
-    for(int i=0; i<64; i++){
-        if(mask&square_mask){
-            if((id&1) == 0)
-                mask ^= square_mask;
-            id >>= 1;
-        }
-        square_mask <<= 1;
+    big new_mask=0;
+    while(mask){
+        int bit=ffsll(mask)-1;
+        big m=1ULL << bit;
+        if((id&1) == 1)
+            new_mask |= m;
+        id >>= 1;
+        mask ^= m;
     }
-    return mask;
+    return new_mask;
 }
 
 big rook_mask(big id, big square){
@@ -110,19 +112,27 @@ big usefull_rook(big mask, int square){
         cur_mask |= go_dir(mask, square, 1, clipped_bcol);
     if(col != 0)
         cur_mask |= go_dir(mask, square, -1, clipped_bcol);
-    cur_mask |= go_dir(mask, square, 8, clipped_brow);
-    cur_mask |= go_dir(mask, square, -8, clipped_brow);
+    if(row != 7)
+        cur_mask |= go_dir(mask, square, 8, clipped_brow);
+    if(row != 0)
+        cur_mask |= go_dir(mask, square, -8, clipped_brow);
     return cur_mask;
 }
 
 big usefull_bishop(big mask, int square){
     big cur_mask=0;
-    if((square&7) != 0){
-        cur_mask |= go_dir(mask, square, +7, clipped_mask);
-        cur_mask |= go_dir(mask, square, -9, clipped_mask);
-    }if((square&7) != 7){
-        cur_mask |= go_dir(mask, square, +9, clipped_mask);
-        cur_mask |= go_dir(mask, square, -7, clipped_mask);
+    int col=square&7;
+    int row=square >> 3;
+    if(col != 0){
+        if(row != 7)
+            cur_mask |= go_dir(mask, square, +7, clipped_mask);
+        if(row != 0)
+            cur_mask |= go_dir(mask, square, -9, clipped_mask);
+    }if(col != 7){
+        if(row != 7)
+            cur_mask |= go_dir(mask, square, +9, clipped_mask);
+        if(row != 0)
+            cur_mask |= go_dir(mask, square, -7, clipped_mask);
     }
     return cur_mask&(~(1ULL << square));
 }
@@ -212,7 +222,6 @@ vector<vector<info>> load_info(const char* name){
                 file >> mask;//read the table, is not needed
             }
         }
-        printf("%ld\n", bests.size());
         if(bests.size() == 64)
             return {vector<info>(64, {20, 0, 1}), bests};
         else{
