@@ -68,7 +68,7 @@ class LegalMoveGenerator{
     //Returns all allowed spaces for a piece to move
     //If the king is not in check then everywhere
     //Else only moves preventing check
-    vector<big> kingInCheck(GameState state){
+    vector<big> kingInCheck(GameState state, bool& inCheck){
         //Look at the squares the enemy attacks
         return {};
     }
@@ -107,7 +107,7 @@ class LegalMoveGenerator{
     }
 
     //Returns all legal moves for a position
-    public : vector<Move> generateLegalMoves(GameState state){
+    public : vector<Move> generateLegalMoves(GameState state, bool& inCheck){
         //All allowed spots for a piece to move (not allowed if king is in check)
         big moveMask = -1; //Totaly true
         //All allowed spots for a piece to capture another one (not allowed if there is a checker)
