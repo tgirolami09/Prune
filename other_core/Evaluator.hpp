@@ -2,6 +2,7 @@
 #define EVALUATOR_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
+#include <cmath>
 const int value_pieces[5] = {1, 3, 3, 5, 9};
 //Class to evaluate a position
 const big mask_forward[64] = {
@@ -9,6 +10,8 @@ const big mask_forward[64] = {
 };
 class Evaluator{
     //All the logic for evaluating a position
+    const float MINIMUM=-INFINITY;
+    const float MAXIMUM=INFINITY;
     big* reverse_all(big* pieces){
         big* res=(big*)calloc(6, sizeof(big));
         for(int i=0; i<6; i++){
