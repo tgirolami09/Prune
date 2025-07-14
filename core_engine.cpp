@@ -176,7 +176,7 @@ public:
     vector<int> mask_to_moves(big mask){
         vector<int> res;
         while(mask){
-            int bit = ffsll(mask);
+            int bit = ffsll(mask)-1;
             mask ^= 1 << bit;
             res.push_back(bit);
         }

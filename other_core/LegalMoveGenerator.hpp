@@ -57,7 +57,7 @@ class LegalMoveGenerator{
     vector<Move> maskToMoves(int start, big mask){
         vector<Move> res;
         while(mask){
-            int bit = ffsll(mask);
+            int bit = ffsll(mask)-1;
             mask ^= 1 << bit;
             //Need to add logic for pawn promotion
             res.push_back({start,bit,-1});

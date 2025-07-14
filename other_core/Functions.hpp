@@ -28,7 +28,7 @@ int places(big mask, ubyte*& positions){
     int nbBits = countbit(mask);
     positions = (ubyte*)malloc(nbBits);
     for(ubyte i=0; mask; i++){
-        ubyte bit=ffsll(mask);
+        ubyte bit=ffsll(mask)-1;
         mask ^= 1ULL << bit;
         positions[i] = bit;
     }
