@@ -16,7 +16,7 @@ class BestMoveFinder{
         if(deep == 0)
             return eval.positionEvaluator(state);
         bool isEvaluated=false;
-        int last_eval=transposition.get_eval(state, isEvaluated);
+        int last_eval=transposition.get_eval(state, alpha, beta, isEvaluated);
         if(isEvaluated){
             return last_eval;
         }

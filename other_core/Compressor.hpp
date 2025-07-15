@@ -38,18 +38,37 @@ public:
     int score;
     int beta;
     int alpha;
+    big hash;
 };
 
 class transpositionTable{
 public:
+    vector<infoScore> table;
+    int modulo;
+    int rewrite=0;
+    int place=0;
     transpositionTable(int count){
-
+        table = vector<infoScore>(count);
+        modulo=count;
     }
-    int get_eval(GameState state, bool& isok){
-
+    int get_eval(GameState& state, int alpha, int beta, bool& isok){
+        int index=state.zobristHash%modulo;
+        if(table[index].hash == state.zobristHash){
+            isok=true;
+            if(table[index].score > beta)
+                return table[index].score;
+            if(table[index].score < table[index].beta)
+                return table[index].score;
+            isok=false;
+        }
+        return 0;
     }
-    void push(GameState state, infoScore info){
-        
+    void push(GameState& state, infoScore info){
+        info.hash = state.zobristHash;
+        if(table[info.hash%modulo].hash != 0)
+            rewrite++;
+        else place++;
+        table[info.hash%modulo] = info;
     }
 };
 
