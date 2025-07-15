@@ -161,7 +161,8 @@ class GameState{
                     playMove({move.start_pos&~7, move.end_pos+1}, true, ROOK);
                 else //king size ?
                     playMove({move.start_pos|7, move.end_pos-1}, true, ROOK);
-                return;//do not update the turnNumber and other two times
+                movesSinceBeginning.push_back(move);
+                return;
             }
         }if(piece == ROOK){
             if((move.start_pos&7) == 7)
