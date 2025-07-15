@@ -12,7 +12,7 @@ class BestMoveFinder{
     LegalMoveGenerator generator;
     Evaluator eval;
     transpositionTable transposition;
-    int negamax(int deep, GameState state, int alpha, int beta){
+    int negamax(int deep, GameState& state, int alpha, int beta){
         if(deep == 0)
             return eval.positionEvaluator(state);
         bool isEvaluated=false;
@@ -45,7 +45,7 @@ class BestMoveFinder{
         transposition.push(state, {max_eval, alpha, beta});
         return max_eval;
     }
-    public : Move bestMove(GameState state, int alloted_time){
+    public : Move bestMove(GameState& state, int alloted_time){
         //Calls evaluator here to determine what to look at
         Move bestMove;
         int alpha=eval.MINIMUM;
