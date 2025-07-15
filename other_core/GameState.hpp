@@ -7,7 +7,12 @@
 #include <cstdlib>
 #include "Const.hpp"
 #include "Functions.hpp"
+#include <random>
 using namespace std;
+const int zobrCastle=64*2*6;
+const int zobrPassant=zobrCastle+4;
+const int zobrTurn=zobrPassant+8;
+const int nbZobrist=zobrPassant+1;
 
 //Represents a state in the game
 class GameState{
@@ -26,9 +31,20 @@ class GameState{
 
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
     big boardRepresentation[2][6];
+    big zobrist[nbZobrist];
+    big zobristHash;
+
+    GameState(){
+        mt19937_64 gen(42);
+        uniform_int_distribution<big> dist(0, MAX_BIG);
+        for(int idz=0; idz<nbZobrist; idz++){
+            zobrist[idz] = dist(gen);
+        }
+    }
 
     //TODO : implement this
     void fromFen(string fen){
+        zobristHash=0;
         int id=0;
         int dec=63;
         for(; id<fen.size(); id++){
@@ -41,6 +57,7 @@ class GameState{
                 else
                     color_p = BLACK;
                 boardRepresentation[color_p][piece] |= 1ULL << dec;
+                zobristHash ^= zobrist[(color_p*6+piece)*64+dec];
                 dec--;
             }else if(isdigit(c)){
                 dec -= c-'0';
@@ -49,6 +66,9 @@ class GameState{
         id++;
         turnNumber = fen[id] == 'b';
         id += 2;
+        for(int side=0; side<2; side++)
+            for(int kingside=0; kingside<2; kingside++)
+                castlingRights[side][kingside] = 0;
         if(fen[id] == '-')
             id++;
         else{
@@ -65,11 +85,14 @@ class GameState{
                     isKing = false;
                 }
                 castlingRights[isBlack][isKing] = 1;
+                zobristHash ^= zobrist[zobrCastle+isBlack*2+isKing];
             }
         }
         id++;
         if(fen[id] == '-')lastDoublePawnPush = -1;
         else lastDoublePawnPush = fen[id]-'a', id++;
+        if(lastDoublePawnPush != -1)
+            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         id += 2;
     }
 
@@ -104,6 +127,11 @@ class GameState{
 
     //TODO : (Make this update the representation)
     void playMove(Move move){
+        if(lastDoublePawnPush != -1)
+            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+        int piece=getPiece(move.start_pos);
+        int add=(friendlyColor()*6+piece)*64;
+        zobristHash ^= zobrist[add+move.start_pos]^zobrist[add+move.end_pos];
 
     }
 
