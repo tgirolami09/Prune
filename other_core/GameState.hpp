@@ -103,35 +103,47 @@ class GameState{
 
     int friendlyColor(){
         //Turn 1 is white (so friend on odd is white)
-        return (BLACK - ((turnNumber%2) * WHITE));
+        return (turnNumber%2)?WHITE:BLACK;
     }
 
     int enemyColor(){
         //Turn 1 is white (so enemy on odd is black)
-        return ((turnNumber%2) * WHITE) + WHITE;
+        return (turnNumber%2)?BLACK:WHITE;
     }
 
     //Returns the 6 bitboards of the FRIENDLY pieces on the board
     big* friendlyPieces(){
-        int friendlyIndex = (friendlyColor()/8)-1;
-
+        int friendlyIndex = friendlyColor();
         return boardRepresentation[friendlyIndex];
     }
 
     //Returns the 6 bitboards of the ENEMY pieces on the board
     big* enemyPieces(){
-        int enemyIndex = (enemyColor()/8)-1;
-
+        int enemyIndex = enemyColor();
         return boardRepresentation[enemyIndex];
     }
 
-    //TODO : (Make this update the representation)
+    //TODO : make it work for castle and test it for rest (I think en passant may work)
     void playMove(Move move){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         int piece=getPiece(move.start_pos);
-        int add=(friendlyColor()*6+piece)*64;
+        int curColor=friendlyColor();
+        int add=(curColor*6+piece)*64;
         zobristHash ^= zobrist[add+move.start_pos]^zobrist[add+move.end_pos];
+        boardRepresentation[curColor][piece] ^= (1ULL<<move.start_pos)|(1ULL << move.end_pos);
+        if(move.capture != -2){
+            int enColor=enemyColor();
+            int pieceCapture = move.capture>=0?move.capture:PAWN;
+            int add = (enColor*6+pieceCapture)*64;
+            int correction=0;
+            if(move.capture == -1){
+                correction = enColor == BLACK?-8:8;
+            }
+            int posCapture = move.end_pos+correction;
+            zobristHash ^= zobrist[add+posCapture];//correction for en passant (not currently exact)
+            boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
+        }
 
     }
 

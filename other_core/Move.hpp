@@ -8,5 +8,7 @@ class Move{
 
     //Type of piece to promote to
     int promoteTo = -1;
+    //-1 by capturing by en passant
+    int capture = -2;
 };
 #endif
