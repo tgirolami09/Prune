@@ -33,4 +33,24 @@ public:
     }
 };
 
+class infoScore{
+public:
+    int score;
+    int beta;
+    int alpha;
+};
+
+class transpositionTable{
+public:
+    transpositionTable(int count){
+
+    }
+    int get_eval(GameState state, bool& isok){
+
+    }
+    void push(GameState state, infoScore info){
+        
+    }
+};
+
 #endif
