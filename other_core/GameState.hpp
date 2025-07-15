@@ -12,7 +12,7 @@ using namespace std;
 const int zobrCastle=64*2*6;
 const int zobrPassant=zobrCastle+4;
 const int zobrTurn=zobrPassant+8;
-const int nbZobrist=zobrPassant+1;
+const int nbZobrist=zobrTurn+1;
 
 //Represents a state in the game
 class GameState{
@@ -124,10 +124,11 @@ class GameState{
     }
 
     //TODO : make it work for castle and test it for rest (I think en passant may work)
-    void playMove(Move move){
+    void playMove(Move move, bool back=false, int piece=-1){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
-        int piece=getPiece(move.start_pos);
+        if(piece != -1)
+            piece=getPiece(move.start_pos);
         int curColor=friendlyColor();
         int add=(curColor*6+piece)*64;
         zobristHash ^= zobrist[add+move.start_pos]^zobrist[add+move.end_pos];
@@ -144,12 +145,29 @@ class GameState{
             zobristHash ^= zobrist[add+posCapture];//correction for en passant (not currently exact)
             boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
         }
+        if(!back)
+            movesSinceBeginning.push_back(move);
+        if(piece == KING){
+            castlingRights[curColor][0] = false;
+            castlingRights[curColor][1] = false;
+            if(abs(move.end_pos-move.start_pos) == 2){//castling
+                if(move.start_pos > move.end_pos)//queen side ?
+                    playMove({move.start_pos&~7, move.end_pos+1});
+                else //king size ?
+                    playMove({move.start_pos|7, move.end_pos-1});
+                return;//do not update the turnNumber and other two times
+            }
+        }
+        turnNumber++;
+        zobristHash ^= zobrist[zobrTurn];
 
     }
 
     //TODO : (not necessary if we create new states for exploration)
     void undoLastMove(){
-
+        Move move=movesSinceBeginning.back();
+        movesSinceBeginning.pop_back();
+        playMove(move, true, getPiece(move.end_pos)); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
     }
 
     int getPiece(int square){
