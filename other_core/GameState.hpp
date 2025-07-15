@@ -123,6 +123,11 @@ class GameState{
         return boardRepresentation[enemyIndex];
     }
 
+    void changeCastlingRights(int c, int side){
+        if(castlingRights[c][side])
+            zobristHash ^= zobrist[zobrCastle+c*2+side];
+        castlingRights[c][side] = false;
+    }
     //TODO : make it work for castle and test it for rest (I think en passant may work)
     void playMove(Move move, bool back=false, int piece=-1){
         if(lastDoublePawnPush != -1)
@@ -148,15 +153,21 @@ class GameState{
         if(!back)
             movesSinceBeginning.push_back(move);
         if(piece == KING){
-            castlingRights[curColor][0] = false;
-            castlingRights[curColor][1] = false;
+            changeCastlingRights(curColor, 0);
+            changeCastlingRights(curColor, 1);
+            zobristHash ^= zobrist[zobrCastle+2*curColor] ^ zobrist[zobrCastle+2*curColor+1];
             if(abs(move.end_pos-move.start_pos) == 2){//castling
                 if(move.start_pos > move.end_pos)//queen side ?
-                    playMove({move.start_pos&~7, move.end_pos+1});
+                    playMove({move.start_pos&~7, move.end_pos+1}, true, ROOK);
                 else //king size ?
-                    playMove({move.start_pos|7, move.end_pos-1});
+                    playMove({move.start_pos|7, move.end_pos-1}, true, ROOK);
                 return;//do not update the turnNumber and other two times
             }
+        }if(piece == ROOK){
+            if((move.start_pos&7) == 7)
+                changeCastlingRights(curColor, 1);
+            if((move.start_pos&7) == 0)
+                changeCastlingRights(curColor, 0);
         }
         turnNumber++;
         zobristHash ^= zobrist[zobrTurn];
