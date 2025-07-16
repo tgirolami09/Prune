@@ -19,6 +19,7 @@ int main(int argc, char** argv){
         state.playPartialMove(mv);
         state.print();
     }
+    printf("%s\n", string(50, '#').c_str());
     for(int i=0; i<moves.size(); i++){
         state.undoLastMove();
         state.print();
