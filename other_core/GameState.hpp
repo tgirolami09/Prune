@@ -68,7 +68,7 @@ class GameState{
             }else if(c == ' ')break;
         }
         id++;
-        turnNumber = fen[id] == 'b';
+        turnNumber = fen[id] == 'w';
         if(!turnNumber)
             zobristHash ^= zobrist[zobrTurn];
         id += 2;
@@ -195,7 +195,7 @@ class GameState{
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         int piece=_piece;
-        if(piece != -1)
+        if(piece == -1)
             piece=getPiece(move.start_pos);
         int curColor=friendlyColor();
         int add=(curColor*6+piece)*64;
