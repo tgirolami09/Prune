@@ -197,8 +197,15 @@ class GameState{
             piece=getPiece(move.start_pos);
         int curColor=friendlyColor();
         int add=(curColor*6+piece)*64;
-        zobristHash ^= zobrist[add+move.start_pos]^zobrist[add+move.end_pos];
-        boardRepresentation[curColor][piece] ^= (1ULL<<move.start_pos)|(1ULL << move.end_pos);
+        zobristHash ^= zobrist[add+move.start_pos];
+        boardRepresentation[curColor][piece] ^= (1ULL<<move.start_pos);
+        if(move.promoteTo == -1){
+            zobristHash ^= zobrist[add+move.end_pos];
+            boardRepresentation[curColor][piece] ^= (1ULL << move.end_pos);
+        }else{
+            boardRepresentation[curColor][move.promoteTo] ^= (1ULL << move.end_pos);
+            zobristHash ^= zobrist[(curColor*6+move.promoteTo)*64+move.end_pos];
+        }
         if(move.capture != -2){
             int enColor=enemyColor();
             if(move.capture == ROOK)
