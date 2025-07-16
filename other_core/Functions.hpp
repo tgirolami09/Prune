@@ -64,8 +64,8 @@ big removeBitFromMask(big mask, int pos){
 }
 
 int from_str(string a){
-    int col = a[0]-'a';
-    int row = a[1]-'0';
+    int col = 7-(a[0]-'a');
+    int row = (a[1]-'0')-1;
     return row << 3|col;
 }
 
