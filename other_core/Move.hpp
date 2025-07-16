@@ -2,6 +2,7 @@
 #define MOVE_HPP
 #include <string>
 #include "Functions.hpp"
+#include "Const.hpp"
 using namespace std;
 //Represents a move
 class Move{
@@ -17,6 +18,9 @@ class Move{
     void from_uci(string move){
         start_pos = from_str(move.substr(0, 2));
         end_pos = from_str(move.substr(2, 2));
+        if(move.size() == 5){
+            promoteTo = piece_to_id[move[4]];
+        }
     }
 };
 #endif
