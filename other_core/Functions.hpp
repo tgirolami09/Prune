@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+#include <string>
+using namespace std;
 int col(int square){
     return square&7;
 }
@@ -59,6 +61,12 @@ big addBitToMask(big mask, int pos){
 
 big removeBitFromMask(big mask, int pos){
     return mask & ~(1ul << pos);
+}
+
+int from_str(string a){
+    int col = a[0]-'a';
+    int row = a[1]-'0';
+    return row << 3|col;
 }
 
 #endif
