@@ -14,6 +14,7 @@ int main(int argc, char** argv){
     }
     GameState state;
     state.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    state.print();
     for(Move mv:moves){
         state.playPartialMove(mv);
         state.print();
