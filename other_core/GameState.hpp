@@ -259,10 +259,10 @@ class GameState{
             if(back && _piece != -1)swap(move.start_pos, move.end_pos);
             //printf("%d %d %d %d\n", move.start_pos, move.end_pos, posRook[curColor][0], posRook[curColor][1]);
             if(move.start_pos == posRook[curColor][0])
-                updateCastlingRights(curColor, 0, back, move.end_pos, (_piece != -1 || !back));
+                updateCastlingRights(curColor, 0, back && _piece != -1, move.end_pos);//, (_piece != -1 || !back));
             else{
                 assert(move.start_pos == posRook[curColor][1]);
-                updateCastlingRights(curColor, 1, back, move.end_pos, (_piece != -1 || !back));
+                updateCastlingRights(curColor, 1, back && _piece != -1, move.end_pos);//, (_piece != -1 || !back));
             }
         }
         if(!back){
@@ -341,6 +341,15 @@ class GameState{
             printf("−−");
         }
         printf("−−/\n");
+        for(int c=0; c<2; c++){
+            for(int side=0; side < 2; side++){
+                char s=side?'q':'k';
+                if(!c)s = toupper(s);
+                if(castlingRights[c][side])
+                    printf("%c", s);
+            }
+        }
+        printf("\n");
     }
 };
 #endif
