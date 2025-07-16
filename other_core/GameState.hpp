@@ -98,7 +98,7 @@ class GameState{
             bool allOk=true;
             for(int side=0; side<2; side++){
                 if(castlingRights[c][side]){
-                    nbMoves[c][side+1] = 0;
+                    nbMoves[c][side] = 0;
                     deathRook[c][side] = -1;
                     posRook[c][side] = side*7+c*(8*7);
                 }else{
@@ -107,9 +107,9 @@ class GameState{
                 }
             }
             if(allOk){
-                nbMoves[c][0] = 0;
+                nbMoves[c][2] = 0;
             }else{
-                nbMoves[c][0] = 1;
+                nbMoves[c][2] = 1;
             }
         }
         id++;
@@ -153,22 +153,24 @@ class GameState{
         castlingRights[c][side] = enable;
     }
 
-    void updateCastlingRights(int c, int side, bool back, int pos=-1){
+    void updateCastlingRights(int c, int side, bool back, int pos=-1, bool change=true){
         int add=1;
         if(back)add = -1;
-        nbMoves[c][side+1] += add;
+        nbMoves[c][side] += add;
         if(pos != -1)
             posRook[c][side] = pos;
-        if(nbMoves[c][side+1] > 0)
-            changeCastlingRights(c, side);
-        else
-            changeCastlingRights(c, side, true);
+        if(change){
+            if(nbMoves[c][side] > 0)
+                changeCastlingRights(c, side);
+            else
+                changeCastlingRights(c, side, true);
+        }
     }
 
     void moveKing(int c, bool back){
         int add=1;
         if(back)add=-1;
-        nbMoves[c][0] += add;
+        nbMoves[c][2] += add;
         updateCastlingRights(c, 0, back);
         updateCastlingRights(c, 1, back);
     }
@@ -232,15 +234,14 @@ class GameState{
                     playMove({move.start_pos&~7, move.end_pos+1}, true);
                 else //king size ?
                     playMove({move.start_pos|7, move.end_pos-1}, true);
-                movesSinceBeginning.push_back(move);
                 return;
             }
-        }if(piece == ROOK && _piece != -1){//avoid to do the castling rights a second time when it castling
+        }if(piece == ROOK){//avoid to do the castling rights a second time when it castling
             if(move.start_pos == posRook[curColor][0])
-                updateCastlingRights(curColor, 0, back, move.end_pos);
+                updateCastlingRights(curColor, 0, back, move.end_pos, (_piece != -1 || !back));
             else{
                 assert(move.start_pos == posRook[curColor][1]);
-                updateCastlingRights(curColor, 1, back, move.end_pos);
+                updateCastlingRights(curColor, 1, back, move.end_pos, (_piece != -1 || !back));
             }
         }
         turnNumber++;
