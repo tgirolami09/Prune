@@ -69,6 +69,8 @@ class GameState{
         }
         id++;
         turnNumber = fen[id] == 'b';
+        if(!turnNumber)
+            zobristHash ^= zobrist[zobrTurn];
         id += 2;
         for(int side=0; side<2; side++)
             for(int kingside=0; kingside<2; kingside++)
@@ -282,15 +284,15 @@ class GameState{
             printf("|");
             for(int col=0; col<8; col++){
                 big mask = 1ULL << (63-(row << 3 | col));
-                int piece = SPACE;
+                int piece = SPACE*2;
                 for(int i=0; i< 12; i++){
-                    if(boardRepresentation[i >= nbPieces][i%nbPieces] & mask){
+                    if(boardRepresentation[i%2][i/2] & mask){
                         piece = i;
                         break;
                     }
                 }
                 char c;
-                if(piece == SPACE)
+                if(piece == SPACE*2)
                     c = ' ';
                 else{
                     c=id_to_piece[type(piece)];
@@ -298,7 +300,7 @@ class GameState{
                         c = toupper(c);
                     }
                 }
-                printf("|");
+                printf("%c|", c);
             }
             printf("\n");
             if(row != 7){
