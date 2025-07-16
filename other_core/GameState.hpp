@@ -246,6 +246,15 @@ class GameState{
         playMove(move, true, getPiece(move.end_pos)); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
     }
 
+    void playPartialMove(Move move){
+        int piece=getPiece(move.end_pos);
+        if(piece != SPACE){
+            move.capture = piece;
+        }
+
+        playMove(move);
+    }
+
     int getPiece(int square){
         big mask=1ULL << square;
         for(int c=0; c<2; c++){
