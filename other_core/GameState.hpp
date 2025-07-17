@@ -242,6 +242,10 @@ class GameState{
         }
         if(!back)
             movesSinceBeginning.push_back(move);
+        if(!back && piece == PAWN && abs(move.start_pos-move.end_pos) == 2*8){//bouge de 2 colonnes
+            lastDoublePawnPush = col(move.start_pos);
+            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+        }else lastDoublePawnPush = -1;
         if(piece == KING){
             moveKing(curColor, back);
             zobristHash ^= zobrist[zobrCastle+2*curColor] ^ zobrist[zobrCastle+2*curColor+1];
@@ -278,6 +282,11 @@ class GameState{
         Move move=movesSinceBeginning.back();
         movesSinceBeginning.pop_back();
         playMove(move, true, getPiece(move.end_pos)); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
+        Move nextMove=movesSinceBeginning.back();
+        if(getPiece(nextMove.end_pos) == PAWN && abs(nextMove.end_pos-nextMove.start_pos) == 2*8){
+            lastDoublePawnPush = col(nextMove.start_pos);
+            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+        }
     }
 
     void playPartialMove(Move move){
@@ -348,6 +357,9 @@ class GameState{
                 if(castlingRights[c][side])
                     printf("%c", s);
             }
+        }
+        if(lastDoublePawnPush != -1){
+            printf(" %c\n", 7-lastDoublePawnPush+'a');
         }
         printf("\n");
     }
