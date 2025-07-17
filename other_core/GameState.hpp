@@ -214,14 +214,15 @@ class GameState{
         int curColor=friendlyColor();
         int add=(curColor*6+piece)*64;
         zobristHash ^= zobrist[add+move.start_pos];
-        boardRepresentation[curColor][piece] ^= (1ULL<<move.start_pos);
         if(move.promoteTo == -1){
             zobristHash ^= zobrist[add+move.end_pos];
             boardRepresentation[curColor][piece] ^= (1ULL << move.end_pos);
+            piece = PAWN;
         }else{
             boardRepresentation[curColor][move.promoteTo] ^= (1ULL << move.end_pos);
             zobristHash ^= zobrist[(curColor*6+move.promoteTo)*64+move.end_pos];
         }
+        boardRepresentation[curColor][piece] ^= (1ULL<<move.start_pos);
         if(move.capture != -2){
             int enColor=enemyColor();
             if(move.capture == ROOK){
@@ -234,7 +235,7 @@ class GameState{
             int add = (enColor*6+pieceCapture)*64;
             int correction=0;
             if(move.capture == -1){
-                correction = enColor == BLACK?-8:8;
+                correction = (enColor == BLACK)?-8:8;
             }
             int posCapture = move.end_pos+correction;
             zobristHash ^= zobrist[add+posCapture];//correction for en passant (not currently exact)
@@ -294,7 +295,10 @@ class GameState{
         if(piece != SPACE){
             move.capture = piece;
         }
-
+        int mover = getPiece(move.start_pos);
+        if(mover == PAWN && col(move.start_pos) != col(move.end_pos) && move.capture == -2){
+            move.capture = -1;
+        }
         playMove(move);
     }
 
