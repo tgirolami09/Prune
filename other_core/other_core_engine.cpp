@@ -1,3 +1,4 @@
+#include <sstream>
 #include <string>
 #include <strings.h>
 // #include "util_magic.cpp"
@@ -19,11 +20,10 @@ class Chess{
     float w_time;
     float b_time;
 };
-
+const int alloted_space=64*1000*1000;
+BestMoveFinder bestMoveFinder(alloted_space);
 Move getBotMove(GameState gameState,float alloted_time){
-    BestMoveFinder bestMoveFinder;
     Move moveToPlay = bestMoveFinder.bestMove(gameState,alloted_time);
-
     return moveToPlay;
 }
 
@@ -32,15 +32,74 @@ Move getOpponentMove(){
     return {};
 }
 
-void doUCI(string UCI_instruction){
+void doUCI(string UCI_instruction, Chess& state){
+    istringstream stream(UCI_instruction);
+    string command;
+    stream >> command;
+    map<string, int> args;
+    string arg;
+    int precision;
+    if(command == "setoption"){
+        string inter;
+        stream >> inter; //remove name
+        while(stream >> arg){
+            stream >> inter; // remove "value"
+            if(arg == "Clear" && inter == "Hash"){
+                bestMoveFinder.transposition.clear();
+            }else{
+                stream >> precision;
+                if(arg == "Hash"){
+                    bestMoveFinder.transposition.reinit(precision*1000*1000); // size in MB
+                }
+            }
+        }
+        return;
+    }else if(command != "position"){
+        while(stream >> arg){
+            stream >> precision;
+            args[arg] = precision;
+        }
+    }
+    if(command == "go"){
+        if(args.count("perft")){
+            bestMoveFinder.perft(state.currentGame, args["perft"]);
+        }
+    }else if(command == "uci"){
+        printf("uciok\n");
+    }else if(command == "position"){
+        string arg;
+        stream >> arg;
+        string fen;
+        if(arg == "fen"){
+            fen = "";
+            for(int i=0; i<6; i++){
+                string field;
+                stream >> field;
+                fen += field+" ";
+            }
+        }else{
+            assert(arg == "startpos");
+            fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        }
+        state.currentGame.fromFen(fen);
+        string moves;
+        while(stream >> moves){
+            if(moves == "moves")continue;
+            Move move;
+            move.from_uci(moves);
+            state.currentGame.playPartialMove(move);
+        }
+    }else if(command == "isready"){
+        printf("readyok\n");
+    }
     //Implement actual logic for UCI management
 }
 
 int main(){
     string UCI_instruction = "programStart";
-
+    Chess state;
     while (UCI_instruction != "quit"){
-        doUCI(UCI_instruction);
+        doUCI(UCI_instruction, state);
 
         getline(cin,UCI_instruction);
     }

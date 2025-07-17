@@ -69,4 +69,11 @@ int from_str(string a){
     return row << 3|col;
 }
 
+string to_uci(int pos){
+    char uci[2];
+    uci[0] = (7-col(pos))+'a';
+    uci[1] = row(pos)+'1';
+    return uci;
+}
+
 #endif

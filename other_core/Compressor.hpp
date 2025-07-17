@@ -70,6 +70,12 @@ public:
         else place++;
         table[info.hash%modulo] = info;
     }
+    void clear(){
+        table.clear();
+    }
+    void reinit(int count){
+        table.resize(count);
+    }
 };
 
 #endif

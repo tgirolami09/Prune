@@ -12,9 +12,9 @@ const big mask_forward[64] = {
 class Evaluator{
     //All the logic for evaluating a position
 public:
-    const int MINIMUM=-INT_MAX;
-    const int MAXIMUM=INT_MAX;
-    const int MIDDLE=0;
+    int MINIMUM=-INT_MAX;
+    int MAXIMUM=INT_MAX;
+    int MIDDLE=0;
 private:
     big* reverse_all(big* pieces){
         big* res=(big*)calloc(6, sizeof(big));

@@ -9,9 +9,11 @@
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
+public:
     LegalMoveGenerator generator;
     Evaluator eval;
     transpositionTable transposition;
+    BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)), eval(), generator(){}
     int negamax(int deep, GameState& state, int alpha, int beta){
         if(deep == 0)
             return eval.positionEvaluator(state);
@@ -64,6 +66,22 @@ class BestMoveFinder{
             }
         }
         return bestMove;
+    }
+    big perft(GameState& state, int depth, int curDepth=0){
+        if(depth == 0)return 1;
+        bool inCheck;
+        vector<Move> moves=generator.generateLegalMoves(state, inCheck);
+        big count=0;
+        for(Move move:moves){
+            state.playMove(move);
+            big nbNodes=perft(state, depth-1, curDepth+1);
+            state.undoLastMove();
+            if(curDepth == 0){
+                printf("%s: %lld", move.to_str().c_str(), nbNodes);
+            }
+            count += nbNodes;
+        }
+        return count;
     }
 };
 #endif
