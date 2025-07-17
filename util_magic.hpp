@@ -64,7 +64,7 @@ big apply_id(big id, big mask){
     big square_mask = 1;
     big new_mask=0;
     while(mask){
-        int bit=ffsll(mask)-1;
+        int bit=__builtin_ctzll(mask);
         big m=1ULL << bit;
         if((id&1) == 1)
             new_mask |= m;
