@@ -14,7 +14,7 @@ public:
         for(int c=0; c<2; c++)
             for(int i=0; i<nbPieces; i++){
                 if(i == KING){
-                    king |= (ffsll(state.boardRepresentation[c][i])-1) << (c*4);
+                    king |= __builtin_ctzll(state.boardRepresentation[c][i]) << (c*4);
                 }else{
                     values64[index] = state.boardRepresentation[c][i];
                     index++;
