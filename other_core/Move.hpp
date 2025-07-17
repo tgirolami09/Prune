@@ -9,7 +9,7 @@ class Move{
     public :
     int start_pos;
     int end_pos;
-
+    int piece;
     //Type of piece to promote to
     int promoteTo = -1;
     //-1 by capturing by en passant

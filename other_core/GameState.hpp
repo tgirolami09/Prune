@@ -204,28 +204,20 @@ class GameState{
     }
 
     //TODO : make it work for castle and test it for rest (I think en passant may work)
-    void playMove(Move move, bool back=false, int _piece=-1){
+    void playMove(Move move, bool back=false, bool isCastle=false){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
-        int piece=_piece;
-        if(piece == -1){
-            if(back)
-                piece = ROOK; //it's when castling
-            else
-                piece=getPiece(move.start_pos);
-        }
         int curColor=friendlyColor();
-        int add=(curColor*6+piece)*64;
+        int add=(curColor*6+move.piece)*64;
         if(move.promoteTo == -1){
             zobristHash ^= zobrist[add+move.end_pos];
-            boardRepresentation[curColor][piece] ^= (1ULL << move.end_pos);
+            boardRepresentation[curColor][move.piece] ^= (1ULL << move.end_pos);
         }else{
             boardRepresentation[curColor][move.promoteTo] ^= (1ULL << move.end_pos);
             zobristHash ^= zobrist[(curColor*6+move.promoteTo)*64+move.end_pos];
-            piece = PAWN;
         }
-        boardRepresentation[curColor][piece] ^= (1ULL<<move.start_pos);
-        zobristHash ^= zobrist[(curColor*6+piece)*64+move.start_pos];
+        boardRepresentation[curColor][move.piece] ^= (1ULL<<move.start_pos);
+        zobristHash ^= zobrist[add+move.start_pos];
         if(move.capture != -2){
             int enColor=enemyColor();
             if(move.capture == ROOK){
@@ -246,31 +238,31 @@ class GameState{
         }
         if(!back)
             movesSinceBeginning.push_back(move);
-        if(!back && piece == PAWN && abs(move.start_pos-move.end_pos) == 2*8){//bouge de 2 colonnes
+        if(!back && move.piece == PAWN && abs(move.start_pos-move.end_pos) == 2*8){//move of 2 row = possibility of en passant
             lastDoublePawnPush = col(move.start_pos);
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         }else lastDoublePawnPush = -1;
-        if(piece == KING){
+        if(move.piece == KING){
             moveKing(curColor, back);
-            zobristHash ^= zobrist[zobrCastle+2*curColor] ^ zobrist[zobrCastle+2*curColor+1];
+            //zobristHash ^= zobrist[zobrCastle+2*curColor] ^ zobrist[zobrCastle+2*curColor+1];
             if(abs(move.end_pos-move.start_pos) == 2){//castling
-                int pieceCastle = -1;
-                if(back)pieceCastle=ROOK;
-                if(move.start_pos > move.end_pos)//queen side ?
-                    playMove({move.start_pos&~7, move.end_pos+1}, true, pieceCastle);
-                else //king side ?
-                    playMove({move.start_pos|7, move.end_pos-1}, true, pieceCastle);
-                //return;
+                Move moveRook = {move.start_pos, move.end_pos, ROOK};
+                if(move.start_pos > move.end_pos){//queen side ?
+                    moveRook.start_pos &= ~7;
+                    moveRook.end_pos++;
+                }else{ //king side ?
+                    moveRook.start_pos |= 7;
+                    moveRook.end_pos--;
+                }
+                playMove(moveRook, true, !back);
             }
-        }if(piece == ROOK){//avoid to do the castling rights a second time when it castling
-            //printf("%d %d\n", move.start_pos, move.end_pos);
-            if(back && _piece != -1)swap(move.start_pos, move.end_pos);
-            //printf("%d %d %d %d\n", move.start_pos, move.end_pos, posRook[curColor][0], posRook[curColor][1]);
+        }if(move.piece == ROOK){
+            if(back && !isCastle)swap(move.start_pos, move.end_pos);
             if(move.start_pos == posRook[curColor][0])
-                updateCastlingRights(curColor, 0, back && _piece != -1, move.end_pos);//, (_piece != -1 || !back));
+                updateCastlingRights(curColor, 0, back && !isCastle, move.end_pos);//, (_piece != -1 || !back));
             else{
                 assert(move.start_pos == posRook[curColor][1]);
-                updateCastlingRights(curColor, 1, back && _piece != -1, move.end_pos);//, (_piece != -1 || !back));
+                updateCastlingRights(curColor, 1, back && !isCastle, move.end_pos);//, (_piece != -1 || !back));
             }
         }
         if(!back){
@@ -285,7 +277,7 @@ class GameState{
         zobristHash ^= zobrist[zobrTurn];
         Move move=movesSinceBeginning.back();
         movesSinceBeginning.pop_back();
-        playMove(move, true, getPiece(move.end_pos)); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
+        playMove(move, true); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
         Move nextMove=movesSinceBeginning.back();
         if(getPiece(nextMove.end_pos) == PAWN && abs(nextMove.end_pos-nextMove.start_pos) == 2*8){
             lastDoublePawnPush = col(nextMove.start_pos);
@@ -302,6 +294,7 @@ class GameState{
         if(mover == PAWN && col(move.start_pos) != col(move.end_pos) && move.capture == -2){
             move.capture = -1;
         }
+        move.piece = mover;
         printf("%s\n", move.to_str().c_str());
         playMove(move);
     }
