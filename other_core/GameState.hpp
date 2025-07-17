@@ -49,6 +49,9 @@ class GameState{
     //TODO : implement this
     void fromFen(string fen){
         zobristHash=0;
+        for(int c=0; c<2; c++)
+            for(int p=0; p<6; p++)
+                boardRepresentation[c][p] = 0;
         int id=0;
         int dec=63;
         for(; id<fen.size(); id++){

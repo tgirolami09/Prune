@@ -32,6 +32,11 @@ Move getOpponentMove(){
     return {};
 }
 
+float computeAllotedTime(Chess& state){
+    float time = state.currentGame.turnNumber%2 == 1?state.w_time:state.b_time;
+    return time/10.0;
+}
+
 void doUCI(string UCI_instruction, Chess& state){
     istringstream stream(UCI_instruction);
     string command;
@@ -63,6 +68,11 @@ void doUCI(string UCI_instruction, Chess& state){
     if(command == "go"){
         if(args.count("perft")){
             bestMoveFinder.perft(state.currentGame, args["perft"]);
+        }else{
+            state.b_time = args["btime"];
+            state.w_time = args["wtime"];
+            Move move=getBotMove(state.currentGame, computeAllotedTime(state));
+            printf("bestmove: %s\n", move.to_str().c_str());
         }
     }else if(command == "uci"){
         printf("uciok\n");
