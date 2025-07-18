@@ -173,10 +173,10 @@ void init_tables()
     int p, sq;
     for (p = PAWN; p <= KING; p++) {
         for (sq = 0; sq < 64; sq++) {
-            mg_table[WHITE][p][sq] = mg_value[p] + mg_pesto_table[p][sq];
-            eg_table[WHITE][p][sq] = eg_value[p] + eg_pesto_table[p][sq];
-            mg_table[BLACK][p][sq] = mg_value[p] + mg_pesto_table[p][flip(sq)];
-            eg_table[BLACK][p][sq] = eg_value[p] + eg_pesto_table[p][flip(sq)];
+            mg_table[WHITE][p][sq] = mg_value[p] + mg_pesto_table[p][flip(sq)^7];
+            eg_table[WHITE][p][sq] = eg_value[p] + eg_pesto_table[p][flip(sq)^7];
+            mg_table[BLACK][p][sq] = mg_value[p] + mg_pesto_table[p][sq^7];
+            eg_table[BLACK][p][sq] = eg_value[p] + eg_pesto_table[p][sq^7];
         }
     }
 }
@@ -191,6 +191,9 @@ public:
     int MINIMUM=-INT_MAX;
     int MAXIMUM=INT_MAX;
     int MIDDLE=0;
+    Evaluator(){
+        init_tables();
+    }
 private:
     big* reverse_all(const big* pieces){
         big* res=(big*)calloc(6, sizeof(big));
@@ -210,7 +213,7 @@ private:
                 mgPhase += gamephaseInc[p]*nbPieces;
             }
             for(int i=0; i<nbPieces; i++){
-                endGame += mg_table[color][p][pos[i]];
+                endGame += eg_table[color][p][pos[i]];
                 midGame += mg_table[color][p][pos[i]];
             }
             free(pos);
@@ -234,7 +237,7 @@ private:
 
 public:
     int positionEvaluator(const GameState& state){
-        int scoreFriends, scoreEnemies, egFriends, mgFriends, egEnemies, mgEnemies, mgPhase;
+        int scoreFriends=0, scoreEnemies=0, egFriends=0, mgFriends=0, egEnemies=0, mgEnemies=0, mgPhase=0;
         const bool c=state.friendlyColor();
         if(c == WHITE){
             scoreFriends=score<WHITE>(state.friendlyPieces(), state.enemyPieces(), mgPhase, egFriends, mgFriends);
@@ -244,7 +247,7 @@ public:
             scoreEnemies=score<WHITE>(state.enemyPieces(), state.friendlyPieces(), mgPhase, egEnemies, mgEnemies);
         }
         int mgScore = mgFriends-mgEnemies;
-        int egScore = egFriends-mgEnemies;
+        int egScore = egFriends-egEnemies;
         if(mgPhase > 24)mgPhase = 24;
         int egPhase = 24-mgPhase;
         return scoreFriends-scoreEnemies+(mgScore*mgPhase+egScore*egPhase)/24;
