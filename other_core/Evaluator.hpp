@@ -16,40 +16,40 @@ public:
     int MAXIMUM=INT_MAX;
     int MIDDLE=0;
 private:
-    big* reverse_all(big* pieces){
+    big* reverse_all(const big* pieces){
         big* res=(big*)calloc(6, sizeof(big));
         for(int i=0; i<6; i++){
             res[i] = reverse(pieces[i]);
         }
         return res;
     }
-    int score(big* pieces, big* other){
+    int score(const big* pieces, const big* other){
         int score=0;
         for(int i=0; i<6; i++)
             if(i != KING)
                 score += countbit(pieces[i])*value_pieces[i];
-        ubyte* pawns;
+        /*ubyte* pawns;
         int nbPawns=places(pieces[0], pawns);
         // detect passed pawns
         for(int i=0; i<nbPawns; i++){
             if((other[0]&mask_forward[pawns[i]]) == 0)
                 score += 8-row(pawns[i])+1;
-        }
+        }*/
         return score;
     }
 
 public:
-    int positionEvaluator(GameState state){
+    int positionEvaluator(const GameState& state){
         int scoreFriends, scoreEnemies;
-        if(state.friendlyColor() == BLACK)
+        /*if(state.friendlyColor() == BLACK)
             scoreFriends=score(reverse_all(state.friendlyPieces()), reverse_all(state.enemyPieces()));
-        else scoreFriends=score(state.friendlyPieces(), state.enemyPieces());
-        if(state.enemyColor() == BLACK)
+        else*/scoreFriends=score(state.friendlyPieces(), state.enemyPieces());
+        /*if(state.enemyColor() == BLACK)
             scoreFriends=score(reverse_all(state.enemyPieces()), reverse_all(state.friendlyPieces()));
-        else
+        else*/
             scoreEnemies=score(state.enemyPieces(), state.friendlyPieces());
         return scoreFriends-scoreEnemies;
-        return scoreFriends/scoreEnemies;
+        //return scoreFriends/scoreEnemies;
     }
     int score_move(Move move, GameState state){
         int score=value_pieces[state.getPiece(move.end_pos)];

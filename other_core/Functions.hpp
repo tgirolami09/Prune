@@ -5,27 +5,27 @@
 #include <cstdio>
 #include <string>
 using namespace std;
-int col(int square){
+const inline  int col(const int& square){
     return square&7;
 }
 
-int row(int square){
+const inline int row(const int& square){
     return square >> 3;
 }
 
-int color(int piece){
+const inline int color(const int& piece){
     return piece%2;
 }
 
-int type(int piece){
+const inline int type(const int& piece){
     return piece/2;
 }
 
-const int countbit(const big board){
+const inline int countbit(const big& board){
     return __builtin_popcountll(board);
 }
 
-int places(big mask, ubyte*& positions){
+inline int places(big mask, ubyte*& positions){
     int nbBits = countbit(mask);
     positions = (ubyte*)malloc(nbBits);
     for(ubyte i=0; mask; i++){
@@ -36,14 +36,14 @@ int places(big mask, ubyte*& positions){
     return nbBits;
 }
 
-big reverse(big board){
+inline big reverse(big board){
     board = (board&0xFFFFFFFF00000000) >> 32 | (board&0x00000000FFFFFFFF) << 32;
     board = (board&0xFFFF0000FFFF0000) >> 16 | (board&0x0000FFFF0000FFFF) << 16;
     board = (board&0xFF00FF00FF00FF00) >>  8 | (board&0x00FF00FF00FF00FF) <<  8;
     return board;
 }
 
-void print_mask(big mask){
+inline void print_mask(big mask){
     int col=0;
     for(int row=8; row<=64; row+=8){
         for(; col<row; col++){
@@ -54,21 +54,21 @@ void print_mask(big mask){
     }
 }
 
-big addBitToMask(big mask, int pos){
+const inline big addBitToMask(const big& mask, const int& pos){
     return mask | 1ul << pos;
 }
 
-big removeBitFromMask(big mask, int pos){
+inline big removeBitFromMask(big mask, int pos){
     return mask & ~(1ul << pos);
 }
 
-int from_str(string a){
+inline int from_str(string a){
     int col = 7-(a[0]-'a');
     int row = (a[1]-'0')-1;
     return row << 3|col;
 }
 
-string to_uci(int pos){
+inline string to_uci(int pos){
     char uci[2];
     uci[0] = (7-col(pos))+'a';
     uci[1] = row(pos)+'1';

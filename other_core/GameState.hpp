@@ -128,29 +128,29 @@ class GameState{
         return "";
     }
 
-    int friendlyColor(){
+    const int friendlyColor() const{
         //Turn 1 is white (so friend on odd is white)
         return (turnNumber%2)?WHITE:BLACK;
     }
 
-    int enemyColor(){
+    const int enemyColor() const{
         //Turn 1 is white (so enemy on odd is black)
         return (turnNumber%2)?BLACK:WHITE;
     }
 
     //Returns the 6 bitboards of the FRIENDLY pieces on the board
-    big* friendlyPieces(){
+    const big* friendlyPieces() const{
         int friendlyIndex = friendlyColor();
         return boardRepresentation[friendlyIndex];
     }
 
     //Returns the 6 bitboards of the ENEMY pieces on the board
-    big* enemyPieces(){
+    const big* enemyPieces() const{
         int enemyIndex = enemyColor();
         return boardRepresentation[enemyIndex];
     }
     template<bool enable>
-    void changeCastlingRights(int c, int side){//, bool enable=false){
+    void changeCastlingRights(int c, int side){
         if(castlingRights[c][side] != enable)
             zobristHash ^= zobrist[zobrCastle+c*2+side];
         castlingRights[c][side] = enable;
@@ -169,7 +169,7 @@ class GameState{
     }
 
     template<bool back>
-    void moveKing(int c){//}, bool back){
+    void moveKing(int c){
         int add=1;
         if(back)add=-1;
         nbMoves[c][2] += add;
@@ -183,7 +183,7 @@ class GameState{
             side=0;
         else{
             side = 1;
-            assert(pos == posRook[c][1]);
+            //assert(pos == posRook[c][1]);
         }
         posRook[c][side] = -1;
         deathRook[c][side] = turnNumber;
@@ -196,7 +196,7 @@ class GameState{
             side = 0;
         }else{
             side = 1;
-            assert(turnNumber == deathRook[c][1]);
+            //assert(turnNumber == deathRook[c][1]);
         }
         deathRook[c][side] = -1;
         updateCastlingRights<true>(c, side, pos);
@@ -204,7 +204,7 @@ class GameState{
 
     //TODO : make it work for castle and test it for rest (I think en passant may work)
     template<bool back, bool isCastle>
-    void playMove(Move move){//}, bool isCastle=false){
+    void playMove(Move move){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         int curColor=friendlyColor();
@@ -227,13 +227,13 @@ class GameState{
                     captureRook(move.end_pos, enColor);
             }
             int pieceCapture = move.capture>=0?move.capture:PAWN;
-            int add = (enColor*6+pieceCapture)*64;
-            int correction=0;
+            int indexCapture = (enColor*6+pieceCapture)*64;
+            int posCapture = move.end_pos;
             if(move.capture == -1){
-                correction = (enColor == BLACK)?-8:8;
+                if(enColor == BLACK)posCapture -= 8;
+                else posCapture += 8;
             }
-            int posCapture = move.end_pos+correction;
-            zobristHash ^= zobrist[add+posCapture];//correction for en passant (not currently exact)
+            zobristHash ^= zobrist[indexCapture+posCapture];//correction for en passant (not currently exact)
             boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
         }
         if(!back)

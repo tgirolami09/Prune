@@ -1,4 +1,5 @@
 #include "GameState.hpp"
+#include "Evaluator.hpp"
 #include "Move.hpp"
 #include <fstream>
 #include <sstream>
@@ -6,6 +7,7 @@
 
 int main(int argc, char** argv){
     string move;
+    Evaluator eval;
     vector<Move> moves;
     ifstream file(argv[1]);
     int indice = argc > 2?atoi(argv[2]):1;
@@ -23,6 +25,7 @@ int main(int argc, char** argv){
     for(Move mv:moves){
         state.playPartialMove(mv);
         state.print();
+        printf("cp: %d\n", eval.positionEvaluator(state));
     }
     printf("%s\n", string(50, '#').c_str());
     for(int i=0; i<moves.size(); i++){
@@ -42,6 +45,6 @@ int main(int argc, char** argv){
         }
         clock_t end=clock();
         double tcpu=((double)end-start)/CLOCKS_PER_SEC;
-        printf("%.3f\n", nbTour/tcpu);
+        printf("%.3f\n", nbTour*moves.size()/tcpu);
     }
 }

@@ -68,26 +68,26 @@ class LegalMoveGenerator{
     //Returns all allowed spaces for a piece to move
     //If the king is not in check then everywhere
     //Else only moves preventing check
-    vector<big> kingInCheck(GameState state, bool& inCheck){
+    vector<big> kingInCheck(const GameState& state, bool& inCheck){
         //Look at the squares the enemy attacks
         return {};
     }
 
-    vector<Move> kingMoves(GameState state){
+    vector<Move> kingMoves(const GameState& state){
         return {};
     }
 
-    vector<Move> pawnMoves(GameState state, big moveMask, big captureMask){
+    vector<Move> pawnMoves(const GameState& state, big moveMask, big captureMask){
         return {};
     }
 
     //Does not take pins into account
-    vector<Move> knightMoves(GameState state, big moveMask, big captureMask){
+    vector<Move> knightMoves(const GameState& state, big moveMask, big captureMask){
         if (!knightWasPrecomputed){
             PrecomputeKnightMoveData();
         }
         vector<Move> moves;
-        big* allFriendlyPieces = state.friendlyPieces();
+        const big* allFriendlyPieces = state.friendlyPieces();
         big knightMask = allFriendlyPieces[KNIGHT];
         ubyte* pos;
         int nbPos=places(knightMask, pos);
@@ -104,12 +104,12 @@ class LegalMoveGenerator{
         return moves;
     }
 
-    vector<Move> slidingMoves(GameState state, big moveMask, big captureMask){
+    vector<Move> slidingMoves(const GameState& state, big moveMask, big captureMask){
         return {};
     }
 
     //Returns all legal moves for a position
-    public : vector<Move> generateLegalMoves(GameState state, bool& inCheck){
+    public : vector<Move> generateLegalMoves(const GameState& state, bool& inCheck){
         //All allowed spots for a piece to move (not allowed if king is in check)
         big moveMask = -1; //Totaly true
         //All allowed spots for a piece to capture another one (not allowed if there is a checker)
