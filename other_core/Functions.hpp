@@ -24,7 +24,9 @@ const inline int type(const int& piece){
 const inline int countbit(const big& board){
     return __builtin_popcountll(board);
 }
-
+const inline int flip(const int& square){
+    return square^56;
+}
 inline int places(big mask, ubyte*& positions){
     int nbBits = countbit(mask);
     positions = (ubyte*)malloc(nbBits);

@@ -278,10 +278,12 @@ class GameState{
         Move move=movesSinceBeginning.back();
         movesSinceBeginning.pop_back();
         playMove<true, false>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
-        Move nextMove=movesSinceBeginning.back();
-        if(nextMove.piece == PAWN && abs(nextMove.end_pos-nextMove.start_pos) == 2*8){
-            lastDoublePawnPush = col(nextMove.start_pos);
-            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+        if(movesSinceBeginning.size() > 0){
+            Move nextMove=movesSinceBeginning.back();
+            if(nextMove.piece == PAWN && abs(nextMove.end_pos-nextMove.start_pos) == 2*8){
+                lastDoublePawnPush = col(nextMove.start_pos);
+                zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+            }
         }
     }
 
