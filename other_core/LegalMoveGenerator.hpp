@@ -101,6 +101,7 @@ class LegalMoveGenerator{
                 moves.insert(moves.end(),intermediateMoves.begin(),intermediateMoves.end());
             }
         }
+        free(pos);
         return moves;
     }
 

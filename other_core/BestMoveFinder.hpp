@@ -46,7 +46,7 @@ private:
         }
         Move bestMove;
         for(Move move:moves){
-            state.playMove(move);
+            state.playMove<false, false>(move);
             int score = -negamax(deep-1, state, -beta, -alpha);
             state.undoLastMove();
             if(!running)return 0;
@@ -80,7 +80,7 @@ private:
             if(moves.size() == 0)
                 return {}; // no possible moves
             for(Move move:moves){
-                state.playMove(move);
+                state.playMove<false, false>(move);
                 int score = -negamax(depth, state, -beta, -alpha);
                 state.undoLastMove();
                 if(!running)break;
@@ -102,7 +102,7 @@ private:
         vector<Move> moves=generator.generateLegalMoves(state, inCheck);
         big count=0;
         for(Move move:moves){
-            state.playMove(move);
+            state.playMove<false, false>(move);
             big nbNodes=perft(state, depth-1, curDepth+1);
             state.undoLastMove();
             if(curDepth == 0){
