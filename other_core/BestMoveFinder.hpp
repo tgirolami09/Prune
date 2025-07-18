@@ -6,6 +6,9 @@
 #include "Evaluator.hpp"
 #include "LegalMoveGenerator.hpp"
 #include <cmath>
+#include <chrono>
+#include <atomic>
+#include <thread>
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
@@ -13,8 +16,19 @@ public:
     LegalMoveGenerator generator;
     Evaluator eval;
     transpositionTable transposition;
-    BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)), eval(), generator(){}
+    transpositionTable lastSearch;
+private:
+    std::atomic<bool> running;
+public:
+    BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)), lastSearch(memory/sizeof(infoScore)){}
+private:
+    int alloted_time;
+    void stopAfter(int seconds) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
+        running = false; // Set running to false after the specified time
+    }
     int negamax(int deep, GameState& state, int alpha, int beta){
+        if(!running)return 0;
         if(deep == 0)
             return eval.positionEvaluator(state);
         bool isEvaluated=false;
@@ -30,41 +44,56 @@ public:
                 return eval.MINIMUM;
             return eval.MIDDLE;
         }
+        Move bestMove;
         for(Move move:moves){
             state.playMove(move);
             int score = -negamax(deep-1, state, -beta, -alpha);
             state.undoLastMove();
+            if(!running)return 0;
             if(score > alpha){
                 if(score > beta){
-                    transposition.push(state, {score, beta, alpha});
+                    transposition.push(state, {score, beta, alpha, move});
                     return score;
                 }
                 alpha = score;
             }
-            if(score > max_eval)
+            if(score > max_eval){
                 max_eval = score;
+                bestMove = move;
+            }
         }
-        transposition.push(state, {max_eval, alpha, beta});
+        transposition.push(state, {max_eval, alpha, beta, bestMove});
         return max_eval;
     }
     public : Move bestMove(GameState& state, int alloted_time){
         //Calls evaluator here to determine what to look at
         Move bestMove;
-        int alpha=eval.MINIMUM;
-        int beta=eval.MAXIMUM;
-        bool inCheck;
-        vector<Move> moves=generator.generateLegalMoves(state, inCheck);
-        if(moves.size() == 0)
-            return {}; // no possible moves
-        for(Move move:moves){
-            state.playMove(move);
-            int score = -negamax(4, state, alpha, beta);
-            state.undoLastMove();
-            if(score > alpha){
-                alpha = score;
-                bestMove = move;
+        running = true;
+        this->alloted_time = alloted_time;
+        Move lastBest;
+        std::thread timerThread(&BestMoveFinder::stopAfter, this);
+        for(int depth=1; running; depth++){
+            int alpha=eval.MINIMUM;
+            int beta=eval.MAXIMUM;
+            bool inCheck;
+            vector<Move> moves=generator.generateLegalMoves(state, inCheck);
+            if(moves.size() == 0)
+                return {}; // no possible moves
+            for(Move move:moves){
+                state.playMove(move);
+                int score = -negamax(depth, state, -beta, -alpha);
+                state.undoLastMove();
+                if(!running)break;
+                if(score > alpha){
+                    alpha = score;
+                    bestMove = move;
+                }
             }
+            lastBest = bestMove;
+            lastSearch = transposition;
+            transposition.clear();
         }
+        if(bestMove.start_pos == bestMove.end_pos)return lastBest;
         return bestMove;
     }
     big perft(GameState& state, int depth, int curDepth=0){

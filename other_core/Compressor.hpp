@@ -38,6 +38,7 @@ public:
     int score;
     int beta;
     int alpha;
+    Move bestMove;
     big hash;
 };
 
