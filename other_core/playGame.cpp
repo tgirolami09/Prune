@@ -21,30 +21,36 @@ int main(int argc, char** argv){
     }
     GameState state;
     state.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    state.print();
+    if(argc <= 3)state.print();
     for(Move mv:moves){
         state.playPartialMove(mv);
-        state.print();
-        printf("cp: %d\n", eval.positionEvaluator(state));
+        if(argc <= 3){
+            state.print();
+            printf("cp: %d\n", eval.positionEvaluator(state));
+        }
     }
-    printf("%s\n", string(50, '#').c_str());
+    if(argc <= 3)printf("%s\n", string(50, '#').c_str());
     for(int i=0; i<moves.size(); i++){
         state.undoLastMove();
-        state.print();
+        if(argc <= 3)state.print();
     }
     if(argc > 3){
         int nbTour=atoi(argv[3]);
         clock_t start=clock();
+        int sumScore=0;
         for(int i=0; i<nbTour; i++){
             for(Move mv:moves){
                 state.playPartialMove(mv);
+                sumScore += eval.positionEvaluator(state);
             }
             for(int i=0; i<moves.size(); i++){
                 state.undoLastMove();
+                sumScore += eval.positionEvaluator(state);
             }
         }
         clock_t end=clock();
         double tcpu=((double)end-start)/CLOCKS_PER_SEC;
         printf("%.3f\n", nbTour*moves.size()/tcpu);
+        printf("%.3f\n", ((double)sumScore)/(nbTour*moves.size()));
     }
 }
