@@ -23,31 +23,40 @@ private:
         }
         return res;
     }
+    template<bool color>
     int score(const big* pieces, const big* other){
         int score=0;
+        #pragma unroll
         for(int i=0; i<6; i++)
             if(i != KING)
                 score += countbit(pieces[i])*value_pieces[i];
-        /*ubyte* pawns;
-        int nbPawns=places(pieces[0], pawns);
+        ubyte* pawns;
+        big friendlyPawn = pieces[PAWN];
+        big opponentPawn = other[PAWN];
+        if(color == BLACK){
+            friendlyPawn = reverse(friendlyPawn);
+            opponentPawn = reverse(opponentPawn);
+        }
+        int nbPawns=places(friendlyPawn, pawns);
         // detect passed pawns
         for(int i=0; i<nbPawns; i++){
-            if((other[0]&mask_forward[pawns[i]]) == 0)
-                score += 8-row(pawns[i])+1;
-        }*/
+            if((opponentPawn&mask_forward[pawns[i]]) == 0)
+                score += (8-row(pawns[i])+1)*50;
+        }
         return score;
     }
 
 public:
     int positionEvaluator(const GameState& state){
         int scoreFriends, scoreEnemies;
-        /*if(state.friendlyColor() == BLACK)
-            scoreFriends=score(reverse_all(state.friendlyPieces()), reverse_all(state.enemyPieces()));
-        else*/scoreFriends=score(state.friendlyPieces(), state.enemyPieces());
-        /*if(state.enemyColor() == BLACK)
-            scoreFriends=score(reverse_all(state.enemyPieces()), reverse_all(state.friendlyPieces()));
-        else*/
-            scoreEnemies=score(state.enemyPieces(), state.friendlyPieces());
+        const bool c=state.friendlyColor();
+        if(c == WHITE){
+            scoreFriends=score<WHITE>(state.friendlyPieces(), state.enemyPieces());
+            scoreEnemies=score<BLACK>(state.enemyPieces(), state.friendlyPieces());
+        }else{
+            scoreFriends=score<BLACK>(state.friendlyPieces(), state.enemyPieces());
+            scoreEnemies=score<WHITE>(state.enemyPieces(), state.friendlyPieces());
+        }
         return scoreFriends-scoreEnemies;
         //return scoreFriends/scoreEnemies;
     }
