@@ -29,4 +29,19 @@ int main(int argc, char** argv){
         state.undoLastMove();
         state.print();
     }
+    if(argc > 3){
+        int nbTour=atoi(argv[3]);
+        clock_t start=clock();
+        for(int i=0; i<nbTour; i++){
+            for(Move mv:moves){
+                state.playPartialMove(mv);
+            }
+            for(int i=0; i<moves.size(); i++){
+                state.undoLastMove();
+            }
+        }
+        clock_t end=clock();
+        double tcpu=((double)end-start)/CLOCKS_PER_SEC;
+        printf("%.3f\n", nbTour/tcpu);
+    }
 }
