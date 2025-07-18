@@ -8,7 +8,6 @@
 #include "Const.hpp"
 #include "Functions.hpp"
 #include <random>
-#include <cassert>
 using namespace std;
 const int zobrCastle=64*2*6;
 const int zobrPassant=zobrCastle+4;
@@ -183,7 +182,9 @@ class GameState{
             side=0;
         else{
             side = 1;
-            //assert(pos == posRook[c][1]);
+#ifdef ASSERT
+            assert(pos == posRook[c][1]);
+#endif
         }
         posRook[c][side] = -1;
         deathRook[c][side] = turnNumber;
@@ -196,14 +197,16 @@ class GameState{
             side = 0;
         }else{
             side = 1;
-            //assert(turnNumber == deathRook[c][1]);
+#ifdef ASSERT
+            assert(turnNumber == deathRook[c][1]);
+#endif
         }
         deathRook[c][side] = -1;
         updateCastlingRights<true>(c, side, pos);
     }
 
     //TODO : make it work for castle and test it for rest (I think en passant may work)
-    template<bool back, bool isCastle>
+    template<bool back>
     void playMove(Move move){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
@@ -254,15 +257,29 @@ class GameState{
                     moveRook.start_pos |= 7;
                     moveRook.end_pos--;
                 }
-                playMove<true, !back>(moveRook);
+                if(back)swap(moveRook.start_pos, moveRook.end_pos);
+                if(moveRook.start_pos == posRook[curColor][0]){
+                    updateCastlingRights<back>(curColor, 0, moveRook.end_pos);
+                }else{
+#ifdef ASSERt
+                    assert(moveRook.start_pos == posRook[curColor][1]);
+#endif
+                    updateCastlingRights<back>(curColor, 1, moveRook.end_pos);//, (_piece != -1 || !back));
+                }
+                int indexZobr=(curColor*6+ROOK)*64;
+                zobristHash ^= zobrist[indexZobr+moveRook.start_pos]^zobrist[indexZobr+moveRook.end_pos];
+                boardRepresentation[curColor][ROOK] ^= (1ULL << moveRook.start_pos)|(1ULL << moveRook.end_pos);
+                //playMove<true, !back>(moveRook);
             }
         }if(move.piece == ROOK){
-            if(back && !isCastle)swap(move.start_pos, move.end_pos);
+            if(back)swap(move.start_pos, move.end_pos);
             if(move.start_pos == posRook[curColor][0])
-                updateCastlingRights<back && !isCastle>(curColor, 0, move.end_pos);//, (_piece != -1 || !back));
+                updateCastlingRights<back>(curColor, 0, move.end_pos);//, (_piece != -1 || !back));
             else{
+#ifdef ASSERT
                 assert(move.start_pos == posRook[curColor][1]);
-                updateCastlingRights<back && !isCastle>(curColor, 1, move.end_pos);//, (_piece != -1 || !back));
+#endif
+                updateCastlingRights<back>(curColor, 1, move.end_pos);//, (_piece != -1 || !back));
             }
         }
         if(!back){
@@ -277,7 +294,7 @@ class GameState{
         zobristHash ^= zobrist[zobrTurn];
         Move move=movesSinceBeginning.back();
         movesSinceBeginning.pop_back();
-        playMove<true, false>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
+        playMove<true>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
         if(movesSinceBeginning.size() > 0){
             Move nextMove=movesSinceBeginning.back();
             if(nextMove.piece == PAWN && abs(nextMove.end_pos-nextMove.start_pos) == 2*8){
@@ -297,7 +314,7 @@ class GameState{
             move.capture = -1;
         }
         move.piece = mover;
-        playMove<false, false>(move);
+        playMove<false>(move);
     }
 
     int getPiece(int square){
