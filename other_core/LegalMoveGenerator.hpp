@@ -92,7 +92,7 @@ private:
         vector<Move> moves;
         const big* allFriendlyPieces = state.friendlyPieces();
         big knightMask = allFriendlyPieces[KNIGHT];
-        ubyte* pos;
+        ubyte pos[12];
         int nbPos=places(knightMask, pos);
         for (int p = 0;p<nbPos;++p){
             //Friendly knight at position 'pos[p]'
@@ -102,7 +102,6 @@ private:
             vector<Move> intermediateMoves = maskToMoves<KNIGHT>(pos[p], knightEndMask);
             moves.insert(moves.end(),intermediateMoves.begin(),intermediateMoves.end());
         }
-        free(pos);
         return moves;
     }
 

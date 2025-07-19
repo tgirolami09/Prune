@@ -155,11 +155,10 @@ public :
         castlingRights[c][side] = enable;
     }
     template<bool back, int side>
-    void updateCastlingRights(int c, int pos=-1){
+    void updateCastlingRights(int c, int pos){
         if(back)nbMoves[c][side]--;
         else nbMoves[c][side] ++;
-        if(pos != -1)
-            posRook[c][side] = pos;
+        posRook[c][side] = pos;
         if(nbMoves[c][side] == 0){
             if(nbMoves[c][2] == 0)changeCastlingRights<true, side>(c);
         }else
@@ -183,15 +182,14 @@ public :
         int side=-1;
         if(pos == posRook[c][0]){
             side=0;
-            updateCastlingRights<false, 0>(c);
+            updateCastlingRights<false, 0>(c, -1);
         }else{
             side = 1;
-            updateCastlingRights<false, 1>(c);
+            updateCastlingRights<false, 1>(c, -1);
 #ifdef ASSERT
             assert(pos == posRook[c][1]);
 #endif
         }
-        posRook[c][side] = -1;
         deathRook[c][side] = turnNumber;
     }
 
@@ -252,28 +250,27 @@ public :
         }else lastDoublePawnPush = -1;
         if(move.piece == KING){
             moveKing<back>(curColor);
-            //zobristHash ^= zobrist[zobrCastle+2*curColor] ^ zobrist[zobrCastle+2*curColor+1];
             if(abs(move.end_pos-move.start_pos) == 2){//castling
-                Move moveRook = {move.start_pos, move.end_pos, ROOK};
+                int startRook=move.start_pos, endRook=move.end_pos;
                 if(move.start_pos > move.end_pos){//queen side ?
-                    moveRook.start_pos &= ~7;
-                    moveRook.end_pos++;
+                    startRook &= ~7;
+                    endRook++;
                 }else{ //king side ?
-                    moveRook.start_pos |= 7;
-                    moveRook.end_pos--;
+                    startRook |= 7;
+                    endRook--;
                 }
-                if(back)swap(moveRook.start_pos, moveRook.end_pos);
-                if(moveRook.start_pos == posRook[curColor][0]){
-                    updateCastlingRights<back, 0>(curColor, moveRook.end_pos);
+                if(back)swap(startRook, endRook);
+                if(startRook == posRook[curColor][0]){
+                    updateCastlingRights<back, 0>(curColor, endRook);
                 }else{
 #ifdef ASSERT
                     assert(moveRook.start_pos == posRook[curColor][1]);
 #endif
-                    updateCastlingRights<back, 1>(curColor, moveRook.end_pos);//, (_piece != -1 || !back));
+                    updateCastlingRights<back, 1>(curColor, endRook);//, (_piece != -1 || !back));
                 }
                 int indexZobr=(curColor*6+ROOK)*64;
-                zobristHash ^= zobrist[indexZobr|moveRook.start_pos]^zobrist[indexZobr|moveRook.end_pos];
-                boardRepresentation[curColor][ROOK] ^= (1ULL << moveRook.start_pos)|(1ULL << moveRook.end_pos);
+                zobristHash ^= zobrist[indexZobr|startRook]^zobrist[indexZobr|endRook];
+                boardRepresentation[curColor][ROOK] ^= (1ULL << startRook)|(1ULL << endRook);
                 //playMove<true, !back>(moveRook);
             }
         }else if(move.piece == ROOK){

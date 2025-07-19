@@ -205,9 +205,9 @@ private:
     template<bool color>
     int score(const big* pieces, const big* other, int& mgPhase, int& endGame, int& midGame){
         int score=0;
+        ubyte pos[12];
         #pragma unroll
         for(int p=0; p<6; p++){
-            ubyte* pos;
             int nbPieces = places(pieces[p], pos);
             if(p != KING){
                 mgPhase += gamephaseInc[p]*nbPieces;
@@ -216,22 +216,21 @@ private:
                 endGame += eg_table[color][p][pos[i]];
                 midGame += mg_table[color][p][pos[i]];
             }
-            free(pos);
         }
-        ubyte* pawns;
         big friendlyPawn = pieces[PAWN];
         big opponentPawn = other[PAWN];
+        const int xor_pos=color == BLACK?56:0;
         if(color == BLACK){
-            friendlyPawn = reverse(friendlyPawn);
+            //friendlyPawn = reverse(friendlyPawn);
             opponentPawn = reverse(opponentPawn);
         }
-        int nbPawns=places(friendlyPawn, pawns);
+        int nbPawns=places(friendlyPawn, pos);
         // detect passed pawns
         for(int i=0; i<nbPawns; i++){
-            if((opponentPawn&mask_forward[pawns[i]]) == 0)
-                score += (8-row(pawns[i])+1)*50;
+            if((opponentPawn&mask_forward[pos[i]^xor_pos]) == 0)
+                score += (8-row(pos[i])+1)*50;
         }
-        free(pawns);
+        //free(pos);
         return score;
     }
 

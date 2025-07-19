@@ -27,9 +27,9 @@ const inline int countbit(const big& board){
 const inline int flip(const int& square){
     return square^56;
 }
-inline int places(big mask, ubyte*& positions){
+inline int places(big mask, ubyte* positions){
     int nbBits = countbit(mask);
-    positions = (ubyte*)malloc(nbBits);
+    //positions = (ubyte*)malloc(nbBits);
     for(ubyte i=0; mask; i++){
         ubyte bit=__builtin_ctzll(mask);
         mask ^= 1ULL << bit;
