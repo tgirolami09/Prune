@@ -66,7 +66,7 @@ private:
             int bit = __builtin_ctzll(mask);
             mask ^= 1ULL << bit;
             //Need to add logic for pawn promotion
-            res.push_back({start,bit,piece});
+            res.push_back({(int8_t)start,(int8_t)bit,piece});
         }
         return res;
     }

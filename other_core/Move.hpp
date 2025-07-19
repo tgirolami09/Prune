@@ -7,13 +7,13 @@ using namespace std;
 //Represents a move
 class Move{
     public :
-    int start_pos;
-    int end_pos;
-    int piece;
+    int8_t start_pos;
+    int8_t end_pos;
+    int8_t piece;
     //Type of piece to promote to
-    int promoteTo = -1;
+    int8_t promoteTo = -1;
     //-1 by capturing by en passant
-    int capture = -2;
+    int8_t capture = -2;
 
     void from_uci(string move){
         start_pos = from_str(move.substr(0, 2));

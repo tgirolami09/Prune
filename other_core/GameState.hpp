@@ -248,7 +248,7 @@ public :
             movesSinceBeginning.push_back(move);
         if(!back && move.piece == PAWN && abs(move.start_pos-move.end_pos) == 2*8){//move of 2 row = possibility of en passant
             lastDoublePawnPush = col(move.start_pos);
-            zobristHash ^= zobrist[zobrPassant|lastDoublePawnPush];
+            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         }else lastDoublePawnPush = -1;
         if(move.piece == KING){
             moveKing<back>(curColor);
