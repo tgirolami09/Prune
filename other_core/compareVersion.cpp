@@ -35,8 +35,8 @@ int main(int argc, char** argv){
     printf("\r100%%\n");
     double r=t2/t1;
     string word="faster";
-    if(r < 0){
-        r = -r;
+    if(r < 1){
+        r = 1/r;
         word = "slower";
     }
     if(r > 2){
