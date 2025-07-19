@@ -33,7 +33,7 @@ Move getOpponentMove(){
 }
 
 float computeAllotedTime(Chess& state){
-    float time = state.currentGame.turnNumber%2 == 1?state.w_time:state.b_time;
+    float time = state.currentGame.friendlyColor() == WHITE?state.w_time:state.b_time;
     return time/10.0;
 }
 

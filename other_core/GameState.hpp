@@ -16,7 +16,7 @@ const int nbZobrist=zobrTurn+1;
 
 //Represents a state in the game
 class GameState{
-    public : bool isFinished = false;
+    bool isFinished = false;
 
     // (not necessary if we create new states for exploration)
     vector<Move> movesSinceBeginning;
@@ -30,13 +30,13 @@ class GameState{
     int lastDoublePawnPush;
 
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
-    big boardRepresentation[2][6];
     big zobrist[nbZobrist];
-    big zobristHash;
     short nbMoves[2][3];
     short posRook[2][2];
     short deathRook[2][2];
-
+public : 
+    big zobristHash;
+    big boardRepresentation[2][6];
     GameState(){
         mt19937_64 gen(42);
         uniform_int_distribution<big> dist(0, MAX_BIG);
@@ -161,9 +161,9 @@ class GameState{
         nbMoves[c][side] += add;
         if(pos != -1)
             posRook[c][side] = pos;
-        if(nbMoves[c][side] == 0)
-            changeCastlingRights<true>(c, side);
-        else
+        if(nbMoves[c][side] == 0){
+            if(nbMoves[c][2] == 0)changeCastlingRights<true>(c, side);
+        }else
             changeCastlingRights<false>(c, side);
     }
 
@@ -172,8 +172,13 @@ class GameState{
         int add=1;
         if(back)add=-1;
         nbMoves[c][2] += add;
-        updateCastlingRights<back>(c, 0);
-        updateCastlingRights<back>(c, 1);
+        if(nbMoves[c][2] == 0){
+            if(nbMoves[c][0] == 0)changeCastlingRights<true>(c, 0);
+            if(nbMoves[c][1] == 0)changeCastlingRights<true>(c, 1);
+        }else{
+            updateCastlingRights<false>(c, 0);
+            updateCastlingRights<false>(c, 1);
+        }
     }
 
     void captureRook(int pos, int c){
@@ -261,7 +266,7 @@ class GameState{
                 if(moveRook.start_pos == posRook[curColor][0]){
                     updateCastlingRights<back>(curColor, 0, moveRook.end_pos);
                 }else{
-#ifdef ASSERt
+#ifdef ASSERT
                     assert(moveRook.start_pos == posRook[curColor][1]);
 #endif
                     updateCastlingRights<back>(curColor, 1, moveRook.end_pos);//, (_piece != -1 || !back));
@@ -271,7 +276,7 @@ class GameState{
                 boardRepresentation[curColor][ROOK] ^= (1ULL << moveRook.start_pos)|(1ULL << moveRook.end_pos);
                 //playMove<true, !back>(moveRook);
             }
-        }if(move.piece == ROOK){
+        }else if(move.piece == ROOK){
             if(back)swap(move.start_pos, move.end_pos);
             if(move.start_pos == posRook[curColor][0])
                 updateCastlingRights<back>(curColor, 0, move.end_pos);//, (_piece != -1 || !back));
