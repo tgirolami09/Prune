@@ -53,14 +53,20 @@ class LegalMoveGenerator{
         }  
     }
     
+    public:LegalMoveGenerator(){
+        PrecomputeKnightMoveData();
+    }
+
+private: 
     //Transforms a bitboard of valid end positions into a list of the corresponding moves
+    template<int piece>
     vector<Move> maskToMoves(int start, big mask){
         vector<Move> res;
         while(mask){
             int bit = __builtin_ctzll(mask);
-            mask ^= 1 << bit;
+            mask ^= 1ULL << bit;
             //Need to add logic for pawn promotion
-            res.push_back({start,bit,-1});
+            res.push_back({start,bit,piece});
         }
         return res;
     }
@@ -83,23 +89,18 @@ class LegalMoveGenerator{
 
     //Does not take pins into account
     vector<Move> knightMoves(const GameState& state, big moveMask, big captureMask){
-        if (!knightWasPrecomputed){
-            PrecomputeKnightMoveData();
-        }
         vector<Move> moves;
         const big* allFriendlyPieces = state.friendlyPieces();
         big knightMask = allFriendlyPieces[KNIGHT];
         ubyte* pos;
         int nbPos=places(knightMask, pos);
         for (int p = 0;p<nbPos;++p){
-            //Friendly knight at position 'pos'
-            if (knightMask & (1ul<< pos[p])){
-                //Get the end positions that are allowed given the state of the king 
-                big knightEndMask = KnightMoves[pos[p]] & (moveMask | captureMask);
+            //Friendly knight at position 'pos[p]'
+            //Get the end positions that are allowed given the state of the king 
+            big knightEndMask = KnightMoves[pos[p]] & (moveMask | captureMask);
 
-                vector<Move> intermediateMoves = maskToMoves(pos[p], knightEndMask);
-                moves.insert(moves.end(),intermediateMoves.begin(),intermediateMoves.end());
-            }
+            vector<Move> intermediateMoves = maskToMoves<KNIGHT>(pos[p], knightEndMask);
+            moves.insert(moves.end(),intermediateMoves.begin(),intermediateMoves.end());
         }
         free(pos);
         return moves;
