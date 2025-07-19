@@ -156,9 +156,8 @@ public :
     }
     template<bool back>
     void updateCastlingRights(int c, int side, int pos=-1){
-        int add=1;
-        if(back)add = -1;
-        nbMoves[c][side] += add;
+        if(back)nbMoves[c][side]--;
+        else nbMoves[c][side] ++;
         if(pos != -1)
             posRook[c][side] = pos;
         if(nbMoves[c][side] == 0){
@@ -169,15 +168,14 @@ public :
 
     template<bool back>
     void moveKing(int c){
-        int add=1;
-        if(back)add=-1;
-        nbMoves[c][2] += add;
+        if(back)nbMoves[c][2]--;
+        else nbMoves[c][2]++;
         if(nbMoves[c][2] == 0){
             if(nbMoves[c][0] == 0)changeCastlingRights<true>(c, 0);
             if(nbMoves[c][1] == 0)changeCastlingRights<true>(c, 1);
         }else{
-            updateCastlingRights<false>(c, 0);
-            updateCastlingRights<false>(c, 1);
+            changeCastlingRights<false>(c, 0);
+            changeCastlingRights<false>(c, 1);
         }
     }
 
