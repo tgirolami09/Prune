@@ -34,10 +34,15 @@ int main(int argc, char** argv){
     }
     printf("\r100%%\n");
     double r=t2/t1;
-    if(r > 2){
-        printf("the first command is %.2fx faster than the second command\n", r);
-    }else{
-        printf("the first command is %.2f%% faster than the second command\n", r-1);
+    string word="faster";
+    if(r < 0){
+        r = -r;
+        word = "slower";
     }
-    printf("%.3f %.3f", t1, t2);
+    if(r > 2){
+        printf("the first command is %.2fx %s than the second command\n", r, word.c_str());
+    }else{
+        printf("the first command is %.2f%% %s than the second command\n", (r-1)*100, word.c_str());
+    }
+    printf("%.3f %.3f\n", t1, t2);
 }
