@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <map>
 #include <cassert>
-#define ASSERT
+//#define ASSERT
 #define big uint64_t
 #define ubyte uint8_t
 using namespace std;
