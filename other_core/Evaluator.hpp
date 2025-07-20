@@ -165,8 +165,8 @@ const int* eg_pesto_table[6] =
 };
 
 const int gamephaseInc[6] = {0,1,1,2,4,0};
-int mg_table[2][6][64];
-int eg_table[2][6][64];
+static int mg_table[2][6][64];
+static int eg_table[2][6][64];
 
 void init_tables()
 {
@@ -210,9 +210,7 @@ private:
         #pragma unroll
         for(int p=0; p<6; p++){
             int nbPieces = places(pieces[p], pos);
-            if(p != KING){
-                weightPiece += gamephaseInc[p]*nbPieces;
-            }
+            weightPiece += gamephaseInc[p]*nbPieces;
             for(int i=0; i<nbPieces; i++){
                 endGame += eg_table[color][p][pos[i]];
                 midGame += mg_table[color][p][pos[i]];
@@ -238,11 +236,13 @@ private:
                 advanced[cpos] = rpos;
             }
         }
-        //malus bishop for closed positions  count the number of pawn which are facing an enemy pawn
-        score -= 20*countbit(pieces[BISHOP])*countbit(opponentPawn&(friendlyPawn << 8))/8;
+        //malus bishop for closed positions (and bonus for knight)      count the number of pawn which are facing an enemy pawn
+        score -= 20*(countbit(pieces[BISHOP])-countbit(pieces[KNIGHT]))*countbit(opponentPawn&(friendlyPawn << 8))/8;
         score += space*30; // the more space, the better
-        score -= 20*weightPiece/space; // if the density of pieces is too big, so it's harder to play (represent the fact that you should not exchange pieces when you have the advantage in the position)
+        score -= 20*weightPiece/space; // if the density of pieces is too high, so it's harder to play (represent the fact that you should not exchange pieces when you have the advantage in the position)
         mgPhase += weightPiece;
+        big protectorPawn = ((friendlyPawn&~colA >> 7)|(friendlyPawn&~colH >> 9))&friendlyPawn;
+        score += 10*countbit(protectorPawn); // if all pawns are protector, it's better
         return score;
     }
 
