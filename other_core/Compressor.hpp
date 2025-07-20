@@ -52,7 +52,7 @@ public:
         table = vector<infoScore>(count);
         modulo=count;
     }
-    int get_eval(GameState& state, int alpha, int beta, bool& isok){
+    int get_eval(const GameState& state, int alpha, int beta, bool& isok){
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
             isok=true;
@@ -76,6 +76,13 @@ public:
     }
     void reinit(int count){
         table.resize(count);
+    }
+    Move getBestMove(const GameState& state){
+        int index = state.zobristHash%modulo;
+        if(table[index].hash == state.zobristHash){
+            return table[index].bestMove;
+        }
+        return {0, 0, 0};
     }
 };
 

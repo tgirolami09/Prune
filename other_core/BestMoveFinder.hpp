@@ -44,8 +44,23 @@ private:
                 return eval.MINIMUM;
             return eval.MIDDLE;
         }
+        Move bMove = lastSearch.getBestMove(state); // best move from the search with one depth less
         Move bestMove;
+        if(bMove.start_pos != bMove.end_pos){
+            state.playMove<false>(bMove);
+            int score = -negamax(deep-1, state, -beta, -alpha);
+            if(score > alpha){
+                if(score > beta){
+                    transposition.push(state, {score, beta, alpha, bMove});
+                    return score;
+                }
+                alpha = score;
+            }
+            max_eval = score;
+            bestMove = bMove;
+        }
         for(Move move:moves){
+            if(move.start_pos == bMove.start_pos && move.end_pos == bMove.end_pos)continue;
             state.playMove<false>(move);
             int score = -negamax(deep-1, state, -beta, -alpha);
             state.undoLastMove();
