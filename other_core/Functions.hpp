@@ -32,7 +32,7 @@ inline int places(big mask, ubyte* positions){
     //positions = (ubyte*)malloc(nbBits);
     for(ubyte i=0; mask; i++){
         ubyte bit=__builtin_ctzll(mask);
-        mask ^= 1ULL << bit;
+        mask &= mask-1; //even if it has a sub, whet it's compiled it will be as the blsr instruction
         positions[i] = bit;
     }
     return nbBits;
