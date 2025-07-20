@@ -1,5 +1,5 @@
-#ifndef COMPRESSOR
-#define COMPRESSOR
+#ifndef TRANSPOSITION_TABLE_HPP
+#define TRANSPOSITION_TABLE_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
 
