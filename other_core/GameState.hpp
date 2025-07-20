@@ -208,24 +208,23 @@ public :
         deathRook[c][side] = -1;
     }
 
-    //TODO : make it work for castle and test it for rest (I think en passant may work)
     template<bool back>
     void playMove(Move move){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
-        const int curColor=friendlyColor();
-        const int add=(curColor*6+move.piece)*64;
+        const bool curColor=friendlyColor();
+        const int add=(curColor*6+(int)move.piece)*64;
         if(move.promoteTo == -1){
             zobristHash ^= zobrist[add+move.end_pos];
             boardRepresentation[curColor][move.piece] ^= (1ULL << move.end_pos);
         }else{
             boardRepresentation[curColor][move.promoteTo] ^= (1ULL << move.end_pos);
-            zobristHash ^= zobrist[(curColor*6+move.promoteTo)*64|move.end_pos];
+            zobristHash ^= zobrist[(curColor*6+(int)move.promoteTo)*64|move.end_pos];
         }
         boardRepresentation[curColor][move.piece] ^= (1ULL<<move.start_pos);
         zobristHash ^= zobrist[add|move.start_pos];
         if(move.capture != -2){
-            const int enColor=enemyColor();
+            const bool enColor=enemyColor();
             if(move.capture == ROOK){
                 if(back)
                     uncaptureRook(move.end_pos, enColor);
@@ -252,10 +251,10 @@ public :
             moveKing<back>(curColor);
             if(abs(move.end_pos-move.start_pos) == 2){//castling
                 int startRook=move.start_pos, endRook=move.end_pos;
-                if(move.start_pos > move.end_pos){//queen side ?
+                if(move.start_pos > move.end_pos){//queen side
                     startRook &= ~7;
                     endRook++;
-                }else{ //king side ?
+                }else{ //king side
                     startRook |= 7;
                     endRook--;
                 }
@@ -266,22 +265,21 @@ public :
 #ifdef ASSERT
                     assert(moveRook.start_pos == posRook[curColor][1]);
 #endif
-                    updateCastlingRights<back, 1>(curColor, endRook);//, (_piece != -1 || !back));
+                    updateCastlingRights<back, 1>(curColor, endRook);
                 }
                 int indexZobr=(curColor*6+ROOK)*64;
                 zobristHash ^= zobrist[indexZobr|startRook]^zobrist[indexZobr|endRook];
-                boardRepresentation[curColor][ROOK] ^= (1ULL << startRook)|(1ULL << endRook);
-                //playMove<true, !back>(moveRook);
+                boardRepresentation[curColor][ROOK] ^= (1ULL << startRook)^(1ULL << endRook);
             }
         }else if(move.piece == ROOK){
             if(back)swap(move.start_pos, move.end_pos);
             if(move.start_pos == posRook[curColor][0])
-                updateCastlingRights<back, 0>(curColor, move.end_pos);//, (_piece != -1 || !back));
+                updateCastlingRights<back, 0>(curColor, move.end_pos);
             else{
 #ifdef ASSERT
                 assert(move.start_pos == posRook[curColor][1]);
 #endif
-                updateCastlingRights<back, 1>(curColor, move.end_pos);//, (_piece != -1 || !back));
+                updateCastlingRights<back, 1>(curColor, move.end_pos);
             }
         }
         if(!back){
@@ -290,7 +288,6 @@ public :
         }
     }
 
-    //TODO : (not necessary if we create new states for exploration)
     void undoLastMove(){
         turnNumber--;
         zobristHash ^= zobrist[zobrTurn];
