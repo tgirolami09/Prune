@@ -3,42 +3,13 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 
-const int nb64=10, nb8=1;
-class Compressed{
-public:
-    big values64[nb64];
-    ubyte values8[nb8];
-    Compressed(GameState state){
-        int index = 0;
-        ubyte king = 0;
-        for(int c=0; c<2; c++)
-            for(int i=0; i<nbPieces; i++){
-                if(i == KING){
-                    king |= __builtin_ctzll(state.boardRepresentation[c][i]) << (c*4);
-                }else{
-                    values64[index] = state.boardRepresentation[c][i];
-                    index++;
-                }
-            }
-        values8[0] = king;
-    }
-    bool operator<(const Compressed& o){
-        for(int i=0; i<nb64; i++){
-            if(values64[i] != o.values64[i])return values64[i] < o.values64[i];
-        }
-        for(int i=0; i<nb8; i++){
-            if(values8[i] != o.values8[i])return values8[i] < o.values8[i];
-        }
-        return false;
-    }
-};
-
 class infoScore{
 public:
     int score;
     int beta;
     int alpha;
     Move bestMove;
+    int depth;
     big hash;
 };
 
@@ -52,37 +23,37 @@ public:
         table = vector<infoScore>(count);
         modulo=count;
     }
-    int get_eval(const GameState& state, int alpha, int beta, bool& isok){
+    int get_eval(const GameState& state, int alpha, int beta, bool& isok, int depth, Move& best){
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
             isok=true;
-            if(table[index].score > beta)
-                return table[index].score;
-            if(table[index].score < table[index].beta)
-                return table[index].score;
+            if(depth <= table[index].depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
+                if(table[index].score > beta)
+                    return table[index].score;
+                if(table[index].score < table[index].beta)
+                    return table[index].score;
+            }
+            best = table[index].bestMove;
             isok=false;
         }
         return 0;
     }
     void push(GameState& state, infoScore info){
         info.hash = state.zobristHash;
-        if(table[info.hash%modulo].hash != 0)
+        int index = info.hash%modulo;
+        if(table[index].hash != 0){
+            if(table[index].hash == info.hash && table[index].depth > info.depth)
+                return;//already evaluated with a better depth
             rewrite++;
+        }
         else place++;
-        table[info.hash%modulo] = info;
+        table[index] = info;
     }
     void clear(){
         table.clear();
     }
     void reinit(int count){
         table.resize(count);
-    }
-    Move getBestMove(const GameState& state){
-        int index = state.zobristHash%modulo;
-        if(table[index].hash == state.zobristHash){
-            return table[index].bestMove;
-        }
-        return {0, 0, 0};
     }
 };
 

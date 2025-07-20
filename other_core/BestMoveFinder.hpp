@@ -1,6 +1,6 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
-#include "Compressor.hpp"
+#include "TranspositionTable.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include "Evaluator.hpp"
@@ -16,11 +16,10 @@ public:
     LegalMoveGenerator generator;
     Evaluator eval;
     transpositionTable transposition;
-    transpositionTable lastSearch;
 private:
     std::atomic<bool> running;
 public:
-    BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)), lastSearch(memory/sizeof(infoScore)){}
+    BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)){}
 private:
     int alloted_time;
     void stopAfter(int seconds) {
@@ -32,7 +31,8 @@ private:
         if(deep == 0)
             return eval.positionEvaluator(state);
         bool isEvaluated=false;
-        int last_eval=transposition.get_eval(state, alpha, beta, isEvaluated);
+        Move bMove;
+        int last_eval=transposition.get_eval(state, alpha, beta, isEvaluated, deep, bMove);
         if(isEvaluated){
             return last_eval;
         }
@@ -44,7 +44,6 @@ private:
                 return eval.MINIMUM;
             return eval.MIDDLE;
         }
-        Move bMove = lastSearch.getBestMove(state); // best move from the search with one depth less
         Move bestMove;
         if(bMove.start_pos != bMove.end_pos){
             state.playMove<false>(bMove);
@@ -67,7 +66,7 @@ private:
             if(!running)return 0;
             if(score > alpha){
                 if(score > beta){
-                    transposition.push(state, {score, beta, alpha, move});
+                    transposition.push(state, {score, beta, alpha, move, deep});
                     return score;
                 }
                 alpha = score;
@@ -77,7 +76,7 @@ private:
                 bestMove = move;
             }
         }
-        transposition.push(state, {max_eval, alpha, beta, bestMove});
+        transposition.push(state, {max_eval, alpha, beta, bestMove, deep});
         return max_eval;
     }
     public : Move bestMove(GameState& state, int alloted_time){
@@ -105,7 +104,6 @@ private:
                 }
             }
             lastBest = bestMove;
-            lastSearch = transposition;
             transposition.clear();
         }
         if(bestMove.start_pos == bestMove.end_pos)return lastBest;
