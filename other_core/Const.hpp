@@ -18,6 +18,8 @@ const int QUEEN=4;
 const int KING=5;
 const int SPACE=6;
 const int nbPieces=6;
-map<char, int> piece_to_id = {{'r', ROOK}, {'n', KNIGHT}, {'b', BISHOP}, {'q', QUEEN}, {'k', KING}, {'p', PAWN}};
+const big colA=0x8080808080808080;
+const big colH=0x0101010101010101;
+const map<char, int> piece_to_id = {{'r', ROOK}, {'n', KNIGHT}, {'b', BISHOP}, {'q', QUEEN}, {'k', KING}, {'p', PAWN}};
 const char id_to_piece[7] = {'p', 'n', 'b', 'r', 'q', 'k', ' '};
 #endif

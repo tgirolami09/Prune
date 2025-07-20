@@ -56,7 +56,7 @@ public :
         for(; id<fen.size(); id++){
             char c=fen[id];
             if(isalpha(c)){
-                int piece=piece_to_id[tolower(c)];
+                int piece=piece_to_id.at(tolower(c));
                 int color_p;
                 if(isupper(c))
                     color_p = WHITE;
