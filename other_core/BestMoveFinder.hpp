@@ -9,12 +9,13 @@
 #include <chrono>
 #include <atomic>
 #include <thread>
+#include <algorithm>
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
 public:
     LegalMoveGenerator generator;
-    Evaluator eval;
+    static Evaluator eval;
     transpositionTable transposition;
 private:
     std::atomic<bool> running;
@@ -26,13 +27,18 @@ private:
         std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
         running = false; // Set running to false after the specified time
     }
-    int negamax(int deep, GameState& state, int alpha, int beta){
+    
+    static bool slowComp(const Move& a, const Move& b){
+        return eval.score_move(a) < eval.score_move(b);
+    }
+
+    int negamax(int depth, GameState& state, int alpha, int beta){
         if(!running)return 0;
-        if(deep == 0)
+        if(depth == 0)
             return eval.positionEvaluator(state);
         bool isEvaluated=false;
         Move bMove;
-        int last_eval=transposition.get_eval(state, alpha, beta, isEvaluated, deep, bMove);
+        int last_eval=transposition.get_eval(state, alpha, beta, isEvaluated, depth, bMove);
         if(isEvaluated){
             return last_eval;
         }
@@ -47,7 +53,9 @@ private:
         Move bestMove;
         if(bMove.start_pos != bMove.end_pos){
             state.playMove<false>(bMove);
-            int score = -negamax(deep-1, state, -beta, -alpha);
+            int score = -negamax(depth-1, state, -beta, -alpha);
+            state.undoLastMove();
+            if(!running)return 0;
             if(score > alpha){
                 if(score > beta){
                     transposition.push(state, {score, beta, alpha, bMove});
@@ -58,15 +66,16 @@ private:
             max_eval = score;
             bestMove = bMove;
         }
+        sort(moves.begin(), moves.end(), slowComp);
         for(Move move:moves){
             if(move.start_pos == bMove.start_pos && move.end_pos == bMove.end_pos)continue;
             state.playMove<false>(move);
-            int score = -negamax(deep-1, state, -beta, -alpha);
+            int score = -negamax(depth-1, state, -beta, -alpha);
             state.undoLastMove();
             if(!running)return 0;
             if(score > alpha){
                 if(score > beta){
-                    transposition.push(state, {score, beta, alpha, move, deep});
+                    transposition.push(state, {score, beta, alpha, move, depth});
                     return score;
                 }
                 alpha = score;
@@ -76,7 +85,7 @@ private:
                 bestMove = move;
             }
         }
-        transposition.push(state, {max_eval, alpha, beta, bestMove, deep});
+        transposition.push(state, {max_eval, alpha, beta, bestMove, depth});
         return max_eval;
     }
     public : Move bestMove(GameState& state, int alloted_time){

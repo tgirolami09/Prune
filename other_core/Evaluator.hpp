@@ -264,12 +264,12 @@ public:
         return scoreFriends-scoreEnemies+(mgScore*mgPhase+egScore*egPhase)/24;
         //return scoreFriends/scoreEnemies;
     }
-    int score_move(Move move, GameState state){
+    inline int score_move(const Move& move) const{
         int score = 0;
         if(move.capture != -1)
             score=value_pieces[move.capture];
 
-        if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
+        if(move.promoteTo != -1)score += value_pieces[move.promoteTo]-value_pieces[PAWN];
         return score;
     }
 };
