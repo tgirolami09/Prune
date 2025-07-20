@@ -195,6 +195,7 @@ public:
         init_tables();
     }
 private:
+    ubyte pos[12];
     big* reverse_all(const big* pieces){
         big* res=(big*)calloc(6, sizeof(big));
         for(int i=0; i<6; i++){
@@ -205,12 +206,12 @@ private:
     template<bool color>
     int score(const big* pieces, const big* other, int& mgPhase, int& endGame, int& midGame){
         int score=0;
-        ubyte pos[12];
+        int weightPiece = 0;
         #pragma unroll
         for(int p=0; p<6; p++){
             int nbPieces = places(pieces[p], pos);
             if(p != KING){
-                mgPhase += gamephaseInc[p]*nbPieces;
+                weightPiece += gamephaseInc[p]*nbPieces;
             }
             for(int i=0; i<nbPieces; i++){
                 endGame += eg_table[color][p][pos[i]];
@@ -219,18 +220,29 @@ private:
         }
         big friendlyPawn = pieces[PAWN];
         big opponentPawn = other[PAWN];
-        const int xor_pos=color == BLACK?56:0;
         if(color == BLACK){
-            //friendlyPawn = reverse(friendlyPawn);
+            friendlyPawn = reverse(friendlyPawn);
             opponentPawn = reverse(opponentPawn);
         }
         int nbPawns=places(friendlyPawn, pos);
         // detect passed pawns
+        int advanced[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        int space=0;
         for(int i=0; i<nbPawns; i++){
-            if((opponentPawn&mask_forward[pos[i]^xor_pos]) == 0)
+            if((opponentPawn&mask_forward[pos[i]]) == 0)
                 score += (8-row(pos[i])+1)*50;
+            int rpos = row(pos[i]);
+            int cpos = col(pos[i]);
+            if(rpos > advanced[cpos]){
+                space += rpos-advanced[cpos];
+                advanced[cpos] = rpos;
+            }
         }
-        //free(pos);
+        //malus bishop for closed positions  count the number of pawn which are facing an enemy pawn
+        score -= 20*countbit(pieces[BISHOP])*countbit(opponentPawn&(friendlyPawn << 8))/8;
+        score += space*30; // the more space, the better
+        score -= 20*weightPiece/space; // if the density of pieces is too big, so it's harder to play (represent the fact that you should not exchange pieces when you have the advantage in the position)
+        mgPhase += weightPiece;
         return score;
     }
 
@@ -253,7 +265,9 @@ public:
         //return scoreFriends/scoreEnemies;
     }
     int score_move(Move move, GameState state){
-        int score=value_pieces[state.getPiece(move.end_pos)];
+        int score = 0;
+        if(move.capture != -1)
+            score=value_pieces[move.capture];
 
         if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
         return score;
