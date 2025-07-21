@@ -154,7 +154,48 @@ public :
 
     //TODO : implement this
     string toFen(){
-        return "";
+        string fen="";
+        for(int row=0; row<8; row++){
+            int nbSpace = 0;
+            for(int col=0; col<8; col++){
+                int p = getfullPiece(63-(row << 3 | col));
+                if(type(p) == SPACE){
+                    nbSpace++;
+                }else{
+                    if(nbSpace){
+                        fen += (char)nbSpace+'0';
+                        nbSpace = 0;
+                    }
+                    char c = id_to_piece[type(p)];
+                    if(color(p) == WHITE)c = toupper(c);
+                    fen += c;
+                }
+            }
+            if(nbSpace)fen += (char)nbSpace+'0';
+            if(row != 7)
+                fen += "/";
+        }
+        fen += " ";
+        if(friendlyColor() == WHITE)fen += "w";
+        else fen += "b";
+        fen += " ";
+        bool isCastling=false;
+        for(int c=0; c<2; c++){
+            for(int side=0; side < 2; side++){
+                char s=side?'q':'k';
+                if(!c)s = toupper(s);
+                if(castlingRights[c][side]){
+                    fen += s;
+                    isCastling = true;
+                }
+            }
+        }
+        fen += " ";
+        if(lastDoublePawnPush != -1){
+            fen += (char)7-lastDoublePawnPush+'a';
+        }else fen += "-";
+        fen += " ";
+        return fen;
     }
 
     const int friendlyColor() const{
@@ -232,6 +273,12 @@ public :
         deathRook[c][side] = -1;
     }
 
+    inline bool isEnPassantPossibility(Move move){
+        return move.piece == PAWN && 
+            abs(move.start_pos-move.end_pos) == 2*8 && 
+            ((1ULL << clipped_left(move.end_pos))|(1ULL << clipped_right(move.end_pos)) & enemyPieces()[PAWN]);
+    }
+
     template<bool back>
     void playMove(Move move){
         if(lastDoublePawnPush != -1)
@@ -267,7 +314,7 @@ public :
         }
         if(!back)
             movesSinceBeginning[turnNumber] = move;
-        if(!back && move.piece == PAWN && abs(move.start_pos-move.end_pos) == 2*8){//move of 2 row = possibility of en passant
+        if(!back && isEnPassantPossibility(move)){//is there a pawn on his side
             lastDoublePawnPush = col(move.start_pos);
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         }else lastDoublePawnPush = -1;
@@ -317,7 +364,7 @@ public :
         playMove<true>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
         if(turnNumber > 1){
             Move nextMove=movesSinceBeginning[turnNumber-1];
-            if(nextMove.piece == PAWN && abs(nextMove.end_pos-nextMove.start_pos) == 2*8){
+            if(isEnPassantPossibility({nextMove.end_pos, nextMove.start_pos, nextMove.piece})){
                 lastDoublePawnPush = col(nextMove.start_pos);
                 zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
             }
@@ -328,11 +375,11 @@ public :
     }
 
     void playPartialMove(Move move){
-        int piece=getPiece(move.end_pos);
+        int piece=getPiece(move.end_pos, enemyColor());
         if(piece != SPACE){
             move.capture = piece;
         }
-        int mover = getPiece(move.start_pos);
+        int mover = getPiece(move.start_pos, friendlyColor());
         if(mover == PAWN && col(move.start_pos) != col(move.end_pos) && move.capture == -2){
             move.capture = -1;
         }
@@ -340,14 +387,22 @@ public :
         playMove<false>(move);
     }
 
-    int getPiece(int square){
+    int getPiece(int square, int c){
         big mask=1ULL << square;
-        for(int c=0; c<2; c++){
-            for(int p=0; p<nbPieces; p++){
-                if(mask&boardRepresentation[c][p])return p;
-            }
+        for(int p=0; p<nbPieces; p++){
+            if(mask&boardRepresentation[c][p])return p;
         }
         return SPACE;
+    }
+
+    int getfullPiece(int square){
+        big mask = 1ULL << square;
+        for(int c=0; c<2; c++){
+            for(int p=0; p<6; p++){
+                if(boardRepresentation[c][p] & mask)return p*2+c;
+            }
+        }
+        return SPACE*2;
     }
 
     void print(){
@@ -403,7 +458,8 @@ public :
         if(lastDoublePawnPush != -1){
             printf(" %c", 7-lastDoublePawnPush+'a');
         }
-        printf("\n%16llx", zobristHash);
+        printf("\n%16llx\n", zobristHash);
+        printf("%s", toFen().c_str());
         printf("\n");
     }
 };

@@ -196,13 +196,6 @@ public:
     }
 private:
     ubyte pos[12];
-    big* reverse_all(const big* pieces){
-        big* res=(big*)calloc(6, sizeof(big));
-        for(int i=0; i<6; i++){
-            res[i] = reverse(pieces[i]);
-        }
-        return res;
-    }
     template<bool color>
     int score(const big* pieces, const big* other, int& mgPhase, int& endGame, int& midGame){
         int score=0;
@@ -247,7 +240,7 @@ private:
         score += space*30; // the more space, the better
         score -= 20*weightPiece/space; // if the density of pieces is too high, so it's harder to play (represent the fact that you should not exchange pieces when you have the advantage in the position)
         mgPhase += weightPiece;
-        big protectorPawn = ((friendlyPawn&~colA >> 7)|(friendlyPawn&~colH >> 9))&friendlyPawn;
+        big protectorPawn = (((friendlyPawn&~colA) >> 7)|((friendlyPawn&~colH) >> 9))&friendlyPawn;
         score += 10*countbit(protectorPawn); // if all pawns are protector, it's better
         return score;
     }

@@ -77,4 +77,13 @@ inline string to_uci(int pos){
     return uci;
 }
 
+inline int clipped_right(int pos){
+    if((pos&7) == 0)return pos;
+    return pos-1;
+}
+
+inline int clipped_left(int pos){
+    if((pos&7) == 7)return pos;
+    return pos+1;
+}
 #endif
