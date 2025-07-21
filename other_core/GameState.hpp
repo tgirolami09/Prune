@@ -7,8 +7,7 @@
 #include "Const.hpp"
 #include "Functions.hpp"
 #include <random>
-#include <map>
-#include <list>
+#include <vector>
 using namespace std;
 const int zobrCastle=64*2*6;
 const int zobrPassant=zobrCastle+4;
@@ -35,7 +34,7 @@ class GameState{
     short nbMoves[2][3];
     short posRook[2][2];
     short deathRook[2][2];
-    list<pair<big, int>> threefold[sizeThreeFold];
+    vector<pair<big, int>> threefold[sizeThreeFold];
 public : 
     big zobristHash;
     big boardRepresentation[2][6];
@@ -61,7 +60,6 @@ public :
 
     bool decreaseThreeFold(big hash){
         int index = hash%sizeThreeFold;
-        list<pair<big, int>>::iterator remove;
         for(auto i=threefold[index].begin(); i != threefold[index].end(); i++){
             if(i->first == hash){
                 i->second--;
