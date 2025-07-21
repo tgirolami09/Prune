@@ -118,21 +118,35 @@ private:
         if(bestMove.start_pos == bestMove.end_pos)return lastBest;
         return bestMove;
     }
-    big perft(GameState& state, int depth, int curDepth=0){
+
+};
+
+
+class Perft{
+public:
+    TTperft tt;
+    LegalMoveGenerator generator;
+    Perft(size_t space):tt(space){}
+
+    int perft(GameState& state, ubyte depth, int firstcall=true){
         if(depth == 0)return 1;
+        int lastCall=tt.get_eval(state.zobristHash, depth);
+        if(lastCall != -1)return lastCall;
         bool inCheck;
         vector<Move> moves=generator.generateLegalMoves(state, inCheck);
-        big count=0;
+        int count=0;
         for(Move move:moves){
             state.playMove<false>(move);
-            big nbNodes=perft(state, depth-1, curDepth+1);
+            big nbNodes=perft(state, depth-1, false);
             state.undoLastMove();
-            if(curDepth == 0){
+            if(firstcall){
                 printf("%s: %lld", move.to_str().c_str(), nbNodes);
             }
             count += nbNodes;
         }
+        tt.push({state.zobristHash, count, depth});
         return count;
     }
 };
+
 #endif

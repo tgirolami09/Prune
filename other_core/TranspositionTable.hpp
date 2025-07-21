@@ -56,5 +56,27 @@ public:
         table.resize(count);
     }
 };
+class perftMem{
+public:
+    big hash;
+    int leefs;
+    ubyte depth;
+};
+class TTperft{
+public:
+    vector<perftMem> mem;
+    int modulo;
+    TTperft(int alloted_mem):mem(alloted_mem/sizeof(perftMem)), modulo(alloted_mem/sizeof(perftMem)){}
+    void push(perftMem eval){
+        int index = (eval.hash*256+eval.depth)%modulo;
+        mem[index] = eval;
+    }
+    int get_eval(big hash, int depth){
+        int index = (hash*256+depth)%modulo;
+        if(mem[index].depth == depth && mem[index].hash == hash)
+            return mem[index].leefs;
+        return -1;
+    }
+};
 
 #endif
