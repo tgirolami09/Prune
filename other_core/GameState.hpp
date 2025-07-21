@@ -272,11 +272,16 @@ public :
         }else return;
         deathRook[c][side] = -1;
     }
-
+    template<bool back>
     inline bool isEnPassantPossibility(Move move){
+        big sidePawn=((1ULL << clipped_left(move.end_pos))|(1ULL << clipped_right(move.end_pos)));
+        if(back)
+            sidePawn &= friendlyPieces()[PAWN];
+        else
+            sidePawn &= enemyPieces()[PAWN];
         return move.piece == PAWN && 
             abs(move.start_pos-move.end_pos) == 2*8 && 
-            ((1ULL << clipped_left(move.end_pos))|(1ULL << clipped_right(move.end_pos)) & enemyPieces()[PAWN]);
+            sidePawn;
     }
 
     template<bool back>
@@ -314,7 +319,7 @@ public :
         }
         if(!back)
             movesSinceBeginning[turnNumber] = move;
-        if(!back && isEnPassantPossibility(move)){//is there a pawn on his side
+        if(!back && isEnPassantPossibility<false>(move)){//is there a pawn on his side
             lastDoublePawnPush = col(move.start_pos);
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         }else lastDoublePawnPush = -1;
@@ -357,6 +362,9 @@ public :
     }
 
     void undoLastMove(){
+        if(decreaseThreeFold(zobristHash)){
+            isFinished = false;
+        }
         turnNumber--;
         zobristHash ^= zobrist[zobrTurn];
         Move move=movesSinceBeginning[turnNumber];
@@ -364,13 +372,10 @@ public :
         playMove<true>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
         if(turnNumber > 1){
             Move nextMove=movesSinceBeginning[turnNumber-1];
-            if(isEnPassantPossibility({nextMove.end_pos, nextMove.start_pos, nextMove.piece})){
+            if(isEnPassantPossibility<true>(nextMove)){
                 lastDoublePawnPush = col(nextMove.start_pos);
                 zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
             }
-        }
-        if(decreaseThreeFold(zobristHash)){
-            isFinished = false;
         }
     }
 
