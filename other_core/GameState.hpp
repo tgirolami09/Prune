@@ -19,7 +19,7 @@ class GameState{
     bool isFinished = false;
 
     // (not necessary if we create new states for exploration)
-    Move movesSinceBeginning[5899]; // maximum number of moves
+    Move movesSinceBeginning[8848*2+2]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
 
     //To determine whose turn it is to play AND rules that involve turn count
     int turnNumber;
@@ -368,7 +368,6 @@ public :
         turnNumber--;
         zobristHash ^= zobrist[zobrTurn];
         Move move=movesSinceBeginning[turnNumber];
-        //movesSinceBeginning.pop_back();
         playMove<true>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
         if(turnNumber > 1){
             Move nextMove=movesSinceBeginning[turnNumber-1];

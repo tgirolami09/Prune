@@ -238,7 +238,8 @@ private:
         //malus bishop for closed positions (and bonus for knight)      count the number of pawn which are facing an enemy pawn
         score -= 20*(countbit(pieces[BISHOP])-countbit(pieces[KNIGHT]))*countbit(opponentPawn&(friendlyPawn << 8))/8;
         score += space*30; // the more space, the better
-        score -= 20*weightPiece/space; // if the density of pieces is too high, so it's harder to play (represent the fact that you should not exchange pieces when you have the advantage in the position)
+        if(space)
+            score -= 20*weightPiece/space; // if the density of pieces is too high, so it's harder to play (represent the fact that you should not exchange pieces when you have the advantage in the position)
         mgPhase += weightPiece;
         big protectorPawn = (((friendlyPawn&~colA) >> 7)|((friendlyPawn&~colH) >> 9))&friendlyPawn;
         score += 10*countbit(protectorPawn); // if all pawns are protector, it's better
