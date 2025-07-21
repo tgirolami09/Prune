@@ -3,23 +3,24 @@
 #include "Move.hpp"
 #include <cctype>
 #include <string>
-#include <vector>
 #include <cstdlib>
 #include "Const.hpp"
 #include "Functions.hpp"
 #include <random>
+#include <map>
+#include <list>
 using namespace std;
 const int zobrCastle=64*2*6;
 const int zobrPassant=zobrCastle+4;
 const int zobrTurn=zobrPassant+8;
 const int nbZobrist=zobrTurn+1;
-
+const int sizeThreeFold=128;
 //Represents a state in the game
 class GameState{
     bool isFinished = false;
 
     // (not necessary if we create new states for exploration)
-    vector<Move> movesSinceBeginning;
+    Move movesSinceBeginning[5899]; // maximum number of moves
 
     //To determine whose turn it is to play AND rules that involve turn count
     int turnNumber;
@@ -34,6 +35,7 @@ class GameState{
     short nbMoves[2][3];
     short posRook[2][2];
     short deathRook[2][2];
+    list<pair<big, int>> threefold[sizeThreeFold];
 public : 
     big zobristHash;
     big boardRepresentation[2][6];
@@ -43,6 +45,35 @@ public :
         for(int idz=0; idz<nbZobrist; idz++){
             zobrist[idz] = dist(gen);
         }
+    }
+
+    bool increaseThreeFold(big hash){
+        int index = hash%sizeThreeFold;
+        for(auto& p:threefold[index]){
+            if(p.first == hash){
+                p.second++;
+                return p.second == 3;
+            }
+        }
+        threefold[index].push_back({hash, 1});
+        return false;
+    }
+
+    bool decreaseThreeFold(big hash){
+        int index = hash%sizeThreeFold;
+        list<pair<big, int>>::iterator remove;
+        for(auto i=threefold[index].begin(); i != threefold[index].end(); i++){
+            if(i->first == hash){
+                i->second--;
+                if(i->second == 2)return true;
+                if(i->second == 0){
+                    threefold[index].erase(i);
+                }
+                return false;
+            }
+        }
+        printf("oups\n");
+        return false;
     }
 
     //TODO : implement this
@@ -120,6 +151,7 @@ public :
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         id += 2;
+        increaseThreeFold(zobristHash);
     }
 
     //TODO : implement this
@@ -183,13 +215,10 @@ public :
         if(pos == posRook[c][0]){
             side=0;
             updateCastlingRights<false, 0>(c, -1);
-        }else{
+        }else if(pos == posRook[c][1]){
             side = 1;
             updateCastlingRights<false, 1>(c, -1);
-#ifdef ASSERT
-            assert(pos == posRook[c][1]);
-#endif
-        }
+        }else return;
         deathRook[c][side] = turnNumber;
     }
 
@@ -198,13 +227,10 @@ public :
         if(turnNumber == deathRook[c][0]){
             side = 0;
             updateCastlingRights<true, 0>(c, pos);
-        }else{
+        }else if(turnNumber == deathRook[c][1]){
             side = 1;
             updateCastlingRights<true, 1>(c, pos);
-#ifdef ASSERT
-            assert(turnNumber == deathRook[c][1]);
-#endif
-        }
+        }else return;
         deathRook[c][side] = -1;
     }
 
@@ -242,7 +268,7 @@ public :
             boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
         }
         if(!back)
-            movesSinceBeginning.push_back(move);
+            movesSinceBeginning[turnNumber] = move;
         if(!back && move.piece == PAWN && abs(move.start_pos-move.end_pos) == 2*8){//move of 2 row = possibility of en passant
             lastDoublePawnPush = col(move.start_pos);
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
@@ -261,10 +287,7 @@ public :
                 if(back)swap(startRook, endRook);
                 if(startRook == posRook[curColor][0]){
                     updateCastlingRights<back, 0>(curColor, endRook);
-                }else{
-#ifdef ASSERT
-                    assert(moveRook.start_pos == posRook[curColor][1]);
-#endif
+                }else if(startRook == posRook[curColor][1]){
                     updateCastlingRights<back, 1>(curColor, endRook);
                 }
                 int indexZobr=(curColor*6+ROOK)*64;
@@ -275,31 +298,34 @@ public :
             if(back)swap(move.start_pos, move.end_pos);
             if(move.start_pos == posRook[curColor][0])
                 updateCastlingRights<back, 0>(curColor, move.end_pos);
-            else{
-#ifdef ASSERT
-                assert(move.start_pos == posRook[curColor][1]);
-#endif
+            else if(move.start_pos == posRook[curColor][1]){ //otherwise, it's just another rook
                 updateCastlingRights<back, 1>(curColor, move.end_pos);
             }
         }
         if(!back){
             turnNumber++;
             zobristHash ^= zobrist[zobrTurn];
+            if(increaseThreeFold(zobristHash)){
+                isFinished = true; // draw by threefolds repetition
+            }
         }
     }
 
     void undoLastMove(){
         turnNumber--;
         zobristHash ^= zobrist[zobrTurn];
-        Move move=movesSinceBeginning.back();
-        movesSinceBeginning.pop_back();
+        Move move=movesSinceBeginning[turnNumber];
+        //movesSinceBeginning.pop_back();
         playMove<true>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
-        if(movesSinceBeginning.size() > 0){
-            Move nextMove=movesSinceBeginning.back();
+        if(turnNumber > 1){
+            Move nextMove=movesSinceBeginning[turnNumber-1];
             if(nextMove.piece == PAWN && abs(nextMove.end_pos-nextMove.start_pos) == 2*8){
                 lastDoublePawnPush = col(nextMove.start_pos);
                 zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
             }
+        }
+        if(decreaseThreeFold(zobristHash)){
+            isFinished = false;
         }
     }
 
