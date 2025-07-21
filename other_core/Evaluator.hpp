@@ -209,6 +209,7 @@ private:
         int weightPiece = 0;
         #pragma unroll
         for(int p=0; p<6; p++){
+            if(p == PAWN)continue;
             int nbPieces = places(pieces[p], pos);
             weightPiece += gamephaseInc[p]*nbPieces;
             for(int i=0; i<nbPieces; i++){
@@ -223,18 +224,23 @@ private:
             opponentPawn = reverse(opponentPawn);
         }
         int nbPawns=places(friendlyPawn, pos);
+        weightPiece += gamephaseInc[PAWN]*nbPawns;
         // detect passed pawns
         int advanced[8] = {0, 0, 0, 0, 0, 0, 0, 0};
         int space=0;
         for(int i=0; i<nbPawns; i++){
-            if((opponentPawn&mask_forward[pos[i]]) == 0)
+            if((opponentPawn&mask_forward[pos[i]]) == 0) // passed pawns
                 score += (8-row(pos[i])+1)*50;
             int rpos = row(pos[i]);
             int cpos = col(pos[i]);
+            if(!advanced[cpos])
+                score -= 20; //doubled pawn
             if(rpos > advanced[cpos]){
                 space += rpos-advanced[cpos];
                 advanced[cpos] = rpos;
             }
+            endGame += eg_table[WHITE][PAWN][pos[i]];
+            midGame += mg_table[WHITE][PAWN][pos[i]];
         }
         //malus bishop for closed positions (and bonus for knight)      count the number of pawn which are facing an enemy pawn
         score -= 20*(countbit(pieces[BISHOP])-countbit(pieces[KNIGHT]))*countbit(opponentPawn&(friendlyPawn << 8))/8;
