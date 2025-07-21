@@ -5,6 +5,7 @@
 #include "Move.hpp"
 #include "GameState.hpp"
 #include "BestMoveFinder.hpp"
+#include "TranspositionTable.hpp"
 
 #include <iostream>
 
@@ -22,6 +23,7 @@ class Chess{
 };
 const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
+Perft doPerft(alloted_space);
 Move getBotMove(GameState gameState,float alloted_time){
     Move moveToPlay = bestMoveFinder.bestMove(gameState,alloted_time);
     return moveToPlay;
@@ -51,10 +53,12 @@ void doUCI(string UCI_instruction, Chess& state){
             stream >> inter; // remove "value"
             if(arg == "Clear" && inter == "Hash"){
                 bestMoveFinder.transposition.clear();
+                doPerft.tt.clear();
             }else{
                 stream >> precision;
                 if(arg == "Hash"){
                     bestMoveFinder.transposition.reinit(precision*1000*1000); // size in MB
+                    doPerft.tt.reinit(precision*1000*1000);
                 }
             }
         }
@@ -67,7 +71,7 @@ void doUCI(string UCI_instruction, Chess& state){
     }
     if(command == "go"){
         if(args.count("perft")){
-            bestMoveFinder.perft(state.currentGame, args["perft"]);
+            doPerft.perft(state.currentGame, args["perft"]);
         }else{
             state.b_time = args["btime"];
             state.w_time = args["wtime"];

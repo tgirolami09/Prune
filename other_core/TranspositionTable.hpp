@@ -53,7 +53,11 @@ public:
         table.clear();
     }
     void reinit(int count){
+        count /= sizeof(infoScore);
         table.resize(count);
+        modulo = count;
+        place = 0;
+        rewrite = 0;
     }
 };
 class perftMem{
@@ -76,6 +80,14 @@ public:
         if(mem[index].depth == depth && mem[index].hash == hash)
             return mem[index].leefs;
         return -1;
+    }
+    void clear(){
+        mem.clear();
+    }
+    void reinit(int count){
+        count /= sizeof(perftMem);
+        mem.resize(count);
+        modulo = count;
     }
 };
 
