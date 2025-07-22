@@ -323,20 +323,26 @@ private:
         vector<big> kingAsKnight = pseudoLegalKnightMoves(friendlyPieces[KING], allFriendlyPieces);
         vector<big> kingAsPawn = pseudoLegalPawnMoves(friendlyPieces[KING], allPieces , allEnemyPieces, state.friendlyColor());
 
-        big checkDetection[5] = {kingAsBishop[1] & enemyPieces[BISHOP],
+        big checkDetection[5] = {kingAsPawn[1] & enemyPieces[PAWN],
+                                 kingAsKnight[1] & enemyPieces[KNIGHT],
+                                 kingAsBishop[1] & enemyPieces[BISHOP],
                                  kingAsRook[1] & enemyPieces[ROOK],
                                  kingAsQueen[1] & enemyPieces[QUEEN],
-                                 kingAsKnight[1] & enemyPieces[KNIGHT],
-                                 kingAsPawn[1] & enemyPieces[PAWN]};
+                                 };
 
         int nbCheckers = 0;
         int checkerPosition = -1;
+        //Id given the consts in the project if they change from 0 to 4 then problem
+        int checkerId = -1;
+        big kingAsChecker = 0;
+        big checkerAttacks = 0;
 
         for (int i = 0; i < 5; ++i){
             big possibleChecker = checkDetection[i];
             nbCheckers += countbit(possibleChecker);
             if (countbit(possibleChecker) == 1){
                 checkerPosition = __builtin_ctzll(possibleChecker);
+                checkerId = i;
             }
         }
 
@@ -356,6 +362,22 @@ private:
         else if (nbCheckers==1){
             //For now no ray only taking the checker is allowed
             otherPieceMoveMask = 0;
+            if (checkerId != 0 && checkerId != 1){
+                if (checkerId == 2){
+                    kingAsChecker = pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, allFriendlyPieces)[0];
+                    checkerAttacks = pseudoLegalBishopMoves(1ul<<checkerPosition,allPieces, allEnemyPieces)[0];
+                }
+                else if (checkerId == 3){
+                    kingAsChecker = pseudoLegalRookMoves(friendlyPieces[KING], allPieces, allFriendlyPieces)[0];
+                    checkerAttacks = pseudoLegalRookMoves(1ul<<checkerPosition,allPieces, allEnemyPieces)[0];
+                }
+                else if (checkerId == 4){
+                    kingAsChecker = pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, allFriendlyPieces)[0];
+                    checkerAttacks = pseudoLegalQueenMoves(1ul<<checkerPosition,allPieces, allEnemyPieces)[0];
+                }
+                otherPieceMoveMask = (kingAsChecker & checkerAttacks);
+                // printf("Problem with check\n");
+            }
             otherPieceCaptureMask = 0;
             //Need to get the checker's positions
             otherPieceCaptureMask |= (1ul<<checkerPosition);
