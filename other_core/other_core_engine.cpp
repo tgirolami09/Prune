@@ -112,6 +112,7 @@ void doUCI(string UCI_instruction, Chess& state){
 int main(){
     string UCI_instruction = "programStart";
     Chess state;
+    state.currentGame.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     while (UCI_instruction != "quit"){
         doUCI(UCI_instruction, state);
 
