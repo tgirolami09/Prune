@@ -169,12 +169,14 @@ public:
             big nbNodes=_perft(state, depth-1);
             state.undoLastMove();
             printf("%s: %lld\n", moves[i].to_str().c_str(), nbNodes);
+            fflush(stdout);
             count += nbNodes;
         }
         tt.push({state.zobristHash, count, depth});
         clock_t end=clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
         printf("%.3f : %.3f nps %d visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
+        fflush(stdout);
         return count;
     }
 };

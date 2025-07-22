@@ -71,7 +71,7 @@ void doUCI(string UCI_instruction, Chess& state){
     }
     if(command == "go"){
         if(args.count("perft")){
-            printf("Total: %d\n", doPerft.perft(state.currentGame, args["perft"]));
+            printf("Nodes searched: %d\n", doPerft.perft(state.currentGame, args["perft"]));
         }else{
             state.b_time = args["btime"];
             state.w_time = args["wtime"];
@@ -117,7 +117,7 @@ int main(){
     state.currentGame.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     while (UCI_instruction != "quit"){
         doUCI(UCI_instruction, state);
-
+        fflush(stdout);
         getline(cin,UCI_instruction);
     }
 }
