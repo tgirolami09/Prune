@@ -105,6 +105,8 @@ void doUCI(string UCI_instruction, Chess& state){
         }
     }else if(command == "isready"){
         printf("readyok\n");
+    }else if(command == "d"){
+        state.currentGame.print();
     }
     //Implement actual logic for UCI management
 }

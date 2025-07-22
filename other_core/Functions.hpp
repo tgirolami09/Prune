@@ -46,10 +46,10 @@ inline big reverse(big board){
 }
 
 inline void print_mask(big mask){
-    int col=0;
-    for(int row=8; row<=64; row+=8){
-        for(; col<row; col++){
-            printf("%d", (int)mask&1);
+    for(int row=0; row<8; row++){
+        for(int col=0; col<8; col++){
+            int index = 63-(row*8+col);
+            printf("%d", (int)((mask >> index)&1));
             mask >>= 1;
         }
         printf("\n");
