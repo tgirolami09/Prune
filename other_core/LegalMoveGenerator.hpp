@@ -295,7 +295,7 @@ private:
         int nbQueens = pseudoLegalQueenMoves(enemyPieces[QUEEN],allPieces ^ friendlyPieces[KING],0, enemyQueenDangers);
 
         big enemyKnightDangers[11];
-        int nbKnight = pseudoLegalKnightMoves(enemyPieces[KNIGHT],0, enemyKnightDangers);
+        int nbKnights = pseudoLegalKnightMoves(enemyPieces[KNIGHT],0, enemyKnightDangers);
         //Set the move mask to 0 because we are only interested in dangers (captures or protections)
         //All pieces are enemies because we are only interested in dangers (captures or protections)
         // -1 instead of enemy pieces because we want all possible attacks even if not possible this turn
@@ -303,16 +303,16 @@ private:
         int nbPawns = pseudoLegalPawnMoves(enemyPieces[PAWN],allPieces,-1,state.enemyColor(),0,-1, enemyPawnDangers);
         big enemyKingDangers = pseudoLegalKingMoves(enemyPieces[KING],0);
 
-        allEnemyBishopDangers = enemyBishopDangers[countbit(enemyPieces[BISHOP])];
-        allEnemyRookDangers = enemyRookDangers[countbit(enemyPieces[ROOK])];
-        allEnemyQueenDangers = enemyQueenDangers[countbit(enemyPieces[QUEEN])];
-        allEnemyKnightDangers = enemyKnightDangers[countbit(enemyPieces[KNIGHT])];
-        allEnemyPawnDangers = enemyPawnDangers[countbit(enemyPieces[PAWN])];
+        allEnemyBishopDangers = enemyBishopDangers[nbBishops];
+        allEnemyRookDangers = enemyRookDangers[nbRooks];
+        allEnemyQueenDangers = enemyQueenDangers[nbQueens];
+        allEnemyKnightDangers = enemyKnightDangers[nbKnights];
+        allEnemyPawnDangers = enemyPawnDangers[nbPawns];
         //There should only be one king of a color
         allEnemyKingDangers = enemyKingDangers;
 
-        allDangerSquares = (allEnemyBishopDangers | allEnemyRookDangers | allEnemyQueenDangers | allEnemyKnightDangers | allEnemyPawnDangers | allEnemyKingDangers);
         slidingDangerSquares = (allEnemyBishopDangers | allEnemyRookDangers | allEnemyQueenDangers);
+        allDangerSquares = (slidingDangerSquares | allEnemyKnightDangers | allEnemyPawnDangers | allEnemyKingDangers);
 
         //Note the use of [0] at the end of the next three lines -> because the functions return vectors
         big intermediate[2];
@@ -330,7 +330,7 @@ private:
     //Returns all allowed spaces for a piece to move
     //If the king is not in check then everywhere
     //Else only moves preventing check
-    vector<big> kingInCheck(const GameState& state, bool& inCheck){
+    void kingInCheck(const GameState& state, bool& inCheck, big& otherPieceMoveMask, big& otherPieceCaptureMask){
         //Similuate the king being all types of pieces to find the number of checkers
         big kingAsBishop[2];
         big kingAsRook[2];
@@ -369,8 +369,8 @@ private:
 
         inCheck = (nbCheckers!=0);
 
-        big otherPieceMoveMask = -1;
-        big otherPieceCaptureMask = -1;
+        otherPieceMoveMask = -1;
+        otherPieceCaptureMask = -1;
 
         //On peut bouger seulement le roi
         if (nbCheckers>=2){
@@ -410,7 +410,7 @@ private:
             otherPieceCaptureMask |= (1ul<<checkerPosition);
         }
 
-        return {otherPieceMoveMask,otherPieceCaptureMask};
+        //return {otherPieceMoveMask,otherPieceCaptureMask};
     }
 
     void legalKingMoves(const GameState& state, Move* moves, int& nbMoves){
@@ -497,9 +497,9 @@ private:
         //All allowed spots for a piece to capture another one (not allowed if there is a checker)
         big captureMask = -1; //Totaly true
 
-        vector<big> currentMasks = kingInCheck(state, inCheck);
-        moveMask = currentMasks[0];
-        captureMask = currentMasks[1];
+        kingInCheck(state, inCheck, moveMask, captureMask);
+        //moveMask = currentMasks[0];
+        //captureMask = currentMasks[1];
         int nbMoves = 0;
         legalKingMoves(state, legalMoves, nbMoves);
         legalPawnMoves(state,moveMask,captureMask, legalMoves, nbMoves);
