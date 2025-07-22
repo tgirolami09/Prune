@@ -180,6 +180,7 @@ private:
             big pawnMoveMask = 0;
             big pawnCaptureMask = 0;
             int pieceRow = row(pos[p]);
+            int pieceCol = col(pos[p]);
             //Single pawn push (check there are no pieces on target square)
             pawnMoveMask |= ((1ul<<(pos[p] + 8 * moveFactor)) & (~allPieces));
 
@@ -189,10 +190,12 @@ private:
             }
 
             //Capture left
-            pawnCaptureMask |= ((1ul<<(pos[p] + 7 * moveFactor)) & (enemyPieces));
+            if(pieceCol != 0)
+                pawnCaptureMask |= ((1ul<<(pos[p] + 7 * moveFactor)) & (enemyPieces));
 
             //Capture right
-            pawnCaptureMask |= ((1ul<<(pos[p] + 9 * moveFactor)) & (enemyPieces));
+            if(pieceCol != 7)
+                pawnCaptureMask |= ((1ul<<(pos[p] + 9 * moveFactor)) & (enemyPieces));
 
             //TODO : capture en-passant
 
