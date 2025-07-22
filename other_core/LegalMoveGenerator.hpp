@@ -197,7 +197,7 @@ private:
             pawnMoveMask |= ((1ul<<(pos[p] + 8 * moveFactor)) & (~allPieces));
 
             //Double pawn push
-            if ((pieceRow==1 && color == 0) || (pieceRow==6 && color == 1) && pawnMoveMask!=0){
+            if (((pieceRow==1 && color == 0) || (pieceRow==6 && color == 1)) && (pawnMoveMask!=0)){
                 pawnMoveMask |= ((1ul<<(pos[p] + 16 * moveFactor)) & (~allPieces));
             }
 
