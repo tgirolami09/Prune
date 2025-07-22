@@ -4,6 +4,7 @@
 #include "GameState.hpp"
 #include <fstream>
 #include <utility>
+#include <vector>
 using namespace std;
 
 
@@ -90,15 +91,14 @@ public:
 private: 
     //Transforms a bitboard of valid end positions into a list of the corresponding moves
     template<int piece>
-    vector<Move> maskToMoves(int start, big mask){
-        vector<Move> res;
+    void maskToMoves(int start, big mask, Move* moves, int& nbMoves){
         while(mask){
             int bit = __builtin_ctzll(mask);
             mask &= mask-1;
             //Need to add logic for pawn promotion
-            res.push_back({(int8_t)start,(int8_t)bit,piece});
+            moves[nbMoves] = {(int8_t)start, (int8_t)bit, piece};
+            nbMoves++;
         }
-        return res;
     }
 
     vector<big> pseudoLegalBishopMoves(big positions, big allPieces, big friendlyPieces){
@@ -344,7 +344,7 @@ private:
         return {otherPieceMoveMask,otherPieceCaptureMask};
     }
 
-    vector<Move> kingMoves(const GameState& state){
+    void kingMoves(const GameState& state, Move* moves, int& nbMoves){
         big kingMask = friendlyPieces[KING];
         int kingPos = __builtin_ctzll(kingMask);
 
@@ -352,42 +352,36 @@ private:
 
         kingEndMask &= (~dangerSquares);
 
-        return maskToMoves<KING>(kingPos,kingEndMask);
+        maskToMoves<KING>(kingPos,kingEndMask, moves, nbMoves);
     }
 
-    vector<Move> pawnMoves(const GameState& state, big moveMask, big captureMask){
+    void pawnMoves(const GameState& state, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves){
         vector<big> pawnMasks = pseudoLegalPawnMoves(friendlyPieces[PAWN],allPieces,allEnemyPieces,state.friendlyColor(),moveMask,captureMask);
-        vector<Move> pawnMoves;
         big pawnMask = friendlyPieces[PAWN];
         ubyte pos[8]; //max number of friendly pawn
         int nbPos=places(pawnMask, pos);
         for (int p = 0;p<nbPos;++p){
             big pawnMoveMask = pawnMasks[p];
 
-            vector<Move> intermediateMoves = maskToMoves<PAWN>(pos[p], pawnMoveMask);
-            pawnMoves.insert(pawnMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
+            maskToMoves<PAWN>(pos[p], pawnMoveMask, pawnMoves, nbMoves);
+            //pawnMoves.insert(pawnMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
         }
-        return pawnMoves;
     }
 
-    vector<Move> knightMoves(const GameState& state, big moveMask, big captureMask){
-
+    void knightMoves(const GameState& state, big moveMask, big captureMask, Move* knightMoves, int& nbMoves){
         vector<big> knightMasks = pseudoLegalKnightMoves(friendlyPieces[KNIGHT],allFriendlyPieces);
-        vector<Move> knightMoves;
         big knightMask = friendlyPieces[KNIGHT];
         ubyte pos[10]; //max number of friendly knight
         int nbPos=places(knightMask, pos);
         for (int p = 0;p<nbPos;++p){
             big knightEndMask = knightMasks[p] & (moveMask | captureMask);
 
-            vector<Move> intermediateMoves = maskToMoves<KNIGHT>(pos[p], knightEndMask);
-            knightMoves.insert(knightMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
+            maskToMoves<KNIGHT>(pos[p], knightEndMask, knightMoves, nbMoves);
+            //knightMoves.insert(knightMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
         }
-        return knightMoves;
     }
 
-    vector<Move> slidingMoves(const GameState& state, big moveMask, big captureMask){
-        vector<Move> slidingMoves;
+    void slidingMoves(const GameState& state, big moveMask, big captureMask, Move* slidingMoves, int& nbMoves){
 
         int types[3] = {BISHOP,ROOK,QUEEN};
 
@@ -409,25 +403,23 @@ private:
             for (int p = 0;p<nbPos;++p){
                 big typeEndMask = typeMasks[p] & (moveMask | captureMask);
 
-                vector<Move> intermediateMoves;
+                //vector<Move> intermediateMoves;
                 if (pieceType == BISHOP){
-                    intermediateMoves = maskToMoves<BISHOP>(pos[p], typeEndMask);
+                    maskToMoves<BISHOP>(pos[p], typeEndMask, slidingMoves, nbMoves);
                 }
                 else if (pieceType == ROOK){
-                    intermediateMoves = maskToMoves<ROOK>(pos[p], typeEndMask);
+                    maskToMoves<ROOK>(pos[p], typeEndMask, slidingMoves, nbMoves);
                 }
                 else if (pieceType == QUEEN){
-                    intermediateMoves = maskToMoves<QUEEN>(pos[p], typeEndMask);
+                    maskToMoves<QUEEN>(pos[p], typeEndMask, slidingMoves, nbMoves);
                 }
-                slidingMoves.insert(slidingMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
+                //slidingMoves.insert(slidingMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
             }
         }
-        
-        return slidingMoves;
     }
 
     //Returns all legal moves for a position (still missing pins; en-passant; castling; promotion)
-    public : vector<Move> generateLegalMoves(const GameState& state, bool& inCheck){
+    public : int generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves){
         recalculateAllMasks(state);
         //All allowed spots for a piece to move (not allowed if king is in check)
         big moveMask = -1; //Totaly true
@@ -437,20 +429,17 @@ private:
         vector<big> currentMasks = kingInCheck(state, inCheck);
         moveMask = currentMasks[0];
         captureMask = currentMasks[1];
+        int nbMoves = 0;
+        kingMoves(state, legalMoves, nbMoves);
+        pawnMoves(state,moveMask,captureMask, legalMoves, nbMoves);
+        knightMoves(state,moveMask,captureMask, legalMoves, nbMoves);
+        slidingMoves(state,moveMask,captureMask, legalMoves, nbMoves);
 
-        vector<Move> legalMoves;
-
-        vector<Move> legalKingMoves = kingMoves(state);
-        vector<Move> legalPawnMoves = pawnMoves(state,moveMask,captureMask);
-        vector<Move> legalKnightMoves = knightMoves(state,moveMask,captureMask);
-        vector<Move> legalSlidingMoves = slidingMoves(state,moveMask,captureMask);
-
-        legalMoves.insert(legalMoves.end(),legalKingMoves.begin(),legalKingMoves.end());
+        /*legalMoves.insert(legalMoves.end(),legalKingMoves.begin(),legalKingMoves.end());
         legalMoves.insert(legalMoves.end(),legalPawnMoves.begin(),legalPawnMoves.end());
         legalMoves.insert(legalMoves.end(),legalKnightMoves.begin(),legalKnightMoves.end());
-        legalMoves.insert(legalMoves.end(),legalSlidingMoves.begin(),legalSlidingMoves.end());
-
-        return legalMoves;
+        legalMoves.insert(legalMoves.end(),legalSlidingMoves.begin(),legalSlidingMoves.end());*/
+        return nbMoves;
     }
 };
 

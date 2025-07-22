@@ -10,9 +10,11 @@
 #include <atomic>
 #include <thread>
 #include <algorithm>
+
 bool compScoreMove(const pair<int, Move>& a, const pair<int, Move>& b){
     return a.first > b.first;
 }
+const int maxMoves=218;
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
@@ -44,8 +46,9 @@ private:
         }
         int max_eval=eval.MINIMUM;
         bool isCheck;
-        vector<Move> moves=generator.generateLegalMoves(state, isCheck);
-        if(moves.size() == 0){
+        Move moves[maxMoves];
+        int nbMoves=generator.generateLegalMoves(state, isCheck, moves);
+        if(nbMoves == 0){
             if(isCheck)
                 return eval.MINIMUM;
             return eval.MIDDLE;
@@ -66,8 +69,8 @@ private:
             max_eval = score;
             bestMove = bMove;
         }
-        vector<pair<int, Move>> sortedMoves(moves.size());
-        for(int i=0; i<moves.size(); i++){
+        vector<pair<int, Move>> sortedMoves(nbMoves);
+        for(int i=0; i<nbMoves; i++){
             sortedMoves[i] = {eval.score_move(moves[i]), moves[i]};
         }
         sort(sortedMoves.begin(), sortedMoves.end(), compScoreMove);
@@ -104,17 +107,18 @@ private:
             int alpha=eval.MINIMUM;
             int beta=eval.MAXIMUM;
             bool inCheck;
-            vector<Move> moves=generator.generateLegalMoves(state, inCheck);
-            if(moves.size() == 0)
+            Move moves[maxMoves];
+            int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
+            if(nbMoves == 0)
                 return {}; // no possible moves
-            for(Move move:moves){
-                state.playMove<false>(move);
+            for(int i=0; i<nbMoves; i++){
+                state.playMove<false>(moves[i]);
                 int score = -negamax(depth, state, -beta, -alpha);
                 state.undoLastMove();
                 if(!running)break;
                 if(score > alpha){
                     alpha = score;
-                    bestMove = move;
+                    bestMove = moves[i];
                 }
             }
             lastBest = bestMove;
@@ -132,25 +136,41 @@ public:
     TTperft tt;
     LegalMoveGenerator generator;
     Perft(size_t space):tt(space){}
-
-    int perft(GameState& state, ubyte depth, int firstcall=true){
-        //state.print();
+    int _perft(GameState& state, ubyte depth){
         if(depth == 0)return 1;
         int lastCall=tt.get_eval(state.zobristHash, depth);
-        if(lastCall != -1 && !firstcall)return lastCall;
+        if(lastCall != -1)return lastCall;
         bool inCheck;
-        vector<Move> moves=generator.generateLegalMoves(state, inCheck);
+        Move moves[maxMoves];
+        int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
         int count=0;
-        for(Move move:moves){
-            state.playMove<false>(move);
-            big nbNodes=perft(state, depth-1, false);
+        for(int i=0; i<nbMoves; i++){
+            state.playMove<false>(moves[i]);
+            big nbNodes=_perft(state, depth-1);
             state.undoLastMove();
-            if(firstcall){
-                printf("%s: %lld\n", move.to_str().c_str(), nbNodes);
-            }
             count += nbNodes;
         }
         tt.push({state.zobristHash, count, depth});
+        return count;
+    }
+    int perft(GameState& state, ubyte depth){
+        //state.print();
+        if(depth == 0)return 1;
+        clock_t start=clock();
+        bool inCheck;
+        Move moves[maxMoves];
+        int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
+        int count=0;
+        for(int i=0; i<nbMoves; i++){
+            state.playMove<false>(moves[i]);
+            big nbNodes=_perft(state, depth-1);
+            state.undoLastMove();
+            printf("%s: %lld\n", moves[i].to_str().c_str(), nbNodes);
+            count += nbNodes;
+        }
+        tt.push({state.zobristHash, count, depth});
+        clock_t end=clock();
+        printf("%.3f\n", double(end-start)/CLOCKS_PER_SEC);
         return count;
     }
 };
