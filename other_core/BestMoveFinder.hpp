@@ -21,13 +21,13 @@ private:
     std::atomic<bool> running;
 public:
     BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)){}
-private:
     int alloted_time;
-    void stopAfter(int seconds) {
+    void stopAfter() {
         std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
         running = false; // Set running to false after the specified time
     }
     
+private:
     static bool slowComp(const Move& a, const Move& b){
         return eval.score_move(a) < eval.score_move(b);
     }
