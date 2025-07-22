@@ -13,7 +13,7 @@ const int zobrCastle=64*2*6;
 const int zobrPassant=zobrCastle+4;
 const int zobrTurn=zobrPassant+8;
 const int nbZobrist=zobrTurn+1;
-const int sizeThreeFold=128;
+const int sizeThreeFold=8192;
 //Represents a state in the game
 class GameState{
     bool isFinished = false;
@@ -60,6 +60,11 @@ public :
 
     bool decreaseThreeFold(big hash){
         int index = hash%sizeThreeFold;
+        if(threefold[index].size() == 1){
+            int res=--threefold[index][0].second;
+            if(res == 0)threefold[index].clear();
+            return res == 2;
+        }
         for(auto i=threefold[index].begin(); i != threefold[index].end(); i++){
             if(i->first == hash){
                 i->second--;
@@ -273,7 +278,7 @@ public :
         deathRook[c][side] = -1;
     }
     template<bool back>
-    inline bool isEnPassantPossibility(Move move){
+    inline bool isEnPassantPossibility(const Move& move){
         big sidePawn=((1ULL << clipped_left(move.end_pos))|(1ULL << clipped_right(move.end_pos)));
         if(back)
             sidePawn &= friendlyPieces()[PAWN];

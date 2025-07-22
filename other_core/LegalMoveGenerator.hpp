@@ -2,8 +2,16 @@
 #define LEGALMOVEGENERATOR_HPP
 #include "Functions.hpp"
 #include "GameState.hpp"
+#include <fstream>
 using namespace std;
 
+
+class constTable{
+public:
+    int bits;
+    int decR;
+    big magic;
+};
 
 //Class to generate legal moves
 class LegalMoveGenerator{
@@ -52,9 +60,41 @@ class LegalMoveGenerator{
             }
         }  
     }
-    
-    public:LegalMoveGenerator(){
+
+    constTable constantsMagic[128];
+    big* tableMagic[129];
+    void load_table(string name){
+        ifstream file(name);
+        big magic;
+        int decR, minimum, size;
+        big mask;
+        int current = 0;
+        while(file >> magic){
+            file >> decR >> minimum >> size;
+            constantsMagic[current] = {minimum, decR, magic};
+            tableMagic[current] = (big*)calloc(size, sizeof(big));
+            for(int i=0; i<size; i++){
+                file >> mask;
+                tableMagic[current][i] = mask;
+            }
+            current++;
+        }
+    }
+
+    big moves_table(int index, big mask_pieces){
+        return tableMagic[index][(mask_pieces*constantsMagic[index].magic & (MAX_BIG >> constantsMagic[index].decR)) >> (64-constantsMagic[index].decR-constantsMagic[index].bits)];
+    }
+
+public:
+    LegalMoveGenerator(){
         PrecomputeKnightMoveData();
+        load_table("magics.out");
+        init_lines();
+    }
+    ~LegalMoveGenerator(){
+        for(int i=0; i<128; i++){
+            free(tableMagic[i]);
+        }
     }
 
 private: 
@@ -82,7 +122,8 @@ private:
         for (int p = 0;p<nbPos;++p){
             if (bishopMask & (1ul<< pos[p])){
                 //La logique de recuperation des coups
-                big bishopMoveMask;
+                big bishopMoveMask=moves_table(pos[p], allPieces&mask_empty_bishop(pos[p]));
+                bishopMoveMask &= ~friendlyPieces;
                 allMasks[p] = bishopMoveMask;
                 allMasks[nbPos] |= bishopMoveMask;
             }
@@ -99,7 +140,8 @@ private:
         for (int p = 0;p<nbPos;++p){
             if (rookMask & (1ul<< pos[p])){
                 //La logique de recuperation des coups
-                big rookMoveMask;
+                big rookMoveMask=moves_table(pos[p]+64, allPieces&mask_empty_rook(pos[p]));
+                rookMoveMask &= ~friendlyPieces;
                 allMasks[p] = rookMoveMask;
                 allMasks[nbPos] |= rookMoveMask;
             }
@@ -184,7 +226,7 @@ private:
     
     big pseudoLegalKingMoves(big positions, big friendlyPieces){
         big kingMask = positions;
-        int kingPos = ffsll(kingMask)-1;
+        int kingPos = __builtin_ctzll(kingMask);
 
         big kingEndMask = 0;
         //UP, DOWN, LEFT, RIGHT
@@ -290,7 +332,7 @@ private:
             big possibleChecker = checkDetection[i];
             nbCheckers += countbit(possibleChecker);
             if (countbit(possibleChecker) == 1){
-                checkerPosition = ffsll(possibleChecker)-1;
+                checkerPosition = __builtin_ctzll(possibleChecker);
             }
         }
 
@@ -320,7 +362,7 @@ private:
 
     vector<Move> kingMoves(const GameState& state){
         big kingMask = friendlyPieces[KING];
-        int kingPos = ffsll(kingMask)-1;
+        int kingPos = __builtin_ctzll(kingMask);
 
         big kingEndMask = pseudoLegalKingMoves(kingMask,allFriendlyPieces);
 
