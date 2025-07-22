@@ -63,7 +63,7 @@ public:
 class perftMem{
 public:
     big hash;
-    int leefs;
+    big leefs;
     ubyte depth;
 };
 class TTperft{

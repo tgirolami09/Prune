@@ -136,16 +136,16 @@ public:
     TTperft tt;
     LegalMoveGenerator generator;
     Perft(size_t space):tt(space){}
-    int visitedNodes;
-    int _perft(GameState& state, ubyte depth){
+    big visitedNodes;
+    big _perft(GameState& state, ubyte depth){
         visitedNodes++;
         if(depth == 0)return 1;
-        int lastCall=tt.get_eval(state.zobristHash, depth);
+        big lastCall=tt.get_eval(state.zobristHash, depth);
         if(lastCall != -1)return lastCall;
         bool inCheck;
         Move moves[maxMoves];
         int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
-        int count=0;
+        big count=0;
         for(int i=0; i<nbMoves; i++){
             state.playMove<false>(moves[i]);
             big nbNodes=_perft(state, depth-1);
@@ -155,7 +155,7 @@ public:
         tt.push({state.zobristHash, count, depth});
         return count;
     }
-    int perft(GameState& state, ubyte depth){
+    big perft(GameState& state, ubyte depth){
         visitedNodes = 0;
         //state.print();
         if(depth == 0)return 1;
@@ -163,7 +163,7 @@ public:
         bool inCheck;
         Move moves[maxMoves];
         int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
-        int count=0;
+        big count=0;
         for(int i=0; i<nbMoves; i++){
             state.playMove<false>(moves[i]);
             big nbNodes=_perft(state, depth-1);
@@ -175,7 +175,7 @@ public:
         tt.push({state.zobristHash, count, depth});
         clock_t end=clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
-        printf("%.3f : %.3f nps %d visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
+        printf("%.3f : %.3f nps %lld visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
         fflush(stdout);
         return count;
     }

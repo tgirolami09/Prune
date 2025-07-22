@@ -71,7 +71,7 @@ void doUCI(string UCI_instruction, Chess& state){
     }
     if(command == "go"){
         if(args.count("perft")){
-            printf("Nodes searched: %d\n", doPerft.perft(state.currentGame, args["perft"]));
+            printf("Nodes searched: %lld\n", doPerft.perft(state.currentGame, args["perft"]));
         }else{
             state.b_time = args["btime"];
             state.w_time = args["wtime"];
