@@ -176,6 +176,8 @@ private:
         // allMasks[nbPos] = 0;
         //Should be if color is 1 (true) then moveFactor is -1
         int moveFactor = color ? -1 : 1;
+        int leftLimit = color ?  7 : 0;
+        int rightLimit = leftLimit^7;
         for (int p = 0;p<nbPos;++p){
             big pawnMoveMask = 0;
             big pawnCaptureMask = 0;
@@ -190,11 +192,11 @@ private:
             }
 
             //Capture left
-            if(pieceCol != 0)
+            if(pieceCol != leftLimit)
                 pawnCaptureMask |= ((1ul<<(pos[p] + 7 * moveFactor)) & (enemyPieces));
 
             //Capture right
-            if(pieceCol != 7)
+            if(pieceCol != rightLimit)
                 pawnCaptureMask |= ((1ul<<(pos[p] + 9 * moveFactor)) & (enemyPieces));
 
             //TODO : capture en-passant
