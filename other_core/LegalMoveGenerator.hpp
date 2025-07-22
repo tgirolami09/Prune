@@ -101,14 +101,14 @@ private:
         }
     }
 
-    vector<big> pseudoLegalBishopMoves(big positions, big allPieces, big friendlyPieces){
+    int pseudoLegalBishopMoves(big positions, big allPieces, big friendlyPieces, big* allMasks){
         big bishopMask = positions;
         ubyte pos[10]; //max number of bishop
         int nbPos=places(bishopMask, pos);
         //Need to rewrite each time
-        vector<big> allMasks(nbPos+1,0);
+        //vector<big> allMasks(nbPos+1,0);
         //1 more with all possible moves from piece type
-        // allMasks[nbPos] = 0;
+        allMasks[nbPos] = 0;
         for (int p = 0;p<nbPos;++p){
             //La logique de recuperation des coups
             big bishopMoveMask=moves_table(pos[p], allPieces&mask_empty_bishop(pos[p]));
@@ -116,15 +116,16 @@ private:
             allMasks[p] = bishopMoveMask;
             allMasks[nbPos] |= bishopMoveMask;
         }
-        return allMasks;
+        //return allMasks;
+        return nbPos;
     }
 
-    vector<big> pseudoLegalRookMoves(big positions, big allPieces, big friendlyPieces){
+    int pseudoLegalRookMoves(big positions, big allPieces, big friendlyPieces, big* allMasks){
         big rookMask = positions;
         ubyte pos[10]; //max number of rooks
         int nbPos=places(rookMask, pos);
-        vector<big> allMasks(nbPos+1,0);
-        // allMasks[nbPos] = 0;
+        //vector<big> allMasks(nbPos+1,0);
+        allMasks[nbPos] = 0;
         for (int p = 0;p<nbPos;++p){
             //La logique de recuperation des coups
             big rookMoveMask=moves_table(pos[p]+64, allPieces&mask_empty_rook(pos[p]));
@@ -132,48 +133,51 @@ private:
             allMasks[p] = rookMoveMask;
             allMasks[nbPos] |= rookMoveMask;
         }
-        return allMasks;
+        //return allMasks;
+        return nbPos;
     }
 
-    vector<big> pseudoLegalQueenMoves(big positions, big allPieces, big friendlyPieces){
+    int pseudoLegalQueenMoves(big positions, big allPieces, big friendlyPieces, big* allMasks){
         big queenMask = positions;
         ubyte pos[10]; //max number of queens
         int nbPos=places(queenMask, pos);
-        vector<big> allMasks(nbPos+1,0);
-
-        vector<big> bishopMoves = pseudoLegalBishopMoves(positions,allPieces,friendlyPieces);
-        vector<big> rookMoves = pseudoLegalRookMoves(positions,allPieces,friendlyPieces);
+        //vector<big> allMasks(nbPos+1,0);
+        big bishopMoves[11];
+        big rookMoves[11];
+        int nbBishops = pseudoLegalBishopMoves(positions,allPieces,friendlyPieces, bishopMoves);
+        int nbRooks = pseudoLegalRookMoves(positions,allPieces,friendlyPieces, rookMoves);
 
         // +1 to get the extra bitboard (contains all possible moves of a piece type)
         for (int i = 0;i<nbPos+1;++i){
             allMasks[i] = bishopMoves[i] | rookMoves[i];
         }
 
-        return allMasks;
+        //return allMasks;
+        return nbPos;
     }
 
-    vector<big> pseudoLegalKnightMoves(big positions, big friendlyPieces){
+    int pseudoLegalKnightMoves(big positions, big friendlyPieces, big* allMasks){
         big knightMask = positions;
         ubyte pos[10]; //max number of knight
         int nbPos=places(knightMask, pos);
-        vector<big> allMasks(nbPos+1,0);
-        // allMasks[nbPos] = 0;
+        //vector<big> allMasks(nbPos+1,0);
+        allMasks[nbPos] = 0;
         for (int p = 0;p<nbPos;++p){
             big knightEndMask = KnightMoves[pos[p]] & (~friendlyPieces);
             allMasks[p] = knightEndMask;
             allMasks[nbPos] |= knightEndMask;
         }
-        return allMasks;
+        return nbPos;
     }
 
-    vector<big> pseudoLegalPawnMoves(big positions, big allPieces, big enemyPieces, bool color, big moveMask = -1, big captureMask = -1){
+    int pseudoLegalPawnMoves(big positions, big allPieces, big enemyPieces, bool color, big moveMask, big captureMask, big* allMasks){
         //If color == 0 -> white (add to move)
         //If color == 1 -> black (subtract to move)
         big pawnMask = positions;
         ubyte pos[8]; //max number of pawns
         int nbPos=places(pawnMask, pos);
-        vector<big> allMasks(nbPos+1,0);
-        // allMasks[nbPos] = 0;
+        //vector<big> allMasks(nbPos+1,0);
+        allMasks[nbPos] = 0;
         //Should be if color is 1 (true) then moveFactor is -1
         int moveFactor = color ? -1 : 1;
         int leftLimit = color ?  7 : 0;
@@ -204,8 +208,8 @@ private:
             allMasks[p] = (pawnMoveMask & moveMask) | (pawnCaptureMask & captureMask);
             allMasks[nbPos] |= allMasks[p];
         }
-        return allMasks;
-        
+        //return allMasks;
+        return nbPos;
     }  
     
     big pseudoLegalKingMoves(big positions, big friendlyPieces){
@@ -214,24 +218,26 @@ private:
 
         big kingEndMask = 0;
         //UP, DOWN, LEFT, RIGHT
-        vector<int> transitions;
-        if (row(kingPos)!=7){
-            transitions.push_back(8);
+        int transitions[4] = {8, -8, -1, 1};
+        if (row(kingPos)==7){
+            transitions[0] = 0;
         }
-        if (row(kingPos)!=0){
-            transitions.push_back(-8);
+        if (row(kingPos)==0){
+            transitions[1] = 0;
         }
-        if (col(kingPos)!=0){
-            transitions.push_back(-1);
+        if (col(kingPos)==0){
+            transitions[2] = 0;
         }
-        if (col(kingPos)!=7){
-            transitions.push_back(+1);
+        if (col(kingPos)==7){
+            transitions[3] = 0;
         }
-        for (int i = 0; i < transitions.size();++i){
+        for (int i = 0; i < 4;++i){
+            if(transitions[i] == 0)continue;
             int trans1 = transitions[i];
             int cardEnd = kingPos + trans1;
             kingEndMask |= (1ul<< cardEnd);
-            for (int j = i+1; j < transitions.size();++j){
+            for (int j = i+1; j < 4;++j){
+                if(transitions[j] == 0)continue;
                 int trans2 = transitions[j];
                 int diagEnd = kingPos + trans1 + trans2;
                 kingEndMask |= (1ul<< diagEnd);
@@ -281,15 +287,20 @@ private:
 
         //There are no friendly pieces here because we are looking for protected pieces
         //We also remove the friendly king for checking sliders
-        vector<big> enemyBishopDangers = pseudoLegalBishopMoves(enemyPieces[BISHOP],allPieces ^ friendlyPieces[KING],0);
-        vector<big> enemyRookDangers = pseudoLegalRookMoves(enemyPieces[ROOK],allPieces ^ friendlyPieces[KING],0);
-        vector<big> enemyQueenDangers = pseudoLegalQueenMoves(enemyPieces[QUEEN],allPieces ^ friendlyPieces[KING],0);
+        big enemyBishopDangers[11];
+        big enemyRookDangers[11];
+        big enemyQueenDangers[11];
+        int nbBishops = pseudoLegalBishopMoves(enemyPieces[BISHOP],allPieces ^ friendlyPieces[KING],0, enemyBishopDangers);
+        int nbRooks = pseudoLegalRookMoves(enemyPieces[ROOK],allPieces ^ friendlyPieces[KING],0, enemyRookDangers);
+        int nbQueens = pseudoLegalQueenMoves(enemyPieces[QUEEN],allPieces ^ friendlyPieces[KING],0, enemyQueenDangers);
 
-        vector<big> enemyKnightDangers = pseudoLegalKnightMoves(enemyPieces[KNIGHT],0);
+        big enemyKnightDangers[11];
+        int nbKnight = pseudoLegalKnightMoves(enemyPieces[KNIGHT],0, enemyKnightDangers);
         //Set the move mask to 0 because we are only interested in dangers (captures or protections)
         //All pieces are enemies because we are only interested in dangers (captures or protections)
         // -1 instead of enemy pieces because we want all possible attacks even if not possible this turn
-        vector<big> enemyPawnDangers = pseudoLegalPawnMoves(enemyPieces[PAWN],allPieces,-1,state.enemyColor(),0,-1);
+        big enemyPawnDangers[11];
+        int nbPawns = pseudoLegalPawnMoves(enemyPieces[PAWN],allPieces,-1,state.enemyColor(),0,-1, enemyPawnDangers);
         big enemyKingDangers = pseudoLegalKingMoves(enemyPieces[KING],0);
 
         allEnemyBishopDangers = enemyBishopDangers[countbit(enemyPieces[BISHOP])];
@@ -304,9 +315,13 @@ private:
         slidingDangerSquares = (allEnemyBishopDangers | allEnemyRookDangers | allEnemyQueenDangers);
 
         //Note the use of [0] at the end of the next three lines -> because the functions return vectors
-        kingAsBishopAttacks = pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, 0)[0];
-        kingAsRookAttacks = pseudoLegalRookMoves(friendlyPieces[KING], allPieces, 0)[0];
-        kingAsQueenAttacks = pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, 0)[0];
+        big intermediate[2];
+        pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, 0, intermediate);
+        kingAsBishopAttacks = intermediate[0];
+        pseudoLegalRookMoves(friendlyPieces[KING], allPieces, 0, intermediate);
+        kingAsRookAttacks = intermediate[0];
+        pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, 0, intermediate);
+        kingAsQueenAttacks = intermediate[0];
         kingAsSlidingPieceAttacks = (kingAsBishopAttacks | kingAsRookAttacks | kingAsQueenAttacks);
 
         pinnedPiecesMasks = ((slidingDangerSquares & kingAsSlidingPieceAttacks) & allPieces);
@@ -317,11 +332,16 @@ private:
     //Else only moves preventing check
     vector<big> kingInCheck(const GameState& state, bool& inCheck){
         //Similuate the king being all types of pieces to find the number of checkers
-        vector<big> kingAsBishop = pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, allFriendlyPieces);
-        vector<big> kingAsRook = pseudoLegalRookMoves(friendlyPieces[KING], allPieces, allFriendlyPieces);
-        vector<big> kingAsQueen = pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, allFriendlyPieces);
-        vector<big> kingAsKnight = pseudoLegalKnightMoves(friendlyPieces[KING], allFriendlyPieces);
-        vector<big> kingAsPawn = pseudoLegalPawnMoves(friendlyPieces[KING], allPieces , allEnemyPieces, state.friendlyColor());
+        big kingAsBishop[2];
+        big kingAsRook[2];
+        big kingAsQueen[2];
+        big kingAsKnight[2];
+        big kingAsPawn[2];
+        pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, kingAsBishop);
+        pseudoLegalRookMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, kingAsRook);
+        pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, kingAsQueen);
+        pseudoLegalKnightMoves(friendlyPieces[KING], allFriendlyPieces, kingAsKnight);
+        pseudoLegalPawnMoves(friendlyPieces[KING], allPieces , allEnemyPieces, state.friendlyColor(), -1, -1, kingAsPawn);
 
         big checkDetection[5] = {kingAsPawn[1] & enemyPieces[PAWN],
                                  kingAsKnight[1] & enemyPieces[KNIGHT],
@@ -336,6 +356,7 @@ private:
         int checkerId = -1;
         big kingAsChecker = 0;
         big checkerAttacks = 0;
+        big intermediate[2];
 
         for (int i = 0; i < 5; ++i){
             big possibleChecker = checkDetection[i];
@@ -364,16 +385,22 @@ private:
             otherPieceMoveMask = 0;
             if (checkerId != 0 && checkerId != 1){
                 if (checkerId == 2){
-                    kingAsChecker = pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, allFriendlyPieces)[0];
-                    checkerAttacks = pseudoLegalBishopMoves(1ul<<checkerPosition,allPieces, allEnemyPieces)[0];
+                    pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, intermediate);
+                    kingAsChecker = intermediate[0];
+                    pseudoLegalBishopMoves(1ul<<checkerPosition,allPieces, allEnemyPieces, intermediate);
+                    checkerAttacks = intermediate[0];
                 }
                 else if (checkerId == 3){
-                    kingAsChecker = pseudoLegalRookMoves(friendlyPieces[KING], allPieces, allFriendlyPieces)[0];
-                    checkerAttacks = pseudoLegalRookMoves(1ul<<checkerPosition,allPieces, allEnemyPieces)[0];
+                    pseudoLegalRookMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, intermediate);
+                    kingAsChecker = intermediate[0];
+                    pseudoLegalRookMoves(1ul<<checkerPosition,allPieces, allEnemyPieces, intermediate);
+                    checkerAttacks = intermediate[0];
                 }
                 else if (checkerId == 4){
-                    kingAsChecker = pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, allFriendlyPieces)[0];
-                    checkerAttacks = pseudoLegalQueenMoves(1ul<<checkerPosition,allPieces, allEnemyPieces)[0];
+                    pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, intermediate);
+                    kingAsChecker = intermediate[0];
+                    pseudoLegalQueenMoves(1ul<<checkerPosition,allPieces, allEnemyPieces, intermediate);
+                    checkerAttacks = intermediate[0];
                 }
                 otherPieceMoveMask = (kingAsChecker & checkerAttacks);
                 // printf("Problem with check\n");
@@ -399,7 +426,8 @@ private:
 
     void legalPawnMoves(const GameState& state, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves){
         big pawnMask = friendlyPieces[PAWN] & (~pinnedPiecesMasks);
-        vector<big> pawnMasks = pseudoLegalPawnMoves(pawnMask,allPieces,allEnemyPieces,state.friendlyColor(),moveMask,captureMask);
+        big pawnMasks[9];
+        int nbPawns = pseudoLegalPawnMoves(pawnMask,allPieces,allEnemyPieces,state.friendlyColor(),moveMask,captureMask, pawnMasks);
         ubyte pos[8]; //max number of friendly pawn
         int nbPos=places(pawnMask, pos);
         for (int p = 0;p<nbPos;++p){
@@ -412,7 +440,8 @@ private:
 
     void legalKnightMoves(const GameState& state, big moveMask, big captureMask, Move* knightMoves, int& nbMoves){
         big knightMask = friendlyPieces[KNIGHT] & (~pinnedPiecesMasks);
-        vector<big> knightMasks = pseudoLegalKnightMoves(knightMask,allFriendlyPieces);
+        big knightMasks[11];
+        int nbKnight = pseudoLegalKnightMoves(knightMask,allFriendlyPieces, knightMasks);
         ubyte pos[10]; //max number of friendly knight
         int nbPos=places(knightMask, pos);
         for (int p = 0;p<nbPos;++p){
@@ -426,19 +455,19 @@ private:
     void legalSlidingMoves(const GameState& state, big moveMask, big captureMask, Move* slidingMoves, int& nbMoves){
 
         int types[3] = {BISHOP,ROOK,QUEEN};
-
+        big typeMasks[11];
         for (int pieceType : types){
             //Change function
-            vector<big> typeMasks;
+            //vector<big> typeMasks;
             big typeMask = friendlyPieces[pieceType] & (~pinnedPiecesMasks);
             if (pieceType==BISHOP){
-                typeMasks = pseudoLegalBishopMoves(typeMask,allPieces,allFriendlyPieces);
+                pseudoLegalBishopMoves(typeMask,allPieces,allFriendlyPieces, typeMasks);
             }
             else if (pieceType == ROOK){
-                typeMasks = pseudoLegalRookMoves(typeMask,allPieces,allFriendlyPieces);
+                pseudoLegalRookMoves(typeMask,allPieces,allFriendlyPieces, typeMasks);
             }
             else if (pieceType ==QUEEN){
-                typeMasks = pseudoLegalQueenMoves(typeMask,allPieces,allFriendlyPieces);
+                pseudoLegalQueenMoves(typeMask,allPieces,allFriendlyPieces, typeMasks);
             }
             ubyte pos[10]; //max number of the friendly piece
             int nbPos=places(typeMask, pos);
