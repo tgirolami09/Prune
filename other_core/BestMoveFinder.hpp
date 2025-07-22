@@ -134,6 +134,7 @@ public:
     Perft(size_t space):tt(space){}
 
     int perft(GameState& state, ubyte depth, int firstcall=true){
+        //state.print();
         if(depth == 0)return 1;
         int lastCall=tt.get_eval(state.zobristHash, depth);
         if(lastCall != -1)return lastCall;
@@ -145,7 +146,7 @@ public:
             big nbNodes=perft(state, depth-1, false);
             state.undoLastMove();
             if(firstcall){
-                printf("%s: %lld", move.to_str().c_str(), nbNodes);
+                printf("%s: %lld\n", move.to_str().c_str(), nbNodes);
             }
             count += nbNodes;
         }
