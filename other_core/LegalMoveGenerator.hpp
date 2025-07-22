@@ -245,7 +245,7 @@ private:
                 kingEndMask |= (1ul<< diagEnd);
             }
         }
-        return kingEndMask | (~friendlyPieces);
+        return kingEndMask & (~friendlyPieces);
 
     }
 
@@ -358,7 +358,7 @@ private:
 
         big kingEndMask = pseudoLegalKingMoves(kingMask,allFriendlyPieces);
 
-        kingEndMask |= (~dangerSquares);
+        kingEndMask &= (~dangerSquares);
 
         return maskToMoves<KING>(kingPos,kingEndMask);
     }
@@ -372,7 +372,7 @@ private:
         for (int p = 0;p<nbPos;++p){
             big pawnMoveMask = pawnMasks[p];
 
-            vector<Move> intermediateMoves = maskToMoves<PAWN>(pos[p], pawnMask);
+            vector<Move> intermediateMoves = maskToMoves<PAWN>(pos[p], pawnMoveMask);
             pawnMoves.insert(pawnMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
         }
         return pawnMoves;
