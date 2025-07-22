@@ -47,8 +47,6 @@ class LegalMoveGenerator{
                     knightMoveMask |= 1ULL << square;
                 }
                 KnightMoves[squareIndex] = knightMoveMask;
-                printf("%d\n", squareIndex);
-                print_mask(knightMoveMask);
             }
         }  
     }
