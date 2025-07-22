@@ -374,9 +374,9 @@ private:
     }
 
     void legalPawnMoves(const GameState& state, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves){
-        vector<big> pawnMasks = pseudoLegalPawnMoves(friendlyPieces[PAWN],allPieces,allEnemyPieces,state.friendlyColor(),moveMask,captureMask);
-        // vector<Move> pawnMoves;
         big pawnMask = friendlyPieces[PAWN] & (~pinnedPiecesMasks);
+        vector<big> pawnMasks = pseudoLegalPawnMoves(pawnMask,allPieces,allEnemyPieces,state.friendlyColor(),moveMask,captureMask);
+        // vector<Move> pawnMoves;
         ubyte pos[8]; //max number of friendly pawn
         int nbPos=places(pawnMask, pos);
         for (int p = 0;p<nbPos;++p){
@@ -388,9 +388,9 @@ private:
     }
 
     void legalKnightMoves(const GameState& state, big moveMask, big captureMask, Move* knightMoves, int& nbMoves){
-        vector<big> knightMasks = pseudoLegalKnightMoves(friendlyPieces[KNIGHT],allFriendlyPieces);
-        // vector<Move> knightMoves;
         big knightMask = friendlyPieces[KNIGHT] & (~pinnedPiecesMasks);
+        vector<big> knightMasks = pseudoLegalKnightMoves(knightMask,allFriendlyPieces);
+        // vector<Move> knightMoves;
         ubyte pos[10]; //max number of friendly knight
         int nbPos=places(knightMask, pos);
         for (int p = 0;p<nbPos;++p){
@@ -408,16 +408,16 @@ private:
         for (int pieceType : types){
             //Change function
             vector<big> typeMasks;
+            big typeMask = friendlyPieces[pieceType] & (~pinnedPiecesMasks);
             if (pieceType==BISHOP){
-                typeMasks = pseudoLegalBishopMoves(friendlyPieces[pieceType],allPieces,allFriendlyPieces);
+                typeMasks = pseudoLegalBishopMoves(typeMask,allPieces,allFriendlyPieces);
             }
             else if (pieceType == ROOK){
-                typeMasks = pseudoLegalRookMoves(friendlyPieces[pieceType],allPieces,allFriendlyPieces);
+                typeMasks = pseudoLegalRookMoves(typeMask,allPieces,allFriendlyPieces);
             }
             else if (pieceType ==QUEEN){
-                typeMasks = pseudoLegalQueenMoves(friendlyPieces[pieceType],allPieces,allFriendlyPieces);
+                typeMasks = pseudoLegalQueenMoves(typeMask,allPieces,allFriendlyPieces);
             }
-            big typeMask = friendlyPieces[pieceType] & (~pinnedPiecesMasks);
             ubyte pos[10]; //max number of the friendly piece
             int nbPos=places(typeMask, pos);
             for (int p = 0;p<nbPos;++p){
