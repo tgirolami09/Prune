@@ -54,3 +54,5 @@ with open(file, 'w') as f:
     f.write('') # clear file
 board = Board()
 search(board, depth)
+pushCommand(prog1, "quit\n")
+pushCommand(prog2, "quit\n")
