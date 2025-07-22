@@ -136,7 +136,9 @@ public:
     TTperft tt;
     LegalMoveGenerator generator;
     Perft(size_t space):tt(space){}
+    int visitedNodes;
     int _perft(GameState& state, ubyte depth){
+        visitedNodes++;
         if(depth == 0)return 1;
         int lastCall=tt.get_eval(state.zobristHash, depth);
         if(lastCall != -1)return lastCall;
@@ -154,6 +156,7 @@ public:
         return count;
     }
     int perft(GameState& state, ubyte depth){
+        visitedNodes = 0;
         //state.print();
         if(depth == 0)return 1;
         clock_t start=clock();
@@ -170,7 +173,8 @@ public:
         }
         tt.push({state.zobristHash, count, depth});
         clock_t end=clock();
-        printf("%.3f\n", double(end-start)/CLOCKS_PER_SEC);
+        double tcpu = double(end-start)/CLOCKS_PER_SEC;
+        printf("%.3f : %.3f nps %d visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
         return count;
     }
 };
