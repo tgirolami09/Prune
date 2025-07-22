@@ -10,12 +10,15 @@
 #include <atomic>
 #include <thread>
 #include <algorithm>
+bool compScoreMove(const pair<int, Move>& a, const pair<int, Move>& b){
+    return a.first > b.first;
+}
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
 public:
     LegalMoveGenerator generator;
-    static Evaluator eval;
+    Evaluator eval;
     transpositionTable transposition;
 private:
     std::atomic<bool> running;
@@ -28,9 +31,6 @@ public:
     }
     
 private:
-    static bool slowComp(const Move& a, const Move& b){
-        return eval.score_move(a) < eval.score_move(b);
-    }
 
     int negamax(int depth, GameState& state, int alpha, int beta){
         if(!running)return 0;
@@ -66,8 +66,13 @@ private:
             max_eval = score;
             bestMove = bMove;
         }
-        sort(moves.begin(), moves.end(), slowComp);
-        for(Move move:moves){
+        vector<pair<int, Move>> sortedMoves(moves.size());
+        for(int i=0; i<moves.size(); i++){
+            sortedMoves[i] = {eval.score_move(moves[i]), moves[i]};
+        }
+        sort(sortedMoves.begin(), sortedMoves.end(), compScoreMove);
+        for(pair<int, Move> move_score:sortedMoves){
+            Move move=move_score.second;
             if(move.start_pos == bMove.start_pos && move.end_pos == bMove.end_pos)continue;
             state.playMove<false>(move);
             int score = -negamax(depth-1, state, -beta, -alpha);
