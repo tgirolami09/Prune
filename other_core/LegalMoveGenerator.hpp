@@ -3,6 +3,7 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include <fstream>
+#include <utility>
 using namespace std;
 
 
@@ -19,44 +20,35 @@ class LegalMoveGenerator{
 
     big KnightMoves[64] = {0}; //Knight moves for each position of the board
 
-    bool knightWasPrecomputed = false;
-
     void PrecomputeKnightMoveData(){
-        knightWasPrecomputed = true;
-        for (int file = 0; file<8; ++file){
-            for (int rank = 0; rank<8; ++rank){
-                int squareIndex = rank * 8 + file;
-
+        const pair<int, int> moves[8] = {
+            {-2,  1},
+            {-2, -1},
+            {-1,  2},
+            {-1, -2},
+            { 1,  2},
+            { 1, -2},
+            { 2,  1},
+            { 2, -1}};
+        for (int row = 0; row<8; ++row){
+            for (int col = 0; col<8; ++col){
+                int squareIndex = row * 8 + col;
                 //Precompute knight moves
-                big knightMoveMask;
-
-                for (int distVertical = 1; distVertical<=2; ++distVertical){
-                    for (int directionVertical = 0; directionVertical<=1; ++directionVertical){
-                        //0 is up and 1 is down
-
-                        int VerticalSign = (directionVertical==0 ? 1 : -1);
-                        int targetRank = row(squareIndex) + distVertical * VerticalSign; //This is 1-indexed
-                        if (targetRank < 1 || 8 < targetRank){
-                            continue; //Move is not possible
-                        }
-
-                        for (int directionHorizontal = 0; directionHorizontal<=1; ++directionHorizontal){
-                            //0 is left and 1 is right
-                            int distHorizontal = (distVertical==1 ? 2 : 1);
-                            int HorizontalSign = (directionHorizontal==0 ? -1 : 1); //this is right 
-                            int targetFile = col(squareIndex) + distHorizontal * HorizontalSign; //This is 1-indexed
-                            if (targetFile < 1 || 8 < targetFile){
-                                continue; //Move is not possible
-                            }
-
-                            int targetSquare = squareIndex;
-                            targetSquare += ( (distVertical * 8 * VerticalSign) + (distHorizontal * HorizontalSign) );
-
-                            knightMoveMask = addBitToMask(knightMoveMask,targetSquare);
-                        }
-                    }
+                big knightMoveMask = 0;
+                for(pair<int, int> move:moves){
+                    //0 is up and 1 is down
+                    int square = squareIndex;
+                    if(row+move.first < 8 && row+move.first >= 0)
+                        square += 8*move.first;
+                    else continue;
+                    if(col+move.second < 8 && col+move.second >= 0)
+                        square += move.second;
+                    else continue;
+                    knightMoveMask |= 1ULL << square;
                 }
                 KnightMoves[squareIndex] = knightMoveMask;
+                printf("%d\n", squareIndex);
+                print_mask(knightMoveMask);
             }
         }  
     }
@@ -163,9 +155,6 @@ private:
     }
 
     vector<big> pseudoLegalKnightMoves(big positions, big friendlyPieces){
-        if (!knightWasPrecomputed){
-            PrecomputeKnightMoveData();
-        }
         big knightMask = positions;
         ubyte pos[10]; //max number of knight
         int nbPos=places(knightMask, pos);
