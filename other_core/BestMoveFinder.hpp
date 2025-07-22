@@ -137,7 +137,7 @@ public:
         //state.print();
         if(depth == 0)return 1;
         int lastCall=tt.get_eval(state.zobristHash, depth);
-        if(lastCall != -1)return lastCall;
+        if(lastCall != -1 && !firstcall)return lastCall;
         bool inCheck;
         vector<Move> moves=generator.generateLegalMoves(state, inCheck);
         int count=0;
