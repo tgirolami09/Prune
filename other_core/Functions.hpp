@@ -71,9 +71,9 @@ inline int from_str(string a){
 }
 
 inline string to_uci(int pos){
-    char uci[2];
-    uci[0] = (7-col(pos))+'a';
-    uci[1] = row(pos)+'1';
+    string uci;
+    uci += (7-col(pos))+'a';
+    uci += row(pos)+'1';
     return uci;
 }
 
