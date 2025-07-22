@@ -113,45 +113,41 @@ private:
 
     vector<big> pseudoLegalBishopMoves(big positions, big allPieces, big friendlyPieces){
         big bishopMask = positions;
-        ubyte* pos;
+        ubyte pos[10]; //max number of bishop
         int nbPos=places(bishopMask, pos);
         //Need to rewrite each time
         vector<big> allMasks(nbPos+1,0);
         //1 more with all possible moves from piece type
         // allMasks[nbPos] = 0;
         for (int p = 0;p<nbPos;++p){
-            if (bishopMask & (1ul<< pos[p])){
-                //La logique de recuperation des coups
-                big bishopMoveMask=moves_table(pos[p], allPieces&mask_empty_bishop(pos[p]));
-                bishopMoveMask &= ~friendlyPieces;
-                allMasks[p] = bishopMoveMask;
-                allMasks[nbPos] |= bishopMoveMask;
-            }
+            //La logique de recuperation des coups
+            big bishopMoveMask=moves_table(pos[p], allPieces&mask_empty_bishop(pos[p]));
+            bishopMoveMask &= ~friendlyPieces;
+            allMasks[p] = bishopMoveMask;
+            allMasks[nbPos] |= bishopMoveMask;
         }
         return allMasks;
     }
 
     vector<big> pseudoLegalRookMoves(big positions, big allPieces, big friendlyPieces){
         big rookMask = positions;
-        ubyte* pos;
+        ubyte pos[10]; //max number of rooks
         int nbPos=places(rookMask, pos);
         vector<big> allMasks(nbPos+1,0);
         // allMasks[nbPos] = 0;
         for (int p = 0;p<nbPos;++p){
-            if (rookMask & (1ul<< pos[p])){
-                //La logique de recuperation des coups
-                big rookMoveMask=moves_table(pos[p]+64, allPieces&mask_empty_rook(pos[p]));
-                rookMoveMask &= ~friendlyPieces;
-                allMasks[p] = rookMoveMask;
-                allMasks[nbPos] |= rookMoveMask;
-            }
+            //La logique de recuperation des coups
+            big rookMoveMask=moves_table(pos[p]+64, allPieces&mask_empty_rook(pos[p]));
+            rookMoveMask &= ~friendlyPieces;
+            allMasks[p] = rookMoveMask;
+            allMasks[nbPos] |= rookMoveMask;
         }
         return allMasks;
     }
 
     vector<big> pseudoLegalQueenMoves(big positions, big allPieces, big friendlyPieces){
         big queenMask = positions;
-        ubyte* pos;
+        ubyte pos[10]; //max number of queens
         int nbPos=places(queenMask, pos);
         vector<big> allMasks(nbPos+1,0);
 
@@ -171,16 +167,14 @@ private:
             PrecomputeKnightMoveData();
         }
         big knightMask = positions;
-        ubyte* pos;
+        ubyte pos[10]; //max number of knight
         int nbPos=places(knightMask, pos);
         vector<big> allMasks(nbPos+1,0);
         // allMasks[nbPos] = 0;
         for (int p = 0;p<nbPos;++p){
-            if (knightMask & (1ul<< pos[p])){
-                big knightEndMask = KnightMoves[pos[p]] & (~friendlyPieces);
-                allMasks[p] = knightEndMask;
-                allMasks[nbPos] |= knightEndMask;
-            }
+            big knightEndMask = KnightMoves[pos[p]] & (~friendlyPieces);
+            allMasks[p] = knightEndMask;
+            allMasks[nbPos] |= knightEndMask;
         }
         return allMasks;
     }
@@ -189,36 +183,34 @@ private:
         //If color == 0 -> white (add to move)
         //If color == 1 -> black (subtract to move)
         big pawnMask = positions;
-        ubyte* pos;
+        ubyte pos[8]; //max number of pawns
         int nbPos=places(pawnMask, pos);
         vector<big> allMasks(nbPos+1,0);
         // allMasks[nbPos] = 0;
         //Should be if color is 1 (true) then moveFactor is -1
         int moveFactor = color ? -1 : 1;
         for (int p = 0;p<nbPos;++p){
-            if (pawnMask & (1ul<< pos[p])){
-                big pawnMoveMask = 0;
-                big pawnCaptureMask = 0;
-                int pieceRow = row(pos[p]);
-                //Single pawn push (check there are no pieces on target square)
-                pawnMoveMask |= ((1ul<<(pos[p] + 8 * moveFactor)) & (~allPieces));
+            big pawnMoveMask = 0;
+            big pawnCaptureMask = 0;
+            int pieceRow = row(pos[p]);
+            //Single pawn push (check there are no pieces on target square)
+            pawnMoveMask |= ((1ul<<(pos[p] + 8 * moveFactor)) & (~allPieces));
 
-                //Double pawn push
-                if ((pieceRow==1 && color == 0) || (pieceRow==6 && color == 1) && pawnMoveMask!=0){
-                    pawnMoveMask |= ((1ul<<(pos[p] + 16 * moveFactor)) & (~allPieces));
-                }
-
-                //Capture left
-                pawnCaptureMask |= ((1ul<<(pos[p] + 7 * moveFactor)) & (enemyPieces));
-
-                //Capture right
-                pawnCaptureMask |= ((1ul<<(pos[p] + 9 * moveFactor)) & (enemyPieces));
-
-                //TODO : capture en-passant
-
-                allMasks[p] = (pawnMoveMask & moveMask) | (pawnCaptureMask & captureMask);
-                allMasks[nbPos] |= allMasks[p];
+            //Double pawn push
+            if ((pieceRow==1 && color == 0) || (pieceRow==6 && color == 1) && pawnMoveMask!=0){
+                pawnMoveMask |= ((1ul<<(pos[p] + 16 * moveFactor)) & (~allPieces));
             }
+
+            //Capture left
+            pawnCaptureMask |= ((1ul<<(pos[p] + 7 * moveFactor)) & (enemyPieces));
+
+            //Capture right
+            pawnCaptureMask |= ((1ul<<(pos[p] + 9 * moveFactor)) & (enemyPieces));
+
+            //TODO : capture en-passant
+
+            allMasks[p] = (pawnMoveMask & moveMask) | (pawnCaptureMask & captureMask);
+            allMasks[nbPos] |= allMasks[p];
         }
         return allMasks;
         
@@ -375,16 +367,13 @@ private:
         vector<big> pawnMasks = pseudoLegalPawnMoves(friendlyPieces[PAWN],allPieces,allEnemyPieces,state.friendlyColor(),moveMask,captureMask);
         vector<Move> pawnMoves;
         big pawnMask = friendlyPieces[PAWN];
-        ubyte* pos;
+        ubyte pos[8]; //max number of friendly pawn
         int nbPos=places(pawnMask, pos);
         for (int p = 0;p<nbPos;++p){
-            if (pawnMask & (1ul<< pos[p])){
-                
-                big pawnMoveMask = pawnMasks[p];
+            big pawnMoveMask = pawnMasks[p];
 
-                vector<Move> intermediateMoves = maskToMoves<PAWN>(pos[p], pawnMask);
-                pawnMoves.insert(pawnMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
-            }
+            vector<Move> intermediateMoves = maskToMoves<PAWN>(pos[p], pawnMask);
+            pawnMoves.insert(pawnMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
         }
         return pawnMoves;
     }
@@ -394,15 +383,13 @@ private:
         vector<big> knightMasks = pseudoLegalKnightMoves(friendlyPieces[KNIGHT],allFriendlyPieces);
         vector<Move> knightMoves;
         big knightMask = friendlyPieces[KNIGHT];
-        ubyte pos[12];
+        ubyte pos[10]; //max number of friendly knight
         int nbPos=places(knightMask, pos);
         for (int p = 0;p<nbPos;++p){
-            if (knightMask & (1ul<< pos[p])){
-                big knightEndMask = knightMasks[p] & (moveMask | captureMask);
+            big knightEndMask = knightMasks[p] & (moveMask | captureMask);
 
             vector<Move> intermediateMoves = maskToMoves<KNIGHT>(pos[p], knightEndMask);
             knightMoves.insert(knightMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
-            }
         }
         return knightMoves;
     }
@@ -425,24 +412,22 @@ private:
                 typeMasks = pseudoLegalQueenMoves(friendlyPieces[pieceType],allPieces,allFriendlyPieces);
             }
             big typeMask = friendlyPieces[pieceType];
-            ubyte* pos;
+            ubyte pos[10]; //max number of the friendly piece
             int nbPos=places(typeMask, pos);
             for (int p = 0;p<nbPos;++p){
-                if (typeMask & (1ul<< pos[p])){
-                    big typeEndMask = typeMasks[p] & (moveMask | captureMask);
+                big typeEndMask = typeMasks[p] & (moveMask | captureMask);
 
-                    vector<Move> intermediateMoves;
-                    if (pieceType == BISHOP){
-                        intermediateMoves = maskToMoves<BISHOP>(pos[p], typeEndMask);
-                    }
-                    else if (pieceType == ROOK){
-                        intermediateMoves = maskToMoves<ROOK>(pos[p], typeEndMask);
-                    }
-                    else if (pieceType == QUEEN){
-                        intermediateMoves = maskToMoves<QUEEN>(pos[p], typeEndMask);
-                    }
-                    slidingMoves.insert(slidingMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
+                vector<Move> intermediateMoves;
+                if (pieceType == BISHOP){
+                    intermediateMoves = maskToMoves<BISHOP>(pos[p], typeEndMask);
                 }
+                else if (pieceType == ROOK){
+                    intermediateMoves = maskToMoves<ROOK>(pos[p], typeEndMask);
+                }
+                else if (pieceType == QUEEN){
+                    intermediateMoves = maskToMoves<QUEEN>(pos[p], typeEndMask);
+                }
+                slidingMoves.insert(slidingMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
             }
         }
         
