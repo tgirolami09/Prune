@@ -76,11 +76,66 @@ class LegalMoveGenerator{
         return tableMagic[index][(mask_pieces*constantsMagic[index].magic & (MAX_BIG >> constantsMagic[index].decR)) >> (64-constantsMagic[index].decR-constantsMagic[index].bits)];
     }
 
+
+    big directions[64][64];
+    big fullDir[64][8];
+    static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+    void precomputeDirections(){
+        for(int row=0; row<8; row++){
+            for(int col=0; col<8; col++){
+                int square = row*8+col;
+                for(int idDir=0; idDir<8; idDir++){
+                    int r=row+dirs[idDir][0];
+                    int c=col+dirs[idDir][1];
+                    big mask = 0;
+                    while(r >= 0 && r < 8 && c >= 0 && c < 8){
+                        int sq = (r*8+c);
+                        mask |= 1ULL << sq;
+                        directions[square][sq] = mask; // line of 1 between square and sq
+                        r += dirs[idDir][0];
+                        c += dirs[idDir][1];
+                    }
+                    fullDir[square][idDir] = mask;
+                    //printf("%d (%d %d) %d %d\n", square, col, row, dirs[idDir][0], dirs[idDir][1]);
+                    //print_mask(fullDir[square][idDir]);
+                }
+            }
+        }
+    }
+
+    inline bool isAttacking(big maskPiece, int dir){
+        if(maskPiece & enemyPieces[QUEEN])return true;
+        if(dir >= 4)dir -= 3;
+        if(dir%2)return (maskPiece&enemyPieces[ROOK]) != 0;
+        else return (maskPiece&enemyPieces[BISHOP]) != 0;
+    }
+    inline int firstPiece(big mask, int dir){
+        if(dir < 4)
+            return 63-__builtin_clzll(mask);
+        return __builtin_ctzll(mask);
+    }
+    big pinned(int square){
+        big maskPinned=0;
+        for(int idDir = 0; idDir<8; idDir++){
+            big mask = fullDir[square][idDir]&allPieces;
+            if(!mask)continue;
+            big maskFirst=1ULL << firstPiece(mask, idDir);
+            if(maskFirst & allEnemyPieces)continue; //may be a checker if needed
+            big newMask = mask&(~maskFirst);
+            if(!newMask)continue;
+            big maskSecond = 1ULL << firstPiece(newMask, idDir);
+            if(isAttacking(maskSecond, idDir))
+                maskPinned |= maskFirst;
+        }
+        return maskPinned;
+    }
+
 public:
     LegalMoveGenerator(){
         PrecomputeKnightMoveData();
         load_table("magics.out");
         init_lines();
+        precomputeDirections();
     }
     ~LegalMoveGenerator(){
         for(int i=0; i<128; i++){
@@ -323,8 +378,8 @@ private:
         pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, 0, intermediate);
         kingAsQueenAttacks = intermediate[0];
         kingAsSlidingPieceAttacks = (kingAsBishopAttacks | kingAsRookAttacks | kingAsQueenAttacks);
-
-        pinnedPiecesMasks = ((slidingDangerSquares & kingAsSlidingPieceAttacks) & allPieces);
+        pinnedPiecesMasks = pinned(__builtin_ctzll(friendlyPieces[KING]));
+        //pinnedPiecesMasks = ((slidingDangerSquares & kingAsSlidingPieceAttacks) & allPieces);
     }
 
     //Returns all allowed spaces for a piece to move
