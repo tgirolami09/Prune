@@ -1,5 +1,6 @@
 #ifndef LEGALMOVEGENERATOR_HPP
 #define LEGALMOVEGENERATOR_HPP
+#include "Const.hpp"
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include <fstream>
@@ -103,29 +104,63 @@ class LegalMoveGenerator{
         }
     }
 
-    inline bool isAttacking(big maskPiece, int dir){
-        if(maskPiece & enemyPieces[QUEEN])return true;
+    inline int isAttacking(big maskPiece, int dir, const big* Pieces){
+        if(maskPiece & Pieces[QUEEN])return QUEEN;
         if(dir >= 4)dir -= 3;
-        if(dir%2)return (maskPiece&enemyPieces[ROOK]) != 0;
-        else return (maskPiece&enemyPieces[BISHOP]) != 0;
+        if(dir%2)return (maskPiece&Pieces[ROOK]) != 0?ROOK:-1;
+        else return (maskPiece&Pieces[BISHOP]) != 0?BISHOP:-1;
     }
     inline int firstPiece(big mask, int dir){
         if(dir < 4)
             return 63-__builtin_clzll(mask);
         return __builtin_ctzll(mask);
     }
-    big pinned(int square){
+    big pinned(int square, bool isCheck, Move* pinnedMoves, int& nbMoves, bool color){
         big maskPinned=0;
         for(int idDir = 0; idDir<8; idDir++){
             big mask = fullDir[square][idDir]&allPieces;
             if(!mask)continue;
-            big maskFirst=1ULL << firstPiece(mask, idDir);
+            int posFirst = firstPiece(mask, idDir);
+            big maskFirst=1ULL << posFirst;
             if(maskFirst & allEnemyPieces)continue; //may be a checker if needed
             big newMask = mask&(~maskFirst);
             if(!newMask)continue;
-            big maskSecond = 1ULL << firstPiece(newMask, idDir);
-            if(isAttacking(maskSecond, idDir))
+            int posSecond = firstPiece(newMask, idDir);
+            big maskSecond = 1ULL << posSecond;
+            int8_t pieceAttack = isAttacking(maskSecond, idDir, enemyPieces);
+            if(pieceAttack != -1){
                 maskPinned |= maskFirst;
+                if(!isCheck){
+                    int piece=-1;
+                    for(int typePiece:{BISHOP, ROOK, QUEEN, PAWN}){
+                        if(maskFirst&friendlyPieces[typePiece])
+                            piece = typePiece;
+                    }
+                    int mdir = idDir >= 4?idDir-3:idDir;
+                    if(piece == QUEEN)
+                        maskToMoves<QUEEN>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves);
+                    else if(mdir%2 == 1 && piece == ROOK)
+                        maskToMoves<ROOK>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves);
+                    else if(mdir%2 == 0 && piece == BISHOP)
+                        maskToMoves<BISHOP>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves);
+                    else if(piece == PAWN){
+                        int moveFactor = color ? -1 : 1;
+                        big maskPawnMoves = 0;
+                        if(mdir%2 == 0){
+                            if(posFirst+7*moveFactor == posSecond || posFirst+9*moveFactor == posSecond){
+                                maskPawnMoves |= 1ULL << posSecond;
+                            }
+                        }else{
+                            maskPawnMoves |= ((1ul<<(posFirst + 8 * moveFactor)) & (~allPieces));
+                            //Double pawn push
+                            if (((maskPawnMoves==1 && color == 0) || (maskPawnMoves==6 && color == 1)) && (maskPawnMoves!=0)){
+                                maskPawnMoves |= ((1ul<<(posFirst + 16 * moveFactor)) & (~allPieces));
+                            }
+                        }
+                        maskToMoves<PAWN>(posFirst, maskPawnMoves, pinnedMoves, nbMoves);
+                    }
+                }
+            }
         }
         return maskPinned;
     }
@@ -381,14 +416,13 @@ private:
         pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, 0, intermediate);
         kingAsQueenAttacks = intermediate[0];
         kingAsSlidingPieceAttacks = (kingAsBishopAttacks | kingAsRookAttacks | kingAsQueenAttacks);
-        pinnedPiecesMasks = pinned(__builtin_ctzll(friendlyPieces[KING]));
         //pinnedPiecesMasks = ((slidingDangerSquares & kingAsSlidingPieceAttacks) & allPieces);
     }
 
     //Returns all allowed spaces for a piece to move
     //If the king is not in check then everywhere
     //Else only moves preventing check
-    void kingInCheck(const GameState& state, bool& inCheck, big& otherPieceMoveMask, big& otherPieceCaptureMask){
+    void kingInCheck(const GameState& state, bool& inCheck, big& otherPieceMoveMask, big& otherPieceCaptureMask, Move* moves, int& nbMoves){
         //Similuate the king being all types of pieces to find the number of checkers
         big kingAsBishop[2];
         big kingAsRook[2];
@@ -464,6 +498,7 @@ private:
             otherPieceCaptureMask |= (1ul<<checkerPosition);
         }
 
+        pinnedPiecesMasks = pinned(__builtin_ctzll(friendlyPieces[KING]), inCheck, moves, nbMoves, state.friendlyColor());
         //return {otherPieceMoveMask,otherPieceCaptureMask};
     }
 
@@ -551,10 +586,10 @@ private:
         //All allowed spots for a piece to capture another one (not allowed if there is a checker)
         big captureMask = -1; //Totaly true
 
-        kingInCheck(state, inCheck, moveMask, captureMask);
+        int nbMoves = 0;
+        kingInCheck(state, inCheck, moveMask, captureMask, legalMoves, nbMoves);
         //moveMask = currentMasks[0];
         //captureMask = currentMasks[1];
-        int nbMoves = 0;
         legalKingMoves(state, legalMoves, nbMoves);
         legalPawnMoves(state,moveMask,captureMask, legalMoves, nbMoves);
         legalKnightMoves(state,moveMask,captureMask, legalMoves, nbMoves);
