@@ -150,7 +150,7 @@ class LegalMoveGenerator{
                             if(posFirst+7*moveFactor == posSecond || posFirst+9*moveFactor == posSecond){
                                 maskPawnMoves |= 1ULL << posSecond;
                             }
-                        }else{
+                        }else if(idDir == 1 || idDir == 6){
                             maskPawnMoves |= ((1ul<<(posFirst + 8 * moveFactor)) & (~allPieces));
                             //Double pawn push
                             int rowPiece = row(posFirst);
