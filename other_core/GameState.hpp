@@ -26,8 +26,6 @@ class GameState{
 
     bool castlingRights[2][2];
 
-    //End of last double pawn push, (-1) if last move was not a double pawn push
-    int lastDoublePawnPush;
 
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
     big zobrist[nbZobrist];
@@ -38,6 +36,8 @@ class GameState{
 public : 
     big zobristHash;
     big boardRepresentation[2][6];
+    //End of last double pawn push, (-1) if last move was not a double pawn push
+    int lastDoublePawnPush;
     GameState(){
         mt19937_64 gen(42);
         uniform_int_distribution<big> dist(0, MAX_BIG);
@@ -150,7 +150,7 @@ public :
         }
         id++;
         if(fen[id] == '-')lastDoublePawnPush = -1;
-        else lastDoublePawnPush = fen[id]-'a', id++;
+        else lastDoublePawnPush = 7-(fen[id]-'a'), id++;
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         id += 2;
