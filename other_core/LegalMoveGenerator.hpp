@@ -439,26 +439,22 @@ private:
             //For now no ray only taking the checker is allowed
             otherPieceMoveMask = 0;
             if (checkerId != 0 && checkerId != 1){
-                if (checkerId == 2){
-                    pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, intermediate);
-                    kingAsChecker = intermediate[0];
-                    pseudoLegalBishopMoves(1ul<<checkerPosition,allPieces, allEnemyPieces, intermediate);
-                    checkerAttacks = intermediate[0];
-                }
-                else if (checkerId == 3){
+                //There is olny one piece checking the king so only one type of ray is checking him
+                //Only look at bishop rays from checking position
+                pseudoLegalBishopMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, intermediate);
+                kingAsChecker = intermediate[0];
+                pseudoLegalBishopMoves(1ul<<checkerPosition,allPieces, allEnemyPieces, intermediate);
+                checkerAttacks = intermediate[0];
+
+                //A bishop ray is not checking the king so it must be a rook ray
+                if ((checkerAttacks & friendlyPieces[KING]) == 0){
+                    //Only look at rook rays from checking position
                     pseudoLegalRookMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, intermediate);
                     kingAsChecker = intermediate[0];
                     pseudoLegalRookMoves(1ul<<checkerPosition,allPieces, allEnemyPieces, intermediate);
                     checkerAttacks = intermediate[0];
                 }
-                else if (checkerId == 4){
-                    pseudoLegalQueenMoves(friendlyPieces[KING], allPieces, allFriendlyPieces, intermediate);
-                    kingAsChecker = intermediate[0];
-                    pseudoLegalQueenMoves(1ul<<checkerPosition,allPieces, allEnemyPieces, intermediate);
-                    checkerAttacks = intermediate[0];
-                }
                 otherPieceMoveMask = (kingAsChecker & checkerAttacks);
-                // printf("Problem with check\n");
             }
             otherPieceCaptureMask = 0;
             //Need to get the checker's positions
