@@ -152,6 +152,9 @@ private:
             mask &= mask-1;
             //Need to add logic for pawn promotion
             moves[nbMoves] = {(int8_t)start, (int8_t)bit, piece};
+            big mask = 1ULL << bit;
+            for(int i=0; i<6; i++)
+                if(enemyPieces[i]&mask)moves[nbMoves].capture = i;
             nbMoves++;
         }
     }
