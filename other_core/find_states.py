@@ -24,9 +24,12 @@ try:
                     dataMoves[L[0]] = L[1]
         return dataMoves
 
-
+    S = set()
     def search(board, depth):
         fen = board.fen()
+        if fen in S:
+            return
+        S.add(fen)
         commFen = f"position fen {board.fen()}\n"
         commPerft = f"go perft {depth}\n"
         pushCommand(prog1, commFen)
