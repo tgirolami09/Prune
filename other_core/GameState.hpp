@@ -33,6 +33,7 @@ class GameState{
     short posRook[2][2];
     short deathRook[2][2];
     vector<pair<big, int>> threefold[sizeThreeFold];
+    int startEnPassant;
 public : 
     big zobristHash;
     big boardRepresentation[2][6];
@@ -155,6 +156,7 @@ public :
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         id += 2;
         increaseThreeFold(zobristHash);
+        startEnPassant = lastDoublePawnPush;
     }
 
     //TODO : implement this
@@ -198,6 +200,7 @@ public :
         fen += " ";
         if(lastDoublePawnPush != -1){
             fen += (char)7-lastDoublePawnPush+'a';
+            fen += friendlyColor() == WHITE?'6':'3';
         }else fen += "-";
         fen += " ";
         return fen;
@@ -380,6 +383,9 @@ public :
                 lastDoublePawnPush = col(nextMove.start_pos);
                 zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
             }
+        }else if(startEnPassant != -1){
+            lastDoublePawnPush = startEnPassant;
+            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         }
     }
 
