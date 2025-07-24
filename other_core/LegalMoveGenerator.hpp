@@ -448,12 +448,12 @@ private:
         int posCastle=color*56+1;
         if(!inCheck && kingCastling && (kingEndMask & maskCastling[color][1]) && !(maskCastling[color][1]&allPieces) && !isAttacked(posCastle, color, allPieces)){
             kingEndMask |= 1ULL << posCastle;
+        }
         posCastle = color*56+5;
-        }if(!inCheck && queenCastling && (kingEndMask & maskCastling[color][0]) && !(maskCastling[color][0]&allPieces) && !isAttacked(posCastle, color, allPieces)){
+        if(!inCheck && queenCastling && (kingEndMask & maskCastling[color][0]) && !(maskCastling[color][0]&allPieces) && !isAttacked(posCastle, color, allPieces)){
             kingEndMask |= 1ULL << posCastle;
         }
         return kingEndMask & (~friendlyPieces);
-
     }
 
     const big* enemyPieces;
