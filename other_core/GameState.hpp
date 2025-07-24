@@ -188,7 +188,7 @@ public :
         bool isCastling=false;
         for(int c=0; c<2; c++){
             for(int side=0; side < 2; side++){
-                char s=side?'q':'k';
+                char s=side?'k':'q';
                 if(!c)s = toupper(s);
                 if(castlingRights[c][side]){
                     fen += s;
@@ -463,7 +463,7 @@ public :
         printf("−−/\n");
         for(int c=0; c<2; c++){
             for(int side=0; side < 2; side++){
-                char s=side?'q':'k';
+                char s=side?'k':'q';
                 if(!c)s = toupper(s);
                 if(castlingRights[c][side])
                     printf("%c", s);
