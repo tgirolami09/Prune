@@ -5,7 +5,6 @@
 #include "GameState.hpp"
 #include <fstream>
 #include <utility>
-#include <vector>
 using namespace std;
 
 
@@ -186,6 +185,10 @@ class LegalMoveGenerator{
         }
         if(KnightMoves[square]&enemyPieces[KNIGHT])
             return true;
+        int enemyKing = __builtin_ctzll(enemyPieces[KING]);
+        int dist = abs(square-enemyKing);
+        if(dist == 1 || (dist >= 7 && dist <= 9))
+            return true;
         return false;
     }
 
@@ -219,9 +222,10 @@ class LegalMoveGenerator{
             int leftLimit = c ?  7 : 0;
             int rightLimit = leftLimit^7;
             int moveFactor = c ? -1 : 1;
-            for(int square=8; square<56; square++){
+            for(int square=0; square<64; square++){
                 int key = c*64+square;
                 attackPawns[key] = 0;
+                if(square+8*moveFactor < 0 || square+8*moveFactor >= 64)continue;
                 int pieceCol = col(square);
                 if(pieceCol != leftLimit)
                     attackPawns[key] |= 1ul<<(square + 7 * moveFactor);
@@ -230,6 +234,14 @@ class LegalMoveGenerator{
             }
         }
     }
+
+    big maskCastling[2][2];
+    void precomputeCastlingMasks(){
+        maskCastling[0][1] = 0b00000110;
+        maskCastling[0][0] = 0b01110000;
+        maskCastling[1][1] = maskCastling[0][1] << 56;
+        maskCastling[1][0] = maskCastling[0][0] << 56;
+    }
 public:
     LegalMoveGenerator(){
         PrecomputeKnightMoveData();
@@ -237,6 +249,7 @@ public:
         init_lines();
         precomputeDirections();
         precomputePawnsAttack();
+        precomputeCastlingMasks();
     }
     ~LegalMoveGenerator(){
         for(int i=0; i<128; i++){
@@ -393,7 +406,7 @@ private:
         return nbPos;
     }  
     
-    big pseudoLegalKingMoves(big positions, big friendlyPieces, bool color){
+    big pseudoLegalKingMoves(big positions, big friendlyPieces, bool color, bool kingCastling, bool queenCastling, bool inCheck){
         big kingMask = positions;
         int kingPos = __builtin_ctzll(kingMask);
 
@@ -431,6 +444,13 @@ private:
             int cardEnd = kingPos+transitionsCol[i];
             if(!isAttacked(cardEnd, color, allPieces ^ kingMask))
                 kingEndMask |= (1ul<< cardEnd);
+        }
+        int posCastle=color*56+1;
+        if(!inCheck && kingCastling && (kingEndMask & maskCastling[color][1]) && !(maskCastling[color][1]&allPieces) && !isAttacked(posCastle, color, allPieces)){
+            kingEndMask |= 1ULL << posCastle;
+        posCastle = color*56+5;
+        }if(!inCheck && queenCastling && (kingEndMask & maskCastling[color][0]) && !(maskCastling[color][0]&allPieces) && !isAttacked(posCastle, color, allPieces)){
+            kingEndMask |= 1ULL << posCastle;
         }
         return kingEndMask & (~friendlyPieces);
 
@@ -530,7 +550,6 @@ private:
         kingAsRook = moves_table(kingPos+64, allPieces&mask_empty_rook(kingPos));
         kingAsPawn = attackPawns[64*state.friendlyColor()+kingPos];
         //pseudoLegalPawnMoves(friendlyPieces[KING], allPieces , allEnemyPieces, state.friendlyColor(), -1, -1, -1, kingAsPawn);
-
         big checkDetection[5] = {kingAsPawn & enemyPieces[PAWN],
                                  KnightMoves[kingPos] & enemyPieces[KNIGHT],
                                  kingAsBishop & enemyPieces[BISHOP],
@@ -599,11 +618,11 @@ private:
         //return {otherPieceMoveMask,otherPieceCaptureMask};
     }
 
-    void legalKingMoves(const GameState& state, Move* moves, int& nbMoves){
+    void legalKingMoves(const GameState& state, Move* moves, int& nbMoves, bool inCheck){
         big kingMask = friendlyPieces[KING];
         int kingPos = __builtin_ctzll(kingMask);
-
-        big kingEndMask = pseudoLegalKingMoves(kingMask,allFriendlyPieces, state.friendlyColor());
+        bool curColor = state.friendlyColor();
+        big kingEndMask = pseudoLegalKingMoves(kingMask,allFriendlyPieces, state.friendlyColor(), state.castlingRights[curColor][1], state.castlingRights[curColor][0], inCheck);
 
         //kingEndMask &= (~allDangerSquares);
 
@@ -687,7 +706,7 @@ private:
         kingInCheck(state, inCheck, moveMask, captureMask, legalMoves, nbMoves);
         //moveMask = currentMasks[0];
         //captureMask = currentMasks[1];
-        legalKingMoves(state, legalMoves, nbMoves);
+        legalKingMoves(state, legalMoves, nbMoves, inCheck);
         legalPawnMoves(state,moveMask,captureMask, legalMoves, nbMoves);
         legalKnightMoves(state,moveMask,captureMask, legalMoves, nbMoves);
         legalSlidingMoves(state,moveMask,captureMask, legalMoves, nbMoves);

@@ -24,9 +24,6 @@ class GameState{
     //To determine whose turn it is to play AND rules that involve turn count
     int turnNumber;
 
-    bool castlingRights[2][2];
-
-
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
     big zobrist[nbZobrist];
     short nbMoves[2][3];
@@ -39,6 +36,8 @@ public :
     big boardRepresentation[2][6];
     //End of last double pawn push, (-1) if last move was not a double pawn push
     int lastDoublePawnPush;
+    bool castlingRights[2][2];
+
     GameState(){
         mt19937_64 gen(42);
         uniform_int_distribution<big> dist(0, MAX_BIG);
