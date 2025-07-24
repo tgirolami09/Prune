@@ -25,7 +25,7 @@ class Move{
 
     string to_str(){
         string res = to_uci(start_pos)+to_uci(end_pos);
-        if(promoteTo == -1)
+        if(promoteTo != -1)
             res += id_to_piece[promoteTo];
         return res;
     }
