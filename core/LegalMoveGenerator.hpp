@@ -185,9 +185,13 @@ class LegalMoveGenerator{
             return true;
         int enemyKing = __builtin_ctzll(enemyPieces[KING]);
         int dist = abs(square-enemyKing);
-        if(dist == 1 || (dist >= 7 && dist <= 9))
+        if (max(abs(row(square)-row(enemyKing)),
+                abs(col(square)-col(enemyKing)))<=1){
             return true;
-        return false;
+        }
+        else{
+            return false;
+        }
     }
 
     short fullDirAttacks(int square, bool color, big pieces){
@@ -429,19 +433,22 @@ private:
         for (int i = 0; i < nbRow;++i){
             int trans1 = transitionsRow[i];
             int cardEnd = kingPos + trans1;
-            if(!isAttacked(cardEnd, color, allPieces ^ kingMask))
+            if(!isAttacked(cardEnd, color, allPieces ^ kingMask)){
                 kingEndMask |= (1ul<< cardEnd);
+            }
             for (int j = 0; j < nbCol;++j){
                 int trans2 = transitionsCol[j];
                 int diagEnd = cardEnd + trans2;
-                if(!isAttacked(diagEnd, color, allPieces ^ kingMask))
+                if(!isAttacked(diagEnd, color, allPieces ^ kingMask)){
                     kingEndMask |= (1ul<< diagEnd);
+                }
             }
         }
         for(int i=0; i<nbCol; i++){
             int cardEnd = kingPos+transitionsCol[i];
-            if(!isAttacked(cardEnd, color, allPieces ^ kingMask))
+            if(!isAttacked(cardEnd, color, allPieces ^ kingMask)){
                 kingEndMask |= (1ul<< cardEnd);
+            }
         }
         int posCastle=color*56+1;
         if(!inCheck && kingCastling && (kingEndMask & maskCastling[color][1]) && !(maskCastling[color][1]&allPieces) && !isAttacked(posCastle, color, allPieces)){
