@@ -17,8 +17,6 @@ public:
 
 //Class to generate legal moves
 class LegalMoveGenerator{
-    int KnightOffSets[8] = {15, 17, -17, -15, 10, -6, 6, -10};
-
     big KnightMoves[64] = {0}; //Knight moves for each position of the board
 
     void PrecomputeKnightMoveData(){
