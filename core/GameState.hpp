@@ -131,18 +131,21 @@ public :
             }
         }
         for(int c=0; c<2; c++){
-            bool allOk=true;
+            bool oneOk=false;
             for(int side=0; side<2; side++){
                 if(castlingRights[c][side]){
                     nbMoves[c][side] = 0;
                     deathRook[c][side] = -1;
-                    posRook[c][side] = side*7+c*(8*7);
+                    posRook[c][side] = (7-side*7)+c*(8*7);
+                    oneOk=true;
                 }else{
-                    allOk=false;
-                    //TODO: complete for rook pos, death etc.
+                    //simulating a rook who is death at ply 0 to not track this one
+                    deathRook[c][side] = 0;
+                    posRook[c][side] = -1;
+                    nbMoves[c][side] = 1;
                 }
             }
-            if(allOk){
+            if(oneOk){
                 nbMoves[c][2] = 0;
             }else{
                 nbMoves[c][2] = 1;
