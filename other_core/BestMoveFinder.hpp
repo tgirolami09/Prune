@@ -147,9 +147,9 @@ public:
         int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
         big count=0;
         for(int i=0; i<nbMoves; i++){
-            state.playMove<false>(moves[i]);
+            state.playMove<false, false>(moves[i]);
             big nbNodes=_perft(state, depth-1);
-            state.undoLastMove();
+            state.undoLastMove<false>();
             count += nbNodes;
         }
         tt.push({state.zobristHash, count, depth});
@@ -165,9 +165,9 @@ public:
         int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
         big count=0;
         for(int i=0; i<nbMoves; i++){
-            state.playMove<false>(moves[i]);
+            state.playMove<false, false>(moves[i]);
             big nbNodes=_perft(state, depth-1);
-            state.undoLastMove();
+            state.undoLastMove<false>();
             printf("%s: %lld\n", moves[i].to_str().c_str(), nbNodes);
             fflush(stdout);
             count += nbNodes;

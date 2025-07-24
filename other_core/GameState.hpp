@@ -292,7 +292,7 @@ public :
             sidePawn;
     }
 
-    template<bool back>
+    template<bool back, bool noperft=true>
     void playMove(Move move){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
@@ -363,14 +363,14 @@ public :
         if(!back){
             turnNumber++;
             zobristHash ^= zobrist[zobrTurn];
-            if(increaseThreeFold(zobristHash)){
+            if(noperft && increaseThreeFold(zobristHash)){
                 isFinished = true; // draw by threefolds repetition
             }
         }
     }
-
+    template<bool noperft=true>
     void undoLastMove(){
-        if(decreaseThreeFold(zobristHash)){
+        if(noperft && decreaseThreeFold(zobristHash)){
             isFinished = false;
         }
         turnNumber--;
