@@ -5,6 +5,10 @@ depth = int(sys.argv[3])
 prog1 = subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 prog2 = subprocess.Popen([sys.argv[2]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 file = sys.argv[4]
+if len(sys.argv) > 5:
+    startFen = sys.argv[5]
+else:
+    startFen = None
 try:
     def pushCommand(prog, command):
         prog.stdin.write(command.encode())
@@ -55,7 +59,10 @@ try:
                 board.pop()
     with open(file, 'w') as f:
         f.write('') # clear file
-    board = Board()
+    if startFen is not None:
+        board = Board(startFen)
+    else:
+        board = Board()
     search(board, depth)
 finally:
     pushCommand(prog1, "quit\n")
