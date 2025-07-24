@@ -15,6 +15,11 @@ int main(int argc, char** argv){
     int percent=times/100;
     int part=percent;
     for(int i=0; i<times; i++){
+        if(i >= part){
+            printf("\r%d%%", 100*i/times);
+            fflush(stdout);
+            part += percent;
+        }
         const auto start1{std::chrono::steady_clock::now()};
         if(system(command1_str))break;;
         const auto finish1{std::chrono::steady_clock::now()};
@@ -26,11 +31,6 @@ int main(int argc, char** argv){
         const auto finish2{std::chrono::steady_clock::now()};
         const std::chrono::duration<double> elapsed_seconds2{finish2 - start2};
         t2 += elapsed_seconds2.count();
-        if(i >= part){
-            printf("\r%d%%", 100*i/times);
-            fflush(stdout);
-            part += percent;
-        }
     }
     printf("\r100%%\n");
     double r=t2/t1;
