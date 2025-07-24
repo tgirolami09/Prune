@@ -111,13 +111,21 @@ void doUCI(string UCI_instruction, Chess& state){
     //Implement actual logic for UCI management
 }
 
-int main(){
+int main(int argc, char** argv){
     string UCI_instruction = "programStart";
     Chess state;
     state.currentGame.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    if(argc > 1){
+        for(int i=1; i<argc; i++)
+            doUCI(argv[i], state);
+        return 0;
+    }
     while (UCI_instruction != "quit"){
         doUCI(UCI_instruction, state);
         fflush(stdout);
-        getline(cin,UCI_instruction);
+        if(!getline(cin,UCI_instruction)){
+            printf("quit\n");
+            break;
+        }
     }
 }
