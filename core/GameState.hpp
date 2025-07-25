@@ -139,7 +139,7 @@ public :
                     oneOk=true;
                 }else{
                     //simulating a rook who is death at ply 0 to not track this one
-                    deathRook[c][side] = 0;
+                    deathRook[c][side] = -1;
                     posRook[c][side] = -1;
                     nbMoves[c][side] = 1;
                 }
