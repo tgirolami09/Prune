@@ -160,7 +160,7 @@ public :
         startEnPassant = lastDoublePawnPush;
     }
 
-    string toFen(){
+    string toFen() const{
         string fen="";
         for(int row=0; row<8; row++){
             int nbSpace = 0;
@@ -410,7 +410,7 @@ public :
         return SPACE;
     }
 
-    int getfullPiece(int square){
+    int getfullPiece(int square) const{
         big mask = 1ULL << square;
         for(int c=0; c<2; c++){
             for(int p=0; p<6; p++){

@@ -261,7 +261,9 @@ public:
         int egScore = egFriends-egEnemies;
         if(mgPhase > 24)mgPhase = 24;
         int egPhase = 24-mgPhase;
-        return scoreFriends-scoreEnemies+(mgScore*mgPhase+egScore*egPhase)/24;
+        int finalScore = scoreFriends-scoreEnemies+(mgScore*mgPhase+egScore*egPhase)/24;
+        //printf("%s : %d\n", state.toFen().c_str(), finalScore);
+        return finalScore;
     }
     inline int score_move(const Move& move) const{
         int score = -value_pieces[move.piece];

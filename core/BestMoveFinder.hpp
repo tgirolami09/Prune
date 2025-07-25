@@ -33,14 +33,31 @@ public:
     }
     
 private:
+    void orderMove(Move* moves, int nbMoves, Move possibleBest){
+        vector<pair<int, Move>> sortedMoves(nbMoves);
+        int start=0;
+        for(int i=0; i<nbMoves; i++){
+            sortedMoves[i] = {eval.score_move(moves[i]), moves[i]};
+            if(moves[i].start_pos == possibleBest.start_pos && moves[i].end_pos == possibleBest.end_pos){
+                swap(sortedMoves[0], sortedMoves[i]);
+                start++;
+            }
+        }
+        sort(sortedMoves.begin()+start, sortedMoves.end(), compScoreMove);
+        for(int i=0; i<nbMoves; i++){
+            moves[i] = sortedMoves[i].second;
+        }
+    }
+
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(!running)return 0;
         int evaluation = eval.positionEvaluator(state);
         if(evaluation >= beta)return beta;
-        alpha = max(alpha, beta);
+        alpha = max(alpha, evaluation);
         bool inCheck;
         Move captureMoves[12*8+4*4]; //maximum number of capture : each piece can capture in each direction
         int nbMoves = generator.generateLegalMoves(state, inCheck, captureMoves, true);
+        if(nbMoves == 0)return evaluation;
         vector<pair<int, Move>> sortedMoves(nbMoves);
         for(int i=0; i<nbMoves; i++){
             sortedMoves[i] = {eval.score_move(captureMoves[i]), captureMoves[i]};
@@ -80,28 +97,9 @@ private:
             return eval.MIDDLE;
         }
         Move bestMove;
-        if(bMove.start_pos != bMove.end_pos){
-            state.playMove<false>(bMove);
-            int score = -negamax(depth-1, state, -beta, -alpha);
-            state.undoLastMove();
-            if(!running)return 0;
-            if(score > alpha){
-                if(score > beta){
-                    transposition.push(state, {score, beta, alpha, bMove});
-                    return score;
-                }
-                alpha = score;
-            }
-            max_eval = score;
-            bestMove = bMove;
-        }
-        vector<pair<int, Move>> sortedMoves(nbMoves);
+        orderMove(moves, nbMoves, bMove);
         for(int i=0; i<nbMoves; i++){
-            sortedMoves[i] = {eval.score_move(moves[i]), moves[i]};
-        }
-        sort(sortedMoves.begin(), sortedMoves.end(), compScoreMove);
-        for(pair<int, Move> move_score:sortedMoves){
-            Move move=move_score.second;
+            Move move=moves[i];
             if(move.start_pos == bMove.start_pos && move.end_pos == bMove.end_pos)continue;
             state.playMove<false>(move);
             int score = -negamax(depth-1, state, -beta, -alpha);
@@ -127,9 +125,11 @@ private:
         Move bestMove;
         running = true;
         this->alloted_time = alloted_time;
+        printf("%dms to search\n", alloted_time);
         Move lastBest;
         std::thread timerThread(&BestMoveFinder::stopAfter, this);
         for(int depth=1; running; depth++){
+            printf("running with depth: %d\n", depth);
             int alpha=eval.MINIMUM;
             int beta=eval.MAXIMUM;
             bool inCheck;
@@ -137,6 +137,7 @@ private:
             int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
             if(nbMoves == 0)
                 return {}; // no possible moves
+            orderMove(moves, nbMoves, lastBest);
             for(int i=0; i<nbMoves; i++){
                 state.playMove<false>(moves[i]);
                 int score = -negamax(depth, state, -beta, -alpha);
@@ -145,8 +146,10 @@ private:
                 if(score > alpha){
                     alpha = score;
                     bestMove = moves[i];
+                    //printf("new best score: %d with move: %s\n", alpha, bestMove.to_str().c_str());
                 }
             }
+            printf("best move at depth %d is %s with score %d\n", depth, bestMove.to_str().c_str(), alpha);
             lastBest = bestMove;
             transposition.clear();
         }
