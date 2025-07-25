@@ -23,15 +23,19 @@ file = sys.argv[1]
 with open(file) as f:
     listPos = f.readlines()
 prog = subprocess.Popen([sys.argv[2]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-for pos in tqdm(listPos):
+tq1 = tqdm(listPos)
+for pos in tq1:
     parts = pos.split(';')
     fen = parts[0]
-    for tests in tqdm(parts[1:], leave=False):
+    tq2 = tqdm(parts[1:], leave=False)
+    for tests in tq2:
         depth, res = tests.split()
         depth = int(depth[1:])
         pushCommand(prog, f"position fen {fen}\n")
         pushCommand(prog, f"go perft {depth}\n")
         detailed, sumup = readResult(prog)
         if int(sumup) != int(res):
-            print(fen, depth, res, sumup)
+            tq2.close()
+            tq1.write(f'fen={fen} depth={depth} expected={res} res={sumup}')
+            break
 
