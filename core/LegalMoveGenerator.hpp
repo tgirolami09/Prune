@@ -112,7 +112,7 @@ class LegalMoveGenerator{
             return 63-__builtin_clzll(mask);
         return __builtin_ctzll(mask);
     }
-    big pinned(int square, bool isCheck, Move* pinnedMoves, int& nbMoves, bool color){
+    big pinned(int square, bool isCheck, Move* pinnedMoves, int& nbMoves, bool color, int enPassant){
         big maskPinned=0;
         for(int idDir = 0; idDir<8; idDir++){
             big mask = fullDir[square][idDir]&allPieces;
@@ -144,7 +144,8 @@ class LegalMoveGenerator{
                         int moveFactor = color ? -1 : 1;
                         big maskPawnMoves = 0;
                         if(mdir%2 == 0){
-                            if(posFirst+7*moveFactor == posSecond || posFirst+9*moveFactor == posSecond){
+                            int diff = (posSecond-posFirst)*moveFactor;
+                            if(diff == 7 || diff == 9){
                                 maskPawnMoves |= 1ULL << posSecond;
                             }
                         }else if(idDir == 1 || idDir == 6){
@@ -158,6 +159,36 @@ class LegalMoveGenerator{
                         maskToMoves<PAWN>(posFirst, maskPawnMoves, pinnedMoves, nbMoves);
                     }
                 }
+            }
+        }
+        if(enPassant != -1){
+            int rowEnPassant = color?3:4;
+            if(row(square) == rowEnPassant){
+                big enPassantMask = 1ULL << (rowEnPassant*8+enPassant);
+                for(int idDir:{3, 4}){
+                    big mask = fullDir[square][idDir]&allFriendlyPieces;
+                    big mask2 = fullDir[square][idDir]&(allPieces&~enPassantMask);
+                    if(!mask)continue;
+                    int posFirst = firstPiece(mask, idDir);
+                    int posFirst2 = firstPiece(mask2, idDir);
+                    if(posFirst != posFirst2)continue;
+                    big maskFirst = 1ULL << posFirst;
+                    if(!(maskFirst&friendlyPieces[PAWN]))continue;
+                    if(abs(col(posFirst)-enPassant) != 1)continue;
+                    big newMask = mask2&~maskFirst;
+                    int posSecond = firstPiece(newMask, idDir);
+                    big maskSecond = 1ULL << posSecond;
+                    int8_t pieceAttack = isAttacking(maskSecond, idDir);
+                    if(pieceAttack == -1)continue;
+                    maskPinned |= maskFirst;
+                    big pawnMoveMask = 0;
+                    if(color)
+                        pawnMoveMask |= maskFirst >> 8;
+                    else pawnMoveMask |= maskFirst << 8;
+                    pawnMoveMask |= attackPawns[64*color+posFirst]&allEnemyPieces;
+                    maskToMoves<PAWN>(posFirst, pawnMoveMask, pinnedMoves, nbMoves);
+                }
+                
             }
         }
         return maskPinned;
@@ -617,9 +648,17 @@ private:
             //otherPieceCaptureMask = 0;
             //Need to get the checker's positions
             otherPieceCaptureMask = (1ul<<checkerPosition);
+            int enPassant = state.lastDoublePawnPush;
+            if(checkerId == PAWN && enPassant != -1){
+                int rowEnPassant = state.friendlyColor()?3:4;
+                int enPassantCase = (rowEnPassant*8+enPassant);
+                if(checkerPosition == enPassantCase){
+                    otherPieceCaptureMask |= 1ULL << (checkerPosition^8);
+                }
+            }
         }
 
-        pinnedPiecesMasks = pinned(__builtin_ctzll(friendlyPieces[KING]), inCheck, moves, nbMoves, state.friendlyColor());
+        pinnedPiecesMasks = pinned(__builtin_ctzll(friendlyPieces[KING]), inCheck, moves, nbMoves, state.friendlyColor(), state.lastDoublePawnPush);
         //return {otherPieceMoveMask,otherPieceCaptureMask};
     }
 
@@ -713,8 +752,8 @@ private:
         //captureMask = currentMasks[1];
         legalKingMoves(state, legalMoves, nbMoves, inCheck);
         legalPawnMoves(state,moveMask,captureMask, legalMoves, nbMoves);
-        legalKnightMoves(state,moveMask,captureMask, legalMoves, nbMoves);
-        legalSlidingMoves(state,moveMask,captureMask, legalMoves, nbMoves);
+        legalKnightMoves(state,moveMask,captureMask&allEnemyPieces, legalMoves, nbMoves);
+        legalSlidingMoves(state,moveMask,captureMask&allEnemyPieces, legalMoves, nbMoves);
 
         /*legalMoves.insert(legalMoves.end(),legalKingMoves.begin(),legalKingMoves.end());
         legalMoves.insert(legalMoves.end(),legalPawnMoves.begin(),legalPawnMoves.end());
