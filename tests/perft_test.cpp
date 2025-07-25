@@ -162,3 +162,9 @@ TEST(EnPassantInRay, perft1){
     game.fromFen("rnbqk1nr/pppp2bp/6p1/4Pp2/8/2K5/PPP1PPPP/RNBQ1BNR w kq f6 0 5");
     EXPECT_EQ(perft.perft(game, 1), 35);
 }
+TEST(EnPassantNothing, perft1){
+    Perft perft(alloted_space);
+    GameState game;
+    game.fromFen("8/2p5/3p4/KP5r/4Ppk1/8/6P1/7R b - e3 0 3");
+    EXPECT_EQ(perft.perft(game, 1), 20);
+}
