@@ -73,9 +73,14 @@ void doUCI(string UCI_instruction, Chess& state){
         if(args.count("perft")){
             printf("Nodes searched: %lld\n", doPerft.perft(state.currentGame, args["perft"]));
         }else{
-            state.b_time = args["btime"];
-            state.w_time = args["wtime"];
-            Move move=getBotMove(state.currentGame, computeAllotedTime(state));
+            Move move;
+            if(args.count("btime") && args.count("wtime")){
+                state.b_time = args["btime"];
+                state.w_time = args["wtime"];
+                move=getBotMove(state.currentGame, computeAllotedTime(state));
+            }else{
+                move = getBotMove(state.currentGame, args["movetime"]);
+            }
             printf("bestmove: %s\n", move.to_str().c_str());
         }
     }else if(command == "uci"){
