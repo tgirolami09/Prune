@@ -145,6 +145,7 @@ public:
         bool inCheck;
         Move moves[maxMoves];
         int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
+        if(depth == 1)return nbMoves;
         big count=0;
         for(int i=0; i<nbMoves; i++){
             state.playMove<false, false>(moves[i]);
