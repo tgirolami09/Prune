@@ -150,6 +150,7 @@ private:
             lastBest = bestMove;
             transposition.clear();
         }
+        timerThread.join();
         if(bestMove.start_pos == bestMove.end_pos)return lastBest;
         return bestMove;
     }
