@@ -107,7 +107,7 @@ private:
             if(!running)return 0;
             if(score > alpha){
                 if(score > beta){
-                    transposition.push(state, {score, beta, alpha, move, depth});
+                    transposition.push(state, score, beta, alpha, move, depth);
                     return score;
                 }
                 alpha = score;
@@ -117,7 +117,7 @@ private:
                 bestMove = move;
             }
         }
-        transposition.push(state, {max_eval, alpha, beta, bestMove, depth});
+        transposition.push(state, max_eval, alpha, beta, bestMove, depth);
         return max_eval;
     }
     public : Move bestMove(GameState& state, int alloted_time){

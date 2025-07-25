@@ -3,11 +3,14 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 
+const int EXACT = 0;
+const int LOWERBOUND = 1;
+const int UPPERBOUND = 2;
+
 class infoScore{
 public:
     int score;
-    int beta;
-    int alpha;
+    int typeNode;
     Move bestMove;
     int depth;
     big hash;
@@ -28,9 +31,9 @@ public:
         if(table[index].hash == state.zobristHash){
             isok=true;
             if(depth <= table[index].depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
-                if(table[index].score > beta)
-                    return table[index].score;
-                if(table[index].score < table[index].beta)
+                if(table[index].typeNode == EXACT ||
+                    table[index].score >= beta && table[index].typeNode == LOWERBOUND ||
+                    table[index].score < alpha && table[index].typeNode == UPPERBOUND)
                     return table[index].score;
             }
             best = table[index].bestMove;
@@ -38,8 +41,17 @@ public:
         }
         return 0;
     }
-    void push(GameState& state, infoScore info){
+    void push(GameState& state, int score, int beta, int alpha, Move move, int depth){
+        infoScore info;
+        info.score = score;
         info.hash = state.zobristHash;
+        info.bestMove = move;
+        info.depth = depth;
+        if(score >= beta)
+            info.typeNode = UPPERBOUND;
+        else if(score <= alpha)
+            info.typeNode = LOWERBOUND;
+        else info.typeNode = EXACT;
         int index = info.hash%modulo;
         if(table[index].hash != 0){
             if(table[index].hash == info.hash && table[index].depth > info.depth)
