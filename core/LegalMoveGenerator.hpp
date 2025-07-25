@@ -461,24 +461,28 @@ private:
         }else if (col(kingPos)==7){
             nbCol--;
         }
+        big allowed_places = ~friendlyPieces;
         for (int i = 0; i < nbRow;++i){
             int trans1 = transitionsRow[i];
             int cardEnd = kingPos + trans1;
-            if(!isAttacked(cardEnd, color, allPieces ^ kingMask)){
-                kingEndMask |= (1ul<< cardEnd);
+            big mask = 1ULL << cardEnd;
+            if((mask&allowed_places) && !isAttacked(cardEnd, color, allPieces ^ kingMask)){
+                kingEndMask |= mask;
             }
             for (int j = 0; j < nbCol;++j){
                 int trans2 = transitionsCol[j];
                 int diagEnd = cardEnd + trans2;
-                if(!isAttacked(diagEnd, color, allPieces ^ kingMask)){
-                    kingEndMask |= (1ul<< diagEnd);
+                big mask = 1ULL << diagEnd;
+                if((mask&allowed_places) && !isAttacked(diagEnd, color, allPieces ^ kingMask)){
+                    kingEndMask |= mask;
                 }
             }
         }
         for(int i=0; i<nbCol; i++){
             int cardEnd = kingPos+transitionsCol[i];
-            if(!isAttacked(cardEnd, color, allPieces ^ kingMask)){
-                kingEndMask |= (1ul<< cardEnd);
+            big mask = 1ULL << cardEnd;
+            if((mask&allowed_places) && !isAttacked(cardEnd, color, allPieces ^ kingMask)){
+                kingEndMask |= mask;
             }
         }
         int posCastle=color*56+1;
@@ -489,7 +493,7 @@ private:
         if(!inCheck && queenCastling && (kingEndMask & maskCastling[color][0]) && !(maskCastling[color][0]&allPieces) && !isAttacked(posCastle, color, allPieces)){
             kingEndMask |= 1ULL << posCastle;
         }
-        return kingEndMask & (~friendlyPieces);
+        return kingEndMask;
     }
 
     const big* enemyPieces;
