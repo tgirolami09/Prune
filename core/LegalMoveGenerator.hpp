@@ -293,8 +293,9 @@ private:
             mask &= mask-1;
             Move base = {(int8_t)start, (int8_t)bit, piece};
             big mask = 1ULL << bit;
-            for(int i=0; i<6; i++)
-                if(enemyPieces[i]&mask)base.capture = i;
+            if(mask&allEnemyPieces)
+                for(int i=0; i<6; i++)
+                    if(enemyPieces[i]&mask)base.capture = i;
             if(isPawn && (row(bit) == 7 || row(bit) == 0)){
                 for(int8_t typePiece:{KNIGHT, BISHOP, ROOK, QUEEN}){
                     moves[nbMoves] = base;
