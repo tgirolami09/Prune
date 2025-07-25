@@ -33,6 +33,7 @@ public:
     }
     
 private:
+    int nodes, Qnodes;
     void orderMove(Move* moves, int nbMoves, Move possibleBest){
         vector<pair<int, Move>> sortedMoves(nbMoves);
         int start=0;
@@ -51,8 +52,10 @@ private:
 
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(!running)return 0;
+        Qnodes++;
         int evaluation = eval.positionEvaluator(state);
         if(evaluation >= beta)return beta;
+        int bestScore = evaluation;
         alpha = max(alpha, evaluation);
         bool inCheck;
         Move captureMoves[12*8+4*4]; //maximum number of capture : each piece can capture in each direction
@@ -70,19 +73,23 @@ private:
             state.undoLastMove();
             if(!running)return 0;
             if(score >= beta){
-                return beta;
+                return score;
             }
-            alpha = max(alpha, score);
+            if(score > alpha)
+                alpha = score;
+            if(score > bestScore)
+                bestScore = score;
         }
-        return alpha;
+        return bestScore;
     }
 
     int negamax(int depth, GameState& state, int alpha, int beta){
         if(!running)return 0;
         if(depth == 0)
             return quiescenceSearch(state, alpha, beta);
+        nodes++;
         bool isEvaluated=false;
-        Move bMove;
+        Move bMove = {0, 0};
         int last_eval=transposition.get_eval(state, alpha, beta, isEvaluated, depth, bMove);
         if(isEvaluated){
             return last_eval;
@@ -96,7 +103,7 @@ private:
                 return eval.MINIMUM;
             return eval.MIDDLE;
         }
-        Move bestMove;
+        Move bestMove = {0, 0};
         orderMove(moves, nbMoves, bMove);
         for(int i=0; i<nbMoves; i++){
             Move move=moves[i];
@@ -107,7 +114,7 @@ private:
             if(!running)return 0;
             if(score > alpha){
                 if(score > beta){
-                    transposition.push(state, score, beta, alpha, move, depth);
+                    transposition.push(state, score, alpha, beta, move, depth);
                     return score;
                 }
                 alpha = score;
@@ -130,6 +137,8 @@ private:
         std::thread timerThread(&BestMoveFinder::stopAfter, this);
         for(int depth=1; running; depth++){
             printf("running with depth: %d\n", depth);
+            clock_t start=clock();
+            Qnodes = nodes = 0;
             int alpha=eval.MINIMUM;
             int beta=eval.MAXIMUM;
             bool inCheck;
@@ -149,9 +158,11 @@ private:
                     //printf("new best score: %d with move: %s\n", alpha, bestMove.to_str().c_str());
                 }
             }
-            printf("best move at depth %d is %s with score %d\n", depth, bestMove.to_str().c_str(), alpha);
+            clock_t end=clock();
+            double tcpu = double(end-start)/CLOCKS_PER_SEC;
+            printf("best move at depth %d is %s with score %d (%.2f n/s %d Qnodes %d nodes)\n", depth, bestMove.to_str().c_str(), alpha, (nodes+Qnodes)/tcpu, Qnodes, nodes);
             lastBest = bestMove;
-            transposition.clear();
+            //transposition.clear();
         }
         timerThread.join();
         if(bestMove.start_pos == bestMove.end_pos)return lastBest;
