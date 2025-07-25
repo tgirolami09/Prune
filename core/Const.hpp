@@ -50,10 +50,6 @@ void init_lines(){
         if(i < 8)idiag |= 1 << (7-i);
         clipped_diag[i] = diag&clipped_mask;
         clipped_idiag[i] = idiag&clipped_mask;
-        /*print_mask(clipped_diag[i]);
-        printf("\n");
-        print_mask(clipped_idiag[i]);
-        printf("\n");*/
     }
 }
 #endif

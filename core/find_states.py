@@ -18,7 +18,6 @@ try:
         dataMoves = {}
         while 1:
             line = prog.stdout.readline().decode('utf-8')
-            #print(line)
             line = line.replace('\n', '')
             if line.startswith('Nodes searched: '):
                 break

@@ -63,7 +63,7 @@ private:
     int negamax(int depth, GameState& state, int alpha, int beta){
         if(!running)return 0;
         if(depth == 0)
-            return eval.positionEvaluator(state);
+            return quiescenceSearch(state, alpha, beta);
         bool isEvaluated=false;
         Move bMove;
         int last_eval=transposition.get_eval(state, alpha, beta, isEvaluated, depth, bMove);
@@ -184,7 +184,6 @@ public:
     }
     big perft(GameState& state, ubyte depth){
         visitedNodes = 0;
-        //state.print();
         if(depth == 0)return 1;
         clock_t start=clock();
         bool inCheck;

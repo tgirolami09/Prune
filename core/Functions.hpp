@@ -29,7 +29,6 @@ const inline int flip(const int& square){
 }
 inline int places(big mask, ubyte* positions){
     int nbBits = countbit(mask);
-    //positions = (ubyte*)malloc(nbBits);
     for(ubyte i=0; mask; i++){
         ubyte bit=__builtin_ctzll(mask);
         mask &= mask-1; //even if it has a sub, whet it's compiled it will be as the blsr instruction

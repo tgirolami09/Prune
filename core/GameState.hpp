@@ -79,7 +79,6 @@ public :
         return false;
     }
 
-    //TODO : implement this
     void fromFen(string fen){
         zobristHash=0;
         for(int c=0; c<2; c++)
@@ -161,7 +160,6 @@ public :
         startEnPassant = lastDoublePawnPush;
     }
 
-    //TODO : implement this
     string toFen(){
         string fen="";
         for(int row=0; row<8; row++){
