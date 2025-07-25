@@ -134,12 +134,8 @@ class LegalMoveGenerator{
                             piece = typePiece;
                     }
                     int mdir = idDir >= 4?idDir-3:idDir;
-                    if(piece == QUEEN)
-                        maskToMoves<QUEEN>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves);
-                    else if(mdir%2 == 1 && piece == ROOK)
-                        maskToMoves<ROOK>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves);
-                    else if(mdir%2 == 0 && piece == BISHOP)
-                        maskToMoves<BISHOP>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves);
+                    if(piece > 0 && (piece == QUEEN || piece == (mdir%2?ROOK:BISHOP)))
+                        maskToMoves<false>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves, piece);
                     else if(piece == PAWN){
                         int moveFactor = color ? -1 : 1;
                         big maskPawnMoves = 0;
@@ -156,7 +152,7 @@ class LegalMoveGenerator{
                                 maskPawnMoves |= ((1ul<<(posFirst + 16 * moveFactor)) & (~allPieces));
                             }
                         }
-                        maskToMoves<PAWN>(posFirst, maskPawnMoves, pinnedMoves, nbMoves);
+                        maskToMoves<true>(posFirst, maskPawnMoves, pinnedMoves, nbMoves, PAWN);
                     }
                 }
             }
@@ -186,7 +182,7 @@ class LegalMoveGenerator{
                         pawnMoveMask |= maskFirst >> 8;
                     else pawnMoveMask |= maskFirst << 8;
                     pawnMoveMask |= attackPawns[64*color+posFirst]&allEnemyPieces;
-                    maskToMoves<PAWN>(posFirst, pawnMoveMask, pinnedMoves, nbMoves);
+                    maskToMoves<true>(posFirst, pawnMoveMask, pinnedMoves, nbMoves, PAWN);
                 }
                 
             }
@@ -292,8 +288,8 @@ public:
 
 private: 
     //Transforms a bitboard of valid end positions into a list of the corresponding moves
-    template<int piece>
-    void maskToMoves(int start, big mask, Move* moves, int& nbMoves){
+    template<bool isPawn>
+    void maskToMoves(int start, big mask, Move* moves, int& nbMoves, int8_t piece){
         while(mask){
             int bit = __builtin_ctzll(mask);
             mask &= mask-1;
@@ -302,14 +298,14 @@ private:
             big mask = 1ULL << bit;
             for(int i=0; i<6; i++)
                 if(enemyPieces[i]&mask)base.capture = i;
-            if(piece == PAWN && (row(bit) == 7 || row(bit) == 0)){
+            if(isPawn && (row(bit) == 7 || row(bit) == 0)){
                 for(int8_t typePiece:{KNIGHT, BISHOP, ROOK, QUEEN}){
                     moves[nbMoves] = base;
                     moves[nbMoves].promoteTo = typePiece;
                     nbMoves++;
                 }
             }else{
-                if(piece == PAWN && (col(start) != col(bit)) && base.capture == -2){
+                if(isPawn && (col(start) != col(bit)) && base.capture == -2){
                     base.capture = -1;
                 }
                 moves[nbMoves] = base;
@@ -674,7 +670,7 @@ private:
 
         //kingEndMask &= (~allDangerSquares);
 
-        maskToMoves<KING>(kingPos,kingEndMask, moves, nbMoves);
+        maskToMoves<false>(kingPos,kingEndMask, moves, nbMoves, KING);
     }
 
     void legalPawnMoves(const GameState& state, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves){
@@ -686,7 +682,7 @@ private:
         for (int p = 0;p<nbPos;++p){
             big pawnMoveMask = pawnMasks[p];
 
-            maskToMoves<PAWN>(pos[p], pawnMoveMask, pawnMoves, nbMoves);
+            maskToMoves<true>(pos[p], pawnMoveMask, pawnMoves, nbMoves, PAWN);
             //pawnMoves.insert(pawnMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
         }
     }
@@ -700,7 +696,7 @@ private:
         for (int p = 0;p<nbPos;++p){
             big knightEndMask = knightMasks[p] & (moveMask | captureMask);
 
-            maskToMoves<KNIGHT>(pos[p], knightEndMask, knightMoves, nbMoves);
+            maskToMoves<false>(pos[p], knightEndMask, knightMoves, nbMoves, KNIGHT);
             //knightMoves.insert(knightMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
         }
     }
@@ -726,9 +722,9 @@ private:
             int nbPos=places(typeMask, pos);
             for (int p = 0;p<nbPos;++p){
                 big typeEndMask = typeMasks[p] & (moveMask | captureMask);
-
+                maskToMoves<false>(pos[p], typeEndMask, slidingMoves, nbMoves, pieceType);
                 //vector<Move> intermediateMoves;
-                if (pieceType == BISHOP){
+                /*if (pieceType == BISHOP){
                     maskToMoves<BISHOP>(pos[p], typeEndMask, slidingMoves, nbMoves);
                 }
                 else if (pieceType == ROOK){
@@ -736,7 +732,7 @@ private:
                 }
                 else if (pieceType == QUEEN){
                     maskToMoves<QUEEN>(pos[p], typeEndMask, slidingMoves, nbMoves);
-                }
+                }*/
                 //slidingMoves.insert(slidingMoves.end(),intermediateMoves.begin(),intermediateMoves.end());
             }
         }
