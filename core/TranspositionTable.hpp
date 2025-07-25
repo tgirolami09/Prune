@@ -41,16 +41,16 @@ public:
         }
         return 0;
     }
-    void push(GameState& state, int score, int beta, int alpha, Move move, int depth){
+    void push(GameState& state, int score, int alpha, int beta, Move move, int depth){
         infoScore info;
         info.score = score;
         info.hash = state.zobristHash;
         info.bestMove = move;
         info.depth = depth;
         if(score >= beta)
-            info.typeNode = UPPERBOUND;
-        else if(score <= alpha)
             info.typeNode = LOWERBOUND;
+        else if(score < alpha)
+            info.typeNode = UPPERBOUND;
         else info.typeNode = EXACT;
         int index = info.hash%modulo;
         if(table[index].hash != 0){
@@ -62,7 +62,7 @@ public:
         table[index] = info;
     }
     void clear(){
-        table.clear();
+        table = vector<infoScore>(modulo);
     }
     void reinit(int count){
         count /= sizeof(infoScore);
