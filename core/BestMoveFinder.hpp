@@ -33,6 +33,32 @@ public:
     }
     
 private:
+    int quiescenceSearch(GameState& state, int alpha, int beta){
+        if(!running)return 0;
+        int evaluation = eval.positionEvaluator(state);
+        if(evaluation >= beta)return beta;
+        alpha = max(alpha, beta);
+        bool inCheck;
+        Move captureMoves[12*8+4*4]; //maximum number of capture : each piece can capture in each direction
+        int nbMoves = generator.generateLegalMoves(state, inCheck, captureMoves, true);
+        vector<pair<int, Move>> sortedMoves(nbMoves);
+        for(int i=0; i<nbMoves; i++){
+            sortedMoves[i] = {eval.score_move(captureMoves[i]), captureMoves[i]};
+        }
+        sort(sortedMoves.begin(), sortedMoves.end(), compScoreMove);
+        for(int idMove=0; idMove<nbMoves; idMove++){
+            Move move = sortedMoves[idMove].second;
+            state.playMove<false>(move);
+            int score = -quiescenceSearch(state, -beta, -alpha);
+            state.undoLastMove();
+            if(!running)return 0;
+            if(score >= beta){
+                return beta;
+            }
+            alpha = max(alpha, score);
+        }
+        return alpha;
+    }
 
     int negamax(int depth, GameState& state, int alpha, int beta){
         if(!running)return 0;

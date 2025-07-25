@@ -739,7 +739,7 @@ private:
     }
 
     //Returns all legal moves for a position (still missing pins; en-passant; castling; promotion)
-    public : int generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves){
+    public : int generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves, bool onlyCapture=false){
         recalculateAllMasks(state);
         //All allowed spots for a piece to move (not allowed if king is in check)
         big moveMask = -1; //Totaly true
@@ -748,6 +748,8 @@ private:
 
         int nbMoves = 0;
         kingInCheck(state, inCheck, moveMask, captureMask, legalMoves, nbMoves);
+        if(onlyCapture)
+            moveMask = 0;
         //moveMask = currentMasks[0];
         //captureMask = currentMasks[1];
         legalKingMoves(state, legalMoves, nbMoves, inCheck);
