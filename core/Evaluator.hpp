@@ -267,7 +267,7 @@ public:
     inline int score_move(const Move& move) const{
         int score = -value_pieces[move.piece];
         if(move.capture != -1)
-            score += value_pieces[move.capture];
+            score += value_pieces[move.capture]*10;
 
         if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
         return score;
