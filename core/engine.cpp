@@ -114,6 +114,8 @@ void doUCI(string UCI_instruction, Chess& state){
         state.currentGame.print();
     }else if(command == "runQ"){
         bestMoveFinder.testQuiescenceSearch(state.currentGame);
+    }else if(command == "eval"){
+        printf("static evaluation: %d cp\n", bestMoveFinder.eval.positionEvaluator(state.currentGame));
     }
     //Implement actual logic for UCI management
 }

@@ -10,6 +10,7 @@
 #include <atomic>
 #include <thread>
 #include <algorithm>
+#define USE_TT
 
 bool compScoreMove(const pair<int, Move>& a, const pair<int, Move>& b){
     return a.first > b.first;
@@ -55,9 +56,11 @@ private:
     int quiescenceSearch(int alpha, int beta){
         if(!running)return 0;
         Qnodes++;
+#ifdef USE_TT
         bool isEvaluated;
         int score=ttQ.get_eval(*state, alpha, beta, isEvaluated);
         if(isEvaluated)return score;
+#endif
         int evaluation = eval.positionEvaluator(*state);
         if(evaluation >= beta)return beta;
         int bestScore = evaluation;
@@ -74,7 +77,9 @@ private:
             state->undoLastMove();
             if(!running)return 0;
             if(score >= beta){
+#ifdef USE_TT
                 ttQ.push(*state, score, alpha, beta);
+#endif
                 return score;
             }
             if(score > alpha)
@@ -82,7 +87,9 @@ private:
             if(score > bestScore)
                 bestScore = score;
         }
+#ifdef USE_TT
         ttQ.push(*state, bestScore, alpha, beta);
+#endif
         return bestScore;
     }
 
@@ -93,10 +100,12 @@ private:
         nodes++;
         bool isEvaluated=false;
         Move bMove = {0, 0};
+#ifdef USE_TT
         int last_eval=transposition.get_eval(*state, alpha, beta, isEvaluated, depth, bMove);
         if(isEvaluated){
             return last_eval;
         }
+#endif
         int max_eval=eval.MINIMUM;
         bool isCheck;
         Move moves[maxMoves];
@@ -117,7 +126,9 @@ private:
             if(!running)return 0;
             if(score > alpha){
                 if(score > beta){
+#ifdef USE_TT
                     transposition.push(*state, score, alpha, beta, move, depth);
+#endif
                     return score;
                 }
                 alpha = score;
@@ -127,7 +138,9 @@ private:
                 bestMove = move;
             }
         }
+#ifdef USE_TT
         transposition.push(*state, max_eval, alpha, beta, bestMove, depth);
+#endif
         return max_eval;
     }
     public : Move bestMove(GameState& stateIn, int alloted_time){
@@ -155,6 +168,7 @@ private:
             for(i=0; i<nbMoves; i++){
                 state->playMove<false>(moves[i]);
                 int score = -negamax(depth, -beta, -alpha);
+                printf("move: %s score: %d\n", moves[i].to_str().c_str(), score);
                 state->undoLastMove();
                 if(!running)break;
                 if(score > alpha){
