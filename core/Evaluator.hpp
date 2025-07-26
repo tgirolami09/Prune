@@ -188,8 +188,8 @@ const big mask_forward[64] = {
 class Evaluator{
     //All the logic for evaluating a position
 public:
-    int MINIMUM=-INT_MAX;
-    int MAXIMUM=INT_MAX;
+    int MINIMUM=-10000;
+    int MAXIMUM=10000;
     int MIDDLE=0;
     Evaluator(){
         init_tables();
@@ -265,12 +265,13 @@ public:
         //printf("%s : %d\n", state.toFen().c_str(), finalScore);
         return finalScore;
     }
-    inline int score_move(const Move& move) const{
+    inline int score_move(const Move& move, bool c) const{
         int score = -value_pieces[move.piece];
         if(move.capture != -1)
             score += value_pieces[move.capture]*10;
 
         if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
+        score += mg_table[c][move.piece][move.end_pos]-mg_table[c][move.piece][move.start_pos];
         return score;
     }
 };
