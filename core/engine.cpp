@@ -112,6 +112,8 @@ void doUCI(string UCI_instruction, Chess& state){
         printf("readyok\n");
     }else if(command == "d"){
         state.currentGame.print();
+    }else if(command == "runQ"){
+        bestMoveFinder.testQuiescenceSearch(state.currentGame);
     }
     //Implement actual logic for UCI management
 }

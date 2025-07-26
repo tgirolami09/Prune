@@ -110,7 +110,7 @@ class LegalMoveGenerator{
             return 63-__builtin_clzll(mask);
         return __builtin_ctzll(mask);
     }
-    big pinned(int square, bool isCheck, Move* pinnedMoves, int& nbMoves, bool color, int enPassant){
+    big pinned(int square, bool isCheck, Move* pinnedMoves, int& nbMoves, bool color, int enPassant, bool onlyCapture){
         big maskPinned=0;
         for(int idDir = 0; idDir<8; idDir++){
             big mask = fullDir[square][idDir]&allPieces;
@@ -132,9 +132,12 @@ class LegalMoveGenerator{
                             piece = typePiece;
                     }
                     int mdir = idDir >= 4?idDir-3:idDir;
-                    if(piece > 0 && (piece == QUEEN || piece == (mdir%2?ROOK:BISHOP)))
-                        maskToMoves<false>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves, piece);
-                    else if(piece == PAWN){
+                    if(piece > 0 && (piece == QUEEN || piece == (mdir%2?ROOK:BISHOP))){
+                        if(onlyCapture)
+                            maskToMoves<false>(posFirst, 1ULL << posSecond, pinnedMoves, nbMoves, piece);
+                        else
+                            maskToMoves<false>(posFirst, directions[square][posSecond]&~maskFirst, pinnedMoves, nbMoves, piece);
+                    }else if(piece == PAWN){
                         int moveFactor = color ? -1 : 1;
                         big maskPawnMoves = 0;
                         if(mdir%2 == 0){
@@ -149,7 +152,7 @@ class LegalMoveGenerator{
                                     maskPawnMoves |= 1ULL << enPassantCase;
                                 }
                             }
-                        }else if(idDir == 1 || idDir == 6){
+                        }else if((idDir == 1 || idDir == 6) && !onlyCapture){
                             maskPawnMoves |= ((1ul<<(posFirst + 8 * moveFactor)) & (~allPieces));
                             //Double pawn push
                             int rowPiece = row(posFirst);
@@ -420,7 +423,7 @@ private:
         return nbPos;
     }  
     
-    big pseudoLegalKingMoves(big positions, big friendlyPieces, bool color, bool kingCastling, bool queenCastling, bool inCheck){
+    big pseudoLegalKingMoves(big positions, big friendlyPieces, bool color, bool kingCastling, bool queenCastling, bool inCheck, bool onlyCapture){
         big kingMask = positions;
         int kingPos = __builtin_ctzll(kingMask);
 
@@ -443,6 +446,9 @@ private:
             nbCol--;
         }
         big allowed_places = ~friendlyPieces;
+        if(onlyCapture){
+            allowed_places &= allEnemyPieces;
+        }
         for (int i = 0; i < nbRow;++i){
             int trans1 = transitionsRow[i];
             int cardEnd = kingPos + trans1;
@@ -502,7 +508,7 @@ private:
     //Returns all allowed spaces for a piece to move
     //If the king is not in check then everywhere
     //Else only moves preventing check
-    void kingInCheck(const GameState& state, bool& inCheck, big& otherPieceMoveMask, big& otherPieceCaptureMask, Move* moves, int& nbMoves){
+    void kingInCheck(const GameState& state, bool& inCheck, big& otherPieceMoveMask, big& otherPieceCaptureMask, Move* moves, int& nbMoves, bool onlyCapture){
         //Similuate the king being all types of pieces to find the number of checkers
         big kingAsBishop;
         big kingAsRook;
@@ -566,15 +572,14 @@ private:
             }
         }
 
-        pinnedPiecesMasks = pinned(__builtin_ctzll(friendlyPieces[KING]), inCheck, moves, nbMoves, state.friendlyColor(), state.lastDoublePawnPush);
+        pinnedPiecesMasks = pinned(__builtin_ctzll(friendlyPieces[KING]), inCheck, moves, nbMoves, state.friendlyColor(), state.lastDoublePawnPush, onlyCapture);
     }
 
-    void legalKingMoves(const GameState& state, Move* moves, int& nbMoves, bool inCheck){
+    void legalKingMoves(const GameState& state, Move* moves, int& nbMoves, bool inCheck, bool onlyCapture){
         big kingMask = friendlyPieces[KING];
         int kingPos = __builtin_ctzll(kingMask);
         bool curColor = state.friendlyColor();
-        big kingEndMask = pseudoLegalKingMoves(kingMask,allFriendlyPieces, state.friendlyColor(), state.castlingRights[curColor][1], state.castlingRights[curColor][0], inCheck);
-
+        big kingEndMask = pseudoLegalKingMoves(kingMask,allFriendlyPieces, state.friendlyColor(), state.castlingRights[curColor][1], state.castlingRights[curColor][0], inCheck, onlyCapture);
         maskToMoves<false>(kingPos,kingEndMask, moves, nbMoves, KING);
     }
 
@@ -639,10 +644,10 @@ private:
         big captureMask = -1; //Totaly true
 
         int nbMoves = 0;
-        kingInCheck(state, inCheck, moveMask, captureMask, legalMoves, nbMoves);
+        kingInCheck(state, inCheck, moveMask, captureMask, legalMoves, nbMoves, onlyCapture);
         if(onlyCapture)
             moveMask = 0;
-        legalKingMoves(state, legalMoves, nbMoves, inCheck);
+        legalKingMoves(state, legalMoves, nbMoves, inCheck, onlyCapture);
         legalPawnMoves(state,moveMask,captureMask, legalMoves, nbMoves);
         legalKnightMoves(state,moveMask,captureMask&allEnemyPieces, legalMoves, nbMoves);
         legalSlidingMoves(state,moveMask,captureMask&allEnemyPieces, legalMoves, nbMoves);

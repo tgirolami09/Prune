@@ -33,7 +33,7 @@ public:
     }
     
 private:
-    int nodes, Qnodes;
+    big nodes, Qnodes;
     void orderMove(Move* moves, int nbMoves, Move possibleBest){
         vector<pair<int, Move>> sortedMoves(nbMoves);
         int start=0;
@@ -61,13 +61,10 @@ private:
         Move captureMoves[12*8+4*4]; //maximum number of capture : each piece can capture in each direction
         int nbMoves = generator.generateLegalMoves(state, inCheck, captureMoves, true);
         if(nbMoves == 0)return evaluation;
-        vector<pair<int, Move>> sortedMoves(nbMoves);
-        for(int i=0; i<nbMoves; i++){
-            sortedMoves[i] = {eval.score_move(captureMoves[i]), captureMoves[i]};
-        }
-        sort(sortedMoves.begin(), sortedMoves.end(), compScoreMove);
+        orderMove(captureMoves, nbMoves, {0, 0});
         for(int idMove=0; idMove<nbMoves; idMove++){
-            Move move = sortedMoves[idMove].second;
+            Move move = captureMoves[idMove];
+            assert(move.capture != -2);
             state.playMove<false>(move);
             int score = -quiescenceSearch(state, -beta, -alpha);
             state.undoLastMove();
@@ -147,7 +144,8 @@ private:
             if(nbMoves == 0)
                 return {}; // no possible moves
             orderMove(moves, nbMoves, lastBest);
-            for(int i=0; i<nbMoves; i++){
+            int i;
+            for(i=0; i<nbMoves; i++){
                 state.playMove<false>(moves[i]);
                 int score = -negamax(depth, state, -beta, -alpha);
                 state.undoLastMove();
@@ -160,7 +158,7 @@ private:
             }
             clock_t end=clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            printf("best move at depth %d is %s with score %d (%.2f n/s %d Qnodes %d nodes)\n", depth, bestMove.to_str().c_str(), alpha, (nodes+Qnodes)/tcpu, Qnodes, nodes);
+            printf("best move at depth %d is %s with score %d (%.2f n/s %lld Qnodes %lld nodes; %d/%d)\n", depth, bestMove.to_str().c_str(), alpha, (nodes+Qnodes)/tcpu, Qnodes, nodes, i, nbMoves);
             lastBest = bestMove;
             //transposition.clear();
         }
@@ -169,6 +167,16 @@ private:
         return bestMove;
     }
 
+    int testQuiescenceSearch(GameState& state){
+        running=true;
+        Qnodes = 0;
+        clock_t start=clock();
+        quiescenceSearch(state, eval.MINIMUM, eval.MAXIMUM);
+        clock_t end = clock();
+        double tcpu = double(end-start)/CLOCKS_PER_SEC;
+        printf("%lld : %.2f\n", Qnodes, Qnodes/tcpu);
+        return Qnodes;
+    }
 };
 
 
