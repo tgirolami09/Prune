@@ -22,10 +22,11 @@ public:
     LegalMoveGenerator generator;
     Evaluator eval;
     transpositionTable transposition;
+    QuiescenceTT ttQ;
 private:
     std::atomic<bool> running;
 public:
-    BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)){}
+    BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)), ttQ(memory/sizeof(infoQ)){}
     int alloted_time;
     void stopAfter() {
         std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
@@ -53,6 +54,9 @@ private:
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(!running)return 0;
         Qnodes++;
+        bool isEvaluated;
+        int score=ttQ.get_eval(state, alpha, beta, isEvaluated);
+        if(isEvaluated)return score;
         int evaluation = eval.positionEvaluator(state);
         if(evaluation >= beta)return beta;
         int bestScore = evaluation;
@@ -70,6 +74,7 @@ private:
             state.undoLastMove();
             if(!running)return 0;
             if(score >= beta){
+                ttQ.push(state, score, alpha, beta);
                 return score;
             }
             if(score > alpha)
@@ -77,6 +82,7 @@ private:
             if(score > bestScore)
                 bestScore = score;
         }
+        ttQ.push(state, bestScore, alpha, beta);
         return bestScore;
     }
 
@@ -159,6 +165,7 @@ private:
             clock_t end=clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
             printf("best move at depth %d is %s with score %d (%.2f n/s %lld Qnodes %lld nodes; %d/%d)\n", depth, bestMove.to_str().c_str(), alpha, (nodes+Qnodes)/tcpu, Qnodes, nodes, i, nbMoves);
+            fflush(stdout);
             lastBest = bestMove;
             //transposition.clear();
         }

@@ -72,6 +72,54 @@ public:
         rewrite = 0;
     }
 };
+
+class infoQ{
+public:
+    int score, typeNode;
+    big hash;
+};
+class QuiescenceTT{
+public:
+    vector<infoQ> table;
+    int modulo;
+    QuiescenceTT(int count){
+        table = vector<infoQ>(count);
+        modulo=count;
+    }
+    int get_eval(const GameState& state, int alpha, int beta, bool& isok){
+        int index=state.zobristHash%modulo;
+        if(table[index].hash == state.zobristHash){
+            isok=true;
+            if(table[index].typeNode == EXACT ||
+                table[index].score >= beta && table[index].typeNode == LOWERBOUND ||
+                table[index].score < alpha && table[index].typeNode == UPPERBOUND)
+                return table[index].score;
+            isok=false;
+        }
+        return 0;
+    }
+    void push(GameState& state, int score, int alpha, int beta){
+        infoQ info;
+        info.score = score;
+        info.hash = state.zobristHash;
+        if(score >= beta)
+            info.typeNode = LOWERBOUND;
+        else if(score < alpha)
+            info.typeNode = UPPERBOUND;
+        else info.typeNode = EXACT;
+        int index = info.hash%modulo;
+        table[index] = info;
+    }
+    void clear(){
+        table = vector<infoQ>(modulo);
+    }
+    void reinit(int count){
+        count /= sizeof(infoScore);
+        table.resize(count);
+        modulo = count;
+    }
+};
+
 class perftMem{
 public:
     big hash;

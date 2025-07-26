@@ -81,7 +81,7 @@ void doUCI(string UCI_instruction, Chess& state){
             }else{
                 move = getBotMove(state.currentGame, args["movetime"]);
             }
-            printf("bestmove: %s\n", move.to_str().c_str());
+            printf("bestmove %s\n", move.to_str().c_str());
         }
     }else if(command == "uci"){
         printf("uciok\n");
