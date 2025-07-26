@@ -159,8 +159,8 @@ TEST(PreventBishopFromEnPassant, perft3) {
 TEST(EnPassantInRay, perft1){
     Perft perft(alloted_space);
     GameState game;
-    game.fromFen("rnbqk1nr/pppp2bp/6p1/4Pp2/8/2K5/PPP1PPPP/RNBQ1BNR w kq f6 0 5");
-    EXPECT_EQ(perft.perft(game, 1), 35);
+    game.fromFen("rnbqk1nr/pppp1pbp/6p1/4P3/8/2K5/PPP1PPPP/RNBQ1BNR b kq - 0 4");
+    EXPECT_EQ(perft.perft(game, 2), 912);
 }
 TEST(EnPassantNothing, perft1){
     Perft perft(alloted_space);

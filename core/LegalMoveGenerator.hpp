@@ -145,7 +145,7 @@ class LegalMoveGenerator{
                                 int rowEnPassant = color?2:5;
                                 int enPassantCase = rowEnPassant*8+enPassant;
                                 diff = (enPassantCase-posFirst)*moveFactor;
-                                if(diff == 7 || diff == 9){
+                                if(((1ULL << enPassantCase)&fullDir[square][idDir]) && (diff == 7 || diff == 9)){
                                     maskPawnMoves |= 1ULL << enPassantCase;
                                 }
                             }
