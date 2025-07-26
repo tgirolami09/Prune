@@ -206,10 +206,14 @@ public:
         int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
         big count=0;
         for(int i=0; i<nbMoves; i++){
+            clock_t startMove=clock();
+            int startVisitedNodes = visitedNodes;
             state.playMove<false, false>(moves[i]);
             big nbNodes=_perft(state, depth-1);
             state.undoLastMove<false>();
-            printf("%s: %lld\n", moves[i].to_str().c_str(), nbNodes);
+            clock_t end=clock();
+            double tcpu = double(end-startMove)/CLOCKS_PER_SEC;
+            printf("%s: %lld (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
             fflush(stdout);
             count += nbNodes;
         }

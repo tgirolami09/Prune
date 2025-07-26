@@ -23,7 +23,9 @@ try:
                 break
             else:
                 L = line.split(": ")
-                if len(L) == 2 and (len(L[0]) == 4 or len(L[0]) == 5) and L[1].isdigit():
+                if len(L) < 2:continue
+                move, leefs = L[0], L[1].split()[0]
+                if len(L) == 2 and (len(move) == 4 or len(move) == 5) and leefs.isdigit():
                     dataMoves[L[0]] = L[1]
         return dataMoves
 
