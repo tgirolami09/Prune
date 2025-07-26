@@ -34,12 +34,13 @@ public:
     }
     
 private:
+    GameState* state;
     big nodes, Qnodes;
     void orderMove(Move* moves, int nbMoves, Move possibleBest){
         vector<pair<int, Move>> sortedMoves(nbMoves);
         int start=0;
         for(int i=0; i<nbMoves; i++){
-            sortedMoves[i] = {eval.score_move(moves[i]), moves[i]};
+            sortedMoves[i] = {eval.score_move(moves[i], state->friendlyColor()), moves[i]};
             if(moves[i].start_pos == possibleBest.start_pos && moves[i].end_pos == possibleBest.end_pos){
                 swap(sortedMoves[0], sortedMoves[i]);
                 start++;
@@ -51,30 +52,29 @@ private:
         }
     }
 
-    int quiescenceSearch(GameState& state, int alpha, int beta){
+    int quiescenceSearch(int alpha, int beta){
         if(!running)return 0;
         Qnodes++;
         bool isEvaluated;
-        int score=ttQ.get_eval(state, alpha, beta, isEvaluated);
+        int score=ttQ.get_eval(*state, alpha, beta, isEvaluated);
         if(isEvaluated)return score;
-        int evaluation = eval.positionEvaluator(state);
+        int evaluation = eval.positionEvaluator(*state);
         if(evaluation >= beta)return beta;
         int bestScore = evaluation;
         alpha = max(alpha, evaluation);
         bool inCheck;
         Move captureMoves[12*8+4*4]; //maximum number of capture : each piece can capture in each direction
-        int nbMoves = generator.generateLegalMoves(state, inCheck, captureMoves, true);
+        int nbMoves = generator.generateLegalMoves(*state, inCheck, captureMoves, true);
         if(nbMoves == 0)return evaluation;
         orderMove(captureMoves, nbMoves, {0, 0});
         for(int idMove=0; idMove<nbMoves; idMove++){
             Move move = captureMoves[idMove];
-            assert(move.capture != -2);
-            state.playMove<false>(move);
-            int score = -quiescenceSearch(state, -beta, -alpha);
-            state.undoLastMove();
+            state->playMove<false>(move);
+            int score = -quiescenceSearch(-beta, -alpha);
+            state->undoLastMove();
             if(!running)return 0;
             if(score >= beta){
-                ttQ.push(state, score, alpha, beta);
+                ttQ.push(*state, score, alpha, beta);
                 return score;
             }
             if(score > alpha)
@@ -82,25 +82,25 @@ private:
             if(score > bestScore)
                 bestScore = score;
         }
-        ttQ.push(state, bestScore, alpha, beta);
+        ttQ.push(*state, bestScore, alpha, beta);
         return bestScore;
     }
 
-    int negamax(int depth, GameState& state, int alpha, int beta){
+    int negamax(int depth, int alpha, int beta){
         if(!running)return 0;
         if(depth == 0)
-            return quiescenceSearch(state, alpha, beta);
+            return quiescenceSearch(alpha, beta);
         nodes++;
         bool isEvaluated=false;
         Move bMove = {0, 0};
-        int last_eval=transposition.get_eval(state, alpha, beta, isEvaluated, depth, bMove);
+        int last_eval=transposition.get_eval(*state, alpha, beta, isEvaluated, depth, bMove);
         if(isEvaluated){
             return last_eval;
         }
         int max_eval=eval.MINIMUM;
         bool isCheck;
         Move moves[maxMoves];
-        int nbMoves=generator.generateLegalMoves(state, isCheck, moves);
+        int nbMoves=generator.generateLegalMoves(*state, isCheck, moves);
         if(nbMoves == 0){
             if(isCheck)
                 return eval.MINIMUM;
@@ -111,13 +111,13 @@ private:
         for(int i=0; i<nbMoves; i++){
             Move move=moves[i];
             if(move.start_pos == bMove.start_pos && move.end_pos == bMove.end_pos)continue;
-            state.playMove<false>(move);
-            int score = -negamax(depth-1, state, -beta, -alpha);
-            state.undoLastMove();
+            state->playMove<false>(move);
+            int score = -negamax(depth-1, -beta, -alpha);
+            state->undoLastMove();
             if(!running)return 0;
             if(score > alpha){
                 if(score > beta){
-                    transposition.push(state, score, alpha, beta, move, depth);
+                    transposition.push(*state, score, alpha, beta, move, depth);
                     return score;
                 }
                 alpha = score;
@@ -127,11 +127,12 @@ private:
                 bestMove = move;
             }
         }
-        transposition.push(state, max_eval, alpha, beta, bestMove, depth);
+        transposition.push(*state, max_eval, alpha, beta, bestMove, depth);
         return max_eval;
     }
-    public : Move bestMove(GameState& state, int alloted_time){
+    public : Move bestMove(GameState& stateIn, int alloted_time){
         //Calls evaluator here to determine what to look at
+        state = &stateIn;
         Move bestMove;
         running = true;
         this->alloted_time = alloted_time;
@@ -146,15 +147,15 @@ private:
             int beta=eval.MAXIMUM;
             bool inCheck;
             Move moves[maxMoves];
-            int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
+            int nbMoves=generator.generateLegalMoves(*state, inCheck, moves);
             if(nbMoves == 0)
                 return {}; // no possible moves
             orderMove(moves, nbMoves, lastBest);
             int i;
             for(i=0; i<nbMoves; i++){
-                state.playMove<false>(moves[i]);
-                int score = -negamax(depth, state, -beta, -alpha);
-                state.undoLastMove();
+                state->playMove<false>(moves[i]);
+                int score = -negamax(depth, -beta, -alpha);
+                state->undoLastMove();
                 if(!running)break;
                 if(score > alpha){
                     alpha = score;
@@ -174,11 +175,12 @@ private:
         return bestMove;
     }
 
-    int testQuiescenceSearch(GameState& state){
+    int testQuiescenceSearch(GameState& stateIn){
         running=true;
+        this->state = &stateIn;
         Qnodes = 0;
         clock_t start=clock();
-        quiescenceSearch(state, eval.MINIMUM, eval.MAXIMUM);
+        quiescenceSearch(eval.MINIMUM, eval.MAXIMUM);
         clock_t end = clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
         printf("%lld : %.2f\n", Qnodes, Qnodes/tcpu);
