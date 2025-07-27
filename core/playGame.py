@@ -18,7 +18,7 @@ def readResult(prog):
             break
         elif "currmove" not in line:
             if "mate" in line:
-                n=line.split("mate")[1]
+                n=int(line.split("mate ")[1].split()[0])
                 if n >= lastMate:continue
             print(line)
     return line[len(markEnd):].split()[0]
