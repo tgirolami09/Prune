@@ -10,8 +10,8 @@
 #include <atomic>
 #include <ctime>
 #include <thread>
-#define USE_TT
-#define USE_QTT
+//#define USE_TT
+//#define USE_QTT
 #define MoveScore pair<int, Move>
 int compScoreMove(const void* a, const void*b){
     int first = ((pair<int, Move>*)a)->first;
@@ -108,7 +108,9 @@ private:
             if(score > bestEval)bestEval = score;
             if(score > alpha)alpha = score;
         }
+#ifdef USE_QTT
         QTT.push(state, bestEval, alpha, beta);
+#endif
         return bestEval;
     }
 
@@ -204,7 +206,9 @@ public:
                 lastBest = bestMove;
                 break;
             }
+#ifdef USE_TT
             transposition.clear();
+#endif
         }
         timerThread.join();
         return lastBest;
