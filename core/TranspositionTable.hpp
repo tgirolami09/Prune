@@ -2,7 +2,7 @@
 #define TRANSPOSITION_TABLE_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
-
+#include "Evaluator.hpp"
 const int EXACT = 0;
 const int LOWERBOUND = 1;
 const int UPPERBOUND = 2;
@@ -87,17 +87,15 @@ public:
         table = vector<infoQ>(count);
         modulo=count;
     }
-    int get_eval(const GameState& state, int alpha, int beta, bool& isok){
+    int get_eval(const GameState& state, int alpha, int beta){
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
-            isok=true;
             if(table[index].typeNode == EXACT ||
                 table[index].score >= beta && table[index].typeNode == LOWERBOUND ||
                 table[index].score < alpha && table[index].typeNode == UPPERBOUND)
                 return table[index].score;
-            isok=false;
         }
-        return 0;
+        return INF;
     }
     void push(GameState& state, int score, int alpha, int beta){
         infoQ info;
