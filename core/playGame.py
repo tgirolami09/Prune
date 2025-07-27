@@ -25,7 +25,14 @@ movetime = int(sys.argv[3])
 game = pgn.Game()
 node = game
 if len(sys.argv) > 4:
-    board = chess.Board(sys.argv[4])
+    board = chess.Board(sys.argv[4] if sys.argv[4] != 'startpos' else 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+    if(len(sys.argv) > 6):
+        sideLimit = int(sys.argv[5])
+        EloLimit = int(sys.argv[6])
+        if sideLimit:prog = prog2
+        else: prog = prog1
+        pushCommand(prog, "setoption name UCI_limitStrength value true\n")
+        pushCommand(prog, f"setoption name UCI_Elo value {EloLimit}\n")
 else:
     board = chess.Board()
 startFen = board.fen()
