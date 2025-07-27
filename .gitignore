@@ -1,2 +1,10 @@
+*
+!*.*
+!*/
+*.out*
+*.txt
 build
 .vscode
+*.DS_Store
+*.plist
+*.png

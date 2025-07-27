@@ -22,29 +22,18 @@ enable_testing()
 #First line is name you want to use
 #Second line is location from project folder
 add_executable(
-  hello_test
-  ./tests/hello_test.cpp 
-)
-
-add_executable(
-  complex_test
-  tests/complex_test.cpp 
+  perft_test
+  tests/perft_test.cpp 
 )
 
 #First line is the name you chose
 #Second line is always GTest::gtest_main
 target_link_libraries(
-  hello_test
-  GTest::gtest_main
-)
-
-target_link_libraries(
-  complex_test
+  perft_test
   GTest::gtest_main
 )
 
 include(GoogleTest)
 
 #Put in the name you chose
-gtest_discover_tests(hello_test)
-gtest_discover_tests(complex_test)
+gtest_discover_tests(perft_test)

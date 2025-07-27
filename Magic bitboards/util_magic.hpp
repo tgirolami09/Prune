@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <cassert>
+#include <cstring>
 using namespace std;
 #define big uint64_t
 #define born __uint128_t
@@ -22,7 +23,9 @@ big clipped_row[8];
 big clipped_col[8];
 big clipped_diag[15];
 big clipped_idiag[15];
-big clipped_mask = (MAX_BIG >> 16 << 8) & (~0x8181818181818181);
+const big clipped_brow = (MAX_BIG >> 16 << 8);
+const big clipped_bcol = (~0x8181818181818181);
+const big clipped_mask = clipped_brow & clipped_bcol;
 void init_lines(){
     big row = MAX_BIG >> (8*7+2) << 1;
     big col = 0x0001010101010100ULL;
@@ -59,15 +62,16 @@ public:
 
 big apply_id(big id, big mask){
     big square_mask = 1;
-    for(int i=0; i<64; i++){
-        if(mask&square_mask){
-            if((id&1) == 0)
-                mask ^= square_mask;
-            id >>= 1;
-        }
-        square_mask <<= 1;
+    big new_mask=0;
+    while(mask){
+        int bit=__builtin_ctzll(mask);
+        big m=1ULL << bit;
+        if((id&1) == 1)
+            new_mask |= m;
+        id >>= 1;
+        mask ^= m;
     }
-    return mask;
+    return new_mask;
 }
 
 big rook_mask(big id, big square){
@@ -86,50 +90,49 @@ big get_mask(bool is_rook, big id, big square){
     return (is_rook?rook_mask:bishop_mask)(id, square);
 }
 
+inline big go_dir(big mask, int square, int dir, big clipped){
+    int cur_square = square;
+    big cur_mask=0;
+    big p;
+    do{
+        cur_square += dir;
+        if(cur_square < 0 || cur_square >= 64)break;
+        p = 1ULL << cur_square;
+        cur_mask |= p;
+    }while((clipped&p) && (p&mask) == 0);
+    return cur_mask;
+}
+
 big usefull_rook(big mask, int square){
     big mask_square = 1ULL << square;
     int col = square&7;
     int row = square >> 3;
     big cur_mask = 0;
-    for(int i=1; i <= col; i++){
-        cur_mask |= mask_square >> i;
-        if(mask&cur_mask)break;
-    }
-    big bef=mask&cur_mask;
-    for(int i=col+1; i<8; i++){
-        cur_mask |= mask_square << (i-col);
-        if((mask & cur_mask) != bef)break;
-    }
-    bef = mask&cur_mask;
-    for(int i=1; i<=row; i++){
-        cur_mask |= mask_square >> 8*i;
-        if((mask&cur_mask) != bef)break;
-    }
-    bef = mask&cur_mask;
-    for(int i=row+1; i<8; i++){
-        cur_mask |= mask_square << (i-row)*8;
-        if((mask&cur_mask) != bef)break;
-    }
+    if(col != 7)
+        cur_mask |= go_dir(mask, square, 1, clipped_bcol);
+    if(col != 0)
+        cur_mask |= go_dir(mask, square, -1, clipped_bcol);
+    if(row != 7)
+        cur_mask |= go_dir(mask, square, 8, clipped_brow);
+    if(row != 0)
+        cur_mask |= go_dir(mask, square, -8, clipped_brow);
     return cur_mask;
 }
 
 big usefull_bishop(big mask, int square){
     big cur_mask=0;
-    vector<int> poss;
-    if((square&7) != 0)
-        poss.push_back(+7), poss.push_back(-9);
-    if((square&7) != 7)
-        poss.push_back(+9), poss.push_back(-7);
-    for(int direction:poss){
-        int cur_square = square;
-        big p;
-        do{
-            cur_square += direction;
-            if(cur_square < 0 || cur_square >= 64)break;
-            p = 1ULL << cur_square;
-            cur_mask |= p;
-        }while(clipped_mask&(1ULL<<cur_square) && (p&mask) == 0);
-        //cur_mask |= (1ULL << cur_square);
+    int col=square&7;
+    int row=square >> 3;
+    if(col != 0){
+        if(row != 7)
+            cur_mask |= go_dir(mask, square, +7, clipped_mask);
+        if(row != 0)
+            cur_mask |= go_dir(mask, square, -9, clipped_mask);
+    }if(col != 7){
+        if(row != 7)
+            cur_mask |= go_dir(mask, square, +9, clipped_mask);
+        if(row != 0)
+            cur_mask |= go_dir(mask, square, -7, clipped_mask);
     }
     return cur_mask&(~(1ULL << square));
 }
@@ -142,7 +145,7 @@ int dump_table(ofstream& file, info magic, int square, bool is_rook){
     vector<big> last_mask(1<<magic.minimum);
     int col = square & 7;
     int row = square >> 3;
-    int nbBits = 10+(col%7 == 0)+(row%7 == 0);
+    int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
     for(big id=0; id<(1<<nbBits); id++){
         big mask = get_mask(is_rook, id, square);
         big res = mask*magic.magic;
@@ -154,20 +157,20 @@ int dump_table(ofstream& file, info magic, int square, bool is_rook){
             key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR-magic.minimum);
         if(key >= table.size()){
             print_mask(mask);
-            printf("%lu\n", res_mask);
-            printf("%lu\n", (res&(MAX_BIG>>magic.decR)));
+            printf("%llu\n", res_mask);
+            printf("%llu\n", (res&(MAX_BIG>>magic.decR)));
             printf("%d\n", (64-magic.decR-magic.minimum));
-            printf("%lu\n", key);
+            printf("%llu\n", key);
             assert(false);
         }
         if(table[key] != res_mask && table[key] != 0){
-            printf("magic:%lu\n", magic.magic);
-            printf("id:%ld\n", id);
-            printf("res:%ld\nmask:\n", res);
+            printf("magic:%llu\n", magic.magic);
+            printf("id:%llu\n", id);
+            printf("res:%llu\nmask:\n", res);
             print_mask(mask);
             printf("\nlast_mask:\n");
             print_mask(last_mask[key]);
-            printf("key:%ld\nlast usefull:\n", key);
+            printf("key:%llu\nlast usefull:\n", key);
             print_mask(table[key]);
             printf("\nusefull\n");
             print_mask(res_mask);
@@ -219,7 +222,6 @@ vector<vector<info>> load_info(const char* name){
                 file >> mask;//read the table, is not needed
             }
         }
-        printf("%ld\n", bests.size());
         if(bests.size() == 64)
             return {vector<info>(64, {20, 0, 1}), bests};
         else{
@@ -256,7 +258,17 @@ void load_whole(info* constants, big** table, char* name){
 void print_table(vector<vector<info>> table){
     for(int is_rook=0; is_rook<2; is_rook++){
         printf(is_rook?"rook\n":"bishop\n");
-        for(int square=0; square < 64; square++)
-            printf("\tcase: %2d magic: %16lx bits needed: %2d dec right: %2d\n", square, table[is_rook][square].magic, table[is_rook][square].minimum, table[is_rook][square].decR);
+        for(int row=0; row<8; row++){
+            for(int col=0; col<8; col++)
+                printf("%16llx ", table[is_rook][row << 3 | col].magic);
+            printf("\n");
+        }
+        for(int row=0; row<8; row++){
+            for(int col=0; col<8; col++)
+                printf("%2d ", table[is_rook][row << 3 | col].minimum);
+            printf("\n");
+        }
+        //for(int square=0; square < 64; square++)
+        //    printf("\tcase: %2d magic: %16llx bits needed: %2d dec right: %2d\n", square, table[is_rook][square].magic, table[is_rook][square].minimum, table[is_rook][square].decR);
     }
 }
