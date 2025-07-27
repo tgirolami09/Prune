@@ -191,6 +191,7 @@ class Evaluator{
 public:
     int MINIMUM=-10000;
     int MAXIMUM=10000;
+    int INF=MAXIMUM+200;
     int MIDDLE=0;
     Evaluator(){
         init_tables();

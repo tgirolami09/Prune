@@ -30,13 +30,13 @@ public:
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
             isok=true;
-            if(depth <= table[index].depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
+            if(false && table[index].depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
                 if(table[index].typeNode == EXACT ||
-                    table[index].score >= beta && table[index].typeNode == LOWERBOUND ||
-                    table[index].score < alpha && table[index].typeNode == UPPERBOUND)
+                    (table[index].score >= beta && table[index].typeNode == LOWERBOUND) ||
+                    (table[index].score < alpha && table[index].typeNode == UPPERBOUND))
                     return table[index].score;
             }
-            best = table[index].bestMove;
+            best = table[index].bestMove; //probably a good move
             isok=false;
         }
         return 0;
@@ -47,15 +47,16 @@ public:
         info.hash = state.zobristHash;
         info.bestMove = move;
         info.depth = depth;
-        if(score >= beta)
+        if(score >= beta) //cutted by beta, so can be higher
             info.typeNode = LOWERBOUND;
-        else if(score < alpha)
+        else if(score < alpha) // the score has surely been cuted one depth after, so can be even lower
             info.typeNode = UPPERBOUND;
-        else info.typeNode = EXACT;
+        else //result unaffected by borns
+            info.typeNode = EXACT;
         int index = info.hash%modulo;
         if(table[index].hash != 0){
-            if(table[index].hash == info.hash && table[index].depth > info.depth)
-                return;//already evaluated with a better depth
+            //if(table[index].depth > info.depth) //store only if it have a higher depth (save calcul more times)
+            //    return;//already evaluated with a better depth
             rewrite++;
         }
         else place++;

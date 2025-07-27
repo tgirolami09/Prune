@@ -8,26 +8,31 @@
 #include <cmath>
 #include <chrono>
 #include <atomic>
+#include <ctime>
 #include <thread>
-#include <algorithm>
-#define USE_TT
-
-bool compScoreMove(const pair<int, Move>& a, const pair<int, Move>& b){
-    return a.first > b.first;
+//#define USE_TT
+//#define USE_QTT
+int compScoreMove(const void* a, const void*b){
+    return ((pair<int, Move>*)b)->first-((pair<int, Move>*)a)->first;
+}
+void augmentMate(int& score, const Evaluator& eval){
+    if(score >= eval.MAXIMUM)
+        score++;
+    else if(score <= eval.MINIMUM)
+        score--;
 }
 const int maxMoves=218;
+const int maxCaptures = 12*8+4*4;
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
 public:
     LegalMoveGenerator generator;
     Evaluator eval;
-    transpositionTable transposition;
-    QuiescenceTT ttQ;
 private:
     std::atomic<bool> running;
 public:
-    BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)), ttQ(memory/sizeof(infoQ)){}
+    BestMoveFinder(int memory){}
     int alloted_time;
     void stopAfter() {
         std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
@@ -35,170 +40,78 @@ public:
     }
     
 private:
-    GameState* state;
-    big nodes, Qnodes;
-    void orderMove(Move* moves, int nbMoves, Move possibleBest){
-        vector<pair<int, Move>> sortedMoves(nbMoves);
-        int start=0;
-        for(int i=0; i<nbMoves; i++){
-            sortedMoves[i] = {eval.score_move(moves[i], state->friendlyColor()), moves[i]};
-            if(moves[i].start_pos == possibleBest.start_pos && moves[i].end_pos == possibleBest.end_pos){
-                swap(sortedMoves[0], sortedMoves[i]);
-                start++;
-            }
-        }
-        sort(sortedMoves.begin()+start, sortedMoves.end(), compScoreMove);
-        for(int i=0; i<nbMoves; i++){
-            moves[i] = sortedMoves[i].second;
-        }
-    }
-
-    int quiescenceSearch(int alpha, int beta){
+    int nodes;
+    int negamax(int depth, GameState& state){
         if(!running)return 0;
-        Qnodes++;
-#ifdef USE_TT
-        bool isEvaluated;
-        int score=ttQ.get_eval(*state, alpha, beta, isEvaluated);
-        if(isEvaluated)return score;
-#endif
-        int evaluation = eval.positionEvaluator(*state);
-        if(evaluation >= beta)return beta;
-        int bestScore = evaluation;
-        alpha = max(alpha, evaluation);
-        bool inCheck;
-        Move captureMoves[12*8+4*4]; //maximum number of capture : each piece can capture in each direction
-        int nbMoves = generator.generateLegalMoves(*state, inCheck, captureMoves, true);
-        if(nbMoves == 0)return evaluation;
-        orderMove(captureMoves, nbMoves, {0, 0});
-        for(int idMove=0; idMove<nbMoves; idMove++){
-            Move move = captureMoves[idMove];
-            state->playMove<false>(move);
-            int score = -quiescenceSearch(-beta, -alpha);
-            state->undoLastMove();
-            if(!running)return 0;
-            if(score >= beta){
-#ifdef USE_TT
-                ttQ.push(*state, score, alpha, beta);
-#endif
-                return score;
-            }
-            if(score > alpha)
-                alpha = score;
-            if(score > bestScore)
-                bestScore = score;
-        }
-#ifdef USE_TT
-        ttQ.push(*state, bestScore, alpha, beta);
-#endif
-        return bestScore;
-    }
-
-    int negamax(int depth, int alpha, int beta){
-        if(!running)return 0;
-        if(depth == 0)
-            return quiescenceSearch(alpha, beta);
+        if(depth == 0)return eval.positionEvaluator(state);
         nodes++;
-        bool isEvaluated=false;
-        Move bMove = {0, 0};
-#ifdef USE_TT
-        int last_eval=transposition.get_eval(*state, alpha, beta, isEvaluated, depth, bMove);
-        if(isEvaluated){
-            return last_eval;
-        }
-#endif
-        int max_eval=eval.MINIMUM;
-        bool isCheck;
+        int score_max = -eval.INF;
         Move moves[maxMoves];
-        int nbMoves=generator.generateLegalMoves(*state, isCheck, moves);
+        bool inCheck;
+        int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
         if(nbMoves == 0){
-            if(isCheck)
+            if(inCheck)
                 return eval.MINIMUM;
             return eval.MIDDLE;
         }
-        Move bestMove = {0, 0};
-        orderMove(moves, nbMoves, bMove);
         for(int i=0; i<nbMoves; i++){
-            Move move=moves[i];
-            if(move.start_pos == bMove.start_pos && move.end_pos == bMove.end_pos)continue;
-            state->playMove<false>(move);
-            int score = -negamax(depth-1, -beta, -alpha);
-            state->undoLastMove();
+            Move curMove = moves[i];
+            int score;
+            if(state.playMove<false>(curMove) > 1) // 2 repetition, calulated as the same as 3 repetition
+                score = 0;
+            else
+                score = -negamax(depth-1, state);
+            state.undoLastMove();
             if(!running)return 0;
-            if(score > alpha){
-                if(score > beta){
-#ifdef USE_TT
-                    transposition.push(*state, score, alpha, beta, move, depth);
-#endif
-                    return score;
-                }
-                alpha = score;
-            }
-            if(score > max_eval){
-                max_eval = score;
-                bestMove = move;
-            }
+            augmentMate(score, eval);
+            if(score > score_max)
+                score_max = score;
         }
-#ifdef USE_TT
-        transposition.push(*state, max_eval, alpha, beta, bestMove, depth);
-#endif
-        return max_eval;
+        return score_max;
     }
-    public : Move bestMove(GameState& stateIn, int alloted_time){
-        //Calls evaluator here to determine what to look at
-        state = &stateIn;
-        Move bestMove;
+public:
+    Move bestMove(GameState& state, int alloted_time){
         running = true;
         this->alloted_time = alloted_time;
-        printf("%dms to search\n", alloted_time);
+        thread timerThread(&BestMoveFinder::stopAfter, this);
+        Move bestMove;
         Move lastBest;
-        std::thread timerThread(&BestMoveFinder::stopAfter, this);
-        for(int depth=1; running; depth++){
-            printf("running with depth: %d\n", depth);
+        for(int depth=1; depth<255 && running; depth++){
+            lastBest = bestMove;
             clock_t start=clock();
-            Qnodes = nodes = 0;
-            int alpha=eval.MINIMUM;
-            int beta=eval.MAXIMUM;
-            bool inCheck;
             Move moves[maxMoves];
-            int nbMoves=generator.generateLegalMoves(*state, inCheck, moves);
-            if(nbMoves == 0)
-                return {}; // no possible moves
-            orderMove(moves, nbMoves, lastBest);
-            int i;
-            for(i=0; i<nbMoves; i++){
-                state->playMove<false>(moves[i]);
-                int score = -negamax(depth, -beta, -alpha);
-                printf("move: %s score: %d\n", moves[i].to_str().c_str(), score);
-                state->undoLastMove();
+            bool inCheck;
+            int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
+            int max_score = -eval.INF;
+            assert(nbMoves > 0); //the game is over, which should not append
+            int idMove;
+            for(idMove=0; idMove<nbMoves; idMove++){
+                Move curMove = moves[idMove];
+                int score;
+                if(state.playMove<false>(curMove) > 1)
+                    score = 0;
+                else score = -negamax(depth, state);
+                augmentMate(score, eval);
+                state.undoLastMove();
                 if(!running)break;
-                if(score > alpha){
-                    alpha = score;
-                    bestMove = moves[i];
-                    //printf("new best score: %d with move: %s\n", alpha, bestMove.to_str().c_str());
+                if(score > max_score){
+                    bestMove = curMove;
+                    max_score = score;
                 }
             }
-            clock_t end=clock();
+            clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            printf("best move at depth %d is %s with score %d (%.2f n/s %lld Qnodes %lld nodes; %d/%d)\n", depth, bestMove.to_str().c_str(), alpha, (nodes+Qnodes)/tcpu, Qnodes, nodes, i, nbMoves);
-            fflush(stdout);
-            lastBest = bestMove;
-            //transposition.clear();
+            printf("depth: %d ; speed %d n/s ; score %d cp ; best move %s (%d/%d)\n", depth, (int)(nodes/tcpu), max_score, bestMove.to_str().c_str(), idMove, nbMoves);
+            if(abs(max_score) >= eval.MAXIMUM){
+                lastBest = bestMove;
+                break;
+            }
         }
         timerThread.join();
-        if(bestMove.start_pos == bestMove.end_pos)return lastBest;
-        return bestMove;
+        return lastBest;
     }
-
-    int testQuiescenceSearch(GameState& stateIn){
-        running=true;
-        this->state = &stateIn;
-        Qnodes = 0;
-        clock_t start=clock();
-        quiescenceSearch(eval.MINIMUM, eval.MAXIMUM);
-        clock_t end = clock();
-        double tcpu = double(end-start)/CLOCKS_PER_SEC;
-        printf("%lld : %.2f\n", Qnodes, Qnodes/tcpu);
-        return Qnodes;
+    int testQuiescenceSearch(GameState& state){
+        return 0;
     }
 };
 

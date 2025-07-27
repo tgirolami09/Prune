@@ -46,24 +46,24 @@ public :
         }
     }
 
-    bool increaseThreeFold(big hash){
+    int increaseThreeFold(big hash){
         int index = hash%sizeThreeFold;
         for(auto& p:threefold[index]){
             if(p.first == hash){
                 p.second++;
-                return p.second == 3;
+                return p.second;
             }
         }
         threefold[index].push_back({hash, 1});
         return false;
     }
 
-    bool decreaseThreeFold(big hash){
+    int decreaseThreeFold(big hash){
         int index = hash%sizeThreeFold;
         if(threefold[index].size() == 1){
             int res=--threefold[index][0].second;
             if(res == 0)threefold[index].clear();
-            return res == 2;
+            return res;
         }
         for(auto i=threefold[index].begin(); i != threefold[index].end(); i++){
             if(i->first == hash){
@@ -71,8 +71,9 @@ public :
                 if(i->second == 2)return true;
                 if(i->second == 0){
                     threefold[index].erase(i);
+                    return 0;
                 }
-                return false;
+                return i->second;
             }
         }
         printf("oups\n");
@@ -293,7 +294,7 @@ public :
     }
 
     template<bool back, bool noperft=true>
-    void playMove(Move move){
+    int playMove(Move move){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         const bool curColor=friendlyColor();
@@ -363,15 +364,16 @@ public :
         if(!back){
             turnNumber++;
             zobristHash ^= zobrist[zobrTurn];
-            if(noperft && increaseThreeFold(zobristHash)){
-                isFinished = true; // draw by threefolds repetition
+            if(noperft){
+                return increaseThreeFold(zobristHash);
             }
         }
+        return 0;
     }
     template<bool noperft=true>
     void undoLastMove(){
-        if(noperft && decreaseThreeFold(zobristHash)){
-            isFinished = false;
+        if(noperft){
+            decreaseThreeFold(zobristHash);
         }
         turnNumber--;
         zobristHash ^= zobrist[zobrTurn];
