@@ -14,7 +14,9 @@
 #define USE_QTT
 #define MoveScore pair<int, Move>
 int compScoreMove(const void* a, const void*b){
-    return ((pair<int, Move>*)b)->first-((pair<int, Move>*)a)->first;
+    int first = ((pair<int, Move>*)a)->first;
+    int second = ((pair<int, Move>*)b)->first;
+    return (first > second)-(second > first); //https://stackoverflow.com/questions/8115624/using-quick-sort-in-c-to-sort-in-reverse-direction-descending
 }
 void augmentMate(int& score, const Evaluator& eval){
     if(score >= MAXIMUM)
@@ -61,14 +63,20 @@ public:
 private:
     int nodes;
     template<int maxmoves> //because of the quiescence search, where there are less moves at most
-    void moveOrder(Move* moves, int nbMoves, bool color){
+    void moveOrder(Move* moves, int nbMoves, bool color, Move lastBest=nullMove){
         MoveScore sortedMoves[maxmoves];
         int start = 0;
         for(int i=0; i<nbMoves; i++){
-            sortedMoves[i].first = eval.score_move(moves[i], color);
             sortedMoves[i].second = moves[i];
+            if(moves[i].start_pos == lastBest.start_pos && moves[i].end_pos == lastBest.end_pos){
+                sortedMoves[i].first = sortedMoves[0].first;
+                sortedMoves[i].second = sortedMoves[i].second;
+                sortedMoves[0].second = moves[i];
+                start++;
+            }else
+                sortedMoves[i].first = eval.score_move(moves[i], color);
         }
-        qsort(&sortedMoves[start], nbMoves, sizeof(MoveScore), compScoreMove);
+        qsort(sortedMoves+start, nbMoves-start, sizeof(MoveScore), compScoreMove);
         for(int i=0; i<nbMoves; i++){
             moves[i] = sortedMoves[i].second;
         }
@@ -108,6 +116,12 @@ private:
         if(!running)return 0;
         if(depth == 0)return eval.positionEvaluator(state);
         nodes++;
+        Move lastBest = nullMove;
+#ifdef USE_TT
+        int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
+        if(lastEval != INF)
+            return lastEval;
+#endif
         int score_max = -INF;
         Move moves[maxMoves];
         bool inCheck;
@@ -117,7 +131,8 @@ private:
                 return MINIMUM;
             return MIDDLE;
         }
-        moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor());
+        moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), lastBest);
+        Move bestMove;
         for(int i=0; i<nbMoves; i++){
             Move curMove = moves[i];
             int score;
@@ -128,12 +143,21 @@ private:
             state.undoLastMove();
             if(!running)return 0;
             augmentMate(score, eval);
-            if(score > score_max)
+            if(score > score_max){
                 score_max = score;
-            if(score > alpha)alpha = score;
-            if(score >= beta)
+                bestMove = curMove;
+            }
+            if(score >= beta){
+#ifdef USE_TT
+                transposition.push(state, score, alpha, beta, curMove, depth);
+#endif
                 return score;
+            }
+            if(score > alpha)alpha = score;
         }
+#ifdef USE_TT
+        transposition.push(state, score_max, alpha, beta, bestMove, depth);
+#endif
         return score_max;
     }
 public:
@@ -141,6 +165,9 @@ public:
         running = true;
         this->alloted_time = alloted_time;
         thread timerThread(&BestMoveFinder::stopAfter, this);
+#ifdef USE_TT
+        printf("use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)/1000000);
+#endif
         Move bestMove;
         Move lastBest;
         for(int depth=1; depth<255 && running; depth++){
@@ -177,6 +204,7 @@ public:
                 lastBest = bestMove;
                 break;
             }
+            transposition.clear();
         }
         timerThread.join();
         return lastBest;
