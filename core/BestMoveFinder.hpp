@@ -10,15 +10,18 @@
 #include <atomic>
 #include <ctime>
 #include <thread>
-//#define USE_TT
-//#define USE_QTT
+#define USE_TT
+//#define QSEARCH
+#ifdef QSEARCH
+#define USE_QTT
+#endif
 #define MoveScore pair<int, Move>
 int compScoreMove(const void* a, const void*b){
-    int first = ((pair<int, Move>*)a)->first;
-    int second = ((pair<int, Move>*)b)->first;
+    int first = ((MoveScore*)a)->first;
+    int second = ((MoveScore*)b)->first;
     return (first > second)-(second > first); //https://stackoverflow.com/questions/8115624/using-quick-sort-in-c-to-sort-in-reverse-direction-descending
 }
-void augmentMate(int& score, const Evaluator& eval){
+void augmentMate(int& score){
     if(score >= MAXIMUM)
         score++;
     else if(score <= MINIMUM)
@@ -62,9 +65,9 @@ public:
     void stop(){
         running = false;
     }
-    
+
 private:
-    int nodes;
+    int nodes, Qnodes;
     template<int maxmoves> //because of the quiescence search, where there are less moves at most
     void moveOrder(Move* moves, int nbMoves, bool color, Move lastBest=nullMove){
         MoveScore sortedMoves[maxmoves];
@@ -73,7 +76,7 @@ private:
             sortedMoves[i].second = moves[i];
             if(moves[i].start_pos == lastBest.start_pos && moves[i].end_pos == lastBest.end_pos){
                 sortedMoves[i].first = sortedMoves[0].first;
-                sortedMoves[i].second = sortedMoves[i].second;
+                sortedMoves[i].second = sortedMoves[0].second;
                 sortedMoves[0].second = moves[i];
                 start++;
             }else
@@ -86,19 +89,22 @@ private:
     }
 
     int quiescenceSearch(GameState& state, int alpha, int beta){
+        Qnodes++;
 #ifdef USE_QTT
         int lastEval=QTT.get_eval(state, alpha, beta);
-        if(lastEval != INF)
+        if(lastEval != INVALID)
             return lastEval;
 #endif
         int staticEval = eval.positionEvaluator(state);
         if(staticEval >= beta)return staticEval;
+        if(staticEval > alpha)alpha = staticEval;
         int bestEval = staticEval;
         Move captures[maxCaptures];
         bool inCheck;
         int nbCaptures = generator.generateLegalMoves(state, inCheck, captures, true);
         moveOrder<maxCaptures>(captures, nbCaptures, state.friendlyColor());
         for(int i=0; i<nbCaptures; i++){
+//            assert(captures[i].capture != -2);
             state.playMove<false, false>(captures[i]);//don't care about repetition
             int score = -quiescenceSearch(state, -beta, -alpha);
             state.undoLastMove<false>();
@@ -119,12 +125,17 @@ private:
 
     int negamax(int depth, GameState& state, int alpha, int beta){
         if(!running)return 0;
+#ifdef QSEARCH
+        if(depth == 0)return quiescenceSearch(state, alpha, beta);
+#else
         if(depth == 0)return eval.positionEvaluator(state);
+#endif
         nodes++;
         Move lastBest = nullMove;
 #ifdef USE_TT
         int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
-        if(lastEval != INF)
+        //assert(lastEval == INVALID);
+        if(lastEval != INVALID)
             return lastEval;
 #endif
         int score_max = -INF;
@@ -147,7 +158,7 @@ private:
                 score = -negamax(depth-1, state, -beta, -alpha);
             state.undoLastMove();
             if(!running)return 0;
-            augmentMate(score, eval);
+            augmentMate(score);
             if(score > score_max){
                 score_max = score;
                 bestMove = curMove;
@@ -173,10 +184,10 @@ public:
 #ifdef USE_TT
         printf("use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)/1000000);
 #endif
-        Move bestMove;
-        Move lastBest;
+        Move bestMove=nullMove;
+        Move lastBest=nullMove;
         for(int depth=1; depth<255 && running; depth++){
-            nodes = 0;
+            Qnodes = nodes = 0;
             lastBest = bestMove;
             clock_t start=clock();
             Move moves[maxMoves];
@@ -185,7 +196,7 @@ public:
             int alpha = -INF;
             int beta = INF;
             assert(nbMoves > 0); //the game is over, which should not append
-            moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor());
+            moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), lastBest);
             int idMove;
             for(idMove=0; idMove<nbMoves; idMove++){
                 Move curMove = moves[idMove];
@@ -193,7 +204,8 @@ public:
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
                 else score = -negamax(depth, state, -beta, -alpha);
-                augmentMate(score, eval);
+                augmentMate(score);
+                //printf("%s : %d\n", curMove.to_str().c_str(), score);
                 state.undoLastMove();
                 if(!running)break;
                 if(score > alpha){
@@ -203,20 +215,26 @@ public:
             }
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            printf("depth: %d ; speed %d n/s ; %d nodes ; score %d cp ; best move %s (%d/%d)\n", depth, (int)(nodes/tcpu), nodes, alpha, bestMove.to_str().c_str(), idMove, nbMoves);
+            printf("depth: %d ; speed %d n/s ; %d nodes %d quiescent nodes; score %d cp ; best move %s (%d/%d)\n", depth, (int)((nodes+Qnodes)/tcpu), nodes, Qnodes, alpha, bestMove.to_str().c_str(), idMove, nbMoves);
             fflush(stdout);
-            if(abs(alpha) >= MAXIMUM && idMove == nbMoves){
-                lastBest = bestMove;
-                break;
+            if(abs(alpha) >= MAXIMUM && idMove == nbMoves){//checkmate found
+                timerThread.~thread();
+                return bestMove;
             }
 #ifdef USE_TT
-            transposition.clear();
+            //transposition.clear();
 #endif
         }
         timerThread.join();
         return lastBest;
     }
     int testQuiescenceSearch(GameState& state){
+        Qnodes = 0;
+        clock_t start=clock();
+        int score = quiescenceSearch(state, -INF, INF);
+        clock_t end = clock();
+        double tcpu = double(end-start)/CLOCKS_PER_SEC;
+        printf("speed: %d; Qnodes:%d\n\n", (int)(Qnodes/tcpu), Qnodes);
         return 0;
     }
 };

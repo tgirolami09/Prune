@@ -3,6 +3,7 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #include "Evaluator.hpp"
+#include <climits>
 const int EXACT = 0;
 const int LOWERBOUND = 1;
 const int UPPERBOUND = 2;
@@ -15,7 +16,7 @@ public:
     int depth;
     big hash;
 };
-
+const int INVALID = INT_MAX;
 class transpositionTable{
 public:
     vector<infoScore> table;
@@ -29,15 +30,17 @@ public:
     int get_eval(const GameState& state, int alpha, int beta, int depth, Move& best){
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
-            if(table[index].depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
-                if(table[index].typeNode == EXACT ||
-                    (table[index].score >= beta && table[index].typeNode == LOWERBOUND) ||
-                    (table[index].score < alpha && table[index].typeNode == UPPERBOUND))
+            if(table[index].depth == depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
+                if(table[index].typeNode == EXACT)
                     return table[index].score;
+                if(table[index].score >= beta  && table[index].typeNode == LOWERBOUND)
+                    return beta;
+                if(table[index].score <= alpha && table[index].typeNode == UPPERBOUND)
+                    return alpha;
             }
             best = table[index].bestMove; //probably a good move
         }
-        return INF;
+        return INVALID;
     }
     void push(GameState& state, int score, int alpha, int beta, Move move, int depth){
         infoScore info;
@@ -52,12 +55,7 @@ public:
         else //result unaffected by borns
             info.typeNode = EXACT;
         int index = info.hash%modulo;
-        if(table[index].hash != 0){
-            //if(table[index].depth > info.depth) //store only if it have a higher depth (save calcul more times)
-            //    return;//already evaluated with a better depth
-            rewrite++;
-        }
-        else place++;
+        //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
         table[index] = info;
     }
     void clear(){
@@ -88,12 +86,14 @@ public:
     int get_eval(const GameState& state, int alpha, int beta){
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
-            if(table[index].typeNode == EXACT ||
-                table[index].score >= beta && table[index].typeNode == LOWERBOUND ||
-                table[index].score < alpha && table[index].typeNode == UPPERBOUND)
+            if(table[index].typeNode == EXACT)
                 return table[index].score;
+            if(table[index].score >= beta  && table[index].typeNode == LOWERBOUND)
+                return beta;
+            if(table[index].score <= alpha && table[index].typeNode == UPPERBOUND)
+                return alpha;
         }
-        return INF;
+        return INVALID;
     }
     void push(GameState& state, int score, int alpha, int beta){
         infoQ info;

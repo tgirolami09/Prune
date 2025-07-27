@@ -251,6 +251,7 @@ private:
 
 public:
     int positionEvaluator(const GameState& state){
+#ifdef COMPLICATED_EVALUATION
         int scoreFriends=0, scoreEnemies=0, egFriends=0, mgFriends=0, egEnemies=0, mgEnemies=0, mgPhase=0;
         const bool c=state.friendlyColor();
         if(c == WHITE){
@@ -267,6 +268,15 @@ public:
         int finalScore = scoreFriends-scoreEnemies+(mgScore*mgPhase+egScore*egPhase)/24;
         //printf("%s : %d\n", state.toFen().c_str(), finalScore);
         return finalScore;
+#else
+        int score = 0;
+        for(int i=0; i<nbPieces; i++){
+            if(i != KING){
+                score += (countbit(state.friendlyPieces()[i])-countbit(state.enemyPieces()[i]))*value_pieces[i];
+            }
+        }
+        return score;
+#endif
     }
     inline int score_move(const Move& move, bool c) const{
         int score = -value_pieces[move.piece];
