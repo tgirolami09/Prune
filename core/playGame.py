@@ -10,12 +10,16 @@ def pushCommand(prog, command):
 def readResult(prog):
     dataMoves = {}
     markEnd = 'bestmove '
+    lastMate = 300
     while 1:
         line = prog.stdout.readline().decode('utf-8')
         line = line.replace('\n', '')
         if line.startswith(markEnd):
             break
-        else:
+        elif "currmove" not in line:
+            if "mate" in line:
+                n=line.split("mate")[1]
+                if n >= lastMate:continue
             print(line)
     return line[len(markEnd):].split()[0]
 
@@ -37,7 +41,7 @@ else:
     board = chess.Board()
 startFen = board.fen()
 moves = []
-while not board.is_game_over():
+while not board.is_game_over() and not board.is_seventyfive_moves():
     print(board.fen())
     pushCommand(prog1, f"position fen {startFen} moves {" ".join(moves)}\n")
     pushCommand(prog1, f"go movetime {movetime}\n")
