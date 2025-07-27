@@ -12,6 +12,7 @@
 #include <thread>
 //#define USE_TT
 //#define USE_QTT
+#define MoveScore pair<int, Move>
 int compScoreMove(const void* a, const void*b){
     return ((pair<int, Move>*)b)->first-((pair<int, Move>*)a)->first;
 }
@@ -41,7 +42,21 @@ public:
     
 private:
     int nodes;
-    int negamax(int depth, GameState& state){
+    template<int maxmoves> //because of the quiescence search, where there are less moves at most
+    void moveOrder(Move* moves, int nbMoves, bool color){
+        MoveScore sortedMoves[maxmoves];
+        int start = 0;
+        for(int i=0; i<nbMoves; i++){
+            sortedMoves[i].first = eval.score_move(moves[i], color);
+            sortedMoves[i].second = moves[i];
+        }
+        qsort(&sortedMoves[start], nbMoves, sizeof(MoveScore), compScoreMove);
+        for(int i=0; i<nbMoves; i++){
+            moves[i] = sortedMoves[i].second;
+        }
+    }
+
+    int negamax(int depth, GameState& state, int alpha, int beta){
         if(!running)return 0;
         if(depth == 0)return eval.positionEvaluator(state);
         nodes++;
@@ -54,18 +69,22 @@ private:
                 return eval.MINIMUM;
             return eval.MIDDLE;
         }
+        moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor());
         for(int i=0; i<nbMoves; i++){
             Move curMove = moves[i];
             int score;
             if(state.playMove<false>(curMove) > 1) // 2 repetition, calulated as the same as 3 repetition
                 score = 0;
             else
-                score = -negamax(depth-1, state);
+                score = -negamax(depth-1, state, -beta, -alpha);
             state.undoLastMove();
             if(!running)return 0;
             augmentMate(score, eval);
             if(score > score_max)
                 score_max = score;
+            if(score > alpha)alpha = score;
+            if(score >= beta)
+                return score;
         }
         return score_max;
     }
@@ -77,32 +96,36 @@ public:
         Move bestMove;
         Move lastBest;
         for(int depth=1; depth<255 && running; depth++){
+            nodes = 0;
             lastBest = bestMove;
             clock_t start=clock();
             Move moves[maxMoves];
             bool inCheck;
             int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
-            int max_score = -eval.INF;
+            int alpha = -eval.INF;
+            int beta = eval.INF;
             assert(nbMoves > 0); //the game is over, which should not append
+            moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor());
             int idMove;
             for(idMove=0; idMove<nbMoves; idMove++){
                 Move curMove = moves[idMove];
                 int score;
                 if(state.playMove<false>(curMove) > 1)
                     score = 0;
-                else score = -negamax(depth, state);
+                else score = -negamax(depth, state, -beta, -alpha);
                 augmentMate(score, eval);
                 state.undoLastMove();
                 if(!running)break;
-                if(score > max_score){
+                if(score > alpha){
                     bestMove = curMove;
-                    max_score = score;
+                    alpha = score;
                 }
             }
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            printf("depth: %d ; speed %d n/s ; score %d cp ; best move %s (%d/%d)\n", depth, (int)(nodes/tcpu), max_score, bestMove.to_str().c_str(), idMove, nbMoves);
-            if(abs(max_score) >= eval.MAXIMUM){
+            printf("depth: %d ; speed %d n/s ; %d nodes ; score %d cp ; best move %s (%d/%d)\n", depth, (int)(nodes/tcpu), nodes, alpha, bestMove.to_str().c_str(), idMove, nbMoves);
+            fflush(stdout);
+            if(abs(alpha) >= eval.MAXIMUM && idMove == nbMoves){
                 lastBest = bestMove;
                 break;
             }
