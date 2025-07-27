@@ -26,20 +26,18 @@ public:
         table = vector<infoScore>(count);
         modulo=count;
     }
-    int get_eval(const GameState& state, int alpha, int beta, bool& isok, int depth, Move& best){
+    int get_eval(const GameState& state, int alpha, int beta, int depth, Move& best){
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
-            isok=true;
-            if(false && table[index].depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
+            if(table[index].depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
                 if(table[index].typeNode == EXACT ||
                     (table[index].score >= beta && table[index].typeNode == LOWERBOUND) ||
                     (table[index].score < alpha && table[index].typeNode == UPPERBOUND))
                     return table[index].score;
             }
             best = table[index].bestMove; //probably a good move
-            isok=false;
         }
-        return 0;
+        return INF;
     }
     void push(GameState& state, int score, int alpha, int beta, Move move, int depth){
         infoScore info;
