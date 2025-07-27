@@ -10,16 +10,16 @@
 #include <atomic>
 #include <ctime>
 #include <thread>
-//#define USE_TT
-//#define USE_QTT
+#define USE_TT
+#define USE_QTT
 #define MoveScore pair<int, Move>
 int compScoreMove(const void* a, const void*b){
     return ((pair<int, Move>*)b)->first-((pair<int, Move>*)a)->first;
 }
 void augmentMate(int& score, const Evaluator& eval){
-    if(score >= eval.MAXIMUM)
+    if(score >= MAXIMUM)
         score++;
-    else if(score <= eval.MINIMUM)
+    else if(score <= MINIMUM)
         score--;
 }
 const int maxMoves=218;
@@ -30,10 +30,28 @@ class BestMoveFinder{
 public:
     LegalMoveGenerator generator;
     Evaluator eval;
+#ifdef USE_TT
+    transpositionTable transposition;
+#endif
+#ifdef USE_QTT
+    QuiescenceTT QTT;
+#endif
 private:
     std::atomic<bool> running;
 public:
-    BestMoveFinder(int memory){}
+#ifdef USE_TT
+    #ifdef USE_QTT
+        BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)), QTT(memory/sizeof(infoQ)){}
+    #else
+        BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)){}
+    #endif
+#else
+    #ifdef USE_QTT
+        BestMoveFinder(int memory):QTT(memory/sizeof(infoQ)){}
+    #else
+        BestMoveFinder(int memory){}
+    #endif
+#endif
     int alloted_time;
     void stopAfter() {
         std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
@@ -56,25 +74,55 @@ private:
         }
     }
 
+    int quiescenceSearch(GameState& state, int alpha, int beta){
+#ifdef USE_QTT
+        int lastEval=QTT.get_eval(state, alpha, beta);
+        if(lastEval != INF)
+            return lastEval;
+#endif
+        int staticEval = eval.positionEvaluator(state);
+        if(staticEval >= beta)return staticEval;
+        int bestEval = staticEval;
+        Move captures[maxCaptures];
+        bool inCheck;
+        int nbCaptures = generator.generateLegalMoves(state, inCheck, captures, true);
+        moveOrder<maxCaptures>(captures, nbCaptures, state.friendlyColor());
+        for(int i=0; i<nbCaptures; i++){
+            state.playMove<false, false>(captures[i]);//don't care about repetition
+            int score = -quiescenceSearch(state, -beta, -alpha);
+            state.undoLastMove<false>();
+            if(score >= beta){
+#ifdef USE_QTT
+                QTT.push(state, score, alpha, beta);
+#endif
+                return score;
+            }
+            if(score > bestEval)bestEval = score;
+            if(score > alpha)alpha = score;
+        }
+        QTT.push(state, bestEval, alpha, beta);
+        return bestEval;
+    }
+
     int negamax(int depth, GameState& state, int alpha, int beta){
         if(!running)return 0;
         if(depth == 0)return eval.positionEvaluator(state);
         nodes++;
-        int score_max = -eval.INF;
+        int score_max = -INF;
         Move moves[maxMoves];
         bool inCheck;
         int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
         if(nbMoves == 0){
             if(inCheck)
-                return eval.MINIMUM;
-            return eval.MIDDLE;
+                return MINIMUM;
+            return MIDDLE;
         }
         moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor());
         for(int i=0; i<nbMoves; i++){
             Move curMove = moves[i];
             int score;
             if(state.playMove<false>(curMove) > 1) // 2 repetition, calulated as the same as 3 repetition
-                score = 0;
+                score = MIDDLE;
             else
                 score = -negamax(depth-1, state, -beta, -alpha);
             state.undoLastMove();
@@ -102,8 +150,8 @@ public:
             Move moves[maxMoves];
             bool inCheck;
             int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
-            int alpha = -eval.INF;
-            int beta = eval.INF;
+            int alpha = -INF;
+            int beta = INF;
             assert(nbMoves > 0); //the game is over, which should not append
             moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor());
             int idMove;
@@ -111,7 +159,7 @@ public:
                 Move curMove = moves[idMove];
                 int score;
                 if(state.playMove<false>(curMove) > 1)
-                    score = 0;
+                    score = MIDDLE;
                 else score = -negamax(depth, state, -beta, -alpha);
                 augmentMate(score, eval);
                 state.undoLastMove();
@@ -125,7 +173,7 @@ public:
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
             printf("depth: %d ; speed %d n/s ; %d nodes ; score %d cp ; best move %s (%d/%d)\n", depth, (int)(nodes/tcpu), nodes, alpha, bestMove.to_str().c_str(), idMove, nbMoves);
             fflush(stdout);
-            if(abs(alpha) >= eval.MAXIMUM && idMove == nbMoves){
+            if(abs(alpha) >= MAXIMUM && idMove == nbMoves){
                 lastBest = bestMove;
                 break;
             }
