@@ -186,13 +186,13 @@ void init_tables()
 const big mask_forward[64] = {
     0x303030303030300, 0x707070707070700, 0xe0e0e0e0e0e0e00, 0x1c1c1c1c1c1c1c00, 0x3838383838383800, 0x7070707070707000, 0xe0e0e0e0e0e0e000, 0xc0c0c0c0c0c0c000, 0x303030303030000, 0x707070707070000, 0xe0e0e0e0e0e0000, 0x1c1c1c1c1c1c0000, 0x3838383838380000, 0x7070707070700000, 0xe0e0e0e0e0e00000, 0xc0c0c0c0c0c00000, 0x303030303000000, 0x707070707000000, 0xe0e0e0e0e000000, 0x1c1c1c1c1c000000, 0x3838383838000000, 0x7070707070000000, 0xe0e0e0e0e0000000, 0xc0c0c0c0c0000000, 0x303030300000000, 0x707070700000000, 0xe0e0e0e00000000, 0x1c1c1c1c00000000, 0x3838383800000000, 0x7070707000000000, 0xe0e0e0e000000000, 0xc0c0c0c000000000, 0x303030000000000, 0x707070000000000, 0xe0e0e0000000000, 0x1c1c1c0000000000, 0x3838380000000000, 0x7070700000000000, 0xe0e0e00000000000, 0xc0c0c00000000000, 0x303000000000000, 0x707000000000000, 0xe0e000000000000, 0x1c1c000000000000, 0x3838000000000000, 0x7070000000000000, 0xe0e0000000000000, 0xc0c0000000000000, 0x300000000000000, 0x700000000000000, 0xe00000000000000, 0x1c00000000000000, 0x3800000000000000, 0x7000000000000000, 0xe000000000000000, 0xc000000000000000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0
 };
+const int MINIMUM=-10000;
+const int MAXIMUM=10000;
+const int INF=MAXIMUM+200;
+const int MIDDLE=0;
 class Evaluator{
     //All the logic for evaluating a position
 public:
-    int MINIMUM=-10000;
-    int MAXIMUM=10000;
-    int INF=MAXIMUM+200;
-    int MIDDLE=0;
     Evaluator(){
         init_tables();
     }
@@ -221,7 +221,7 @@ private:
         int nbPawns=places(friendlyPawn, pos);
         weightPiece += gamephaseInc[PAWN]*nbPawns;
         // detect passed pawns
-        int advanced[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        /*int advanced[8] = {0, 0, 0, 0, 0, 0, 0, 0};
         int space=0;
         for(int i=0; i<nbPawns; i++){
             if((opponentPawn&mask_forward[pos[i]]) == 0) // passed pawns
@@ -242,9 +242,10 @@ private:
         score += space*30; // the more space, the better
         if(space)
             score -= 20*weightPiece/space; // if the density of pieces is too high, so it's harder to play (represent the fact that you should not exchange pieces when you have the advantage in the position)
+        */
         mgPhase += weightPiece;
-        big protectorPawn = (((friendlyPawn&~colA) >> 7)|((friendlyPawn&~colH) >> 9))&friendlyPawn;
-        score += 10*countbit(protectorPawn); // if all pawns are protector, it's better
+        //big protectorPawn = (((friendlyPawn&~colA) >> 7)|((friendlyPawn&~colH) >> 9))&friendlyPawn;
+        //score += 10*countbit(protectorPawn); // if all pawns are protector, it's better
         return score;
     }
 
