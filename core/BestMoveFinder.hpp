@@ -59,6 +59,9 @@ public:
         std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
         running = false; // Set running to false after the specified time
     }
+    void stop(){
+        running = false;
+    }
     
 private:
     int nodes;
