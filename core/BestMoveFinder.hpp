@@ -228,7 +228,8 @@ public:
             }
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            printf("info depth %d score %s nodes %d nps %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), bestMove.to_str().c_str(), idMove, nbMoves);
+            if(idMove == nbMoves)
+                printf("info depth %d score %s nodes %d nps %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), bestMove.to_str().c_str(), idMove, nbMoves);
             fflush(stdout);
             if(abs(alpha) >= MAXIMUM && idMove == nbMoves){//checkmate found
                 timerThread.join();
@@ -239,7 +240,7 @@ public:
 #endif
         }
         timerThread.join();
-        return bestMove;
+        return lastBest;
     }
     int testQuiescenceSearch(GameState& state){
         Qnodes = 0;

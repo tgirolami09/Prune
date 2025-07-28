@@ -175,8 +175,8 @@ void init_tables()
     int p, sq;
     for (p = PAWN; p <= KING; p++) {
         for (sq = 0; sq < 64; sq++) {
-            mg_table[WHITE][p][sq] = mg_value[p] + mg_pesto_table[p][flip(sq)^7];
-            eg_table[WHITE][p][sq] = eg_value[p] + eg_pesto_table[p][flip(sq)^7];
+            mg_table[WHITE][p][sq] = mg_value[p] + mg_pesto_table[p][sq^63];
+            eg_table[WHITE][p][sq] = eg_value[p] + eg_pesto_table[p][sq^63];
             mg_table[BLACK][p][sq] = mg_value[p] + mg_pesto_table[p][sq^7];
             eg_table[BLACK][p][sq] = eg_value[p] + eg_pesto_table[p][sq^7];
         }
@@ -205,7 +205,7 @@ private:
         int weightPiece = 0;
         #pragma unroll
         for(int p=0; p<6; p++){
-            if(p == PAWN)continue;
+            //if(p == PAWN)continue;
             int nbPieces = places(pieces[p], pos);
             weightPiece += gamephaseInc[p]*nbPieces;
             for(int i=0; i<nbPieces; i++){
@@ -213,14 +213,14 @@ private:
                 midGame += mg_table[color][p][pos[i]];
             }
         }
-        big friendlyPawn = pieces[PAWN];
+        /*big friendlyPawn = pieces[PAWN];
         big opponentPawn = other[PAWN];
         if(color == BLACK){
             friendlyPawn = reverse(friendlyPawn);
             opponentPawn = reverse(opponentPawn);
-        }
-        int nbPawns=places(friendlyPawn, pos);
-        weightPiece += gamephaseInc[PAWN]*nbPawns;
+        }*/
+        //int nbPawns=places(friendlyPawn, pos);
+        //weightPiece += gamephaseInc[PAWN]*nbPawns;
         // detect passed pawns
         /*int advanced[8] = {0, 0, 0, 0, 0, 0, 0, 0};
         int space=0;
