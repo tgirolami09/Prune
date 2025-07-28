@@ -2,7 +2,6 @@
 #define TRANSPOSITION_TABLE_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
-#include "Evaluator.hpp"
 #include <climits>
 const int EXACT = 0;
 const int LOWERBOUND = 1;
