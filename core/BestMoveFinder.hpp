@@ -46,13 +46,13 @@ private:
 public:
 #ifdef USE_TT
     #ifdef USE_QTT
-        BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)), QTT(memory/sizeof(infoQ)){}
+        BestMoveFinder(int memory):transposition(memory), QTT(memory){}
     #else
-        BestMoveFinder(int memory):transposition(memory/sizeof(infoScore)){}
+        BestMoveFinder(int memory):transposition(memory){}
     #endif
 #else
     #ifdef USE_QTT
-        BestMoveFinder(int memory):QTT(memory/sizeof(infoQ)){}
+        BestMoveFinder(int memory):QTT(memory){}
     #else
         BestMoveFinder(int memory){}
     #endif
@@ -182,7 +182,10 @@ public:
         this->alloted_time = alloted_time;
         thread timerThread(&BestMoveFinder::stopAfter, this);
 #ifdef USE_TT
-        printf("use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)/1000000);
+        printf("info string use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000);
+#endif
+#ifdef USE_QTT
+        printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
 #endif
         Move bestMove=nullMove;
         Move lastBest=nullMove;
@@ -215,7 +218,7 @@ public:
             }
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            printf("depth: %d ; speed %d n/s ; %d nodes %d quiescent nodes; score %d cp ; best move %s (%d/%d)\n", depth, (int)((nodes+Qnodes)/tcpu), nodes, Qnodes, alpha, bestMove.to_str().c_str(), idMove, nbMoves);
+            printf("info depth %d score cp %d nodes %d quiescent nodes %d nps %d best move %s (%d/%d)\n", depth, alpha, nodes, Qnodes, (int)((nodes+Qnodes)/tcpu), bestMove.to_str().c_str(), idMove, nbMoves);
             fflush(stdout);
             if(abs(alpha) >= MAXIMUM && idMove == nbMoves){//checkmate found
                 timerThread.~thread();
@@ -226,7 +229,7 @@ public:
 #endif
         }
         timerThread.join();
-        return lastBest;
+        return bestMove;
     }
     int testQuiescenceSearch(GameState& state){
         Qnodes = 0;

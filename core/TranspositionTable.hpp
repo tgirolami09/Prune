@@ -23,21 +23,29 @@ public:
     int modulo;
     int rewrite=0;
     int place=0;
-    transpositionTable(int count){
+    transpositionTable(size_t count){
+        count /= sizeof(infoScore);
         table = vector<infoScore>(count);
         modulo=count;
     }
+
+    inline int storedScore(int alpha, int beta, int depth, const infoScore& entry){
+        if(entry.depth == depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
+            if(entry.typeNode == EXACT)
+                return entry.score;
+            if(entry.score >= beta  && entry.typeNode == LOWERBOUND)
+                return beta;
+            if(entry.score < alpha && entry.typeNode == UPPERBOUND)
+                return alpha;
+        }
+        return INVALID;
+    }
+
     int get_eval(const GameState& state, int alpha, int beta, int depth, Move& best){
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
-            if(table[index].depth == depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
-                if(table[index].typeNode == EXACT)
-                    return table[index].score;
-                if(table[index].score >= beta  && table[index].typeNode == LOWERBOUND)
-                    return beta;
-                if(table[index].score <= alpha && table[index].typeNode == UPPERBOUND)
-                    return alpha;
-            }
+            int score = storedScore(alpha, beta, depth, table[index]);
+            if(score != INVALID)return score;
             best = table[index].bestMove; //probably a good move
         }
         return INVALID;
@@ -79,7 +87,8 @@ class QuiescenceTT{
 public:
     vector<infoQ> table;
     int modulo;
-    QuiescenceTT(int count){
+    QuiescenceTT(size_t count){
+        count /= sizeof(infoQ);
         table = vector<infoQ>(count);
         modulo=count;
     }
@@ -111,7 +120,7 @@ public:
         table = vector<infoQ>(modulo);
     }
     void reinit(int count){
-        count /= sizeof(infoScore);
+        count /= sizeof(infoQ);
         table.resize(count);
         modulo = count;
     }
