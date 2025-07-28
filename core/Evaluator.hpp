@@ -5,6 +5,7 @@
 #include "GameState.hpp"
 #include <climits>
 #include <cmath>
+//#define COMPLICATED_EVALUATION
 const int value_pieces[5] = {100, 300, 300, 500, 900};
 //https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
