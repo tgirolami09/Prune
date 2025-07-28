@@ -137,7 +137,7 @@ public:
     int modulo;
     TTperft(int alloted_mem):mem(alloted_mem/sizeof(perftMem)), modulo(alloted_mem/sizeof(perftMem)){}
     void push(perftMem eval){
-        int index = (eval.hash*256+eval.depth)%modulo;
+        int index = eval.hash%modulo;
         mem[index] = eval;
     }
     int get_eval(big hash, int depth){

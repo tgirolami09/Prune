@@ -11,7 +11,7 @@
 #include <ctime>
 #include <string>
 #include <thread>
-//#define USE_TT
+#define USE_TT
 //#define QSEARCH
 #ifdef QSEARCH
 #define USE_QTT
@@ -199,10 +199,10 @@ public:
 #endif
         Move bestMove=nullMove;
         Move lastBest=nullMove;
+        Qnodes = nodes = 0;
+        clock_t start=clock();
         for(int depth=1; depth<255 && running; depth++){
-            Qnodes = nodes = 0;
             lastBest = bestMove;
-            clock_t start=clock();
             Move moves[maxMoves];
             bool inCheck;
             int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
@@ -216,7 +216,7 @@ public:
                 int score;
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
-                else score = -negamax(depth, state, -beta, -alpha);
+                else score = -negamax(depth-1, state, -beta, -alpha);
                 augmentMate(score);
                 //printf("%s : %d\n", curMove.to_str().c_str(), score);
                 state.undoLastMove();
