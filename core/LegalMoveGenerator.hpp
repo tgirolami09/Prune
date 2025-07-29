@@ -185,16 +185,14 @@ class LegalMoveGenerator{
                     big maskSecond = 1ULL << posSecond;
                     int8_t pieceAttack = enemyPieces[ROOK]&maskSecond?ROOK:(enemyPieces[QUEEN]&maskSecond?QUEEN:-1);
                     if(pieceAttack == -1)continue;
-                    printf("%d %d\n", posFirst, posSecond);
                     maskPinned |= maskFirst;
                     big pawnMoveMask = 0;
                     if(color)
-                        pawnMoveMask |= maskFirst >> 8;
-                    else pawnMoveMask |= maskFirst << 8;
+                        pawnMoveMask |= (maskFirst >> 8)&~allPieces;
+                    else pawnMoveMask |= (maskFirst << 8)&~allPieces;
                     pawnMoveMask |= attackPawns[64*color+posFirst]&allEnemyPieces;
                     maskToMoves<true>(posFirst, pawnMoveMask, pinnedMoves, nbMoves, PAWN);
                 }
-                
             }
         }
         return maskPinned;
