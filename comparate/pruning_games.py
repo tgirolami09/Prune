@@ -39,11 +39,20 @@ tq.close()
 print(len(openings_fen))
 nbBoardPerOpening = (nbWantedBoards-1)//len(openings_fen)+1
 print(nbBoardPerOpening)
-with open('output.fen', 'w') as f:
+with open('beginBoards.out', 'w') as f:
     for opening, listFens in openings_fen.items():
         #print(listFens)
         listFens.sort(key=lambda x:abs(x[0].relative))
         for i in range(nbBoardPerOpening):
             if i >= len(listFens):break
             f.write(listFens[i][1]+'\n')
+
+with open('allBeginBoards.out', 'w') as f:
+    for opening, listFens in openings_fen.items():
+        #print(listFens)
+        listFens.sort(key=lambda x:abs(x[0].relative))
+        f.write(opening + ':')
+        for score, fen in listFens:
+            f.write(fen+' '+str(score.relative)+';')
+        f.write('\n')
 engine.close()
