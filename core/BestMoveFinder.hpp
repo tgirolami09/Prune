@@ -165,7 +165,7 @@ private:
             if(state.playMove<false>(curMove) > 1) // 2 repetition, calulated as the same as 3 repetition
                 score = MIDDLE;
             else
-                score = -negamax(depth, state, -beta, -alpha);
+                score = -negamax(depth-1, state, -beta, -alpha);
             state.undoLastMove();
             if(!running)return 0;
             augmentMate(score);
@@ -216,7 +216,7 @@ public:
                 int score;
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
-                else score = -negamax(depth-1, state, -beta, -alpha);
+                else score = -negamax(depth, state, -beta, -alpha);
                 augmentMate(score);
                 //printf("%s : %d\n", curMove.to_str().c_str(), score);
                 state.undoLastMove();
