@@ -18,13 +18,15 @@ public:
 const int INVALID = INT_MAX;
 class transpositionTable{
 public:
-    vector<infoScore> table;
+    vector<infoScore> byDepth;
+    vector<infoScore> always;
     int modulo;
     int rewrite=0;
     int place=0;
     transpositionTable(size_t count){
         count /= sizeof(infoScore);
-        table = vector<infoScore>(count);
+        byDepth = vector<infoScore>(count);
+        always  = vector<infoScore>(count);
         modulo=count;
     }
 
@@ -32,7 +34,7 @@ public:
         if(entry.depth == depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
             if(entry.typeNode == EXACT)
                 return entry.score;
-            if(entry.score >= beta  && entry.typeNode == LOWERBOUND)
+            if(entry.score >= beta && entry.typeNode == LOWERBOUND)
                 return beta;
             if(entry.score < alpha && entry.typeNode == UPPERBOUND)
                 return alpha;
@@ -42,10 +44,14 @@ public:
 
     int get_eval(const GameState& state, int alpha, int beta, int depth, Move& best){
         int index=state.zobristHash%modulo;
-        if(table[index].hash == state.zobristHash){
-            int score = storedScore(alpha, beta, depth, table[index]);
-            if(score != INVALID)return score;
-            best = table[index].bestMove; //probably a good move
+        if(byDepth[index].hash == state.zobristHash){
+            //int score = storedScore(alpha, beta, depth, byDepth[index]);
+            //if(score != INVALID)return score;
+            best = byDepth[index].bestMove; //probably a good move
+        }else if(always[index].hash == state.zobristHash){
+            //int score = storedScore(alpha, beta, depth, always[index]);
+            //if(score != INVALID)return score;
+            best = always[index].bestMove; //probably a good move
         }
         return INVALID;
     }
@@ -63,14 +69,19 @@ public:
             info.typeNode = EXACT;
         int index = info.hash%modulo;
         //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
-        table[index] = info;
+        if(info.depth > byDepth[index].depth)
+            byDepth[index] = info;
+        else
+            always[index] = info;
     }
     void clear(){
-        table = vector<infoScore>(modulo);
+        byDepth = vector<infoScore>(modulo);
+        always = vector<infoScore>(modulo);
     }
     void reinit(int count){
         count /= sizeof(infoScore);
-        table.resize(count);
+        byDepth.resize(count);
+        always.resize(count);
         modulo = count;
         place = 0;
         rewrite = 0;
