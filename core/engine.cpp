@@ -97,6 +97,7 @@ void doUCI(string UCI_instruction, Chess& state){
             printf("bestmove %s\n", move.to_str().c_str());
         }
     }else if(command == "uci"){
+        printf("id name pruningBot\nid author tgirolami09 & jbienvenue\n");
         printf("option name Hash type spin default 64 min 1 max 512\n");
         printf("option name Move Overhead type spin default 10 min 0 max 5000\n");
         printf("option name Clear Hash type button\n");
