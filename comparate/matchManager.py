@@ -2,9 +2,8 @@ import subprocess
 import sys
 from chess import *
 from tqdm import tqdm, trange
+from multiprocessing import Pool
 import time
-prog1 = subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-prog2 = subprocess.Popen([sys.argv[2]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 movetime = int(sys.argv[3])
 def pushCommand(prog, command):
     prog.stdin.write(command.encode())
@@ -25,12 +24,14 @@ def readResult(prog):
                 if n >= lastMate:continue
                 lastMate = n
     return line[len(markEnd):].split()[0]
-
-log = open("games.log", 'w')
-with open("beginBoards.out") as games:
+def playGames(args):
+    id, rangeGame = args
+    log = open(f"games{id}.log", "w")
     results = [0]*3 # wins/loses/draw
-    beginBoards = list(games.readlines())
-    for beginBoard in tqdm(beginBoards):
+    prog1 = subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    prog2 = subprocess.Popen([sys.argv[2]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    for idBeginBoard in rangeGame:
+        beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
         for idProg, prog, _prog in ((0, prog1, prog2), (1, prog2, prog1)):
             board = Board(beginBoard)
@@ -55,5 +56,21 @@ with open("beginBoards.out") as games:
                 results[winner ^ idProg] += 1
             #print(board.outcome().winner)
     print(results)
+    log.close()
+
+with open("beginBoards.out") as games:
+    beginBoards = list(games.readlines())
+nbProcess = 10
+nbBoards = len(beginBoards)
+pool = Pool(nbProcess)
+results = pool.map(playGames, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess)) for id in range(nbProcess)])
+wins = 0
+loses = 0
+draws = 0
+for result in results:
+    wins += result[0]
+    loses += result[1]
+    draws += results[2]
+printf(f"wins = {wins}, draws = {draws}, loses = {loses}")
 pushCommand(prog1, 'quit\n')
 pushCommand(prog2, 'quit\n')
