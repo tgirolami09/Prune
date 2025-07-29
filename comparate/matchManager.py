@@ -53,10 +53,12 @@ def playGames(args):
             if winner is None:
                 results[2] += 1
             else:
-                results[winner ^ idProg] += 1
+                results[(not winner) ^ idProg] += 1
             #print(board.outcome().winner)
     print(results)
     log.close()
+    pushCommand(prog1, 'quit\n')
+    pushCommand(prog2, 'quit\n')
     return results
 
 with open("beginBoards.out") as games:
@@ -71,7 +73,5 @@ draws = 0
 for result in results:
     wins += result[0]
     loses += result[1]
-    draws += results[2]
+    draws += result[2]
 print(f"wins = {wins}, draws = {draws}, loses = {loses}")
-pushCommand(prog1, 'quit\n')
-pushCommand(prog2, 'quit\n')
