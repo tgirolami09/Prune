@@ -229,7 +229,8 @@ public:
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
             if(idMove == nbMoves)
-                printf("info depth %d score %s nodes %d nps %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), bestMove.to_str().c_str(), idMove, nbMoves);
+                printf("info depth %d score %s nodes %d nps %d time %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str());
+            else printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", idMove, nbMoves, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str());
             fflush(stdout);
             if(abs(alpha) >= MAXIMUM && idMove == nbMoves){//checkmate found
                 timerThread.join();
