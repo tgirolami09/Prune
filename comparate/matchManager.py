@@ -57,6 +57,7 @@ def playGames(args):
             #print(board.outcome().winner)
     print(results)
     log.close()
+    return results
 
 with open("beginBoards.out") as games:
     beginBoards = list(games.readlines())
@@ -71,6 +72,6 @@ for result in results:
     wins += result[0]
     loses += result[1]
     draws += results[2]
-printf(f"wins = {wins}, draws = {draws}, loses = {loses}")
+print(f"wins = {wins}, draws = {draws}, loses = {loses}")
 pushCommand(prog1, 'quit\n')
 pushCommand(prog2, 'quit\n')
