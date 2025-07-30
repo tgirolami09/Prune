@@ -78,6 +78,15 @@ def showResult(result, xStart, yStart):
     text = Label(canvas, text=f'{eloDelta} ± {difference}', bg=white)
     text.place(x=xStart+epsilon, y=yStart+epsilon)
     resultTexts.append(text)
+    mid1 = winP*width
+    mid2 = (winP+drawP)*width
+    Y = yStart+height/2+epsilon*2
+    line1 = canvas.create_line(xStart     , Y, xStart+mid1 , Y, fill="green", width=15)
+    line2 = canvas.create_line(xStart+mid1, Y, xStart+mid2 , Y, fill="blue", width=15)
+    line3 = canvas.create_line(xStart+mid2, Y, xStart+width, Y, fill="red", width=15)
+    resultTexts.append(line1)
+    resultTexts.append(line2)
+    resultTexts.append(line3)
 
 
 order = list(results.keys())
