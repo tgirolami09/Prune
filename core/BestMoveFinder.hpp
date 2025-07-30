@@ -17,23 +17,24 @@
 #define USE_QTT
 #endif
 #define MoveScore pair<int, Move>
+const int maxDepth=200;
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;
     int second = ((MoveScore*)b)->first;
     return (first > second)-(second > first); //https://stackoverflow.com/questions/8115624/using-quick-sort-in-c-to-sort-in-reverse-direction-descending
 }
 void augmentMate(int& score){
-    if(score >= MAXIMUM)
-        score++;
-    else if(score <= MINIMUM)
+    if(score > MAXIMUM-maxDepth)
         score--;
+    else if(score < MINIMUM+maxDepth)
+        score++;
 }
 
 string scoreToStr(int score){
-    if(score > MAXIMUM)
-        return ((string)"mate ")+to_string(score-MAXIMUM);
-    if(score < MINIMUM)
-        return ((string)"mate ")+to_string(score+MAXIMUM);
+    if(score > MAXIMUM-maxDepth)
+        return ((string)"mate ")+to_string(MAXIMUM-score);
+    if(score < MINIMUM+maxDepth)
+        return ((string)"mate ")+to_string(MAXIMUM+score);
     return "cp "+to_string(score);
 }
 
@@ -217,7 +218,7 @@ public:
                     score = MIDDLE;
                 else score = -negamax(depth, state, -beta, -alpha);
                 augmentMate(score);
-                //printf("%s : %d\n", curMove.to_str().c_str(), score);
+                //printf("info string %s : %d\n", curMove.to_str().c_str(), score);
                 state.undoLastMove();
                 if(!running)break;
                 if(score > alpha){
@@ -231,7 +232,7 @@ public:
                 printf("info depth %d score %s nodes %d nps %d time %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str());
             else printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, nbMoves);
             fflush(stdout);
-            if(abs(alpha) >= MAXIMUM && idMove == nbMoves){//checkmate found
+            if(abs(alpha) >= MAXIMUM && idMove == nbMoves){//checkmate found, stop the thread
                 timerThread.join();
                 return bestMove;
             }
