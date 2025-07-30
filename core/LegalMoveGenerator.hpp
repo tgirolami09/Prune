@@ -175,6 +175,7 @@ class LegalMoveGenerator{
     }
     
     public :
+
     LegalMoveGenerator(){
         PrecomputeKnightMoveData();
         load_table("magics.out");

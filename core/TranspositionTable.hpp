@@ -1,72 +1,85 @@
 #ifndef TRANSPOSITION_TABLE_HPP
 #define TRANSPOSITION_TABLE_HPP
 #include "Const.hpp"
+#include "Evaluator.hpp"
 #include "GameState.hpp"
-
-const int EXACT = 0;
-const int LOWERBOUND = 1;
-const int UPPERBOUND = 2;
+#include <climits>
+const ubyte EXACT = 0;
+const ubyte LOWERBOUND = 1;
+const ubyte UPPERBOUND = 2;
 
 class infoScore{
 public:
     int score;
-    int typeNode;
+    ubyte typeNode;
     Move bestMove;
     int depth;
     big hash;
 };
-
+const int INVALID = INT_MAX;
 class transpositionTable{
 public:
-    vector<infoScore> table;
+    vector<infoScore> byDepth;
+    vector<infoScore> always;
     int modulo;
     int rewrite=0;
     int place=0;
-    transpositionTable(int count){
-        table = vector<infoScore>(count);
+    transpositionTable(size_t count){
+        count /= sizeof(infoScore);
+        byDepth = vector<infoScore>(count);
+        always  = vector<infoScore>(count);
         modulo=count;
     }
-    int get_eval(const GameState& state, int alpha, int beta, bool& isok, int depth, Move& best){
-        int index=state.zobristHash%modulo;
-        if(table[index].hash == state.zobristHash){
-            isok=true;
-            if(depth <= table[index].depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
-                if(table[index].typeNode == EXACT ||
-                    table[index].score >= beta && table[index].typeNode == LOWERBOUND ||
-                    table[index].score < alpha && table[index].typeNode == UPPERBOUND)
-                    return table[index].score;
-            }
-            best = table[index].bestMove;
-            isok=false;
+
+    inline int storedScore(int alpha, int beta, int depth, const infoScore& entry){
+        if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
+            if(entry.typeNode == EXACT)
+                return entry.score;
+            if(entry.score >= beta && entry.typeNode == LOWERBOUND)
+                return entry.score;
+            if(entry.score < alpha && entry.typeNode == UPPERBOUND)
+                return entry.score;
         }
-        return 0;
+        return INVALID;
     }
-    void push(GameState& state, int score, int alpha, int beta, Move move, int depth){
+
+    int get_eval(const GameState& state, int alpha, int beta, int depth, Move& best){
+        int index=state.zobristHash%modulo;
+        if(byDepth[index].hash == state.zobristHash){
+            int score = storedScore(alpha, beta, depth, byDepth[index]);
+            if(score != INVALID)return score;
+            best = byDepth[index].bestMove; //probably a good move
+        }else if(always[index].hash == state.zobristHash){
+            int score = storedScore(alpha, beta, depth, always[index]);
+            if(score != INVALID)return score;
+            best = always[index].bestMove; //probably a good move
+        }
+        return INVALID;
+    }
+    void push(GameState& state, int score, ubyte typeNode, Move move, int depth){
+        //if(score == 0)return; //because of the repetition
+        if(score <= -INF || score >= INF)return;
         infoScore info;
         info.score = score;
         info.hash = state.zobristHash;
         info.bestMove = move;
         info.depth = depth;
-        if(score >= beta)
-            info.typeNode = LOWERBOUND;
-        else if(score < alpha)
-            info.typeNode = UPPERBOUND;
-        else info.typeNode = EXACT;
+        info.typeNode = typeNode;
         int index = info.hash%modulo;
-        if(table[index].hash != 0){
-            if(table[index].hash == info.hash && table[index].depth > info.depth)
-                return;//already evaluated with a better depth
-            rewrite++;
-        }
-        else place++;
-        table[index] = info;
+        //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
+        if(info.depth >= byDepth[index].depth)
+            byDepth[index] = info;
+        else
+            always[index] = info;
     }
     void clear(){
-        table = vector<infoScore>(modulo);
+        byDepth = vector<infoScore>(modulo);
+        always = vector<infoScore>(modulo);
     }
     void reinit(int count){
         count /= sizeof(infoScore);
-        table.resize(count);
+        byDepth.resize(count);
+        always.resize(count);
         modulo = count;
         place = 0;
         rewrite = 0;
@@ -82,21 +95,22 @@ class QuiescenceTT{
 public:
     vector<infoQ> table;
     int modulo;
-    QuiescenceTT(int count){
+    QuiescenceTT(size_t count){
+        count /= sizeof(infoQ);
         table = vector<infoQ>(count);
         modulo=count;
     }
-    int get_eval(const GameState& state, int alpha, int beta, bool& isok){
+    int get_eval(const GameState& state, int alpha, int beta){
         int index=state.zobristHash%modulo;
         if(table[index].hash == state.zobristHash){
-            isok=true;
-            if(table[index].typeNode == EXACT ||
-                table[index].score >= beta && table[index].typeNode == LOWERBOUND ||
-                table[index].score < alpha && table[index].typeNode == UPPERBOUND)
+            if(table[index].typeNode == EXACT)
                 return table[index].score;
-            isok=false;
+            if(table[index].score >= beta  && table[index].typeNode == LOWERBOUND)
+                return beta;
+            if(table[index].score <= alpha && table[index].typeNode == UPPERBOUND)
+                return alpha;
         }
-        return 0;
+        return INVALID;
     }
     void push(GameState& state, int score, int alpha, int beta){
         infoQ info;
@@ -114,7 +128,7 @@ public:
         table = vector<infoQ>(modulo);
     }
     void reinit(int count){
-        count /= sizeof(infoScore);
+        count /= sizeof(infoQ);
         table.resize(count);
         modulo = count;
     }
@@ -132,7 +146,7 @@ public:
     int modulo;
     TTperft(int alloted_mem):mem(alloted_mem/sizeof(perftMem)), modulo(alloted_mem/sizeof(perftMem)){}
     void push(perftMem eval){
-        int index = (eval.hash*256+eval.depth)%modulo;
+        int index = eval.hash%modulo;
         mem[index] = eval;
     }
     int get_eval(big hash, int depth){

@@ -3,6 +3,7 @@ import subprocess
 from chess import pgn
 import chess
 import time
+startpos = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 def pushCommand(prog, command):
     prog.stdin.write(command.encode())
     prog.stdin.flush()
@@ -10,22 +11,26 @@ def pushCommand(prog, command):
 def readResult(prog):
     dataMoves = {}
     markEnd = 'bestmove '
+    lastMate = 300
     while 1:
         line = prog.stdout.readline().decode('utf-8')
         line = line.replace('\n', '')
         if line.startswith(markEnd):
+            print(line)
             break
-        else:
+        elif "currmove" not in line:
+            if "mate" in line:
+                n=int(line.split("mate ")[1].split()[0])
+                if n >= lastMate:continue
+                lastMate = n
             print(line)
     return line[len(markEnd):].split()[0]
 
 prog1 = subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 prog2 = subprocess.Popen([sys.argv[2]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 movetime = int(sys.argv[3])
-game = pgn.Game()
-node = game
 if len(sys.argv) > 4:
-    board = chess.Board(sys.argv[4] if sys.argv[4] != 'startpos' else 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+    board = chess.Board(sys.argv[4] if sys.argv[4] != 'startpos' else startpos)
     if(len(sys.argv) > 6):
         sideLimit = int(sys.argv[5])
         EloLimit = int(sys.argv[6])
@@ -36,8 +41,13 @@ if len(sys.argv) > 4:
 else:
     board = chess.Board()
 startFen = board.fen()
+if startFen != startpos:
+    game = pgn.Game(dict(Variant="From Position", FEN=startFen))
+else:
+    game = pgn.Game()
+node = game
 moves = []
-while not board.is_game_over():
+while not board.is_game_over() and not board.is_seventyfive_moves():
     print(board.fen())
     pushCommand(prog1, f"position fen {startFen} moves {" ".join(moves)}\n")
     pushCommand(prog1, f"go movetime {movetime}\n")

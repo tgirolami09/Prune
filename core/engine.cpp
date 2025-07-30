@@ -18,13 +18,16 @@ class Chess{
     public : GameState currentGame;
 
     //Get it from i/o
-    float w_time;
-    float b_time;
+    int w_time;
+    int b_time;
+    int binc=0;
+    int winc=0;
 };
+int moveOverhead = 10;
 const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
-Move getBotMove(GameState gameState,float alloted_time){
+Move getBotMove(GameState gameState, int alloted_time){
     Move moveToPlay = bestMoveFinder.bestMove(gameState,alloted_time);
     return moveToPlay;
 }
@@ -34,9 +37,10 @@ Move getOpponentMove(){
     return {};
 }
 
-float computeAllotedTime(Chess& state){
-    float time = state.currentGame.friendlyColor() == WHITE?state.w_time:state.b_time;
-    return time/10.0;
+int computeAllotedTime(Chess& state){
+    int time = state.currentGame.friendlyColor() == WHITE?state.w_time:state.b_time;
+    int inc = state.currentGame.friendlyColor() == WHITE?state.winc:state.binc;
+    return time/20+inc/2-moveOverhead;
 }
 
 void doUCI(string UCI_instruction, Chess& state){
@@ -52,12 +56,19 @@ void doUCI(string UCI_instruction, Chess& state){
         while(stream >> arg){
             stream >> inter; // remove "value"
             if(arg == "Clear" && inter == "Hash"){
+#ifdef USE_TT
                 bestMoveFinder.transposition.clear();
+#endif
                 doPerft.tt.clear();
+            }else if(arg == "Move" && inter == "Overhead"){
+                stream >> inter >> precision;
+                moveOverhead = precision;
             }else{
                 stream >> precision;
                 if(arg == "Hash"){
+#ifdef USE_TT
                     bestMoveFinder.transposition.reinit(precision*1000*1000); // size in MB
+#endif
                     doPerft.tt.reinit(precision*1000*1000);
                 }
             }
@@ -77,6 +88,8 @@ void doUCI(string UCI_instruction, Chess& state){
             if(args.count("btime") && args.count("wtime")){
                 state.b_time = args["btime"];
                 state.w_time = args["wtime"];
+                state.winc = args["winc"];
+                state.binc = args["binc"];
                 move=getBotMove(state.currentGame, computeAllotedTime(state));
             }else{
                 move = getBotMove(state.currentGame, args["movetime"]);
@@ -84,6 +97,10 @@ void doUCI(string UCI_instruction, Chess& state){
             printf("bestmove %s\n", move.to_str().c_str());
         }
     }else if(command == "uci"){
+        printf("id name pruningBot\nid author tgirolami09 & jbienvenue\n");
+        printf("option name Hash type spin default 64 min 1 max 512\n");
+        printf("option name Move Overhead type spin default 10 min 0 max 5000\n");
+        printf("option name Clear Hash type button\n");
         printf("uciok\n");
     }else if(command == "position"){
         string arg;
@@ -116,6 +133,8 @@ void doUCI(string UCI_instruction, Chess& state){
         bestMoveFinder.testQuiescenceSearch(state.currentGame);
     }else if(command == "eval"){
         printf("static evaluation: %d cp\n", bestMoveFinder.eval.positionEvaluator(state.currentGame));
+    }else if(command == "stop"){
+        bestMoveFinder.stop();
     }
     //Implement actual logic for UCI management
 }

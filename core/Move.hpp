@@ -30,4 +30,5 @@ class Move{
         return res;
     }
 };
+const Move nullMove={0, 0, 0, -1, -2};
 #endif
