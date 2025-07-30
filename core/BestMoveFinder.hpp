@@ -147,8 +147,8 @@ private:
         //assert(lastEval == INVALID);
         if(lastEval != INVALID)
             return lastEval;
+        ubyte typeNode = UPPERBOUND;
 #endif
-        int score_max = -INF;
         Move moves[maxMoves];
         bool inCheck;
         int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
@@ -162,29 +162,28 @@ private:
         for(int i=0; i<nbMoves; i++){
             Move curMove = moves[i];
             int score;
-            if(state.playMove<false>(curMove) > 1) // 2 repetition, calulated as the same as 3 repetition
-                score = MIDDLE;
-            else
-                score = -negamax(depth-1, state, -beta, -alpha);
-            state.undoLastMove();
+            state.playMove<false, false>(curMove); // 2 repetition, calulated as the same as 3 repetition
+            //    score = MIDDLE;
+            //else
+            score = -negamax(depth-1, state, -beta, -alpha);
+            state.undoLastMove<false>();
             if(!running)return 0;
             augmentMate(score);
-            if(score > score_max){
-                score_max = score;
-                bestMove = curMove;
-            }
             if(score >= beta){
 #ifdef USE_TT
-                transposition.push(state, score, alpha, beta, curMove, depth);
+                transposition.push(state, score, LOWERBOUND, curMove, depth);
 #endif
                 return score;
             }
-            if(score > alpha)alpha = score;
+            if(score > alpha){
+                alpha = score;
+                typeNode=EXACT;
+            }
         }
 #ifdef USE_TT
-        transposition.push(state, score_max, alpha, beta, bestMove, depth);
+        transposition.push(state, alpha, typeNode, bestMove, depth);
 #endif
-        return score_max;
+        return alpha;
     }
 public:
     Move bestMove(GameState& state, int alloted_time){
@@ -230,7 +229,7 @@ public:
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
             if(idMove == nbMoves)
                 printf("info depth %d score %s nodes %d nps %d time %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str());
-            else printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", idMove, nbMoves, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str());
+            else printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, nbMoves);
             fflush(stdout);
             if(abs(alpha) >= MAXIMUM && idMove == nbMoves){//checkmate found
                 timerThread.join();

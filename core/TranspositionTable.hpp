@@ -3,14 +3,14 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #include <climits>
-const int EXACT = 0;
-const int LOWERBOUND = 1;
-const int UPPERBOUND = 2;
+const ubyte EXACT = 0;
+const ubyte LOWERBOUND = 1;
+const ubyte UPPERBOUND = 2;
 
 class infoScore{
 public:
     int score;
-    int typeNode;
+    ubyte typeNode;
     Move bestMove;
     int depth;
     big hash;
@@ -31,13 +31,13 @@ public:
     }
 
     inline int storedScore(int alpha, int beta, int depth, const infoScore& entry){
-        if(entry.depth == depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
+        if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
             if(entry.typeNode == EXACT)
                 return entry.score;
             if(entry.score >= beta && entry.typeNode == LOWERBOUND)
-                return beta;
+                return entry.score;
             if(entry.score < alpha && entry.typeNode == UPPERBOUND)
-                return alpha;
+                return entry.score;
         }
         return INVALID;
     }
@@ -45,31 +45,27 @@ public:
     int get_eval(const GameState& state, int alpha, int beta, int depth, Move& best){
         int index=state.zobristHash%modulo;
         if(byDepth[index].hash == state.zobristHash){
-            //int score = storedScore(alpha, beta, depth, byDepth[index]);
-            //if(score != INVALID)return score;
+            int score = storedScore(alpha, beta, depth, byDepth[index]);
+            if(score != INVALID)return score;
             best = byDepth[index].bestMove; //probably a good move
         }else if(always[index].hash == state.zobristHash){
-            //int score = storedScore(alpha, beta, depth, always[index]);
-            //if(score != INVALID)return score;
+            int score = storedScore(alpha, beta, depth, always[index]);
+            if(score != INVALID)return score;
             best = always[index].bestMove; //probably a good move
         }
         return INVALID;
     }
-    void push(GameState& state, int score, int alpha, int beta, Move move, int depth){
+    void push(GameState& state, int score, ubyte typeNode, Move move, int depth){
+        //if(score == 0)return; //because of the repetition
         infoScore info;
         info.score = score;
         info.hash = state.zobristHash;
         info.bestMove = move;
         info.depth = depth;
-        if(score >= beta) //cutted by beta, so can be higher
-            info.typeNode = LOWERBOUND;
-        else if(score < alpha) // the score has surely been cuted one depth after, so can be even lower
-            info.typeNode = UPPERBOUND;
-        else //result unaffected by borns
-            info.typeNode = EXACT;
+        info.typeNode = typeNode;
         int index = info.hash%modulo;
         //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
-        if(info.depth > byDepth[index].depth)
+        if(info.depth >= byDepth[index].depth)
             byDepth[index] = info;
         else
             always[index] = info;
