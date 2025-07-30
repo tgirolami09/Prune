@@ -152,7 +152,11 @@ public :
         }
         id++;
         if(fen[id] == '-')lastDoublePawnPush = -1;
-        else lastDoublePawnPush = 7-(fen[id]-'a'), id++;
+        else{
+            lastDoublePawnPush = 7-(fen[id]-'a'), id++;
+            lastDoublePawnPush += 8 * (fen[id] - '1'), id++;
+        }
+        //printf("In fen to data -> en passant goes to %d\n",lastDoublePawnPush);
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
         id += 2;
@@ -199,8 +203,10 @@ public :
         }
         fen += " ";
         if(lastDoublePawnPush != -1){
-            fen += (char)7-lastDoublePawnPush+'a';
-            fen += friendlyColor() == WHITE?'6':'3';
+            // fen += (char)7-lastDoublePawnPush+'a';
+            // fen += friendlyColor() == WHITE?'6':'3';
+            fen += 'h' - (lastDoublePawnPush%8);
+            fen += '0'+ (lastDoublePawnPush / 8 + 1);
         }else fen += "-";
         fen += " ";
         return fen;
@@ -295,7 +301,7 @@ public :
     template<bool back, bool noperft=true>
     void playMove(Move move){
         if(lastDoublePawnPush != -1)
-            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         const bool curColor=friendlyColor();
         const int add=(curColor*6+(int)move.piece)*64;
         if(move.promoteTo == -1){
@@ -325,12 +331,16 @@ public :
             zobristHash ^= zobrist[indexCapture|posCapture];//correction for en passant (not currently exact)
             boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
         }
-        if(!back)
+        if(!back){
             movesSinceBeginning[turnNumber] = move;
+        }
         if(!back && isEnPassantPossibility<false>(move)){//is there a pawn on his side
-            lastDoublePawnPush = col(move.start_pos);
-            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
-        }else lastDoublePawnPush = -1;
+            // printf("There is an en-passant generated for postion %d, 8 * row = %d, col = %d\n",move.start_pos,((row(move.start_pos) + row(move.end_pos)) / 2),col(move.start_pos));
+            lastDoublePawnPush = 8 * ((row(move.start_pos) + row(move.end_pos)) / 2) + col(move.start_pos);
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+        }else{
+            lastDoublePawnPush = -1;
+        }
         if(move.piece == KING){
             moveKing<back>(curColor);
             if(abs(move.end_pos-move.start_pos) == 2){//castling
@@ -380,12 +390,13 @@ public :
         if(turnNumber > 1){
             Move nextMove=movesSinceBeginning[turnNumber-1];
             if(isEnPassantPossibility<true>(nextMove)){
-                lastDoublePawnPush = col(nextMove.start_pos);
-                zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+                // printf("Undoing move and there is en-passant\n");
+                lastDoublePawnPush = 8 * ((row(nextMove.start_pos) + row(nextMove.end_pos))/2) + col(nextMove.start_pos);
+                zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
             }
         }else if(startEnPassant != -1){
             lastDoublePawnPush = startEnPassant;
-            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         }
     }
 
@@ -471,7 +482,8 @@ public :
             }
         }
         if(lastDoublePawnPush != -1){
-            printf(" %c", 7-lastDoublePawnPush+'a');
+            printf(" %c", 'h' - (lastDoublePawnPush%8));
+            printf("%c", '0'+ (lastDoublePawnPush / 8 + 1));
         }
         printf("\n%16llx\n", zobristHash);
         printf("%s", toFen().c_str());
