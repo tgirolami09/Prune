@@ -156,7 +156,7 @@ TEST(PreventBishopFromEnPassant, perft3) {
     game.fromFen("7k/8/8/1Pp5/1K6/8/8/7B w - c6 0 2");
     EXPECT_EQ(perft.perft(game,3), 369);
 }
-TEST(EnPassantInRay, perft1){
+TEST(EnPassantInRay, perft2){
     Perft perft(alloted_space);
     GameState game;
     game.fromFen("rnbqk1nr/pppp1pbp/6p1/4P3/8/2K5/PPP1PPPP/RNBQ1BNR b kq - 0 4");
@@ -167,4 +167,10 @@ TEST(EnPassantNothing, perft1){
     GameState game;
     game.fromFen("8/2p5/3p4/KP5r/4Ppk1/8/6P1/7R b - e3 0 3");
     EXPECT_EQ(perft.perft(game, 1), 20);
+}
+TEST(EnPassantLogicTest, perft6){
+    Perft perft(alloted_space);
+    GameState game;
+    game.fromFen("8/p2n1p2/1p1Pp2p/4P1k1/r4p1P/5K2/6P1/4R3 b - - 0 1");
+    EXPECT_EQ(perft.perft(game, 6), 5076659);
 }

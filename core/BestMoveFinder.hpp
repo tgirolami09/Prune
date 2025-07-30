@@ -119,6 +119,7 @@ private:
             state.playMove<false, false>(captures[i]);//don't care about repetition
             int score = -quiescenceSearch(state, -beta, -alpha);
             state.undoLastMove<false>();
+
             if(score >= beta){
 #ifdef USE_QTT
                 QTT.push(state, score, alpha, beta);
