@@ -1,6 +1,7 @@
 #ifndef TRANSPOSITION_TABLE_HPP
 #define TRANSPOSITION_TABLE_HPP
 #include "Const.hpp"
+#include "Evaluator.hpp"
 #include "GameState.hpp"
 #include <climits>
 const ubyte EXACT = 0;
@@ -57,6 +58,7 @@ public:
     }
     void push(GameState& state, int score, ubyte typeNode, Move move, int depth){
         //if(score == 0)return; //because of the repetition
+        if(score <= -INF || score >= INF)return;
         infoScore info;
         info.score = score;
         info.hash = state.zobristHash;
