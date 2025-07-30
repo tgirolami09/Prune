@@ -120,6 +120,30 @@ void precomputePawnsAttack(){
     }
 }
 
+big directions[64][64];
+// big fullDir[64][8];
+static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+void precomputeDirections(){
+    for(int row=0; row<8; row++){
+        for(int col=0; col<8; col++){
+            int square = row*8+col;
+            for(int idDir=0; idDir<8; idDir++){
+                int r=row+dirs[idDir][0];
+                int c=col+dirs[idDir][1];
+                big mask = 0;
+                while(r >= 0 && r < 8 && c >= 0 && c < 8){
+                    int sq = (r*8+c);
+                    mask |= 1ULL << sq;
+                    directions[square][sq] = mask; // line of 1 between square and sq
+                    r += dirs[idDir][0];
+                    c += dirs[idDir][1];
+                }
+                // fullDir[square][idDir] = mask;
+            }
+        }
+    }
+}
+
 class constTable{
 public:
     int bits;
@@ -158,6 +182,7 @@ class LegalMoveGenerator{
         precomputePawnsAttack();
         precomputeCastlingMasks();
         precomputeNormlaKingMoves();
+        precomputeDirections();
     }
     ~LegalMoveGenerator(){
         for(int i=0; i<128; i++){
@@ -377,17 +402,17 @@ class LegalMoveGenerator{
 
             int kingRow = row(friendKingPos), kingCol = col(friendKingPos);
             int bishopRow = row(currentBishopPos), bishopCol = col(currentBishopPos);
-            //It makes sense for a bishop to pin a piece if its in the same diagonal
+
+            //It makes sense for a bishop to pin a piece if its in the same diagonal as the king
             if (abs(kingRow - bishopRow) == abs(kingCol - bishopCol)){
-                big kingAsBishop= pseudoLegalBishopMoves(friendKingPos, allPieces);
-                big pinnedPieceMask = dangerSquares & kingAsBishop;
+                big ray = directions[friendKingPos][currentBishopPos];
+                big pinnedPieceMask = (ray ^ (1ul << currentBishopPos)) & allPieces;
                 //There is a pinned piece;
-                if (pinnedPieceMask != 0){
+                if (countbit(pinnedPieceMask) == 1){
                     int pinnedPiecePos = __builtin_ctzll(pinnedPieceMask);
-                    big ray = pseudoLegalBishopMoves(currentBishopPos, allPieces ^ pinnedPieceMask) & pseudoLegalBishopMoves(friendKingPos, allPieces ^ pinnedPieceMask);
                     // printf("Bishop pin ray is (bishop excluded) :\n");
                     // print_mask(ray);
-                    pinnedMasks[pinnedPiecePos] = (ray | (1ul << currentBishopPos));   
+                    pinnedMasks[pinnedPiecePos] = ray;
                 }
             }
         }
@@ -418,15 +443,14 @@ class LegalMoveGenerator{
             int kingRow = row(friendKingPos), kingCol = col(friendKingPos);
             int rookRow = row(currentRookPos), rookCol = col(currentRookPos);
 
-            //It makes sense for a rook to pin a piece if its on the same row or column as king
+            //It makes sense for a rook to pin a piece if its on the same row or column as the king
             if (kingRow == rookRow || kingCol == rookCol){
-                big kingAsRook = pseudoLegalRookMoves(friendKingPos, allPieces);
-                big pinnedPieceMask = dangerSquares & kingAsRook;
+                big ray = directions[friendKingPos][currentRookPos];
+                big pinnedPieceMask = (ray ^ (1ul << currentRookPos)) & allPieces;
                 //There is a pinned piece;
-                if (pinnedPieceMask != 0){
+                if (countbit(pinnedPieceMask) == 1){
                     int pinnedPiecePos = __builtin_ctzll(pinnedPieceMask);
-                    big ray = pseudoLegalRookMoves(currentRookPos, allPieces ^ pinnedPieceMask) & pseudoLegalRookMoves(friendKingPos, allPieces ^ pinnedPieceMask);
-                    pinnedMasks[pinnedPiecePos] = ray | (1ul << currentRookPos);   
+                    pinnedMasks[pinnedPiecePos] = ray;  
                 }
             }
         }
