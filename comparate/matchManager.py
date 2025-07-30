@@ -15,8 +15,15 @@ def readResult(prog):
     markEnd = 'bestmove '
     lastMate = 300
     logs = ""
+    timeLastLine = time.time()
     while 1:
         line = prog.stdout.readline().decode('utf-8')
+        if line:
+            timeLastLine = time.time()
+        else:
+            if (time.time()-timeLastLine) > 200:
+                return 'h1h1', logs
+            continue
         logs += line
         line = line.replace('\n', '')
         if line.startswith(markEnd):
