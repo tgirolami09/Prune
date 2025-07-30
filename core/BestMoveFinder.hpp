@@ -152,7 +152,7 @@ private:
         ubyte typeNode = UPPERBOUND;
 #endif
         Move moves[maxMoves];
-        bool inCheck;
+        bool inCheck=false;
         int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
         if(nbMoves == 0){
             if(inCheck)
@@ -233,7 +233,7 @@ public:
                 printf("info depth %d score %s nodes %d nps %d time %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str());
             else printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, nbMoves);
             fflush(stdout);
-            if(abs(alpha) >= MAXIMUM && idMove == nbMoves){//checkmate found, stop the thread
+            if(abs(alpha) >= MAXIMUM-maxDepth && idMove == nbMoves){//checkmate found, stop the thread
                 timerThread.join();
                 return bestMove;
             }
