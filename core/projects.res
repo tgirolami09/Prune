@@ -5,7 +5,7 @@ weakTT trueTT 2170/785/2395
 trueTT noRepeat 2227/605/2518
 projects: 
 quiescence search : 
-true transposition table : 
 mobility encouragement : 
-book for opening (so no need to test) : 
+book for opening (so no need to test) : tgirolami
 better move ordering : 
+NNUE : 
