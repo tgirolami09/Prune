@@ -72,6 +72,7 @@ private:
         orderMove(captureMoves, nbMoves, {0, 0});
         for(int idMove=0; idMove<nbMoves; idMove++){
             Move move = captureMoves[idMove];
+            assert(move.capture != -2);
             state->playMove<false>(move);
             int score = -quiescenceSearch(-beta, -alpha);
             state->undoLastMove();
