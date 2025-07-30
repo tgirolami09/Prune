@@ -60,7 +60,7 @@ def showResult(result, xStart, yStart):
     percentage = score/total
     winsDev = winP*(1-percentage)**2
     drawsDev = drawP*(0.5-percentage)**2
-    lossesDev = winP*(0-percentage)**2
+    lossesDev = lossesP*(0-percentage)**2
     dev = sqrt(winsDev + drawsDev + lossesDev) / sqrt(total)
 
     confidenceP = 0.95
@@ -125,6 +125,8 @@ for idProj, project in enumerate(projects):
     if(idProj == 0):
         f = BOLD
     else:f=None
+    if not project[1]:
+        project[1] = "not yet assigned"
     projectsLabel.append(Label(canvas, text=project[0], bg=white, font=f))
     projectsLabel[-1].place(x=0, y=endHeight+idProj*height//2+epsilon)
     projectsLabel.append(Label(canvas, text=project[1], bg=white, font=f))
