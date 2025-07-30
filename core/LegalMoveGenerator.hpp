@@ -5,6 +5,7 @@
 #include "GameState.hpp"
 #include <fstream>
 #include <utility>
+#include <cstring>
 using namespace std;
 
 big KnightMoves[64]; //Knight moves for each position of the board
