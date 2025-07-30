@@ -163,6 +163,10 @@ public:
         mem.resize(count);
         modulo = count;
     }
+    void clearMem(){
+        mem = vector<perftMem>(0);
+        modulo = 0;
+    }
 };
 
 #endif

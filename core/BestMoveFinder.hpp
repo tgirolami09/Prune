@@ -260,7 +260,8 @@ class Perft{
 public:
     TTperft tt;
     LegalMoveGenerator generator;
-    Perft(size_t space):tt(space){}
+    size_t space;
+    Perft(size_t _space):tt(0), space(_space){}
     big visitedNodes;
     big _perft(GameState& state, ubyte depth){
         visitedNodes++;
@@ -282,6 +283,7 @@ public:
         return count;
     }
     big perft(GameState& state, ubyte depth){
+        tt.reinit(space);
         visitedNodes = 0;
         if(depth == 0)return 1;
         clock_t start=clock();
@@ -306,6 +308,7 @@ public:
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
         printf("%.3f : %.3f nps %lld visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
         fflush(stdout);
+        tt.clearMem();
         return count;
     }
 };
