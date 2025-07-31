@@ -106,21 +106,17 @@ public:
             if(table[index].typeNode == EXACT)
                 return table[index].score;
             if(table[index].score >= beta  && table[index].typeNode == LOWERBOUND)
-                return beta;
+                return table[index].score;
             if(table[index].score <= alpha && table[index].typeNode == UPPERBOUND)
-                return alpha;
+                return table[index].score;
         }
         return INVALID;
     }
-    void push(GameState& state, int score, int alpha, int beta){
+    void push(GameState& state, int score, int typeNode){
         infoQ info;
         info.score = score;
         info.hash = state.zobristHash;
-        if(score >= beta)
-            info.typeNode = LOWERBOUND;
-        else if(score < alpha)
-            info.typeNode = UPPERBOUND;
-        else info.typeNode = EXACT;
+        info.typeNode = typeNode;
         int index = info.hash%modulo;
         table[index] = info;
     }
