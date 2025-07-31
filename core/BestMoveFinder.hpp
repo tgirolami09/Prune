@@ -32,9 +32,9 @@ void augmentMate(int& score){
 
 string scoreToStr(int score){
     if(score > MAXIMUM-maxDepth)
-        return ((string)"mate ")+to_string(MAXIMUM-score);
+        return ((string)"mate ")+to_string((MAXIMUM-score)/2);
     if(score < MINIMUM+maxDepth)
-        return ((string)"mate ")+to_string(MAXIMUM+score);
+        return ((string)"mate ")+to_string((-(MAXIMUM+score))/2);
     return "cp "+to_string(score);
 }
 
@@ -244,7 +244,7 @@ public:
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
             if(idMove == nbMoves)
                 printf("info depth %d score %s nodes %d nps %d time %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str());
-            else printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, nbMoves);
+            else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, nbMoves);
             fflush(stdout);
             if(abs(alpha) >= MAXIMUM-maxDepth && idMove == nbMoves){//checkmate found, stop the thread
                 timerThread.join();
