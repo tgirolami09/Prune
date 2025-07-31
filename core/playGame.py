@@ -53,7 +53,7 @@ node = game
 moves = []
 while not board.is_game_over() and not board.is_seventyfive_moves():
     print(board.fen())
-    pushCommand(prog1, f"position fen {startFen} moves {" ".join(moves)}\n")
+    pushCommand(prog1, f"position fen {startFen} moves {' '.join(moves)}\n")
     pushCommand(prog1, f"go movetime {movetime}\n")
     move, nbNodes = readResult(prog1)
     rmove = chess.Move.from_uci(move)
@@ -64,6 +64,8 @@ while not board.is_game_over() and not board.is_seventyfive_moves():
     prog1, prog2 = prog2, prog1
     nodes1, nodes2 = nodes2, nodes1
     moves.append(move)
+game.headers["White"] = sys.argv[1]
+game.headers["Black"] = sys.argv[2]
 print(game)
 winner = board.outcome().winner
 if winner == chess.WHITE:
