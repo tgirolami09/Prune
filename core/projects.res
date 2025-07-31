@@ -16,6 +16,7 @@ useLast goodOrder 576/284/4490
 goodOrder Qsearch 318/216/4816
 Qsearch Extension 2051/1044/2255
 Extension FastOrder 1651/971/2728
+FastOrder BetterOrder 1767/1104/2479
 projects: 
 history heuristic : jbienvenue
 mobility encouragement : 
