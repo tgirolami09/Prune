@@ -242,7 +242,7 @@ public:
 #endif
         }
         timerThread.join();
-        return lastBest;
+        return bestMove;
     }
     int testQuiescenceSearch(GameState& state){
         Qnodes = 0;
