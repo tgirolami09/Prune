@@ -11,6 +11,8 @@ BaseVersion fastGen 942/390/4018
 weakTT useLast 1693/579/3078
 trueTT useLast 1814/603/2933
 noRepeat useLast 1922/511/2917
+weakTT fastGen 1980/604/2766
+useLast goodOrder 576/284/4490
 projects: 
 quiescence search : 
 mobility encouragement : 
