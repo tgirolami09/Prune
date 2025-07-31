@@ -40,6 +40,7 @@ string scoreToStr(int score){
 
 const int maxMoves=218;
 const int maxCaptures = 12*8+4*4;
+const int maxExtension = 16;
 //Class to find the best in a situation
 class BestMoveFinder{
     //Returns the best move given a position and time to use
@@ -125,7 +126,6 @@ private:
         int nbCaptures = generator.generateLegalMoves(state, inCheck, captures, true);
         moveOrder<maxCaptures>(captures, nbCaptures, state.friendlyColor());
         for(int i=0; i<nbCaptures; i++){
-//            assert(captures[i].capture != -2);
             state.playMove<false, false>(captures[i]);//don't care about repetition
             int score = -quiescenceSearch(state, -beta, -alpha);
             state.undoLastMove<false>();
@@ -148,7 +148,7 @@ private:
         return bestEval;
     }
 
-    int negamax(int depth, GameState& state, int alpha, int beta){
+    int negamax(int depth, GameState& state, int alpha, int beta, int numExtension){
         if(!running)return 0;
 #ifdef QSEARCH
         if(depth == 0)return quiescenceSearch(state, alpha, beta);
@@ -159,7 +159,6 @@ private:
         Move lastBest = nullMove;
 #ifdef USE_TT
         int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
-        //assert(lastEval == INVALID);
         if(lastEval != INVALID)
             return lastEval;
         ubyte typeNode = UPPERBOUND;
@@ -172,15 +171,17 @@ private:
                 return MINIMUM;
             return MIDDLE;
         }
+        if(inCheck && numExtension < maxExtension){
+            numExtension++;
+            depth++;
+        }
         moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), lastBest);
         Move bestMove;
         for(int i=0; i<nbMoves; i++){
             Move curMove = moves[i];
             int score;
-            state.playMove<false, false>(curMove); // 2 repetition, calulated as the same as 3 repetition
-            //    score = MIDDLE;
-            //else
-            score = -negamax(depth-1, state, -beta, -alpha);
+            state.playMove<false, false>(curMove);
+            score = -negamax(depth-1, state, -beta, -alpha, numExtension);
             state.undoLastMove<false>();
             if(!running)return 0;
             augmentMate(score);
@@ -230,7 +231,7 @@ public:
                 int score;
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
-                else score = -negamax(depth, state, -beta, -alpha);
+                else score = -negamax(depth, state, -beta, -alpha, 0);
                 augmentMate(score);
                 //printf("info string %s : %d\n", curMove.to_str().c_str(), score);
                 state.undoLastMove();
@@ -250,9 +251,6 @@ public:
                 timerThread.join();
                 return bestMove;
             }
-#ifdef USE_TT
-            //transposition.clear();
-#endif
         }
         timerThread.join();
         return bestMove;
