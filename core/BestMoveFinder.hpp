@@ -5,6 +5,7 @@
 #include "GameState.hpp"
 #include "Evaluator.hpp"
 #include "LegalMoveGenerator.hpp"
+#include "MoveOrdering.hpp"
 #include <cmath>
 #include <chrono>
 #include <atomic>
@@ -121,13 +122,13 @@ private:
             typeNode = EXACT;
         }
         int bestEval = staticEval;
-        Move captures[maxCaptures];
+        Order<maxCaptures> order;
         bool inCheck;
-        big dangerPositions = 0;
-        int nbCaptures = generator.generateLegalMoves(state, inCheck, captures, dangerPositions, true);
-        moveOrder<maxCaptures>(captures, nbCaptures, state.friendlyColor(), dangerPositions);
-        for(int i=0; i<nbCaptures; i++){
-            state.playMove<false, false>(captures[i]);//don't care about repetition
+        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
+        order.init(eval, state.friendlyColor(), nullMove);
+        for(int i=0; i<order.nbMoves; i++){
+            Move capture = order.pop_max();
+            state.playMove<false, false>(capture);//don't care about repetition
             int score = -quiescenceSearch(state, -beta, -alpha);
             state.undoLastMove<false>();
             if(!running)return 0;
@@ -164,11 +165,10 @@ private:
             return lastEval;
         ubyte typeNode = UPPERBOUND;
 #endif
-        Move moves[maxMoves];
+        Order<maxMoves> order;
         bool inCheck=false;
-        big dangerPositions = 0;
-        int nbMoves = generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
-        if(nbMoves == 0){
+        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+        if(order.nbMoves == 0){
             if(inCheck)
                 return MINIMUM;
             return MIDDLE;
@@ -177,10 +177,10 @@ private:
             numExtension++;
             depth++;
         }
-        moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), dangerPositions, lastBest);
+        order.init(eval, state.friendlyColor(), lastBest);
         Move bestMove;
-        for(int i=0; i<nbMoves; i++){
-            Move curMove = moves[i];
+        for(int i=0; i<order.nbMoves; i++){
+            Move curMove = order.pop_max();
             int score;
             state.playMove<false, false>(curMove);
             score = -negamax(depth-1, state, -beta, -alpha, numExtension);
@@ -220,17 +220,16 @@ public:
         clock_t start=clock();
         for(int depth=1; depth<255 && running; depth++){
             lastBest = bestMove;
-            Move moves[maxMoves];
+            Order<maxMoves> order;
             bool inCheck;
-            big dangerPositions = 0;
-            int nbMoves = generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
+            order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
             int alpha = -INF;
             int beta = INF;
-            assert(nbMoves > 0); //the game is over, which should not append
-            moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), dangerPositions, lastBest);
+            assert(order.nbMoves > 0); //the game is over, which should not append
             int idMove;
-            for(idMove=0; idMove<nbMoves; idMove++){
-                Move curMove = moves[idMove];
+            order.init(eval, state.friendlyColor(), lastBest);
+            for(idMove=0; idMove<order.nbMoves; idMove++){
+                Move curMove = order.pop_max();
                 int score;
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
@@ -246,11 +245,11 @@ public:
             }
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            if(idMove == nbMoves)
+            if(idMove == order.nbMoves)
                 printf("info depth %d score %s nodes %d nps %d time %d pv %s\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str());
-            else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, nbMoves);
+            else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, order.nbMoves);
             fflush(stdout);
-            if(abs(alpha) >= MAXIMUM-maxDepth && idMove == nbMoves){//checkmate found, stop the thread
+            if(abs(alpha) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
                 timerThread.join();
                 return bestMove;
             }
