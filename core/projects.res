@@ -13,8 +13,8 @@ trueTT useLast 1814/603/2933
 noRepeat useLast 1922/511/2917
 weakTT fastGen 1980/604/2766
 useLast goodOrder 576/284/4490
+goodOrder Qsearch 318/216/4816
 projects: 
-quiescence search : 
 mobility encouragement : 
 book for opening (so no need to test) : tgirolami
 better move ordering : 

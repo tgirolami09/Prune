@@ -12,7 +12,7 @@
 #include <string>
 #include <thread>
 #define USE_TT
-//#define QSEARCH
+#define QSEARCH
 #ifdef QSEARCH
 #define USE_QTT
 #endif
