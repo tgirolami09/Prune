@@ -81,7 +81,7 @@ public:
 private:
     int nodes, Qnodes;
     template<int maxmoves> //because of the quiescence search, where there are less moves at most
-    void moveOrder(Move* moves, int nbMoves, bool color, Move lastBest=nullMove){
+    void moveOrder(Move* moves, int nbMoves, bool color, big& dangerPositions, Move lastBest=nullMove){
         MoveScore sortedMoves[maxmoves];
         int start = 0;
         for(int i=0; i<nbMoves; i++){
@@ -92,7 +92,7 @@ private:
                 sortedMoves[0].second = moves[i];
                 start++;
             }else
-                sortedMoves[i].first = eval.score_move(moves[i], color);
+                sortedMoves[i].first = eval.score_move(moves[i], color, dangerPositions);
         }
         qsort(sortedMoves+start, nbMoves-start, sizeof(MoveScore), compScoreMove);
         for(int i=0; i<nbMoves; i++){
@@ -123,8 +123,9 @@ private:
         int bestEval = staticEval;
         Move captures[maxCaptures];
         bool inCheck;
-        int nbCaptures = generator.generateLegalMoves(state, inCheck, captures, true);
-        moveOrder<maxCaptures>(captures, nbCaptures, state.friendlyColor());
+        big dangerPositions = 0;
+        int nbCaptures = generator.generateLegalMoves(state, inCheck, captures, dangerPositions, true);
+        moveOrder<maxCaptures>(captures, nbCaptures, state.friendlyColor(), dangerPositions);
         for(int i=0; i<nbCaptures; i++){
             state.playMove<false, false>(captures[i]);//don't care about repetition
             int score = -quiescenceSearch(state, -beta, -alpha);
@@ -165,7 +166,8 @@ private:
 #endif
         Move moves[maxMoves];
         bool inCheck=false;
-        int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
+        big dangerPositions = 0;
+        int nbMoves = generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
         if(nbMoves == 0){
             if(inCheck)
                 return MINIMUM;
@@ -175,7 +177,7 @@ private:
             numExtension++;
             depth++;
         }
-        moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), lastBest);
+        moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), dangerPositions, lastBest);
         Move bestMove;
         for(int i=0; i<nbMoves; i++){
             Move curMove = moves[i];
@@ -220,11 +222,12 @@ public:
             lastBest = bestMove;
             Move moves[maxMoves];
             bool inCheck;
-            int nbMoves = generator.generateLegalMoves(state, inCheck, moves);
+            big dangerPositions = 0;
+            int nbMoves = generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
             int alpha = -INF;
             int beta = INF;
             assert(nbMoves > 0); //the game is over, which should not append
-            moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), lastBest);
+            moveOrder<maxMoves>(moves, nbMoves, state.friendlyColor(), dangerPositions, lastBest);
             int idMove;
             for(idMove=0; idMove<nbMoves; idMove++){
                 Move curMove = moves[idMove];
@@ -281,7 +284,8 @@ public:
         if(lastCall != -1)return lastCall;
         bool inCheck;
         Move moves[maxMoves];
-        int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
+        big dangerPositions = 0;
+        int nbMoves=generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
         if(depth == 1)return nbMoves;
         big count=0;
         for(int i=0; i<nbMoves; i++){
@@ -300,7 +304,8 @@ public:
         clock_t start=clock();
         bool inCheck;
         Move moves[maxMoves];
-        int nbMoves=generator.generateLegalMoves(state, inCheck, moves);
+        big dangerPositions = 0;
+        int nbMoves=generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
         big count=0;
         for(int i=0; i<nbMoves; i++){
             clock_t startMove=clock();

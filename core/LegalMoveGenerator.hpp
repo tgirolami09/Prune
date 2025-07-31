@@ -561,7 +561,7 @@ class LegalMoveGenerator{
     int friendlyKingPosition;
     int enemyyKingPosition;
 
-    public : int generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves, bool onlyCapture=false){
+    public : int generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves,big& dangerPositions, bool onlyCapture=false){
         //Set all pinned masks to -1 (= no pinning)
         memset(pinnedMasks, 0xFF, sizeof(pinnedMasks));
 
@@ -641,6 +641,8 @@ class LegalMoveGenerator{
             }
         }
 
+        dangerPositions = allDangerSquares;
+
         //From here we have the pinned pieces, the number of checkers, and the danger squares
         if(onlyCapture){
             moveMask = 0;
@@ -670,7 +672,7 @@ class LegalMoveGenerator{
             }
         }
 
-        legalPawnMoves(friendlyPieces[PAWN], state.friendlyColor(), state.lastDoublePawnPush, moveMask, captureMask, legalMoves, nbMoves, allPieces, allEnemies, enemyPieces[ROOK]);
+        legalPawnMoves(friendlyPieces[PAWN], state.friendlyColor(), state.lastDoublePawnPush, moveMask, captureMask, legalMoves, nbMoves, allPieces, allEnemies, enemyPieces[ROOK] | enemyPieces[QUEEN]);
         legalKnightMoves(friendlyPieces[KNIGHT], moveMask, captureMask, legalMoves, nbMoves);
         legalSlidingMoves(moveMask, captureMask, legalMoves, nbMoves, allPieces);
         return nbMoves;

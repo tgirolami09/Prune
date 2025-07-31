@@ -279,8 +279,11 @@ public:
         return score;
 #endif
     }
-    inline int score_move(const Move& move, bool c) const{
-        int score = -value_pieces[move.piece];
+    inline int score_move(const Move& move, bool c, big& dangerPositions) const{
+        int score = 0;
+        if ((dangerPositions & (1ul<<move.end_pos)) != 0){
+            score -= value_pieces[move.piece];
+        } 
         if(move.capture != -2)
             score += value_pieces[move.capture]*10;
 
