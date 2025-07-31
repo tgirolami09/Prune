@@ -6,7 +6,7 @@
 #include <climits>
 #include <cmath>
 #define COMPLICATED_EVALUATION
-const int value_pieces[5] = {100, 300, 300, 500, 900};
+const int value_pieces[6] = {100, 300, 300, 500, 900, 0};
 //https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
 const int eg_value[6] = { 94, 281, 297, 512,  936,  0};
@@ -281,7 +281,7 @@ public:
     }
     inline int score_move(const Move& move, bool c) const{
         int score = -value_pieces[move.piece];
-        if(move.capture != -1)
+        if(move.capture != -2)
             score += value_pieces[move.capture]*10;
 
         if(move.promoteTo != -1)score += value_pieces[move.promoteTo];

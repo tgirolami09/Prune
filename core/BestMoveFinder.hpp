@@ -21,7 +21,7 @@ const int maxDepth=200;
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;
     int second = ((MoveScore*)b)->first;
-    return (first > second)-(second > first); //https://stackoverflow.com/questions/8115624/using-quick-sort-in-c-to-sort-in-reverse-direction-descending
+    return second-first; //https://stackoverflow.com/questions/8115624/using-quick-sort-in-c-to-sort-in-reverse-direction-descending
 }
 void augmentMate(int& score){
     if(score > MAXIMUM-maxDepth)
@@ -100,6 +100,7 @@ private:
     }
 
     int quiescenceSearch(GameState& state, int alpha, int beta){
+        if(!running)return 0;
         Qnodes++;
 #ifdef USE_QTT
         int lastEval=QTT.get_eval(state, alpha, beta);
@@ -107,8 +108,17 @@ private:
             return lastEval;
 #endif
         int staticEval = eval.positionEvaluator(state);
-        if(staticEval >= beta)return staticEval;
-        if(staticEval > alpha)alpha = staticEval;
+        if(staticEval >= beta){
+#ifdef USE_QTT
+            QTT.push(state, staticEval, LOWERBOUND);
+#endif
+            return staticEval;
+        }
+        int typeNode = UPPERBOUND;
+        if(staticEval > alpha){
+            alpha = staticEval;
+            typeNode = EXACT;
+        }
         int bestEval = staticEval;
         Move captures[maxCaptures];
         bool inCheck;
@@ -119,18 +129,21 @@ private:
             state.playMove<false, false>(captures[i]);//don't care about repetition
             int score = -quiescenceSearch(state, -beta, -alpha);
             state.undoLastMove<false>();
-
+            if(!running)return 0;
             if(score >= beta){
 #ifdef USE_QTT
-                QTT.push(state, score, alpha, beta);
+                QTT.push(state, score, LOWERBOUND);
 #endif
                 return score;
             }
             if(score > bestEval)bestEval = score;
-            if(score > alpha)alpha = score;
+            if(score > alpha){
+                alpha = score;
+                typeNode = EXACT;
+            }
         }
 #ifdef USE_QTT
-        QTT.push(state, bestEval, alpha, beta);
+        QTT.push(state, bestEval, typeNode);
 #endif
         return bestEval;
     }
