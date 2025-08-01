@@ -70,6 +70,10 @@ def playGames(args):
             else:
                 results[(not winner) ^ idProg] += 1
             #print(board.outcome().winner)
+            pushCommand(prog1, "setoption name Hash Clear\n")
+            pushCommand(prog2, "setoption name Hash Clear\n")
+        sys.stdout.write('\r'+'\t'*id*2+'/'.join(map(str, results)))
+        sys.stdout.flush()
     print(results)
     log.close()
     pushCommand(prog1, 'quit\n')
