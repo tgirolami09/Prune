@@ -6,6 +6,7 @@
 #include "Evaluator.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
+#include "loadpolyglot.hpp"
 #include <cmath>
 #include <chrono>
 #include <atomic>
@@ -44,6 +45,8 @@ const int maxCaptures = 12*8+4*4;
 const int maxExtension = 16;
 //Class to find the best in a situation
 class BestMoveFinder{
+    unordered_map<uint64_t,PolyglotEntry> book;
+
     //Returns the best move given a position and time to use
 public:
     LegalMoveGenerator generator;
@@ -57,19 +60,11 @@ public:
 private:
     std::atomic<bool> running;
 public:
-#ifdef USE_TT
-    #ifdef USE_QTT
-        BestMoveFinder(int memory):transposition(memory), QTT(memory){}
-    #else
-        BestMoveFinder(int memory):transposition(memory){}
-    #endif
-#else
-    #ifdef USE_QTT
-        BestMoveFinder(int memory):QTT(memory){}
-    #else
-        BestMoveFinder(int memory){}
-    #endif
-#endif
+
+    BestMoveFinder(int memory):transposition(memory), QTT(memory){
+        book = load_book("./book.bin");
+    }
+
     int alloted_time;
     void stopAfter() {
         std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
@@ -205,6 +200,13 @@ private:
     }
 public:
     Move bestMove(GameState& state, int alloted_time){
+        bool moveInTable = false;
+        Move bookMove = findPolyglot(state,moveInTable,book);
+        //Return early because a move was found in a book
+        if (moveInTable){
+            printf("Found book move for fen : %s\n",state.toFen().c_str());
+            return bookMove;
+        }
         running = true;
         this->alloted_time = alloted_time;
         thread timerThread(&BestMoveFinder::stopAfter, this);

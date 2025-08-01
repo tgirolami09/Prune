@@ -26,7 +26,11 @@ def readResult(prog):
                 if n >= lastMate:continue
                 lastMate = n
             print(line)
-    nodes = int(lastLine.split("nodes ")[1].split()[0])
+    #Because if using a book then nbNodes = 0
+    if (lastLine.count("nodes ") > 0):
+        nodes = int(lastLine.split("nodes ")[1].split()[0])
+    else:
+        nodes = -1
     return line[len(markEnd):].split()[0], nodes
 
 prog1 = subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)

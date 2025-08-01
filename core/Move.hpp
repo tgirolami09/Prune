@@ -25,8 +25,10 @@ class Move{
 
     string to_str(){
         string res = to_uci(start_pos)+to_uci(end_pos);
-        if(promoteTo != -1)
+        if(promoteTo != -1){
+            printf("Piece can promote to %d\n",promoteTo);
             res += id_to_piece[promoteTo];
+        }
         return res;
     }
 };

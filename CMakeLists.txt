@@ -26,6 +26,11 @@ add_executable(
   tests/perft_test.cpp 
 )
 
+add_executable(
+  polyglotHash_test
+  tests/polyglotHash_test.cpp 
+)
+
 #First line is the name you chose
 #Second line is always GTest::gtest_main
 target_link_libraries(
@@ -33,7 +38,13 @@ target_link_libraries(
   GTest::gtest_main
 )
 
+target_link_libraries(
+  polyglotHash_test
+  GTest::gtest_main
+)
+
 include(GoogleTest)
 
 #Put in the name you chose
 gtest_discover_tests(perft_test)
+gtest_discover_tests(polyglotHash_test)
