@@ -90,7 +90,7 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename) {
     ifstream file(filename, ios::binary);
     if (!file){
         //throw runtime_error("Cannot open book file");
-        printf("Book file could not be opnened, returning empty book\n");
+        printf("Book file could not be openened, returning empty book\n");
         return book;
     }
 

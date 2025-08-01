@@ -13,11 +13,6 @@
 #include <ctime>
 #include <string>
 #include <thread>
-#define USE_TT
-#define QSEARCH
-#ifdef QSEARCH
-#define USE_QTT
-#endif
 #define MoveScore pair<int, Move>
 const int maxDepth=200;
 int compScoreMove(const void* a, const void*b){
@@ -31,6 +26,55 @@ void augmentMate(int& score){
     else if(score < MINIMUM+maxDepth)
         score++;
 }
+
+class Score{
+public:
+    int score;
+    bool usable;
+    big useInTT;//when, if the score is 0, is usable in the tt
+    Score(){}
+    Score(int _score):score(_score), usable(true), useInTT(-1){}
+    Score(int _score, bool _usable, big repet):score(_score), usable(_usable), useInTT(repet){}
+    void augmentMate(){
+        if(score > MAXIMUM-maxDepth)
+            score--;
+        else if(score < MINIMUM+maxDepth)
+            score++;
+    }
+
+    void update(big repet){
+        if(!usable && repet == useInTT)
+            usable = true;
+    }
+
+    Score operator-(){
+        return Score(-score, usable, useInTT);
+    }
+    bool operator>(Score o){
+        return score > o.score;
+    }
+    bool operator>=(Score o){
+        return score >= o.score;
+    }
+    bool operator<(Score o){
+        return score < o.score;
+    }
+    bool operator<=(Score o){
+        return score <= o.score;
+    }
+    bool operator>(int otherScore){
+        return score > otherScore;
+    }
+    bool operator>=(int otherScore){
+        return score >= otherScore;
+    }
+    bool operator<(int otherScore){
+        return score < otherScore;
+    }
+    bool operator<=(int otherScore){
+        return score <= otherScore;
+    }
+};
 
 string scoreToStr(int score){
     if(score > MAXIMUM-maxDepth)
@@ -51,12 +95,8 @@ class BestMoveFinder{
 public:
     LegalMoveGenerator generator;
     Evaluator eval;
-#ifdef USE_TT
     transpositionTable transposition;
-#endif
-#ifdef USE_QTT
     QuiescenceTT QTT;
-#endif
 private:
     std::atomic<bool> running;
 public:
@@ -99,16 +139,12 @@ private:
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(!running)return 0;
         Qnodes++;
-#ifdef USE_QTT
         int lastEval=QTT.get_eval(state, alpha, beta);
         if(lastEval != INVALID)
             return lastEval;
-#endif
         int staticEval = eval.positionEvaluator(state);
         if(staticEval >= beta){
-#ifdef USE_QTT
             QTT.push(state, staticEval, LOWERBOUND);
-#endif
             return staticEval;
         }
         int typeNode = UPPERBOUND;
@@ -128,9 +164,7 @@ private:
             state.undoLastMove<false>();
             if(!running)return 0;
             if(score >= beta){
-#ifdef USE_QTT
                 QTT.push(state, score, LOWERBOUND);
-#endif
                 return score;
             }
             if(score > bestEval)bestEval = score;
@@ -139,34 +173,26 @@ private:
                 typeNode = EXACT;
             }
         }
-#ifdef USE_QTT
         QTT.push(state, bestEval, typeNode);
-#endif
         return bestEval;
     }
 
-    int negamax(int depth, GameState& state, int alpha, int beta, int numExtension){
+     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension){
         if(!running)return 0;
-#ifdef QSEARCH
-        if(depth == 0)return quiescenceSearch(state, alpha, beta);
-#else
-        if(depth == 0)return eval.positionEvaluator(state);
-#endif
+        if(depth == 0)return Score(quiescenceSearch(state, alpha, beta), true, -1);
         nodes++;
         Move lastBest = nullMove;
-#ifdef USE_TT
         int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
         if(lastEval != INVALID)
-            return lastEval;
+            return Score(lastEval, true, -1);
         ubyte typeNode = UPPERBOUND;
-#endif
         Order<maxMoves> order;
         bool inCheck=false;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         if(order.nbMoves == 0){
             if(inCheck)
-                return MINIMUM;
-            return MIDDLE;
+                return Score(MINIMUM, true, -1);
+            return Score(MIDDLE, true, -1);
         }
         if(inCheck && numExtension < maxExtension){
             numExtension++;
@@ -174,29 +200,35 @@ private:
         }
         order.init(eval, state.friendlyColor(), lastBest);
         Move bestMove;
+        Score bestScore(-INF, false, -1);
         for(int i=0; i<order.nbMoves; i++){
             Move curMove = order.pop_max();
-            int score;
-            state.playMove<false, false>(curMove);
-            score = -negamax(depth-1, state, -beta, -alpha, numExtension);
-            state.undoLastMove<false>();
+            Score score;
+            if(state.playMove<false>(curMove) > 1){
+                score = Score(MIDDLE, false, state.zobristHash);
+            }else{
+                score = -negamax(depth-1, state, -beta, -alpha, numExtension);
+                score.update(state.zobristHash);
+            }
+            state.undoLastMove();
             if(!running)return 0;
-            augmentMate(score);
+            score.augmentMate();
             if(score >= beta){
-#ifdef USE_TT
-                transposition.push(state, score, LOWERBOUND, curMove, depth);
-#endif
+                if(score.usable){
+                    transposition.push(state, score.score, LOWERBOUND, curMove, depth);
+                }
                 return score;
             }
             if(score > alpha){
-                alpha = score;
+                alpha = score.score;
                 typeNode=EXACT;
             }
+            if(score > bestScore)bestScore = score;
         }
-#ifdef USE_TT
-        transposition.push(state, alpha, typeNode, bestMove, depth);
-#endif
-        return alpha;
+        if(bestScore.usable){
+            transposition.push(state, bestScore.score, typeNode, bestMove, depth);
+        }
+        return bestScore;
     }
 public:
     Move bestMove(GameState& state, int alloted_time){
@@ -210,12 +242,8 @@ public:
         running = true;
         this->alloted_time = alloted_time;
         thread timerThread(&BestMoveFinder::stopAfter, this);
-#ifdef USE_TT
         printf("info string use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000);
-#endif
-#ifdef USE_QTT
         printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
-#endif
         Move bestMove=nullMove;
         Move lastBest=nullMove;
         Qnodes = nodes = 0;
@@ -235,7 +263,7 @@ public:
                 int score;
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
-                else score = -negamax(depth, state, -beta, -alpha, 0);
+                else score = -negamax(depth, state, -beta, -alpha, 0).score;
                 augmentMate(score);
                 //printf("info string %s : %d\n", curMove.to_str().c_str(), score);
                 state.undoLastMove();
