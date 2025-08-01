@@ -74,10 +74,10 @@ def playGames(args):
             pushCommand(prog2, "setoption name Hash Clear\n")
         sys.stdout.write('\r'+'\t'*id*2+'/'.join(map(str, results)))
         sys.stdout.flush()
-    print(results)
     log.close()
     pushCommand(prog1, 'quit\n')
     pushCommand(prog2, 'quit\n')
+    time.sleep(1)
     return results
 
 with open("beginBoards.out") as games:
@@ -93,7 +93,7 @@ for result in results:
     wins += result[0]
     loses += result[1]
     draws += result[2]
-print(f"wins = {wins}, draws = {draws}, loses = {loses}")
+print(f"\nwins = {wins}, draws = {draws}, loses = {loses}")
 #thank to https://3dkingdoms.com/chess/elo.htm
 from math import log, sqrt, pi
 def eloDiff(percentage):
