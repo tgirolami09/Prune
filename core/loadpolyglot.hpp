@@ -86,8 +86,13 @@ struct PolyglotEntry {
 
 unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename) {
     vector<PolyglotEntry> InputBook;
+    unordered_map<uint64_t,PolyglotEntry> book;
     ifstream file(filename, ios::binary);
-    if (!file) throw runtime_error("Cannot open book file");
+    if (!file){
+        //throw runtime_error("Cannot open book file");
+        printf("Book file could not be opnened, returning empty book\n");
+        return book;
+    }
 
     printf("Loading file '%s' for opening book\n",filename.c_str());
 
@@ -103,8 +108,6 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename) {
 
     //Just in case
     sort(InputBook.begin(),InputBook.end());
-
-    unordered_map<uint64_t,PolyglotEntry> book;
 
     uint64_t lastKey = 0;
     for (PolyglotEntry entry : InputBook){
