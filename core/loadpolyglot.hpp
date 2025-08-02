@@ -40,7 +40,9 @@ struct PolyglotEntry {
         learn = swap32(learn);
 
         to_square = move & 0x3f;
+        to_square = row(to_square) * 8 + (7 - col(to_square));
         from_square = (move >> 6) & 0x3f;
+        from_square = row(from_square) * 8 + (7 - col(from_square));
         promotion = (move >> 12) & 0x7;
     }
 

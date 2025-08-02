@@ -39,3 +39,8 @@ TEST(PolyGlot, WhiteNoCastle) {
     EXPECT_EQ(polyglotHash(game), 0x652a607ca3f242c1);
 }
 
+TEST(PolyGlot, TestHashFunction) { 
+    GameState game;
+    game.fromFen("r1bqkbnr/ppp1pppp/2n5/3p4/3P4/4PN2/PPP2PPP/RNBQKB1R b KQkq - 1 3");
+    EXPECT_EQ(polyglotHash(game), 15834916877423137634ul);
+}
