@@ -25,8 +25,6 @@ public:
         }
     }
     Move pop_max(){
-        if(pointer >= nbMoves)printf("%d %d\n", pointer, nbMoves);
-        assert(pointer < nbMoves);
         if(isPriority && pointer == 0){
             pointer++;
             return moves[0];

@@ -30,11 +30,10 @@ void augmentMate(int& score){
 class Score{
 public:
     int score;
-    bool usable;
-    big useInTT;//when, if the score is 0, is usable in the tt
+    ubyte depth;//when, if the score is 0, is usable in the tt
     Score(){}
-    Score(int _score):score(_score), usable(true), useInTT(-1){}
-    Score(int _score, bool _usable, big repet):score(_score), usable(_usable), useInTT(repet){}
+    Score(int _score):score(_score), depth(-1){}
+    Score(int _score, ubyte _depth):score(_score), depth(_depth){}
     void augmentMate(){
         if(score > MAXIMUM-maxDepth)
             score--;
@@ -42,13 +41,12 @@ public:
             score++;
     }
 
-    void update(big repet){
-        if(!usable && repet == useInTT)
-            usable = true;
+    bool usable(ubyte _depth){
+        return _depth <= depth;
     }
 
     Score operator-(){
-        return Score(-score, usable, useInTT);
+        return Score(-score, depth);
     }
     bool operator>(Score o){
         return score > o.score;
@@ -126,7 +124,7 @@ public:
 
 private:
     int nodes, Qnodes;
-
+    big isInSearch[maxDepth];
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(!running)return 0;
         Qnodes++;
@@ -168,22 +166,33 @@ private:
         return bestEval;
     }
 
-     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension){
+    ubyte isRepet(big hash, int lastChange, int pos){
+        for(int i=lastChange; i<pos-3; i++){
+            if(isInSearch[i] == hash)
+                return i;
+        }
+        return (ubyte)-1;
+    }
+    void setElement(big hash, int pos){
+        isInSearch[pos] = hash;
+    }
+
+    Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(!running)return 0;
-        if(depth == 0)return Score(quiescenceSearch(state, alpha, beta), true, -1);
+        if(depth == 0)return Score(quiescenceSearch(state, alpha, beta), -1);
         nodes++;
         Move lastBest = nullMove;
         int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
         if(lastEval != INVALID)
-            return Score(lastEval, true, -1);
+            return Score(lastEval, -1);
         ubyte typeNode = UPPERBOUND;
         Order<maxMoves> order;
         bool inCheck=false;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         if(order.nbMoves == 0){
             if(inCheck)
-                return Score(MINIMUM, true, -1);
-            return Score(MIDDLE, true, -1);
+                return Score(MINIMUM, -1);
+            return Score(MIDDLE, -1);
         }
         if(inCheck && numExtension < maxExtension){
             numExtension++;
@@ -191,21 +200,26 @@ private:
         }
         order.init(eval, state.friendlyColor(), lastBest);
         Move bestMove;
-        Score bestScore(-INF, false, -1);
+        Score bestScore(-INF, -1);
         for(int i=0; i<order.nbMoves; i++){
             Move curMove = order.pop_max();
             Score score;
-            if(state.playMove<false>(curMove) > 1){
-                score = Score(MIDDLE, false, state.zobristHash);
+            state.playMove<false, false>(curMove);
+            int newLastChange = lastChange;
+            if(curMove.capture != -2 || curMove.piece == PAWN)
+                newLastChange = relDepth;
+            ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
+            if(usableDepth != (ubyte)-1){
+                score = Score(MIDDLE, relDepth);
             }else{
-                score = -negamax(depth-1, state, -beta, -alpha, numExtension);
-                score.update(state.zobristHash);
+                setElement(state.zobristHash, relDepth);
+                score = -negamax(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
             }
-            state.undoLastMove();
+            state.undoLastMove<false>();
             if(!running)return 0;
             score.augmentMate();
             if(score >= beta){
-                if(score.usable){
+                if(score.usable(relDepth)){
                     transposition.push(state, score.score, LOWERBOUND, curMove, depth);
                 }
                 return score;
@@ -216,7 +230,7 @@ private:
             }
             if(score > bestScore)bestScore = score;
         }
-        if(bestScore.usable){
+        if(bestScore.usable(relDepth)){
             transposition.push(state, bestScore.score, typeNode, bestMove, depth);
         }
         return bestScore;
@@ -249,13 +263,17 @@ public:
             int beta = INF;
             assert(order.nbMoves > 0); //the game is over, which should not append
             int idMove;
+            setElement(state.zobristHash, 0);
             order.init(eval, state.friendlyColor(), lastBest);
             for(idMove=0; idMove<order.nbMoves; idMove++){
                 Move curMove = order.pop_max();
                 int score;
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
-                else score = -negamax(depth, state, -beta, -alpha, 0).score;
+                else{
+                    setElement(state.zobristHash, 1);
+                    score = -negamax(depth, state, -beta, -alpha, 0, (curMove.capture == -2 && curMove.piece == PAWN), 2).score;
+                }
                 augmentMate(score);
                 //printf("info string %s : %d\n", curMove.to_str().c_str(), score);
                 state.undoLastMove();
