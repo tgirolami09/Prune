@@ -99,6 +99,7 @@ public:
     QuiescenceTT QTT;
 private:
     std::atomic<bool> running;
+    std::atomic<bool> midtime;
 public:
 
     BestMoveFinder(int memory):transposition(memory), QTT(memory){
@@ -108,12 +109,15 @@ public:
     int alloted_time;
     void stopAfter() {
         //std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
-        auto start=chrono::high_resolution_clock::now();
-        auto end=start;
-        do{
-            this_thread::sleep_for(chrono::milliseconds(10));
-            end = chrono::high_resolution_clock::now();
-        }while(chrono::duration_cast<chrono::milliseconds>(end-start).count() < alloted_time && running);
+        for(int i=0; i<2 && running; i++){
+            auto start=chrono::high_resolution_clock::now();
+            auto end=start;
+            do{
+                this_thread::sleep_for(chrono::milliseconds(10));
+                end = chrono::high_resolution_clock::now();
+            }while(chrono::duration_cast<chrono::milliseconds>(end-start).count() < alloted_time/2 && running);
+            midtime = true;
+        }
         running = false; // Set running to false after the specified time
     }
     void stop(){
@@ -227,6 +231,7 @@ public:
             return bookMove;
         }
         running = true;
+        midtime = false;
         this->alloted_time = alloted_time;
         thread timerThread(&BestMoveFinder::stopAfter, this);
         printf("info string use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000);
@@ -235,7 +240,7 @@ public:
         Move lastBest=nullMove;
         Qnodes = nodes = 0;
         clock_t start=clock();
-        for(int depth=1; depth<255 && running; depth++){
+        for(int depth=1; depth<255 && running && !midtime; depth++){
             lastBest = bestMove;
             Order<maxMoves> order;
             bool inCheck;
@@ -272,6 +277,7 @@ public:
                 return bestMove;
             }
         }
+        running = false;
         timerThread.join();
         return bestMove;
     }
