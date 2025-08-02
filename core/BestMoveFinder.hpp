@@ -107,7 +107,12 @@ public:
 
     int alloted_time;
     void stopAfter() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
+        auto start=chrono::high_resolution_clock::now();
+        auto end=start;
+        do{
+            end = chrono::high_resolution_clock::now();
+        }while(chrono::duration_cast<chrono::milliseconds>(end-start).count() < alloted_time && running);
         running = false; // Set running to false after the specified time
     }
     void stop(){
@@ -116,25 +121,6 @@ public:
 
 private:
     int nodes, Qnodes;
-    template<int maxmoves> //because of the quiescence search, where there are less moves at most
-    void moveOrder(Move* moves, int nbMoves, bool color, big& dangerPositions, Move lastBest=nullMove){
-        MoveScore sortedMoves[maxmoves];
-        int start = 0;
-        for(int i=0; i<nbMoves; i++){
-            sortedMoves[i].second = moves[i];
-            if(moves[i].start_pos == lastBest.start_pos && moves[i].end_pos == lastBest.end_pos){
-                sortedMoves[i].first = sortedMoves[0].first;
-                sortedMoves[i].second = sortedMoves[0].second;
-                sortedMoves[0].second = moves[i];
-                start++;
-            }else
-                sortedMoves[i].first = eval.score_move(moves[i], color, dangerPositions);
-        }
-        qsort(sortedMoves+start, nbMoves-start, sizeof(MoveScore), compScoreMove);
-        for(int i=0; i<nbMoves; i++){
-            moves[i] = sortedMoves[i].second;
-        }
-    }
 
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(!running)return 0;
@@ -280,6 +266,7 @@ public:
             else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, order.nbMoves);
             fflush(stdout);
             if(abs(alpha) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
+                running = false;
                 timerThread.join();
                 return bestMove;
             }
