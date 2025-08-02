@@ -111,6 +111,7 @@ public:
         auto start=chrono::high_resolution_clock::now();
         auto end=start;
         do{
+            this_thread::sleep_for(chrono::milliseconds(10));
             end = chrono::high_resolution_clock::now();
         }while(chrono::duration_cast<chrono::milliseconds>(end-start).count() < alloted_time && running);
         running = false; // Set running to false after the specified time
