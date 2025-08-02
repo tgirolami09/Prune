@@ -21,7 +21,7 @@ def readResult(prog):
         if line:
             timeLastLine = time.time()
         else:
-            if (time.time()-timeLastLine) > 200:
+            if (time.time()-timeLastLine) > movetime*2:
                 return 'h1h1', logs
             continue
         logs += line
@@ -54,10 +54,14 @@ def playGames(args):
                 end = time.time()
                 move, logs = readResult(prog)
                 if(move == "h1h1"):
-                    print(f"position fen {beginBoard} moves {" ".join(moves)}\n")
+                    print(f"\nposition fen {beginBoard} moves {" ".join(moves)}\n")
                     print(logs)
                     print(prog.args)
                     print(goCommand)
+                    pushCommand(prog1, 'quit\n')
+                    pushCommand(prog2, 'quit\n')
+                    time.sleep(1)
+                    return
                 moves.append(move)
                 log.write(' '+move)
                 board.push(Move.from_uci(move))
@@ -122,12 +126,25 @@ winsDev = winP*(1-percentage)**2
 drawsDev = drawP*(0.5-percentage)**2
 lossesDev = winP*(0-percentage)**2
 dev = sqrt(winsDev + drawsDev + lossesDev) / sqrt(tot)
-confidenceP = 0.95
-minConfidenceP = (1 - confidenceP) / 2
-maxConfidenceP = 1 - minConfidenceP
-stdDeviation = sqrt(winsDev + drawsDev + lossesDev) / sqrt(tot)
-devMin = percentage + phiInv(minConfidenceP) * stdDeviation
-devMax = percentage + phiInv(maxConfidenceP) * stdDeviation
-difference = eloDiff(devMax) - eloDiff(devMin)
-
-print(f"{eloDelta} +/- {difference/2}")
+def get_delta(confidenceP):
+    minConfidenceP = (1 - confidenceP) / 2
+    maxConfidenceP = 1 - minConfidenceP
+    stdDeviation = sqrt(winsDev + drawsDev + lossesDev) / sqrt(tot)
+    devMin = percentage + phiInv(minConfidenceP) * stdDeviation
+    devMax = percentage + phiInv(maxConfidenceP) * stdDeviation
+    difference = eloDiff(devMax) - eloDiff(devMin)
+difference = get_delta(0.95)
+low = 0
+high = 1
+for i in range(100):
+    mid = (low+high)/2
+    x = get_diff(mid)
+    if x > abs(eloDelta):
+        high = mid
+    else:
+        low = mid
+print(f"{eloDelta} +/- {difference}")
+if eloDelta < 0:
+    print(f"the second version is better than the first with a probability of {(low+high)/2}")
+else:
+    print(f"the first version is better than the second with a probability of {(low+high)/2}")

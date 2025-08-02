@@ -279,7 +279,6 @@ uint64_t enPassant_hash(GameState state){
         }
         if (possibleCapturePawns & state.friendlyPieces()[PAWN]){
             enPassant = Random64[baseOffset+7-enPassant_offset];
-            printf("Using en passant rand64 at pos %d\n",baseOffset+enPassant_offset);
         }
 
         return enPassant;
