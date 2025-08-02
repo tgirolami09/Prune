@@ -17,6 +17,13 @@ goodOrder Qsearch 318/216/4816
 Qsearch Extension 2051/1044/2255
 Extension FastOrder 1651/971/2728
 FastOrder BetterOrder 1767/1104/2479
+BaseVersion BetterOrder 22/54/5274
+BaseVersion goodOrder 248/160/4942
+BaseVersion Extension 36/55/5259
+BaseVersion FastOrder 24/55/5271
+BaseVersion Qsearch 32/88/5230
+trueTT fastGen 2191/589/2570
+noRepeat weakTT 2557/596/2197
 projects: 
 history heuristic : jbienvenue
 mobility encouragement : 
