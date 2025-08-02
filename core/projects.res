@@ -24,6 +24,8 @@ BaseVersion FastOrder 24/55/5271
 BaseVersion Qsearch 32/88/5230
 trueTT fastGen 2191/589/2570
 noRepeat weakTT 2557/596/2197
+Repeat BetterOrder 1934/1221/2195
+BaseVersion Repeat 13/41/5296
 projects: 
 history heuristic : jbienvenue
 mobility encouragement : 
