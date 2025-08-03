@@ -14,7 +14,6 @@
 #include <string>
 #include <thread>
 #define MoveScore pair<int, Move>
-const int maxDepth=200;
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;
     int second = ((MoveScore*)b)->first;
@@ -82,9 +81,6 @@ string scoreToStr(int score){
     return "cp "+to_string(score);
 }
 
-const int maxMoves=218;
-const int maxCaptures = 12*8+4*4;
-const int maxExtension = 16;
 //Class to find the best in a situation
 class BestMoveFinder{
     unordered_map<uint64_t,PolyglotEntry> book;
@@ -308,6 +304,16 @@ public:
         printf("speed: %d; Qnodes:%d\n\n", (int)(Qnodes/tcpu), Qnodes);
         return 0;
     }
+
+    void clear(){
+        transposition.clear();
+        QTT.clear();
+    }
+
+    void reinit(size_t count){
+        transposition.reinit(count);
+        QTT.reinit(count);
+    }
 };
 
 
@@ -367,6 +373,9 @@ public:
         fflush(stdout);
         tt.clearMem();
         return count;
+    }
+    void reinit(size_t count){
+        space = count;
     }
 };
 

@@ -52,4 +52,18 @@ void init_lines(){
         clipped_idiag[i] = idiag&clipped_mask;
     }
 }
+
+const int maxDepth=200;
+const int maxMoves=218;
+const int maxCaptures = 12*8+4*4;
+const int maxExtension = 16;
+
+const int MINIMUM=-10000;
+const int MAXIMUM=10000;
+const int INF=MAXIMUM+200;
+const int MIDDLE=0;
+
+const ubyte EXACT = 0;
+const ubyte LOWERBOUND = 1;
+const ubyte UPPERBOUND = 2;
 #endif

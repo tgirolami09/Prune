@@ -1,12 +1,8 @@
 #ifndef TRANSPOSITION_TABLE_HPP
 #define TRANSPOSITION_TABLE_HPP
 #include "Const.hpp"
-#include "Evaluator.hpp"
 #include "GameState.hpp"
 #include <climits>
-const ubyte EXACT = 0;
-const ubyte LOWERBOUND = 1;
-const ubyte UPPERBOUND = 2;
 
 class infoScore{
 public:

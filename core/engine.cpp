@@ -56,20 +56,15 @@ void doUCI(string UCI_instruction, Chess& state){
         while(stream >> arg){
             stream >> inter; // remove "value"
             if(arg == "Clear" && inter == "Hash"){
-#ifdef USE_TT
-                bestMoveFinder.transposition.clear();
-#endif
-                doPerft.tt.clear();
+                bestMoveFinder.clear();
             }else if(arg == "Move" && inter == "Overhead"){
                 stream >> inter >> precision;
                 moveOverhead = precision;
             }else{
                 stream >> precision;
                 if(arg == "Hash"){
-#ifdef USE_TT
-                    bestMoveFinder.transposition.reinit(precision*1000*1000); // size in MB
-#endif
-                    doPerft.tt.reinit(precision*1000*1000);
+                    bestMoveFinder.reinit(precision*1000*1000); // size in MB
+                    doPerft.reinit(precision*1000*1000);
                 }
             }
         }
