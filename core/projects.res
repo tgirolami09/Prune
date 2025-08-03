@@ -26,6 +26,14 @@ trueTT fastGen 2191/589/2570
 noRepeat weakTT 2557/596/2197
 BetterOrder Repeat 2007/1231/2112
 BaseVersion Repeat 13/41/5296
+weakTT Repeat 43/127/5180
+weakTT BetterOrder 58/151/5141
+trueTT Repeat 64/87/5199
+trueTT BetterOrder 56/101/5193
+noRepeat Repeat 77/83/5190
+noRepeat BetterOrder 69/80/5201
+fastGen BetterOrder 69/91/5190
+useLast Repeat 44/58/5248
 projects: 
 history heuristic : jbienvenue
 mobility encouragement : 

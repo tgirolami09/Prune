@@ -86,7 +86,7 @@ def playGames(args):
 
 with open("beginBoards.out") as games:
     beginBoards = list(games.readlines())
-nbProcess = 10
+nbProcess = 11
 nbBoards = len(beginBoards)
 pool = Pool(nbProcess)
 results = pool.map(playGames, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess)) for id in range(nbProcess)])
@@ -138,7 +138,7 @@ low = 0
 high = 1
 for i in range(100):
     mid = (low+high)/2
-    x = get_diff(mid)
+    x = get_delta(mid)
     if x > abs(eloDelta):
         high = mid
     else:

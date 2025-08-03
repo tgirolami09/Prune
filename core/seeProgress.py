@@ -1,7 +1,7 @@
 from tkinter import *
 from math import log, sqrt, pi as PI
 import sys
-width = 200
+width = 150
 height = 50
 epsilon = 1
 BOLD = ("Helvetica", 12, "bold")
