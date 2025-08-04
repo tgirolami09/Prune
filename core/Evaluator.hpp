@@ -201,7 +201,7 @@ private:
         int weightPiece = 0;
         #pragma unroll
         for(int p=0; p<6; p++){
-            if(p == PAWN)continue;
+            //if(p == PAWN)continue;
             int nbPieces = places(pieces[p], pos);
             weightPiece += gamephaseInc[p]*nbPieces;
             for(int i=0; i<nbPieces; i++){
@@ -209,7 +209,7 @@ private:
                 midGame += mg_table[color][p][pos[i]];
             }
         }
-        big friendlyPawn = pieces[PAWN];
+        /*big friendlyPawn = pieces[PAWN];
         big opponentPawn = other[PAWN];
         if(color == BLACK){
             friendlyPawn = reverse(friendlyPawn);
@@ -230,10 +230,10 @@ private:
             if(rpos > advanced[cpos]){
                 space += rpos-advanced[cpos];
                 advanced[cpos] = rpos;
-            }*/
+            }
             endGame += eg_table[WHITE][PAWN][pos[i]];
             midGame += mg_table[WHITE][PAWN][pos[i]];
-        }
+        }*/
         //malus bishop for closed positions (and bonus for knight)      count the number of pawn which are facing an enemy pawn
         /*score -= 20*(countbit(pieces[BISHOP])-countbit(pieces[KNIGHT]))*countbit(opponentPawn&(friendlyPawn << 8))/8;
         score += space*30; // the more space, the better
