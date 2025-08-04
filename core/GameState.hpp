@@ -43,10 +43,12 @@ public :
         uniform_int_distribution<big> dist(0, MAX_BIG);
         for(int idz=0; idz<nbZobrist; idz++){
             zobrist[idz] = dist(gen);
+            printf("%d : %016llx\n", idz, zobrist[idz]);
         }
     }
 
     int increaseThreeFold(big hash){
+        printf("+%016llx\n", hash);
         int index = hash%sizeThreeFold;
         for(auto& p:threefold[index]){
             if(p.first == hash){
@@ -59,6 +61,7 @@ public :
     }
 
     int decreaseThreeFold(big hash){
+        printf("-%016llx\n", hash);
         int index = hash%sizeThreeFold;
         if(threefold[index].size() == 1){
             int res=--threefold[index][0].second;
@@ -162,7 +165,7 @@ public :
         }
         //printf("In fen to data -> en passant goes to %d\n",lastDoublePawnPush);
         if(lastDoublePawnPush != -1)
-            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         id += 2;
         increaseThreeFold(zobristHash);
         startEnPassant = lastDoublePawnPush;
@@ -385,6 +388,7 @@ public :
     }
 
     void playNullMove(){
+        movesSinceBeginning[turnNumber] = nullMove;
         turnNumber++;
         zobristHash ^= zobrist[zobrTurn];
         if(lastDoublePawnPush != -1){
