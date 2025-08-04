@@ -201,7 +201,7 @@ private:
         int weightPiece = 0;
         #pragma unroll
         for(int p=0; p<6; p++){
-            //if(p == PAWN)continue;
+            if(p == PAWN)continue;
             int nbPieces = places(pieces[p], pos);
             weightPiece += gamephaseInc[p]*nbPieces;
             for(int i=0; i<nbPieces; i++){
@@ -209,40 +209,40 @@ private:
                 midGame += mg_table[color][p][pos[i]];
             }
         }
-        /*big friendlyPawn = pieces[PAWN];
+        big friendlyPawn = pieces[PAWN];
         big opponentPawn = other[PAWN];
         if(color == BLACK){
             friendlyPawn = reverse(friendlyPawn);
             opponentPawn = reverse(opponentPawn);
-        }*/
-        //int nbPawns=places(friendlyPawn, pos);
-        //weightPiece += gamephaseInc[PAWN]*nbPawns;
+        }
+        int nbPawns=places(friendlyPawn, pos);
+        weightPiece += gamephaseInc[PAWN]*nbPawns;
         // detect passed pawns
-        /*int advanced[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        int advanced[8] = {0, 0, 0, 0, 0, 0, 0, 0};
         int space=0;
         for(int i=0; i<nbPawns; i++){
             if((opponentPawn&mask_forward[pos[i]]) == 0) // passed pawns
-                score += (8-row(pos[i])+1)*50;
-            int rpos = row(pos[i]);
+                score += (8-row(pos[i])+1)*10;
+            /*int rpos = row(pos[i]);
             int cpos = col(pos[i]);
             if(!advanced[cpos])
                 score -= 20; //doubled pawn
             if(rpos > advanced[cpos]){
                 space += rpos-advanced[cpos];
                 advanced[cpos] = rpos;
-            }
+            }*/
             endGame += eg_table[WHITE][PAWN][pos[i]];
             midGame += mg_table[WHITE][PAWN][pos[i]];
         }
         //malus bishop for closed positions (and bonus for knight)      count the number of pawn which are facing an enemy pawn
-        score -= 20*(countbit(pieces[BISHOP])-countbit(pieces[KNIGHT]))*countbit(opponentPawn&(friendlyPawn << 8))/8;
+        /*score -= 20*(countbit(pieces[BISHOP])-countbit(pieces[KNIGHT]))*countbit(opponentPawn&(friendlyPawn << 8))/8;
         score += space*30; // the more space, the better
         if(space)
             score -= 20*weightPiece/space; // if the density of pieces is too high, so it's harder to play (represent the fact that you should not exchange pieces when you have the advantage in the position)
         */
-        mgPhase += weightPiece;
         //big protectorPawn = (((friendlyPawn&~colA) >> 7)|((friendlyPawn&~colH) >> 9))&friendlyPawn;
         //score += 10*countbit(protectorPawn); // if all pawns are protector, it's better
+        mgPhase += weightPiece;
         return score;
     }
 
