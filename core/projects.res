@@ -34,6 +34,7 @@ noRepeat Repeat 77/83/5190
 noRepeat BetterOrder 69/80/5201
 fastGen BetterOrder 69/91/5190
 useLast Repeat 44/58/5248
+Repeat PVSearch 1889/1193/2268
 projects: 
 history heuristic : jbienvenue
 mobility encouragement : 

@@ -138,7 +138,7 @@ def playGames(args):
             #print(board.outcome().winner)
             pushCommand(prog1, "setoption name Hash Clear\n")
             pushCommand(prog2, "setoption name Hash Clear\n")
-        sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, (results[0], results[2], results[1])))+'\033[F'*(id//10))
+        sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, (results[0], results[2], results[1])))+'\033[F'*(id//10)+'\r')
         #sys.stdout.write('\r'+'\t'*id*2+str(round(get_confidence(results[0], results[2], results[1])[0], 5)))
         sys.stdout.flush()
     log.close()

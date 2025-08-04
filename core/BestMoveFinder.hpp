@@ -209,7 +209,13 @@ private:
                 score = Score(MIDDLE, relDepth);
             }else{
                 setElement(state.zobristHash, relDepth);
-                score = -negamax(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                if(i != 0){
+                    score = -negamax(depth-1, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
+                    if(score > alpha && beta-alpha > 1){
+                        score = -negamax(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    }
+                }else
+                    score = -negamax(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
             }
             state.undoLastMove<false>();
             if(!running)return 0;
