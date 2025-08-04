@@ -71,13 +71,13 @@ def readResult(prog):
     lastMate = 300
     logs = ""
     timeLastLine = time.time()
-    while 1:
+    while prog.poll() == 0 or prog.poll() is None:
         line = prog.stdout.readline().decode('utf-8')
         if line:
             timeLastLine = time.time()
         else:
-            if (time.time()-timeLastLine) > movetime*2:
-                return 'h1h1', logs+line
+            #if (time.time()-timeLastLine) > movetime*2:
+            #    return 'h1h1', logs+line, 'time'
             continue
         logs += line
         line = line.replace('\n', '')
@@ -88,11 +88,22 @@ def readResult(prog):
                 n=int(line.split("mate ")[1].split()[0])
                 if n >= lastMate:continue
                 lastMate = n
+    else:
+        print(logs)
+        print(prog.poll(), logs, end=' ', flush=True)
+        logs += prog.stderr.read()
     return line[len(markEnd):].split()[0], logs, 'nothing'
 
 def playGames(args):
     id, rangeGame = args
-    log = open(f"games{id}.log", "w")
+    file = f"games{id}.log"
+    with open(file, 'r') as f:
+        previousGames = f.readlines()
+    previousGames = previousGames[:len(previousGames)-len(previousGames)%2]
+    rangeGame = range(rangeGame.start+len(previousGames), rangeGame.stop)
+    log = open(file, "w")
+    log.writelines(previousGames)
+    log.flush()
     results = [0]*3 # wins/loses/draw
     prog1 = progs1[id]
     prog2 = progs2[id]
@@ -153,8 +164,11 @@ with open("beginBoards.out") as games:
     beginBoards = list(games.readlines())
 
 nbProcess = 70
-progs1 = [subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE) for i in range(nbProcess)]
-progs2 = [subprocess.Popen([sys.argv[2]], stdin=subprocess.PIPE, stdout=subprocess.PIPE) for i in range(nbProcess)]
+if not (len(sys.argv) > 4 and sys.argv[4] == "continue"):
+    for i in range(nbProcess):
+        with open(f'games{i}.log', "w") as f:f.write('')
+progs1 = [subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for i in range(nbProcess)]
+progs2 = [subprocess.Popen([sys.argv[2]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for i in range(nbProcess)]
 nbBoards = len(beginBoards)
 pool = Pool(nbProcess)
 results = pool.map(playGames, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess)) for id in range(nbProcess)])
