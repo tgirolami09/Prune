@@ -108,6 +108,8 @@ public :
         turnNumber = fen[id] == 'w';
         if(!turnNumber)
             zobristHash ^= zobrist[zobrTurn];
+        else
+            movesSinceBeginning[0] = nullMove;
         id += 2;
         for(int side=0; side<2; side++)
             for(int kingside=0; kingside<2; kingside++)
@@ -415,7 +417,7 @@ public :
         zobristHash ^= zobrist[zobrTurn];
         Move move=movesSinceBeginning[turnNumber];
         playMove<true>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
-        if(turnNumber > 1){
+        if(turnNumber > 0 && (movesSinceBeginning[0].start_pos != movesSinceBeginning[0].end_pos || turnNumber > 1)){
             Move nextMove=movesSinceBeginning[turnNumber-1];
             if(isEnPassantPossibility<true>(nextMove)){
                 // printf("Undoing move and there is en-passant\n");
