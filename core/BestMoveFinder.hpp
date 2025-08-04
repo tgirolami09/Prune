@@ -121,8 +121,9 @@ public:
 private:
     int nodes, Qnodes;
     big isInSearch[maxDepth];
+    template<bool timeLimit>
     int quiescenceSearch(GameState& state, int alpha, int beta){
-        if(!running)return 0;
+        if(timeLimit && !running)return 0;
         Qnodes++;
         int lastEval=QTT.get_eval(state, alpha, beta);
         if(lastEval != INVALID)
@@ -145,9 +146,9 @@ private:
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
-            int score = -quiescenceSearch(state, -beta, -alpha);
+            int score = -quiescenceSearch<timeLimit>(state, -beta, -alpha);
             state.undoLastMove<false>();
-            if(!running)return 0;
+            if(timeLimit && !running)return 0;
             if(score >= beta){
                 QTT.push(state, score, LOWERBOUND);
                 return score;
@@ -179,10 +180,10 @@ private:
         return fp[BISHOP] || fp[KNIGHT] || fp[ROOK] || fp[QUEEN] || ep [BISHOP] || ep[KNIGHT] || ep[ROOK] || ep[QUEEN];
     }
 
-    template <bool isPV=true>
+    template <bool isPV, bool timeLimit>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
-        if(!running)return 0;
-        if(depth == 0)return Score(quiescenceSearch(state, alpha, beta), -1);
+        if(timeLimit && !running)return 0;
+        if(depth == 0)return Score(quiescenceSearch<timeLimit>(state, alpha, beta), -1);
         nodes++;
         Move lastBest = nullMove;
         int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
@@ -204,7 +205,7 @@ private:
         int r = 3;
         if(depth > r && !inCheck && !isPV && eval.positionEvaluator(state) >= beta){
             state.playNullMove();
-            Score v = -negamax<false>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
+            Score v = -negamax<false, timeLimit>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
             if(v.score >= beta)return v;
         }
@@ -224,15 +225,15 @@ private:
             }else{
                 setElement(state.zobristHash, relDepth);
                 if(i != 0){
-                    score = -negamax<false>(depth-1, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<false, timeLimit>(depth-1, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
                     if(score > alpha && isPV){
-                        score = -negamax<true>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                        score = -negamax<true, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                     }
                 }else
-                    score = -negamax<isPV>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<isPV, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
             }
             state.undoLastMove<false>();
-            if(!running)return 0;
+            if(timeLimit && !running)return 0;
             score.augmentMate();
             if(score >= beta){
                 if(score.usable(relDepth)){
@@ -252,7 +253,8 @@ private:
         return bestScore;
     }
 public:
-    Move bestMove(GameState& state, int alloted_time){
+    template <bool timeLimit=true>
+    Move bestMove(GameState& state, int alloted){
         bool moveInTable = false;
         Move bookMove = findPolyglot(state,moveInTable,book);
         //Return early because a move was found in a book
@@ -262,15 +264,21 @@ public:
         }
         running = true;
         midtime = false;
-        this->alloted_time = alloted_time;
-        thread timerThread(&BestMoveFinder::stopAfter, this);
+        thread timerThread;
+        int depthMax = maxDepth;
+        if(timeLimit){
+            this->alloted_time = alloted;
+            timerThread = thread(&BestMoveFinder::stopAfter, this);
+        }else{
+            depthMax = alloted;
+        }
         printf("info string use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000);
         printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
         Move bestMove=nullMove;
         Move lastBest=nullMove;
         Qnodes = nodes = 0;
         clock_t start=clock();
-        for(int depth=1; depth<255 && running && !midtime; depth++){
+        for(int depth=1; depth<depthMax && running && !midtime; depth++){
             lastBest = bestMove;
             Order<maxMoves> order;
             bool inCheck;
@@ -284,14 +292,16 @@ public:
             for(idMove=0; idMove<order.nbMoves; idMove++){
                 Move curMove = order.pop_max();
                 int score;
+                //printf("%016llx\n", state.zobristHash);
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
                 else{
                     setElement(state.zobristHash, 1);
-                    score = -negamax(depth, state, -beta, -alpha, 0, (curMove.capture == -2 && curMove.piece == PAWN), 2).score;
+                    score = -negamax<true, timeLimit>(depth, state, -beta, -alpha, 0, (curMove.capture == -2 && curMove.piece == PAWN), 2).score;
                 }
                 augmentMate(score);
                 //printf("info string %s : %d\n", curMove.to_str().c_str(), score);
+                //printf("%016llx\n", state.zobristHash);
                 state.undoLastMove();
                 if(!running)break;
                 if(score > alpha){
@@ -306,19 +316,23 @@ public:
             else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth, scoreToStr(alpha).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, order.nbMoves);
             fflush(stdout);
             if(abs(alpha) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
-                running = false;
-                timerThread.join();
+                if(timeLimit){
+                    running = false;
+                    timerThread.join();
+                }
                 return bestMove;
             }
         }
-        running = false;
-        timerThread.join();
+        if(timeLimit){
+            running = false;
+            timerThread.join();
+        }
         return bestMove;
     }
     int testQuiescenceSearch(GameState& state){
         Qnodes = 0;
         clock_t start=clock();
-        int score = quiescenceSearch(state, -INF, INF);
+        int score = quiescenceSearch<false>(state, -INF, INF);
         clock_t end = clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
         printf("speed: %d; Qnodes:%d\n\n", (int)(Qnodes/tcpu), Qnodes);
