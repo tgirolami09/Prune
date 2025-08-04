@@ -380,6 +380,31 @@ public :
         }
         return 0;
     }
+
+    void playNullMove(){
+        turnNumber++;
+        zobristHash ^= zobrist[zobrTurn];
+        if(lastDoublePawnPush != -1){
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+            lastDoublePawnPush = -1;
+        }
+    }
+    void undoNullMove(){
+        turnNumber--;
+        zobristHash ^= zobrist[zobrTurn];
+        if(turnNumber > 1){
+            Move nextMove=movesSinceBeginning[turnNumber-1];
+            if(isEnPassantPossibility<true>(nextMove)){
+                // printf("Undoing move and there is en-passant\n");
+                lastDoublePawnPush = 8 * ((row(nextMove.start_pos) + row(nextMove.end_pos))/2) + col(nextMove.start_pos);
+                zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+            }
+        }else if(startEnPassant != -1){
+            lastDoublePawnPush = startEnPassant;
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+        }
+    }
+
     template<bool noperft=true>
     void undoLastMove(){
         if(noperft){

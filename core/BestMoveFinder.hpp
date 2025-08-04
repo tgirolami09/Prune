@@ -173,6 +173,13 @@ private:
         isInSearch[pos] = hash;
     }
 
+    bool isOnlyPawns(const GameState& state){
+        const big* fp = state.friendlyPieces();
+        const big* ep = state.enemyPieces();
+        return fp[BISHOP] || fp[KNIGHT] || fp[ROOK] || fp[QUEEN] || ep [BISHOP] || ep[KNIGHT] || ep[ROOK] || ep[QUEEN];
+    }
+
+    template <bool isPV=true>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(!running)return 0;
         if(depth == 0)return Score(quiescenceSearch(state, alpha, beta), -1);
@@ -194,6 +201,13 @@ private:
             numExtension++;
             depth++;
         }
+        int r = 3;
+        if(depth > r && !inCheck && !isPV && eval.positionEvaluator(state) >= beta){
+            state.playNullMove();
+            Score v = -negamax<false>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
+            state.undoNullMove();
+            if(v.score >= beta)return v;
+        }
         order.init(eval, state.friendlyColor(), lastBest);
         Move bestMove;
         Score bestScore(-INF, -1);
@@ -210,12 +224,12 @@ private:
             }else{
                 setElement(state.zobristHash, relDepth);
                 if(i != 0){
-                    score = -negamax(depth-1, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
-                    if(score > alpha && beta-alpha > 1){
-                        score = -negamax(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<false>(depth-1, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
+                    if(score > alpha && isPV){
+                        score = -negamax<true>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                     }
                 }else
-                    score = -negamax(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<isPV>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
             }
             state.undoLastMove<false>();
             if(!running)return 0;
