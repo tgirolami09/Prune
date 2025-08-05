@@ -202,6 +202,12 @@ private:
             numExtension++;
             depth++;
         }
+        if(order.nbMoves == 1){
+            state.playMove<false, false>(order.moves[0]);
+            Score sc = -negamax<isPV, timeLimit>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
+            state.undoLastMove<false>();
+            return sc;
+        }
         int r = 3;
         if(depth > r && !inCheck && !isPV && eval.positionEvaluator(state) >= beta){
             state.playNullMove();
