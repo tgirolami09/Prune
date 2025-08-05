@@ -275,14 +275,18 @@ public:
         return score;
 #endif
     }
-    inline int score_move(const Move& move, bool c, big& dangerPositions) const{
+    inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore) const{
         int score = 0;
         if ((dangerPositions & (1ul<<move.end_pos)) != 0){
             score -= value_pieces[move.piece];
-        } 
+        }
         if(move.capture != -2)
             score += value_pieces[move.capture]*10;
-
+        else{
+            if(isKiller)
+                score += KILLER_ADVANTAGE;
+            score += historyScore;
+        }
         if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
         score += mg_table[c][move.piece][move.end_pos]-mg_table[c][move.piece][move.start_pos];
         return score;

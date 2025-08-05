@@ -94,10 +94,12 @@ public:
 private:
     std::atomic<bool> running;
     std::atomic<bool> midtime;
+    HelpOrdering history;
 public:
 
     BestMoveFinder(int memory):transposition(memory), QTT(memory){
         book = load_book("./book.bin");
+        history.init();
     }
 
     int alloted_time;
@@ -142,7 +144,7 @@ private:
         Order<maxCaptures> order;
         bool inCheck;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-        order.init(eval, state.friendlyColor(), nullMove);
+        order.init(eval, state.friendlyColor(), nullMove, history);
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
@@ -215,10 +217,10 @@ private:
             state.undoNullMove();
             if(v.score >= beta)return v;
         }
-        order.init(eval, state.friendlyColor(), lastBest);
+        order.init(eval, state.friendlyColor(), lastBest, history, depth);
         Move bestMove;
         Score bestScore(-INF, -1);
-        for(int i=0; i<order.nbMoves; i++){
+        for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
             Move curMove = order.pop_max();
             Score score;
             state.playMove<false, false>(curMove);
@@ -230,8 +232,10 @@ private:
                 score = Score(MIDDLE, relDepth);
             }else{
                 setElement(state.zobristHash, relDepth);
-                if(i != 0){
-                    score = -negamax<false, timeLimit>(depth-1, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
+                if(rankMove > 0){
+                    int reductionDepth = 0;
+                    if(rankMove > 3 && depth > 3 && curMove.capture == -2)reductionDepth = 1;
+                    score = -negamax<false, timeLimit>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
                     if(score > alpha && isPV){
                         score = -negamax<true, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                     }
@@ -245,6 +249,7 @@ private:
                 if(score.usable(relDepth)){
                     transposition.push(state, score.score, LOWERBOUND, curMove, depth);
                 }
+                history.addKiller(curMove, depth, state.friendlyColor());
                 return score;
             }
             if(score > alpha){
@@ -280,6 +285,7 @@ public:
         }
         printf("info string use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000);
         printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
+        history.init();
         Move bestMove=nullMove;
         Move lastBest=nullMove;
         Qnodes = nodes = 0;
@@ -294,7 +300,7 @@ public:
             assert(order.nbMoves > 0); //the game is over, which should not append
             int idMove;
             setElement(state.zobristHash, 0);
-            order.init(eval, state.friendlyColor(), lastBest);
+            order.init(eval, state.friendlyColor(), lastBest, history, depth+1);
             for(idMove=0; idMove<order.nbMoves; idMove++){
                 Move curMove = order.pop_max();
                 int score;

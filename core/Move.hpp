@@ -30,6 +30,9 @@ class Move{
         }
         return res;
     }
+    bool operator==(Move o){
+        return o.start_pos == start_pos && o.end_pos == end_pos && o.piece == piece && o.promoteTo == promoteTo;//if capture is not the same, I think we can also considere that there are the same
+    }
 };
 const Move nullMove={0, 0, 0, -1, -2};
 #endif
