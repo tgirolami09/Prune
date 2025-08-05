@@ -3,9 +3,7 @@ import sys
 from multiprocessing import Pool
 movetime = int(sys.argv[3])/1000
 
-def playGame(startFen, name1, name2):
-    prog1 = engine.SimpleEngine.popen_uci(name1)
-    prog2 = engine.SimpleEngine.popen_uci(name2)
+def playGame(startFen, prog1, prog2):
     data1, data2 = {}, {} # fen:score
     curProg, otherProg = prog1, prog2
     curData, otherData = data1, data2
@@ -16,10 +14,13 @@ def playGame(startFen, name1, name2):
         score = result.info['score'].relative
         if not score.is_mate():
             curData[board.fen()] = score.score()
+        elif score.mate() < 0:
+            curData[board.fen()] = -10000
+        else:
+            curData[board.fen()] = 10000
+
         curProg, otherProg = otherProg, curProg
         curData, otherData = otherData, curData
-    prog1.quit()
-    prog2.quit()
     if board.outcome().winner == WHITE:
         return data1, 0
     elif board.outcome().winner == BLACK:
@@ -30,18 +31,21 @@ def playGame(startFen, name1, name2):
 def playBatch(args):
     id, rangeGame = args
     results = [0, 0, 0]
-    name1 = sys.argv[1]
-    name2 = sys.argv[2]
+    with open(f'data{id}.out', "w") as f:f.write('')
+    prog1 = engine.SimpleEngine.popen_uci(sys.argv[1])
+    prog2 = engine.SimpleEngine.popen_uci(sys.argv[2])
     for idBeginBoard in rangeGame:
         beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
-        for idProg, prog, _prog in ((0, name1, name2), (1, name2, name1)):
+        for idProg, prog, _prog in ((0, prog1, prog2), (1, prog2, prog1)):
             data, result = playGame(beginBoard, prog, _prog)
             results[min(result^idProg, 2)] += 1
-            with open(f'data{id}.out', "w") as f:
+            with open(f'data{id}.out', "a") as f:
                 for key, value in data.items():
                     f.write(f'{key}|{value}\n')
         sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, (results[0], results[2], results[1])))+'\033[F'*(id//10)+'\r')
+    prog1.quit()
+    prog2.quit()
     return results
 
 nbProcess = 70
