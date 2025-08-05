@@ -43,12 +43,10 @@ public :
         uniform_int_distribution<big> dist(0, MAX_BIG);
         for(int idz=0; idz<nbZobrist; idz++){
             zobrist[idz] = dist(gen);
-            printf("%d : %016llx\n", idz, zobrist[idz]);
         }
     }
 
     int increaseThreeFold(big hash){
-        printf("+%016llx\n", hash);
         int index = hash%sizeThreeFold;
         for(auto& p:threefold[index]){
             if(p.first == hash){
@@ -61,7 +59,6 @@ public :
     }
 
     int decreaseThreeFold(big hash){
-        printf("-%016llx\n", hash);
         int index = hash%sizeThreeFold;
         if(threefold[index].size() == 1){
             int res=--threefold[index][0].second;
