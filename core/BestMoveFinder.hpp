@@ -198,7 +198,7 @@ private:
                 return Score(MINIMUM, -1);
             return Score(MIDDLE, -1);
         }
-        if(inCheck && numExtension < maxExtension){
+        if((inCheck || order.nbMoves == 1) && numExtension < maxExtension){
             numExtension++;
             depth++;
         }
