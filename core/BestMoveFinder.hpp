@@ -88,7 +88,7 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
 public:
     LegalMoveGenerator generator;
-    Evaluator eval;
+    IncrementalEvaluator eval;
     transpositionTable transposition;
     QuiescenceTT QTT;
 private:
@@ -130,7 +130,7 @@ private:
         int lastEval=QTT.get_eval(state, alpha, beta);
         if(lastEval != INVALID)
             return lastEval;
-        int staticEval = eval.positionEvaluator(state);
+        int staticEval = eval.getScore(state.friendlyColor(), state);
         if(staticEval >= beta){
             QTT.push(state, staticEval, LOWERBOUND);
             return staticEval;
@@ -144,11 +144,13 @@ private:
         Order<maxCaptures> order;
         bool inCheck;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-        order.init(eval, state.friendlyColor(), nullMove, history);
+        order.init(state.friendlyColor(), nullMove, history);
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
+            eval.playMove(capture, !state.friendlyColor());
             int score = -quiescenceSearch<timeLimit>(state, -beta, -alpha);
+            eval.undoMove(capture, !state.friendlyColor());
             state.undoLastMove<false>();
             if(timeLimit && !running)return 0;
             if(score >= beta){
@@ -206,18 +208,20 @@ private:
         }
         if(order.nbMoves == 1){
             state.playMove<false, false>(order.moves[0]);
+            eval.playMove(order.moves[0], !state.friendlyColor());
             Score sc = -negamax<isPV, timeLimit>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
+            eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
             return sc;
         }
         int r = 3;
-        if(depth > r && !inCheck && !isPV && eval.positionEvaluator(state) >= beta){
+        if(depth > r && !inCheck && !isPV && eval.getScore(state.friendlyColor(), state) >= beta){
             state.playNullMove();
             Score v = -negamax<false, timeLimit>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
             if(v.score >= beta)return v;
         }
-        order.init(eval, state.friendlyColor(), lastBest, history, depth);
+        order.init(state.friendlyColor(), lastBest, history, relDepth);
         Move bestMove;
         Score bestScore(-INF, -1);
         for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
@@ -231,6 +235,7 @@ private:
             if(usableDepth != (ubyte)-1){
                 score = Score(MIDDLE, relDepth);
             }else{
+                eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, relDepth);
                 if(rankMove > 0){
                     int reductionDepth = 0;
@@ -241,6 +246,7 @@ private:
                     }
                 }else
                     score = -negamax<isPV, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove<false>();
             if(timeLimit && !running)return 0;
@@ -249,7 +255,7 @@ private:
                 if(score.usable(relDepth)){
                     transposition.push(state, score.score, LOWERBOUND, curMove, depth);
                 }
-                history.addKiller(curMove, depth, state.friendlyColor());
+                history.addKiller(curMove, depth, relDepth, state.friendlyColor());
                 return score;
             }
             if(score > alpha){
@@ -273,6 +279,7 @@ public:
             printf("Found book move for fen : %s\n",state.toFen().c_str());
             return bookMove;
         }
+        eval.init(state);
         running = true;
         midtime = false;
         thread timerThread;
@@ -300,7 +307,7 @@ public:
             assert(order.nbMoves > 0); //the game is over, which should not append
             int idMove;
             setElement(state.zobristHash, 0);
-            order.init(eval, state.friendlyColor(), lastBest, history, depth+1);
+            order.init(state.friendlyColor(), lastBest, history, 1);
             for(idMove=0; idMove<order.nbMoves; idMove++){
                 Move curMove = order.pop_max();
                 int score;
@@ -308,8 +315,10 @@ public:
                 if(state.playMove<false>(curMove) > 1)
                     score = MIDDLE;
                 else{
+                    eval.playMove(curMove, !state.friendlyColor());
                     setElement(state.zobristHash, 1);
                     score = -negamax<true, timeLimit>(depth, state, -beta, -alpha, 0, (curMove.capture == -2 && curMove.piece == PAWN), 2).score;
+                    eval.undoMove(curMove, !state.friendlyColor());
                 }
                 augmentMate(score);
                 //printf("info string %s : %d\n", curMove.to_str().c_str(), score);

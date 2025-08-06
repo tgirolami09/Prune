@@ -194,9 +194,9 @@ public:
         init_tables();
     }
 private:
-    ubyte pos[12];
     template<bool color>
-    int score(const big* pieces, const big* other, int& mgPhase, int& endGame, int& midGame){
+    int score(const big* pieces, const big* other, int& mgPhase, int& endGame, int& midGame) const{
+        ubyte pos[12];
         int score=0;
         int weightPiece = 0;
         #pragma unroll
@@ -247,7 +247,7 @@ private:
     }
 
 public:
-    int positionEvaluator(const GameState& state){
+    int positionEvaluator(const GameState& state) const{
 #ifdef COMPLICATED_EVALUATION
         int scoreFriends=0, scoreEnemies=0, egFriends=0, mgFriends=0, egEnemies=0, mgEnemies=0, mgPhase=0;
         const bool c=state.friendlyColor();
@@ -275,21 +275,88 @@ public:
         return score;
 #endif
     }
-    inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore) const{
-        int score = 0;
-        if ((dangerPositions & (1ul<<move.end_pos)) != 0){
-            score -= value_pieces[move.piece];
+};
+
+inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore){
+    int score = 0;
+    if ((dangerPositions & (1ul<<move.end_pos)) != 0){
+        score -= value_pieces[move.piece];
+    }
+    if(move.capture != -2)
+        score += value_pieces[move.capture]*10;
+    else{
+        if(isKiller)score += KILLER_ADVANTAGE;
+        score += historyScore;
+    }
+    if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
+    score += mg_table[c][move.piece][move.end_pos]-mg_table[c][move.piece][move.start_pos];
+    return score;
+}
+
+class IncrementalEvaluator{
+    int mgScore, egScore;
+    int mgPhase;
+    template<int f>
+    void changePiece(int pos, int piece, bool c){
+        int sign = (c == WHITE) ? 1 : -1;
+        mgScore += f*sign*mg_table[c][piece][pos];
+        egScore += f*sign*eg_table[c][piece][pos];
+        mgPhase += f*gamephaseInc[piece];
+    }
+public:
+    IncrementalEvaluator(){
+        init_tables();
+    }
+
+    void init(const GameState& state){//should be only call at the start of the search
+        mgScore = 0;
+        egScore = 0;
+        mgPhase = 0;
+        for(int square=0; square<64; square++){
+            int piece=state.getfullPiece(square);
+            if(type(piece) != SPACE){
+                changePiece<1>(square, type(piece), color(piece));
+                //printf("intermediate eval : %d\n", getScore(state.friendlyColor()));
+            }
         }
-        if(move.capture != -2)
-            score += value_pieces[move.capture]*10;
-        else{
-            if(isKiller)
-                score += KILLER_ADVANTAGE;
-            score += historyScore;
-        }
-        if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
-        score += mg_table[c][move.piece][move.end_pos]-mg_table[c][move.piece][move.start_pos];
+    }
+    int getScore(bool c, const GameState& state) const{
+        int clampPhase = min(mgPhase, 24);
+        int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
+        if(c == BLACK)score = -score;
         return score;
+    }
+    template<int f=1>
+    void playMove(Move move, bool c){
+        if(move.capture != -2){
+            int posCapture = move.end_pos;
+            int pieceCapture = move.capture;
+            if(move.capture == -1){ // for en passant
+                if(c == WHITE)posCapture -= 8;
+                else posCapture += 8;
+                pieceCapture = PAWN;
+            }
+            changePiece<-f>(posCapture, pieceCapture, !c);
+        }
+        int toPiece = (move.promoteTo == -1) ? move.piece : move.promoteTo; //for promotion
+        changePiece<-f>(move.start_pos, move.piece, c);
+        changePiece<f>(move.end_pos, toPiece, c);
+        if(move.piece == KING && abs(move.start_pos-move.end_pos) == 2){ //castling
+            int rookStart = move.start_pos;
+            int rookEnd = move.end_pos;
+            if(move.start_pos > move.end_pos){//queen side
+                rookStart &= ~7;
+                rookEnd++;
+            }else{//king side
+                rookStart |= 7;
+                rookEnd--;
+            }
+            changePiece<-f>(rookStart, ROOK, c);
+            changePiece<f>(rookEnd, ROOK, c);
+        }
+    }
+    void undoMove(Move move, bool c){
+        playMove<-1>(move, c);
     }
 };
 #endif
