@@ -1,10 +1,11 @@
 import subprocess
 import sys
-from chess import *
+from chess import Board, BLACK, WHITE, engine
 from tqdm import tqdm, trange
 from multiprocessing import Pool
 import time
-movetime = int(sys.argv[3])
+import numpy as np
+movetime = int(sys.argv[3])/1000
 goCommand = f"go movetime {movetime}\n"
 
 from math import log, sqrt, pi
@@ -32,21 +33,15 @@ def get_delta(percentage, confidenceP, stdDeviation):
     difference = eloDiff(devMax) - eloDiff(devMin)
     return difference/2
 
-def get_confidence(wins, draws, losses):
-    if(losses == 0 and draws == 0):return 1, 400, 0
-    if(wins == 0 and draws == 0):return 0, -400, 0
-    score = wins+draws/2
-    tot = (wins+draws+losses)
+def get_confidence(results):
+    scores = np.arange(5)/4
+    score = (results*scores).sum()
+    tot = results.sum()
     percentage = score/tot
     eloDelta = eloDiff(percentage)
-    winP = wins/tot
-    drawP = draws/tot
-    loseP = losses/tot
-    winsDev = winP*(1-percentage)**2
-    drawsDev = drawP*(0.5-percentage)**2
-    lossesDev = winP*(0-percentage)**2
-    dev = sqrt(winsDev + drawsDev + lossesDev) / sqrt(tot)
-    stdDeviation = sqrt(winsDev + drawsDev + lossesDev) / sqrt(tot)
+    resP = results/tot
+    resDev = resP*(scores-percentage)**2
+    stdDeviation = sqrt(resDev.sum()) / sqrt(tot)
     low = 0
     high = 1
     for i in range(5):
@@ -56,45 +51,26 @@ def get_confidence(wins, draws, losses):
             high = mid
         else:
             low = mid
-    if(eloDelta < 0):
-        low = 1-low
-        hiwh = 1-high
     return (low+high)/2, eloDelta, get_delta(percentage, 0.95, stdDeviation)
 
-def pushCommand(prog, command):
-    prog.stdin.write(command.encode())
-    prog.stdin.flush()
 
-def readResult(prog):
-    dataMoves = {}
-    markEnd = 'bestmove '
-    lastMate = 300
-    logs = ""
-    timeLastLine = time.time()
-    while prog.poll() == 0 or prog.poll() is None:
-        line = prog.stdout.readline().decode('utf-8')
-        if line:
-            timeLastLine = time.time()
-        else:
-            #if (time.time()-timeLastLine) > movetime*2:
-            #    return 'h1h1', logs+line, 'time'
-            continue
-        logs += line
-        line = line.replace('\n', '')
-        if line.startswith(markEnd):
-            break
-        elif "currmove" not in line:
-            if "mate" in line:
-                n=int(line.split("mate ")[1].split()[0])
-                if n >= lastMate:continue
-                lastMate = n
+def playGame(startFen, prog1, prog2):
+    curProg, otherProg = prog1, prog2
+    board = Board(startFen)
+    moves = []
+    while not board.is_game_over():
+        result = curProg.play(board, engine.Limit(time=movetime))
+        board.push(result.move)
+        moves.append(result.move.uci())
+        curProg, otherProg = otherProg, curProg
+    if board.outcome().winner == WHITE:
+        return moves, 0
+    elif board.outcome().winner == BLACK:
+        return moves, 1
     else:
-        print(logs)
-        print(prog.poll(), logs, end=' ', flush=True)
-        logs += prog.stderr.read()
-    return line[len(markEnd):].split()[0], logs, 'nothing'
+        return moves, 2
 
-def playGames(args):
+def playBatch(args):
     id, rangeGame = args
     file = f"games{id}.log"
     with open(file, 'r') as f:
@@ -104,61 +80,30 @@ def playGames(args):
     log = open(file, "w")
     log.writelines(previousGames)
     log.flush()
-    results = [0]*3 # wins/loses/draw
-    prog1 = progs1[id]
-    prog2 = progs2[id]
+    results = [0]*5 # (lose/lose) (lose/draw) ((lose/win) | (draw/draw)) (win/draw) (win/win)
+    prog1 = engine.SimpleEngine.popen_uci(sys.argv[1])
+    prog2 = engine.SimpleEngine.popen_uci(sys.argv[2])
     for idBeginBoard in rangeGame:
         beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
+        interResults = [0, 0, 0]
         for idProg, prog, _prog in ((0, prog1, prog2), (1, prog2, prog1)):
-            gameFinished = False
-            while not gameFinished:
-                board = Board(beginBoard)
-                moves = []
-                while not board.is_game_over() and not board.is_seventyfive_moves() and not board.is_fivefold_repetition():
-                    joinMoves = " ".join(moves)
-                    pushCommand(prog, f"position fen {beginBoard} moves {joinMoves}\n")
-                    start = time.time()
-                    pushCommand(prog, goCommand)
-                    end = time.time()
-                    move, logs, msg = readResult(prog)
-                    if(move == "h1h1"):
-                        print(f"\nposition fen {beginBoard} moves {joinMoves}\n")
-                        print(logs)
-                        print(prog.args)
-                        print(goCommand)
-                        print(msg)
-                        time.sleep(1)
-                        pushCommand(prog1, 'quit\n')
-                        pushCommand(prog2, 'quit\n')
-                        prog1.wait()
-                        prog2.wait()
-                        return
-                    moves.append(move)
-                    board.push(Move.from_uci(move))
-                    _prog, prog = prog, _prog
-                else:
-                    gameFinished = True
+            moves, winner = playGame(beginBoard, prog, _prog)
             log.write(beginBoard+' moves '+' '.join(moves)+'\n')
             log.flush()
-            winner = board.outcome().winner
-            if winner is None:
-                results[2] += 1
-            else:
-                results[(not winner) ^ idProg] += 1
+            interResults[min(winner ^ idProg, 2)] += 1
             #print(board.outcome().winner)
-            pushCommand(prog1, "setoption name Hash Clear\n")
-            pushCommand(prog2, "setoption name Hash Clear\n")
-        sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, (results[0], results[2], results[1])))+'\033[F'*(id//10)+'\r')
+            prog1.configure({'Clear Hash':None})
+            prog2.configure({'Clear Hash':None})
+        results[interResults[0]*2+interResults[1]] += 1
+        sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, results))+'\033[F'*(id//10)+'\r')
         #sys.stdout.write('\r'+'\t'*id*2+str(round(get_confidence(results[0], results[2], results[1])[0], 5)))
         sys.stdout.flush()
     log.close()
-    pushCommand(prog1, 'quit\n')
-    pushCommand(prog2, 'quit\n')
-    prog1.wait()
-    prog2.wait()
+    prog1.quit()
+    prog2.quit()
     time.sleep(1)
-    return results
+    return np.array(results)
 
 with open("beginBoards.out") as games:
     beginBoards = list(games.readlines())
@@ -167,23 +112,15 @@ nbProcess = 70
 if not (len(sys.argv) > 4 and sys.argv[4] == "continue"):
     for i in range(nbProcess):
         with open(f'games{i}.log', "w") as f:f.write('')
-progs1 = [subprocess.Popen([sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for i in range(nbProcess)]
-progs2 = [subprocess.Popen([sys.argv[2]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for i in range(nbProcess)]
 nbBoards = len(beginBoards)
 pool = Pool(nbProcess)
-results = pool.map(playGames, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess)) for id in range(nbProcess)])
+results = np.array(pool.map(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess)) for id in range(nbProcess)]))
 print("\n"*((nbProcess+9)//10))
-wins = 0
-loses = 0
-draws = 0
-for result in results:
-    wins += result[0]
-    loses += result[1]
-    draws += result[2]
-print(f"\nwins = {wins}, draws = {draws}, loses = {loses}")
+Aresults = results.sum(axis=0)
+print('/'.join(map(str, Aresults)))
 #thank to https://3dkingdoms.com/chess/elo.htm
 
 
-confidence, eloDelta, difference = get_confidence(wins, draws, loses)
+confidence, eloDelta, difference = get_confidence(Aresults)
 print(f"{eloDelta} +/- {difference}")
 print(f"the first version is better than the second with a probability of {confidence}")
