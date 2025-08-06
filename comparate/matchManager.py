@@ -61,8 +61,9 @@ def playGame(startFen, prog1, prog2):
     while not board.is_game_over():
         result = curProg.play(board, engine.Limit(time=movetime))
         board.push(result.move)
-        moves.append(result.move.uci())
+        moves.append(result.move)
         curProg, otherProg = otherProg, curProg
+    moves = board.root().variation_san(moves)
     if board.outcome().winner == WHITE:
         return moves, 0
     elif board.outcome().winner == BLACK:
@@ -89,7 +90,9 @@ def playBatch(args):
         interResults = [0, 0, 0]
         for idProg, prog, _prog in ((0, prog1, prog2), (1, prog2, prog1)):
             moves, winner = playGame(beginBoard, prog, _prog)
-            log.write(beginBoard+' moves '+' '.join(moves)+'\n')
+            log.write(f'[White "{sys.argv[1+idProg]}"]\n[Black "{sys.argv[2-idProg]}"]\n')
+            log.write(f'[Variant "From Position"]\n[FEN "{beginBoard}"]\n')
+            log.write(moves+'\n\n')
             log.flush()
             interResults[min(winner ^ idProg, 2)] += 1
             #print(board.outcome().winner)
