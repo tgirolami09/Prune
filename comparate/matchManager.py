@@ -44,7 +44,7 @@ def get_confidence(results):
     stdDeviation = sqrt(resDev.sum()) / sqrt(tot)
     low = 0
     high = 1
-    for i in range(5):
+    for i in range(100):
         mid = (low+high)/2
         x = get_delta(percentage, mid, stdDeviation)
         if x > abs(eloDelta):
