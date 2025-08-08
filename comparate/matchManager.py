@@ -92,7 +92,10 @@ def playBatch(args):
         beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
         interResults = [0, 0, 0]
-        for idProg, prog, _prog in ((0, prog1, prog2), (1, prog2, prog1)):
+        order = [(0, prog1, prog2), (1, prog2, prog1)]
+        if idBeginBoard%2 == 1:
+            order[0], order[1] = order[1], order[0]
+        for idProg, prog, _prog in order:
             moves, winner = playGame(beginBoard, prog, _prog)
             log.write(f'[White "{sys.argv[1+idProg]}"]\n[Black "{sys.argv[2-idProg]}"]\n')
             log.write(f'[Variant "From Position"]\n[FEN "{beginBoard}"]\n')
@@ -102,7 +105,7 @@ def playBatch(args):
             #print(board.outcome().winner)
             prog1.configure({'Clear Hash':None})
             prog2.configure({'Clear Hash':None})
-        results[interResults[0]*2+interResults[1]] += 1
+        results[interResults[0]*2+interResults[2]] += 1
         sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, results))+'\033[F'*(id//10)+'\r')
         #sys.stdout.write('\r'+'\t'*id*2+str(round(get_confidence(results[0], results[2], results[1])[0], 5)))
         sys.stdout.flush()
