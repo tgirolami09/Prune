@@ -133,7 +133,7 @@ void doUCI(string UCI_instruction, Chess& state){
         bestMoveFinder.testQuiescenceSearch(state.currentGame);
     }else if(command == "eval"){
         bestMoveFinder.eval.init(state.currentGame);
-        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.currentGame.friendlyColor(), state.currentGame));
+        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.currentGame.friendlyColor()));
     }else if(command == "stop"){
         bestMoveFinder.stop();
     }
