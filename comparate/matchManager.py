@@ -46,7 +46,11 @@ def get_confidence(results):
     high = 1
     for i in range(100):
         mid = (low+high)/2
-        x = get_delta(percentage, mid, stdDeviation)
+        try:
+            x = get_delta(percentage, mid, stdDeviation)
+        except:
+            low = high = 0
+            break
         if x > abs(eloDelta):
             high = mid
         else:
