@@ -39,7 +39,7 @@ public:
     }
 
     void reduce(Move move, bool c, int depth){
-        //getIndex(move, c) -= depth*depth;
+        getIndex(move, c) -= depth*depth;
     }
     bool isKiller(Move move, int relDepth) const{
         if(relDepth == (ubyte)-1)return false;
