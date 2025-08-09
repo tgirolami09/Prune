@@ -72,6 +72,23 @@ struct PolyglotEntry {
         newMove.piece = movingPiece;
         newMove.capture = capturedPiece;
 
+        //Deal with chess960 notation for castling
+        if (movingPiece == KING){
+            if (newMove.end_pos == 7){
+                newMove.end_pos = 5;
+            }
+            else if (newMove.end_pos == 0){
+                newMove.end_pos = 1;
+            }
+            else if (newMove.end_pos == 63){
+                newMove.end_pos = 61;
+            }
+            else if (newMove.end_pos == 56){
+                newMove.end_pos = 57;
+            }
+            
+        }
+
         return newMove;
     }
 
