@@ -215,7 +215,7 @@ private:
             return sc;
         }
         int r = 3;
-        if(depth > r && !inCheck && !isPV && eval.getScore(state.friendlyColor()) >= beta){
+        if(depth > r && !inCheck && !isPV && isOnlyPawns(state) && eval.getScore(state.friendlyColor()) >= beta){
             state.playNullMove();
             Score v = -negamax<false, timeLimit>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
