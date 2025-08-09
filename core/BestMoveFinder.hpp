@@ -273,9 +273,11 @@ private:
     Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, Order<maxMoves>& order){
         bestScore = -INF;
         Move bestMove = nullMove;
-        bool inCheck;
-        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
-        order.init(state.friendlyColor(), lastBest, history, 1);
+        // bool inCheck;
+        // order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+        // order.init(state.friendlyColor(), lastBest, history, 1);
+        order.initLoop();
+        int bestIdx = 0;
         for(idMove=0; idMove < order.nbMoves; idMove++){
             Move curMove = order.pop_max();
             int score;
@@ -297,11 +299,14 @@ private:
                 bestMove = curMove;
                 alpha = score;
                 bestScore = score;
+                bestIdx = idMove;
             }else if(score > bestScore){
                 bestMove = curMove;
                 bestScore = score;
+                bestIdx = idMove;
             }
         }
+        order.updateBest(bestIdx);
         return bestMove;
     }
 
@@ -341,6 +346,9 @@ public:
             int idMove;
             int bestScore;
             Order<maxMoves> order;
+            bool inCheck;
+            order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+            order.init(state.friendlyColor(), bestMove, history, 1);
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
