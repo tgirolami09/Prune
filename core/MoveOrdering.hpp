@@ -26,7 +26,7 @@ public:
                 killers[relDepth][0] = move;
             }
             getIndex(move, c) += depth*depth;
-            /*if(getIndex(move, c) > KILLER_ADVANTAGE-PAWN){
+            if(getIndex(move, c) > KILLER_ADVANTAGE-PAWN){
                 for(int a=0; a<2; a++){
                     for(int from=0; from<64; from++){
                         for(int to=0; to<64; to++){
@@ -34,12 +34,8 @@ public:
                         }
                     }
                 }
-            }*/
+            }
         }
-    }
-
-    void reduce(Move move, bool c, int depth){
-        getIndex(move, c) -= depth*depth;
     }
     bool isKiller(Move move, int relDepth) const{
         if(relDepth == (ubyte)-1)return false;

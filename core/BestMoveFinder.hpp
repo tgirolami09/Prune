@@ -255,13 +255,7 @@ private:
                 if(score.usable(relDepth)){
                     transposition.push(state, score.score, LOWERBOUND, curMove, depth);
                 }
-                if(curMove.capture == -2){
-                    history.addKiller(curMove, depth, relDepth, state.friendlyColor());
-                    for(int idMove=0; idMove<rankMove; idMove++){
-                        if(order.moves[idMove].capture == -2)
-                            history.reduce(order.moves[idMove], state.friendlyColor(), depth);
-                    }
-                }
+                history.addKiller(curMove, depth, relDepth, state.friendlyColor());
                 return score;
             }
             if(score > alpha){
