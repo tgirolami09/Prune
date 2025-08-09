@@ -26,7 +26,7 @@ public:
                 killers[relDepth][0] = move;
             }
             getIndex(move, c) += depth*depth;
-            if(getIndex(move, c) > KILLER_ADVANTAGE-PAWN){
+            /*if(getIndex(move, c) > KILLER_ADVANTAGE-PAWN){
                 for(int a=0; a<2; a++){
                     for(int from=0; from<64; from++){
                         for(int to=0; to<64; to++){
@@ -34,8 +34,12 @@ public:
                         }
                     }
                 }
-            }
+            }*/
         }
+    }
+
+    void reduce(Move move, bool c, int depth){
+        //getIndex(move, c) -= depth*depth;
     }
     bool isKiller(Move move, int relDepth) const{
         if(relDepth == (ubyte)-1)return false;
@@ -55,6 +59,7 @@ public:
     bool isPriority;
     int pointer;
     big dangerPositions;
+    bool sorted = false;
     Order():dangerPositions(0){
     }
 
@@ -75,22 +80,30 @@ public:
         }
     }
     Move pop_max(){
-        if(isPriority && pointer == 0){
-            pointer++;
-            return moves[0];
-        }else{
-            int bPointer=pointer;
-            for(int i=pointer+1; i<nbMoves; i++){
+        if((pointer != 0 || isPriority == false) && sorted == false){
+            int bPointer = pointer;
+            int i = pointer;
+            while (++i < nbMoves){
                 if(isChanger(moves[bPointer])){
                     if(isChanger(moves[i]) && scores[i] > scores[bPointer])
                         bPointer = i;
-                }else if(isChanger(moves[i]) || scores[i] > scores[bPointer])
+                }else if(scores[i] > scores[bPointer] || isChanger(moves[i]))
                     bPointer = i;
             }
             swap(moves[pointer], moves[bPointer]);
             swap(scores[pointer], scores[bPointer]);
-            pointer++;
-            return moves[pointer-1];
+            if (pointer == nbMoves-1){
+                sorted = true;
+            }
         }
+        return moves[pointer++];
+    }
+    void updateBest(int idx){
+        //Suppose new best move is already a pretty good move 
+        swap(moves[idx], moves[0]);
+        swap(scores[idx], scores[0]);
+    }
+    void initLoop(){
+        pointer = 0;
     }
 };
