@@ -3,6 +3,7 @@ import sys
 from chess import Board, BLACK, WHITE, engine
 from tqdm import tqdm, trange
 from multiprocessing import Pool
+from multiprocessing.managers import SharedMemoryManager
 import time
 import numpy as np
 movetime = int(sys.argv[3])/1000
@@ -37,6 +38,8 @@ def get_confidence(results):
     scores = np.arange(5)/4
     score = (results*scores).sum()
     tot = results.sum()
+    if(tot == scores[0]):return 1, -1000, 100
+    if(tot == scores[4]):return 1, 1000, 100
     percentage = score/tot
     eloDelta = eloDiff(percentage)
     resP = results/tot
@@ -49,13 +52,17 @@ def get_confidence(results):
         try:
             x = get_delta(percentage, mid, stdDeviation)
         except:
-            low = high = 0
+            low = high = 1
             break
         if x > abs(eloDelta):
             high = mid
         else:
             low = mid
-    return (low+high)/2, eloDelta, get_delta(percentage, 0.95, stdDeviation)
+    try:
+        delta = get_delta(percentage, 0.95, stdDeviation)
+    except:
+        delta = np.nan
+    return (low+high)/2, eloDelta, delta
 
 
 def playGame(startFen, prog1, prog2):
@@ -76,7 +83,7 @@ def playGame(startFen, prog1, prog2):
         return moves, 2
 
 def playBatch(args):
-    id, rangeGame = args
+    id, rangeGame, globalRes = args
     file = f"games{id}.log"
     with open(file, 'r') as f:
         previousGames = f.readlines()
@@ -105,8 +112,14 @@ def playBatch(args):
             #print(board.outcome().winner)
             prog1.configure({'Clear Hash':None})
             prog2.configure({'Clear Hash':None})
-        results[interResults[0]*2+interResults[2]] += 1
-        sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, results))+'\033[F'*(id//10)+'\r')
+        key = interResults[0]*2+interResults[2]
+        results[key] += 1
+        globalRes[key] += 1
+        _, eloChange, delta = get_confidence(np.array(globalRes))
+        nbL = id//10
+        glob = (nbProcess+9)//10
+        remaind = glob-nbL
+        sys.stdout.write('\n'*nbL+'\r'+'\t'*(id%10)*2+'/'.join(map(str, results))+'\n'*remaind+'\r'+'/'.join(map(str, globalRes))+f' {eloChange:6.2f} +/- {delta:6.2f} ({sum(globalRes)})'+'\033[F'*glob+'\r')
         #sys.stdout.write('\r'+'\t'*id*2+str(round(get_confidence(results[0], results[2], results[1])[0], 5)))
         sys.stdout.flush()
     log.close()
@@ -123,8 +136,10 @@ if not (len(sys.argv) > 4 and sys.argv[4] == "continue"):
     for i in range(nbProcess):
         with open(f'games{i}.log', "w") as f:f.write('')
 nbBoards = len(beginBoards)
-pool = Pool(nbProcess)
-results = np.array(pool.map(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess)) for id in range(nbProcess)]))
+with SharedMemoryManager() as smm:
+    sl = smm.ShareableList([0]*5)
+    pool = Pool(nbProcess)
+    results = np.array(pool.map(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl) for id in range(nbProcess)]))
 print("\n"*((nbProcess+9)//10))
 Aresults = results.sum(axis=0)
 print('/'.join(map(str, Aresults)))
