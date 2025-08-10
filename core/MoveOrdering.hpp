@@ -76,31 +76,24 @@ public:
             }
         }
     }
+
     Move pop_max(){
-        if((pointer != 0 || isPriority == false) && sorted == false){
-            int bPointer = pointer;
-            int i = pointer;
-            while (++i < nbMoves){
+        if(isPriority && pointer == 0){
+            pointer++;
+            return moves[0];
+        }else{
+            int bPointer=pointer;
+            for(int i=pointer+1; i<nbMoves; i++){
                 if(isChanger(moves[bPointer])){
                     if(isChanger(moves[i]) && scores[i] > scores[bPointer])
                         bPointer = i;
-                }else if(scores[i] > scores[bPointer] || isChanger(moves[i]))
+                }else if(isChanger(moves[i]) || scores[i] > scores[bPointer])
                     bPointer = i;
             }
             swap(moves[pointer], moves[bPointer]);
             swap(scores[pointer], scores[bPointer]);
-            if (pointer == nbMoves-1){
-                sorted = true;
-            }
+            pointer++;
+            return moves[pointer-1];
         }
-        return moves[pointer++];
-    }
-    void updateBest(int idx){
-        //Suppose new best move is already a pretty good move 
-        swap(moves[idx], moves[0]);
-        swap(scores[idx], scores[0]);
-    }
-    void initLoop(){
-        pointer = 0;
     }
 };

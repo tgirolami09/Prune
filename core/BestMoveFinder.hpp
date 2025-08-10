@@ -126,6 +126,7 @@ private:
     template<bool timeLimit>
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(timeLimit && !running)return 0;
+        if(eval.isInsufficientMaterial())return 0;
         Qnodes++;
         int lastEval=QTT.get_eval(state, alpha, beta);
         if(lastEval != INVALID)
@@ -187,6 +188,7 @@ private:
     template <bool isPV, bool timeLimit>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(timeLimit && !running)return 0;
+        if(eval.isInsufficientMaterial())return Score(0, -1);
         if(depth == 0)return Score(quiescenceSearch<timeLimit>(state, alpha, beta), -1);
         nodes++;
         Move lastBest = nullMove;
@@ -215,7 +217,7 @@ private:
             return sc;
         }
         int r = 3;
-        if(depth > r && !inCheck && !isPV && isOnlyPawns(state) && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
+        if(depth >= r && !inCheck && !isPV && isOnlyPawns(state) && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
             state.playNullMove();
             Score v = -negamax<false, timeLimit>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
@@ -273,10 +275,10 @@ private:
     Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, Order<maxMoves>& order){
         bestScore = -INF;
         Move bestMove = nullMove;
-        // bool inCheck;
-        // order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
-        // order.init(state.friendlyColor(), lastBest, history, 1);
-        order.initLoop();
+        bool inCheck;
+        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+        order.init(state.friendlyColor(), lastBest, history, 1);
+        //order.initLoop();
         int bestIdx = 0;
         for(idMove=0; idMove < order.nbMoves; idMove++){
             Move curMove = order.pop_max();
@@ -306,7 +308,7 @@ private:
                 bestIdx = idMove;
             }
         }
-        order.updateBest(bestIdx);
+        //order.updateBest(bestIdx);
         return bestMove;
     }
 
@@ -346,9 +348,8 @@ public:
             int idMove;
             int bestScore;
             Order<maxMoves> order;
-            bool inCheck;
-            order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
-            order.init(state.friendlyColor(), bestMove, history, 1);
+            //bool inCheck;
+            //order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
@@ -393,6 +394,7 @@ public:
     void clear(){
         transposition.clear();
         QTT.clear();
+        history.init();
     }
 
     void reinit(size_t count){

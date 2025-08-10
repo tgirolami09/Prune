@@ -4,6 +4,7 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include <climits>
+#include <cstring>
 #include <cmath>
 #define COMPLICATED_EVALUATION
 const int value_pieces[6] = {100, 300, 300, 500, 900, 0};
@@ -216,23 +217,37 @@ class IncrementalEvaluator{
     int mgScore, egScore;
     int mgPhase;
     pawnStruct table[tableSize];
+    int presentPieces[2][6]; //keep trace of number of pieces by side
     template<int f>
     void changePiece(int pos, int piece, bool c){
         int sign = (c == WHITE) ? 1 : -1;
         mgScore += f*sign*mg_table[c][piece][pos];
         egScore += f*sign*eg_table[c][piece][pos];
         mgPhase += f*gamephaseInc[piece];
+        presentPieces[c][piece] += f;
     }
 public:
+    void print(){
+        printf("mg = %d; eg = %d\n", mgScore, egScore);
+        printf("phase = %d\n", mgPhase);
+        for(int i=0; i<2; i++){
+            for(int j=0; j<6; j++){
+                printf("piece = %d, color = %d, nbPieces = %d\n", j, i, presentPieces[i][j]);
+            }
+        }
+    }
+
     IncrementalEvaluator(){
         init_tables();
         init_forwards();
+        memset(presentPieces, 0, sizeof(presentPieces));
     }
 
     void init(const GameState& state){//should be only call at the start of the search
         mgScore = 0;
         egScore = 0;
         mgPhase = 0;
+        memset(presentPieces, 0, sizeof(presentPieces));
         for(int square=0; square<64; square++){
             int piece=state.getfullPiece(square);
             if(type(piece) != SPACE){
@@ -242,39 +257,57 @@ public:
         }
     }
 
+    bool isInsufficientMaterial(){
+        if(mgPhase < 4 && !presentPieces[BLACK][PAWN] && !presentPieces[BLACK][PAWN] && !presentPieces[WHITE][QUEEN] && !presentPieces[BLACK][QUEEN] && !presentPieces[WHITE][ROOK] && !presentPieces[BLACK][ROOK]){
+            //theoric draw must have only knight or bishop, and must have at most 4 pieces (2 knight per side is a draw for a computer)
+            if(presentPieces[WHITE][BISHOP])
+                return presentPieces[WHITE][BISHOP] < 2 && presentPieces[WHITE][KNIGHT] == 0;
+            if(presentPieces[BLACK][BISHOP])
+                return presentPieces[BLACK][BISHOP] < 2 && presentPieces[BLACK][KNIGHT] == 0;
+            return presentPieces[BLACK][KNIGHT] <= 2 && presentPieces[WHITE][KNIGHT] <= 2;
+        }
+        return false;
+    }
+
     int get_eval(pawnStruct s){
         static const int bonus[8] = {0, 15, 15, 25, 40, 60, 90, 0};
         int key = s.whitePawn&(tableSize-1);
         if(table[key] == s){//should hit the table pretty often because the pawn structure is very similar in siblings nodes
-            return table[key].score*max(0, 24-mgPhase)/24;
+            return table[key].score;
         }
         int score = 0;
         big opponentPawns=s.blackPawn;
         ubyte pos[8];
         int nbPawns = places(s.whitePawn, pos);
         for(int idPawn=0; idPawn<nbPawns; idPawn++){
-            //print_mask(mask_forward[pos[idPawn]]|(1ULL << pos[idPawn]));
             if((mask_forward[pos[idPawn]]&opponentPawns) == 0){
                 score += bonus[row(pos[idPawn])];
             }
+            if((mask_forward_inv[pos[idPawn]]&~maskCol(pos[idPawn]))&s.blackPawn) // can be protected by friendly pawn
+                score += 10;
+            if(maskCol(pos[idPawn])&s.whitePawn) //doubled pawns
+                score -= 5;
         }
         opponentPawns = s.whitePawn;
         nbPawns = places(s.blackPawn, pos);
         for(int idPawn=0; idPawn<nbPawns; idPawn++){
-            //print_mask(mask_forward_inv[pos[idPawn]]|(1ULL << pos[idPawn]));
             if((mask_forward_inv[pos[idPawn]]&opponentPawns) == 0){
                 score -= bonus[8-row(pos[idPawn])];
             }
+            if((mask_forward[pos[idPawn]]&~maskCol(pos[idPawn]))&s.blackPawn)
+                score -= 10;
+            if(maskCol(pos[idPawn])&s.blackPawn)
+                score += 5;
         }
         table[key] = s;
         table[key].score = score;
-        return score*max(0, 24-mgPhase)/24;
+        return score;
     }
 
     int getScore(bool c, pawnStruct s){
         int clampPhase = min(mgPhase, 24);
         int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
-        score += get_eval(s);
+        //score += get_eval(s);
         if(c == BLACK)score = -score;
         return score;
     }

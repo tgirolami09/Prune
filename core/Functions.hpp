@@ -93,4 +93,8 @@ inline big mask_empty_bishop(int square){
     int col=square&7, row=square >> 3;
     return clipped_diag[col+row] ^ clipped_idiag[row-col+7];
 }
+
+inline big maskCol(int square){
+    return colH << col(square);
+}
 #endif
