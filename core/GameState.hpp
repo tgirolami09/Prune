@@ -462,6 +462,13 @@ public :
         return SPACE*2;
     }
 
+    pawnStruct getPawnStruct(){
+        pawnStruct res;
+        res.whitePawn = boardRepresentation[WHITE][PAWN];
+        res.blackPawn = boardRepresentation[BLACK][PAWN];
+        return res;
+    }
+
     void print(){
         printf("/−");
         for(int i=1; i<7; i++){

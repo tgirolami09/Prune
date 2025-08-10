@@ -68,4 +68,14 @@ const ubyte LOWERBOUND = 1;
 const ubyte UPPERBOUND = 2;
 const int KILLER_ADVANTAGE = 100000;
 const int maxHistory=100;
+
+class pawnStruct{
+public:
+    big blackPawn;
+    big whitePawn;
+    int score;
+    bool operator==(pawnStruct s){
+        return blackPawn == s.blackPawn && whitePawn == s.whitePawn;
+    }
+};
 #endif

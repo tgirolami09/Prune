@@ -184,9 +184,15 @@ void init_tables()
 }
 
 //Class to evaluate a position
-const big mask_forward[64] = {
-    0x303030303030300, 0x707070707070700, 0xe0e0e0e0e0e0e00, 0x1c1c1c1c1c1c1c00, 0x3838383838383800, 0x7070707070707000, 0xe0e0e0e0e0e0e000, 0xc0c0c0c0c0c0c000, 0x303030303030000, 0x707070707070000, 0xe0e0e0e0e0e0000, 0x1c1c1c1c1c1c0000, 0x3838383838380000, 0x7070707070700000, 0xe0e0e0e0e0e00000, 0xc0c0c0c0c0c00000, 0x303030303000000, 0x707070707000000, 0xe0e0e0e0e000000, 0x1c1c1c1c1c000000, 0x3838383838000000, 0x7070707070000000, 0xe0e0e0e0e0000000, 0xc0c0c0c0c0000000, 0x303030300000000, 0x707070700000000, 0xe0e0e0e00000000, 0x1c1c1c1c00000000, 0x3838383800000000, 0x7070707000000000, 0xe0e0e0e000000000, 0xc0c0c0c000000000, 0x303030000000000, 0x707070000000000, 0xe0e0e0000000000, 0x1c1c1c0000000000, 0x3838380000000000, 0x7070700000000000, 0xe0e0e00000000000, 0xc0c0c00000000000, 0x303000000000000, 0x707000000000000, 0xe0e000000000000, 0x1c1c000000000000, 0x3838000000000000, 0x7070000000000000, 0xe0e0000000000000, 0xc0c0000000000000, 0x300000000000000, 0x700000000000000, 0xe00000000000000, 0x1c00000000000000, 0x3800000000000000, 0x7000000000000000, 0xe000000000000000, 0xc000000000000000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0
-};
+static big mask_forward[64];
+static big mask_forward_inv[64];
+void init_forwards(){
+    for(int square=0; square<64; square++){
+        big triCol = (colH << col(square)) | (colH << max(0, col(square)-1)) | (colH << min(7, col(square)+1));
+        mask_forward[square] = (MAX_BIG << (row(square)+1)*8) & triCol;
+        mask_forward_inv[square] = (MAX_BIG >> (8-row(square))*8) & triCol;
+    }
+}
 
 inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore){
     int score = 0;
@@ -204,9 +210,12 @@ inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKil
     return score;
 }
 
+static const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
+
 class IncrementalEvaluator{
     int mgScore, egScore;
     int mgPhase;
+    pawnStruct table[tableSize];
     template<int f>
     void changePiece(int pos, int piece, bool c){
         int sign = (c == WHITE) ? 1 : -1;
@@ -217,6 +226,7 @@ class IncrementalEvaluator{
 public:
     IncrementalEvaluator(){
         init_tables();
+        init_forwards();
     }
 
     void init(const GameState& state){//should be only call at the start of the search
@@ -231,9 +241,40 @@ public:
             }
         }
     }
-    int getScore(bool c) const{
+
+    int get_eval(pawnStruct s){
+        static const int bonus[8] = {0, 15, 15, 25, 40, 60, 90, 0};
+        int key = s.whitePawn&(tableSize-1);
+        if(table[key] == s){//should hit the table pretty often because the pawn structure is very similar in siblings nodes
+            return table[key].score*max(0, 24-mgPhase)/24;
+        }
+        int score = 0;
+        big opponentPawns=s.blackPawn;
+        ubyte pos[8];
+        int nbPawns = places(s.whitePawn, pos);
+        for(int idPawn=0; idPawn<nbPawns; idPawn++){
+            //print_mask(mask_forward[pos[idPawn]]|(1ULL << pos[idPawn]));
+            if((mask_forward[pos[idPawn]]&opponentPawns) == 0){
+                score += bonus[row(pos[idPawn])];
+            }
+        }
+        opponentPawns = s.whitePawn;
+        nbPawns = places(s.blackPawn, pos);
+        for(int idPawn=0; idPawn<nbPawns; idPawn++){
+            //print_mask(mask_forward_inv[pos[idPawn]]|(1ULL << pos[idPawn]));
+            if((mask_forward_inv[pos[idPawn]]&opponentPawns) == 0){
+                score -= bonus[8-row(pos[idPawn])];
+            }
+        }
+        table[key] = s;
+        table[key].score = score;
+        return score*max(0, 24-mgPhase)/24;
+    }
+
+    int getScore(bool c, pawnStruct s){
         int clampPhase = min(mgPhase, 24);
         int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
+        score += get_eval(s);
         if(c == BLACK)score = -score;
         return score;
     }
