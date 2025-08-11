@@ -69,15 +69,19 @@ def playGame(startFen, prog1, prog2):
     curProg, otherProg = prog1, prog2
     board = Board(startFen)
     moves = []
-    while not board.is_game_over():
+    while not board.is_game_over() and not board.can_claim_draw():
         result = curProg.play(board, engine.Limit(time=movetime))
         board.push(result.move)
         moves.append(result.move)
         curProg, otherProg = otherProg, curProg
     moves = board.root().variation_san(moves)
-    if board.outcome().winner == WHITE:
+    if board.can_claim_draw():
+        winner = None
+    else:
+        winner = board.outcome().winner
+    if winner == WHITE:
         return moves, 0
-    elif board.outcome().winner == BLACK:
+    elif winner == BLACK:
         return moves, 1
     else:
         return moves, 2
