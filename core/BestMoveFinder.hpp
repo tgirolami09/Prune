@@ -359,7 +359,7 @@ public:
         for(int depth=1; depth<depthMax && running && !midtime; depth++){
             int deltaUp = 10;
             int deltaDown = 10;
-            int startNodes = nodes;
+            int startNodes = nodes+Qnodes;
             int idMove;
             int bestScore;
             Order<maxMoves> order;
@@ -376,10 +376,11 @@ public:
             lastScore = bestScore;
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            int usedNodes = nodes-startNodes;
+            int totNodes = nodes+Qnodes;
+            int usedNodes = totNodes-startNodes;
             if(idMove == order.nbMoves)
-                printf("info depth %d score %s nodes %d nps %d time %d pv %s string branching factor %.3f\n", depth+1, scoreToStr(bestScore).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), (double)usedNodes/lastNodes);
-            else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), nodes, (int)(nodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, order.nbMoves);
+                printf("info depth %d score %s nodes %d nps %d time %d pv %s string branching factor %.3f\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), (double)usedNodes/lastNodes);
+            else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, order.nbMoves);
             fflush(stdout);
             if(abs(bestScore) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
                 if(timeLimit){
