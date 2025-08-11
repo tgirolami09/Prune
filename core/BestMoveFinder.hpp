@@ -86,17 +86,14 @@ class BestMoveFinder{
     unordered_map<uint64_t,PolyglotEntry> book;
 
     //Returns the best move given a position and time to use
-public:
     LegalMoveGenerator generator;
-    IncrementalEvaluator eval;
     transpositionTable transposition;
     QuiescenceTT QTT;
-private:
     std::atomic<bool> running;
     std::atomic<bool> midtime;
     HelpOrdering history;
 public:
-
+    IncrementalEvaluator eval;
     BestMoveFinder(int memory):transposition(memory), QTT(memory){
         book = load_book("./book.bin");
         history.init();
