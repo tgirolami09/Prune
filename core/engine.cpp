@@ -15,7 +15,9 @@
 using namespace std;
 //Main class for the game
 class Chess{
-    public : GameState currentGame;
+public :
+    GameState root;
+    vector<Move> movesFromRoot;
 
     //Get it from i/o
     int w_time;
@@ -28,8 +30,8 @@ const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
 template<bool isTimeLimit=true>
-Move getBotMove(GameState gameState, int alloted_time){
-    Move moveToPlay = bestMoveFinder.bestMove<isTimeLimit>(gameState,alloted_time);
+Move getBotMove(Chess state, int alloted_time){
+    Move moveToPlay = bestMoveFinder.bestMove<isTimeLimit>(state.root, alloted_time, state.movesFromRoot);
     return moveToPlay;
 }
 
@@ -39,8 +41,8 @@ Move getOpponentMove(){
 }
 
 int computeAllotedTime(Chess& state){
-    int time = state.currentGame.friendlyColor() == WHITE?state.w_time:state.b_time;
-    int inc = state.currentGame.friendlyColor() == WHITE?state.winc:state.binc;
+    int time = state.root.friendlyColor() == WHITE?state.w_time:state.b_time;
+    int inc = state.root.friendlyColor() == WHITE?state.winc:state.binc;
     return time/20+inc/2-moveOverhead;
 }
 
@@ -78,7 +80,7 @@ void doUCI(string UCI_instruction, Chess& state){
     }
     if(command == "go"){
         if(args.count("perft")){
-            printf("Nodes searched: %lld\n", doPerft.perft(state.currentGame, args["perft"]));
+            printf("Nodes searched: %lld\n", doPerft.perft(state.root, args["perft"]));
         }else{
             Move move;
             if(args.count("btime") && args.count("wtime")){
@@ -86,11 +88,11 @@ void doUCI(string UCI_instruction, Chess& state){
                 state.w_time = args["wtime"];
                 state.winc = args["winc"];
                 state.binc = args["binc"];
-                move=getBotMove(state.currentGame, computeAllotedTime(state));
+                move=getBotMove(state, computeAllotedTime(state));
             }else if(args.count("movetime")){
-                move = getBotMove(state.currentGame, args["movetime"]);
+                move = getBotMove(state, args["movetime"]);
             }else{
-                move = getBotMove<false>(state.currentGame, args["depth"]);
+                move = getBotMove<false>(state, args["depth"]);
             }
             printf("bestmove %s\n", move.to_str().c_str());
         }
@@ -117,23 +119,24 @@ void doUCI(string UCI_instruction, Chess& state){
             assert(arg == "startpos");
             fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         }
-        state.currentGame.fromFen(fen);
+        state.root.fromFen(fen);
         string moves;
+        state.movesFromRoot.clear();
         while(stream >> moves){
             if(moves == "moves")continue;
             Move move;
             move.from_uci(moves);
-            state.currentGame.playPartialMove(move);
+            state.movesFromRoot.push_back(move);
         }
     }else if(command == "isready"){
         printf("readyok\n");
     }else if(command == "d"){
-        state.currentGame.print();
+        state.root.print();
     }else if(command == "runQ"){
-        bestMoveFinder.testQuiescenceSearch(state.currentGame);
+        bestMoveFinder.testQuiescenceSearch(state.root);
     }else if(command == "eval"){
-        bestMoveFinder.eval.init(state.currentGame);
-        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.currentGame.friendlyColor(), state.currentGame.getPawnStruct()  ));
+        bestMoveFinder.eval.init(state.root);
+        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor(), state.root.getPawnStruct()  ));
     }else if(command == "stop"){
         bestMoveFinder.stop();
     }
@@ -143,7 +146,7 @@ void doUCI(string UCI_instruction, Chess& state){
 int main(int argc, char** argv){
     string UCI_instruction = "programStart";
     Chess state;
-    state.currentGame.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    state.root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     if(argc > 1){
         for(int i=1; i<argc; i++)
             doUCI(argv[i], state);

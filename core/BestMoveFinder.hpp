@@ -122,7 +122,7 @@ public:
 
 private:
     int nodes, Qnodes;
-    big isInSearch[maxDepth];
+    big isInSearch[1000];
     template<bool timeLimit>
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(timeLimit && !running)return 0;
@@ -182,7 +182,11 @@ private:
     bool isOnlyPawns(const GameState& state){
         const big* fp = state.friendlyPieces();
         const big* ep = state.enemyPieces();
-        return fp[BISHOP] || fp[KNIGHT] || fp[ROOK] || fp[QUEEN] || ep [BISHOP] || ep[KNIGHT] || ep[ROOK] || ep[QUEEN];
+        return fp[BISHOP] || fp[KNIGHT] || fp[ROOK] || fp[QUEEN] || ep[BISHOP] || ep[KNIGHT] || ep[ROOK] || ep[QUEEN];
+    }
+
+    bool isChanger(Move move){
+        return move.capture != -2 || move.piece == PAWN;
     }
 
     template <bool isPV, bool timeLimit>
@@ -217,7 +221,7 @@ private:
             return sc;
         }
         int r = 3;
-        if(depth >= r && !inCheck && !isPV && isOnlyPawns(state) && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
+        if(depth >= r && !inCheck && !isPV && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
             state.playNullMove();
             Score v = -negamax<false, timeLimit>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
@@ -231,7 +235,7 @@ private:
             Score score;
             state.playMove<false, false>(curMove);
             int newLastChange = lastChange;
-            if(curMove.capture != -2 || curMove.piece == PAWN)
+            if(isChanger(curMove))
                 newLastChange = relDepth;
             ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
             if(usableDepth != (ubyte)-1){
@@ -272,7 +276,7 @@ private:
         return bestScore;
     }
     template<bool timeLimit>
-    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, Order<maxMoves>& order){
+    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, Order<maxMoves>& order, int actDepth, int lastChange){
         bestScore = -INF;
         Move bestMove = nullMove;
         bool inCheck;
@@ -283,12 +287,15 @@ private:
         for(idMove=0; idMove < order.nbMoves; idMove++){
             Move curMove = order.pop_max();
             int score;
+            int curLastChange = lastChange;
+            if(isChanger(curMove))
+                curLastChange = actDepth;
             if(state.playMove<false>(curMove) > 1)
                 score = MIDDLE;
             else{
                 eval.playMove(curMove, !state.friendlyColor());
-                setElement(state.zobristHash, 1);
-                score = -negamax<true, timeLimit>(depth, state, -beta, -alpha, 0, (curMove.capture == -2 && curMove.piece == PAWN), 2).score;
+                setElement(state.zobristHash, actDepth);
+                score = -negamax<true, timeLimit>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             augmentMate(score);
@@ -314,7 +321,17 @@ private:
 
 public:
     template <bool timeLimit=true>
-    Move bestMove(GameState& state, int alloted){
+    Move bestMove(GameState& state, int alloted, vector<Move> movesFromRoot){
+        int actDepth=0;
+        int lastChange = 0;
+        for(Move move:movesFromRoot){
+            setElement(state.zobristHash, actDepth);
+            move = state.playPartialMove(move);
+            if(isChanger(move))
+                lastChange = actDepth;
+            actDepth++;
+        }
+        setElement(state.zobristHash, actDepth);
         bool moveInTable = false;
         Move bookMove = findPolyglot(state,moveInTable,book);
         //Return early because a move was found in a book
@@ -353,7 +370,7 @@ public:
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
-                bestMove = bestMoveClipped<timeLimit>(depth, state, alpha, beta, bestScore, bestMove, idMove, order);
+                bestMove = bestMoveClipped<timeLimit>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange);
                 if(bestScore <= alpha)deltaDown *= 2;
                 else if(bestScore >= beta)deltaUp *= 2;
                 else break;

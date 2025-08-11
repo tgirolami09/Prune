@@ -269,6 +269,10 @@ public:
         return false;
     }
 
+    const inline bool isOnlyPawns() const{
+        return !mgPhase;
+    }
+
     int get_eval(pawnStruct s){
         static const int bonus[8] = {0, 15, 15, 25, 40, 60, 90, 0};
         int key = s.whitePawn&(tableSize-1);

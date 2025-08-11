@@ -431,7 +431,7 @@ public :
         }
     }
 
-    void playPartialMove(Move move){
+    Move playPartialMove(Move move){
         int piece=getPiece(move.end_pos, enemyColor());
         if(piece != SPACE){
             move.capture = piece;
@@ -442,6 +442,7 @@ public :
         }
         move.piece = mover;
         playMove<false>(move);
+        return move;
     }
 
     int getPiece(int square, int c){
