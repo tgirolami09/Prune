@@ -298,7 +298,7 @@ private:
             }
             augmentMate(score);
             state.undoLastMove();
-            if(!running)return bestMove.start_pos == bestMove.end_pos?curMove:bestMove;
+            if(!running)return bestMove.from() == bestMove.to()?curMove:bestMove;
             if(score >= beta){
                 bestScore = score;
                 return curMove;

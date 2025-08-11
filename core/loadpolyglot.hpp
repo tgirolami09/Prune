@@ -60,34 +60,36 @@ struct PolyglotEntry {
     }
 
     Move toMove(int movingPiece, int capturedPiece){
-        Move newMove;
-        newMove.start_pos = from_square;
-        newMove.end_pos = to_square;
-        if (promotion == 0){
-            newMove.promoteTo = -1;
-        }
-        else{
-            newMove.promoteTo = promotion;
-        }
-        newMove.piece = movingPiece;
-        newMove.capture = capturedPiece;
-
         //Deal with chess960 notation for castling
         if (movingPiece == KING){
-            if (newMove.end_pos == 7){
-                newMove.end_pos = 5;
+            if (to_square == 7){
+                to_square = 5;
             }
-            else if (newMove.end_pos == 0){
-                newMove.end_pos = 1;
+            else if (to_square == 0){
+                to_square = 1;
             }
-            else if (newMove.end_pos == 63){
-                newMove.end_pos = 61;
+            else if (to_square == 63){
+                to_square = 61;
             }
-            else if (newMove.end_pos == 56){
-                newMove.end_pos = 57;
+            else if (to_square == 56){
+                to_square = 57;
             }
             
         }
+        Move newMove;
+        // newMove.start_pos = from_square;
+        // newMove.end_pos = to_square;
+        newMove.updateFrom(from_square);
+        newMove.updateTo(to_square);
+        // if (promotion == 0){
+            // newMove.promoteTo = -1;
+        // }
+        if (promotion != 0){
+            // newMove.promoteTo = promotion;
+            newMove.updatePromotion(promotion);
+        }
+        newMove.piece = movingPiece;
+        newMove.capture = capturedPiece;
 
         return newMove;
     }

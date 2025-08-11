@@ -204,7 +204,10 @@ class LegalMoveGenerator{
         while(mask){
             int bit = __builtin_ctzll(mask);
             mask &= mask-1;
-            Move base = {(int8_t)start, (int8_t)bit, piece};
+            Move base;// = {(int8_t)start, (int8_t)bit, piece};
+            base.updateFrom(start);
+            base.updateTo(bit);
+            base.piece = piece;
             big mask = 1ULL << bit;
             //There is a capture
             if(mask&allEnemies)
@@ -213,7 +216,8 @@ class LegalMoveGenerator{
             if(isPawn && (row(bit) == 7 || row(bit) == 0)){
                 for(int8_t typePiece:{KNIGHT, BISHOP, ROOK, QUEEN}){
                     moves[nbMoves] = base;
-                    moves[nbMoves].promoteTo = typePiece;
+                    // moves[nbMoves].promoteTo = typePiece;
+                    moves[nbMoves].updatePromotion(typePiece);
                     nbMoves++;
                 }
             }else{

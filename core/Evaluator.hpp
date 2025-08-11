@@ -197,7 +197,7 @@ void init_forwards(){
 
 inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore){
     int score = 0;
-    if ((dangerPositions & (1ul<<move.end_pos)) != 0){
+    if ((dangerPositions & (1ul<<move.to())) != 0){
         score -= value_pieces[move.piece];
     }
     if(move.capture != -2)
@@ -206,8 +206,8 @@ inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKil
         if(isKiller)score += KILLER_ADVANTAGE;
         score += historyScore;
     }
-    if(move.promoteTo != -1)score += value_pieces[move.promoteTo];
-    score += mg_table[c][move.piece][move.end_pos]-mg_table[c][move.piece][move.start_pos];
+    if(move.promotion() != -1)score += value_pieces[move.promotion()];
+    score += mg_table[c][move.piece][move.to()]-mg_table[c][move.piece][move.from()];
     return score;
 }
 
@@ -318,7 +318,7 @@ public:
     template<int f=1>
     void playMove(Move move, bool c){
         if(move.capture != -2){
-            int posCapture = move.end_pos;
+            int posCapture = move.to();
             int pieceCapture = move.capture;
             if(move.capture == -1){ // for en passant
                 if(c == WHITE)posCapture -= 8;
@@ -327,13 +327,13 @@ public:
             }
             changePiece<-f>(posCapture, pieceCapture, !c);
         }
-        int toPiece = (move.promoteTo == -1) ? move.piece : move.promoteTo; //for promotion
-        changePiece<-f>(move.start_pos, move.piece, c);
-        changePiece<f>(move.end_pos, toPiece, c);
-        if(move.piece == KING && abs(move.start_pos-move.end_pos) == 2){ //castling
-            int rookStart = move.start_pos;
-            int rookEnd = move.end_pos;
-            if(move.start_pos > move.end_pos){//queen side
+        int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
+        changePiece<-f>(move.from(), move.piece, c);
+        changePiece<f>(move.to(), toPiece, c);
+        if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
+            int rookStart = move.from();
+            int rookEnd = move.to();
+            if(move.from() > move.to()){//queen side
                 rookStart &= ~7;
                 rookEnd++;
             }else{//king side

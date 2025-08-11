@@ -6,10 +6,10 @@ class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
     int& getIndex(Move move, bool c){
-        return history[c][move.start_pos][move.end_pos];
+        return history[c][move.from()][move.to()];
     }
     bool fastEq(Move a, Move b) const{
-        return (a.start_pos == b.start_pos) && (a.end_pos == b.end_pos) && (a.promoteTo == b.promoteTo);
+        return (a.from() == b.from()) && (a.to() == b.to()) && (a.promotion() == b.promotion());
     }
 public:
     void init(){
@@ -43,7 +43,7 @@ public:
         return fastEq(move, killers[relDepth][0]) || fastEq(move, killers[relDepth][1]);
     }
     int getHistoryScore(Move move, bool c) const{
-        return history[c][move.start_pos][move.end_pos];
+        return history[c][move.from()][move.to()];
     }
 };
 
@@ -61,7 +61,7 @@ public:
     }
 
     bool isChanger(Move move) const{
-        return move.capture != -2 || move.promoteTo != -1;
+        return move.capture != -2 || move.promotion() != -1;
     }
 
     void init(bool c, Move priorityMove, const HelpOrdering& history, ubyte relDepth=-1){
@@ -69,7 +69,7 @@ public:
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
             scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c));
-            if(priorityMove.start_pos == moves[i].start_pos && priorityMove.end_pos == moves[i].end_pos){
+            if(priorityMove.from() == moves[i].from() && priorityMove.to() == moves[i].to()){
                 swap(scores[i], scores[0]);
                 swap(moves[i], moves[0]);
                 isPriority = true;
