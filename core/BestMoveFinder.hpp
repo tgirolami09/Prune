@@ -192,6 +192,7 @@ private:
     template <bool isPV, bool timeLimit>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(timeLimit && !running)return 0;
+        if(relDepth-lastChange >= 100)return Score(0, -1);
         if(eval.isInsufficientMaterial())return Score(0, -1);
         if(depth == 0)return Score(quiescenceSearch<timeLimit>(state, alpha, beta), -1);
         nodes++;
