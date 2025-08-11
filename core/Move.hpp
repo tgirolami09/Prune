@@ -56,9 +56,13 @@ class Move{
         moveInfo |= (int16_t)( to_square );
     }
 
-    void updatePromotion(int promotion){
-        // promoteTo = promotion;
-        moveInfo |= (int16_t)( promotion << 12 );    
+    void updatePromotion(int promotionPiece){
+        // promoteTo = promotionPiece;
+        int oldPromotion = promotion();
+        //Should remove info
+        moveInfo ^= (int16_t)( oldPromotion << 12 );
+
+        moveInfo |= (int16_t)( promotionPiece << 12 );    
     }
 
     void from_uci(string move){
