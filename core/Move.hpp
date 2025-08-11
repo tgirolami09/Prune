@@ -72,7 +72,8 @@ class Move{
         moveInfo |= (int16_t)(from_str(move.substr(0, 2)) << 6);
         if(move.size() == 5){
             // promoteTo = piece_to_id.at(move[4]);
-            moveInfo |= (int16_t)(piece_to_id.at(move[4]) << 12);
+
+            updatePromotion(piece_to_id.at(move[4]));
         }
     }
 
