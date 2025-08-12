@@ -182,10 +182,6 @@ private:
         return fp[BISHOP] || fp[KNIGHT] || fp[ROOK] || fp[QUEEN] || ep[BISHOP] || ep[KNIGHT] || ep[ROOK] || ep[QUEEN];
     }
 
-    bool isChanger(Move move){
-        return move.capture != -2 || move.piece == PAWN;
-    }
-
     template <bool isPV, bool timeLimit>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(timeLimit && !running)return 0;
@@ -233,7 +229,7 @@ private:
             Score score;
             state.playMove<false, false>(curMove);
             int newLastChange = lastChange;
-            if(isChanger(curMove))
+            if(curMove.isChanger())
                 newLastChange = relDepth;
             ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
             if(usableDepth != (ubyte)-1){
@@ -243,7 +239,9 @@ private:
                 setElement(state.zobristHash, relDepth);
                 if(rankMove > 0){
                     int reductionDepth = 0;
-                    if(rankMove > 3 && depth > 3 && curMove.capture == -2)reductionDepth = 1;
+                    if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
+                        reductionDepth = 1;
+                    }
                     score = -negamax<false, timeLimit>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
                     if(score > alpha && isPV){
                         score = -negamax<true, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
@@ -287,7 +285,7 @@ private:
             //printf("%s\n", curMove.to_str().c_str());
             int score;
             int curLastChange = lastChange;
-            if(isChanger(curMove))
+            if(curMove.isChanger())
                 curLastChange = actDepth;
             if(state.playMove<false>(curMove) > 1)
                 score = MIDDLE;
@@ -326,7 +324,7 @@ public:
         for(Move move:movesFromRoot){
             setElement(state.zobristHash, actDepth);
             move = state.playPartialMove(move);
-            if(isChanger(move))
+            if(move.isChanger())
                 lastChange = actDepth;
             actDepth++;
         }

@@ -74,6 +74,14 @@ public :
         //if capture is not the same, I think we can also considere that there are the same
         return o.moveInfo == moveInfo && o.piece == piece;
     }
+
+    bool isTactical(){
+        return moveInfo > 0 && capture != -2; // moveInfo > 0 is an equivalent of promotion() != -1
+    }
+
+    bool isChanger(){
+        return piece == PAWN || capture != -2;
+    }
 };
 // const Move nullMove={0, 0, 0, -1, -2, -4096};
 const Move nullMove = {0, -2, -4096};
