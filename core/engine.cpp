@@ -5,7 +5,6 @@
 #include "Move.hpp"
 #include "GameState.hpp"
 #include "BestMoveFinder.hpp"
-#include "TranspositionTable.hpp"
 
 #include <iostream>
 
@@ -41,6 +40,7 @@ Move getOpponentMove(){
 }
 
 int computeAllotedTime(Chess& state){
+    bool color = state.root.friendlyColor()^(state.movesFromRoot.size()&1);
     int time = state.root.friendlyColor() == WHITE?state.w_time:state.b_time;
     int inc = state.root.friendlyColor() == WHITE?state.winc:state.binc;
     return time/20+inc/2-moveOverhead;
