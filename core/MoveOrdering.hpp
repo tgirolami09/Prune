@@ -64,12 +64,12 @@ public:
         return move.capture != -2 || move.promotion() != -1;
     }
 
-    void init(bool c, Move priorityMove, const HelpOrdering& history, ubyte relDepth=-1){
+    void init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth=-1){
         isPriority=false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
             scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c));
-            if(priorityMove.from() == moves[i].from() && priorityMove.to() == moves[i].to()){
+            if(moveInfoPriority == moves[i].moveInfo){
                 swap(scores[i], scores[0]);
                 swap(moves[i], moves[0]);
                 isPriority = true;

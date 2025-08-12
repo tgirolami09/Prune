@@ -142,7 +142,7 @@ private:
         Order<maxCaptures> order;
         bool inCheck;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-        order.init(state.friendlyColor(), nullMove, history);
+        order.init(state.friendlyColor(), nullMove.moveInfo, history);
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
@@ -193,7 +193,7 @@ private:
         if(eval.isInsufficientMaterial())return Score(0, -1);
         if(depth == 0)return Score(quiescenceSearch<timeLimit>(state, alpha, beta), -1);
         nodes++;
-        Move lastBest = nullMove;
+        int16_t lastBest = nullMove.moveInfo;
         int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
         if(lastEval != INVALID)
             return Score(lastEval, -1);
@@ -279,7 +279,7 @@ private:
         Move bestMove = nullMove;
         bool inCheck;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
-        order.init(state.friendlyColor(), lastBest, history, 1);
+        order.init(state.friendlyColor(), lastBest.moveInfo, history, 1);
         //order.initLoop();
         int bestIdx = 0;
         for(idMove=0; idMove < order.nbMoves; idMove++){
@@ -348,7 +348,7 @@ public:
         }else{
             depthMax = alloted;
         }
-        printf("info string use a tt of %d entries (%ld MB)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000);
+        printf("info string use a tt of %d entries (%ld MB) (%dB by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
         printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
         //history.init();
         Move bestMove=nullMove;
