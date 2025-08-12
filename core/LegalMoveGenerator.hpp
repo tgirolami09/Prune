@@ -655,28 +655,32 @@ class LegalMoveGenerator{
         else{
             legalKingMoves(state, legalMoves, nbMoves, allFriends, allPieces, allDangerSquares);
         }
-
+        big pawnMoveMask = ~allFriends;
         if (nbCheckers == 2){
             inCheck = true;
             //Because if there are two checkers than only king moves are interesting
             return nbMoves;
         }
-
         else if (nbCheckers == 1){
             inCheck = true;
             captureMask = (1ul << checkerPos);
             if (checkerType == BISHOP){
-                moveMask &= pseudoLegalBishopMoves(checkerPos, allPieces) & pseudoLegalBishopMoves(friendlyKingPosition, allPieces);
+                big maskDiag = pseudoLegalBishopMoves(checkerPos, allPieces) & pseudoLegalBishopMoves(friendlyKingPosition, allPieces);
+                moveMask &= maskDiag;
+                pawnMoveMask &= maskDiag;
             }
             else if (checkerType == ROOK){
-                moveMask &= pseudoLegalRookMoves(checkerPos, allPieces) & pseudoLegalRookMoves(friendlyKingPosition, allPieces);
+                big maskLine = pseudoLegalRookMoves(checkerPos, allPieces) & pseudoLegalRookMoves(friendlyKingPosition, allPieces);
+                moveMask &= maskLine;
+                pawnMoveMask &= maskLine;
             }
             else{
                 moveMask = 0;
+                pawnMoveMask = 0;
             }
         }
-
-        legalPawnMoves(friendlyPieces[PAWN], state.friendlyColor(), state.lastDoublePawnPush, moveMask, captureMask, legalMoves, nbMoves, allPieces, allEnemies, enemyPieces[ROOK] | enemyPieces[QUEEN]);
+        pawnMoveMask = (onlyCapture?0:pawnMoveMask)|(pawnMoveMask&(~clipped_brow));
+        legalPawnMoves(friendlyPieces[PAWN], state.friendlyColor(), state.lastDoublePawnPush, pawnMoveMask, captureMask, legalMoves, nbMoves, allPieces, allEnemies, enemyPieces[ROOK] | enemyPieces[QUEEN]);
         legalKnightMoves(friendlyPieces[KNIGHT], moveMask, captureMask, legalMoves, nbMoves);
         legalSlidingMoves(moveMask, captureMask, legalMoves, nbMoves, allPieces);
         return nbMoves;

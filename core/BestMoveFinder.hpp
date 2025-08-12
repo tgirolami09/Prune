@@ -284,6 +284,7 @@ private:
         int bestIdx = 0;
         for(idMove=0; idMove < order.nbMoves; idMove++){
             Move curMove = order.pop_max();
+            //printf("%s\n", curMove.to_str().c_str());
             int score;
             int curLastChange = lastChange;
             if(isChanger(curMove))
