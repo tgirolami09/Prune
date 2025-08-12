@@ -131,7 +131,12 @@ void doUCI(string UCI_instruction, Chess& state){
     }else if(command == "isready"){
         printf("readyok\n");
     }else if(command == "d"){
+        for(Move move:state.movesFromRoot){
+            state.root.playPartialMove(move);
+        }
         state.root.print();
+        for(Move move:state.movesFromRoot)
+            state.root.undoLastMove();
     }else if(command == "runQ"){
         bestMoveFinder.testQuiescenceSearch(state.root);
     }else if(command == "eval"){
