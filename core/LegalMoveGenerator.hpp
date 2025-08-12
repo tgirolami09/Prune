@@ -200,7 +200,7 @@ class LegalMoveGenerator{
     big pinnedMasks[64];
 
     template<bool isPawn>
-    void maskToMoves(int start, big mask, Move* moves, int& nbMoves, int8_t piece){
+    void maskToMoves(int start, big mask, Move* moves, int& nbMoves, int8_t piece, bool promotQueen=false){
         while(mask){
             int bit = __builtin_ctzll(mask);
             mask &= mask-1;
@@ -214,10 +214,14 @@ class LegalMoveGenerator{
                 for(int i=0; i<6; i++)
                     if(enemyPieces[i]&mask)base.capture = i;
             if(isPawn && (row(bit) == 7 || row(bit) == 0)){
-                for(int8_t typePiece:{KNIGHT, BISHOP, ROOK, QUEEN}){
+                int8_t piecesPromot[4] = {KNIGHT, BISHOP, ROOK, QUEEN};
+                int start=0;
+                if(promotQueen)
+                    start=3;
+                for(int i=start; i<4; i++){
                     moves[nbMoves] = base;
                     // moves[nbMoves].promoteTo = typePiece;
-                    moves[nbMoves].updatePromotion(typePiece);
+                    moves[nbMoves].updatePromotion(piecesPromot[i]);
                     nbMoves++;
                 }
             }else{
@@ -486,7 +490,7 @@ class LegalMoveGenerator{
         maskToMoves<false>(kingPos,kingEndMask, moves, nbMoves, KING);
     }
 
-    void legalPawnMoves(big pawnMask, bool friendlyColor, int lastDoublePawnPush, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves, big allPieces, big allEnemies, big enemyRooks){
+    void legalPawnMoves(big pawnMask, bool friendlyColor, int lastDoublePawnPush, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves, big allPieces, big allEnemies, big enemyRooks, bool promotQueen=false){
         ubyte pos[8];
         int nbPos=places(pawnMask, pos);
         for (int p = 0;p<nbPos;++p){
@@ -501,7 +505,7 @@ class LegalMoveGenerator{
             //     print_mask(pawnMoveMask);
             // }
 
-            maskToMoves<true>(pos[p], pawnMoveMask, pawnMoves, nbMoves, PAWN);
+            maskToMoves<true>(pos[p], pawnMoveMask, pawnMoves, nbMoves, PAWN, promotQueen);
         }
     }
 
@@ -680,7 +684,7 @@ class LegalMoveGenerator{
             }
         }
         pawnMoveMask = (onlyCapture?0:pawnMoveMask)|(pawnMoveMask&(~clipped_brow));
-        legalPawnMoves(friendlyPieces[PAWN], state.friendlyColor(), state.lastDoublePawnPush, pawnMoveMask, captureMask, legalMoves, nbMoves, allPieces, allEnemies, enemyPieces[ROOK] | enemyPieces[QUEEN]);
+        legalPawnMoves(friendlyPieces[PAWN], state.friendlyColor(), state.lastDoublePawnPush, pawnMoveMask, captureMask, legalMoves, nbMoves, allPieces, allEnemies, enemyPieces[ROOK] | enemyPieces[QUEEN], onlyCapture);
         legalKnightMoves(friendlyPieces[KNIGHT], moveMask, captureMask, legalMoves, nbMoves);
         legalSlidingMoves(moveMask, captureMask, legalMoves, nbMoves, allPieces);
         return nbMoves;
