@@ -431,6 +431,7 @@ public :
         }
     }
 
+    template<bool noperft=true>
     Move playPartialMove(Move move){
         int piece=getPiece(move.to(), enemyColor());
         if(piece != SPACE){
@@ -441,7 +442,7 @@ public :
             move.capture = -1;
         }
         move.piece = mover;
-        playMove<false>(move);
+        playMove<false, noperft>(move);
         return move;
     }
 

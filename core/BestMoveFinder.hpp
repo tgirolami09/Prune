@@ -188,8 +188,8 @@ private:
         const big* ep = state.enemyPieces();
         return fp[BISHOP] || fp[KNIGHT] || fp[ROOK] || fp[QUEEN] || ep[BISHOP] || ep[KNIGHT] || ep[ROOK] || ep[QUEEN];
     }
-
-    template <bool isPV, bool timeLimit>
+    enum{PVNode=0, CutNode=1, AllNode=-1};
+    template <int nodeType, bool timeLimit>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(timeLimit && !running)return 0;
         if(relDepth-lastChange >= 100)return Score(0, -1);
@@ -216,17 +216,17 @@ private:
         if(order.nbMoves == 1){
             state.playMove<false, false>(order.moves[0]);
             eval.playMove(order.moves[0], !state.friendlyColor());
-            Score sc = -negamax<isPV, timeLimit>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
+            Score sc = -negamax<-nodeType, timeLimit>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
             return sc;
         }
         int r = 3;
-        if(depth >= r && !inCheck && !isPV && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
+        if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
             state.playNullMove();
-            Score v = -negamax<false, timeLimit>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
+            Score v = -negamax<CutNode, timeLimit>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
-            if(v.score >= beta)return v;
+            if(v.score >= beta)return Score(beta, v.depth);
         }
         order.init(state.friendlyColor(), lastBest, history, relDepth);
         Move bestMove;
@@ -249,12 +249,15 @@ private:
                     if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
                         reductionDepth = 1;
                     }
-                    score = -negamax<false, timeLimit>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
-                    if(score > alpha && isPV){
-                        score = -negamax<true, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), timeLimit>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
+                    bool fullSearch = false;
+                    if((score > alpha && score < beta) || (nodeType == PVNode && score.score == beta && beta == alpha+1)){
+                        fullSearch = true;
                     }
+                    if(fullSearch)
+                        score = -negamax<nodeType, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 }else
-                    score = -negamax<isPV, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<-nodeType, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove<false>();
@@ -273,6 +276,8 @@ private:
             }
             if(score > bestScore)bestScore = score;
         }
+        if(nodeType==CutNode && bestScore.score == alpha)
+            return bestScore;
         if(bestScore.usable(relDepth)){
             transposition.push(state, bestScore.score, typeNode, bestMove, depth);
         }
@@ -299,7 +304,7 @@ private:
             else{
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, actDepth);
-                score = -negamax<true, timeLimit>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
+                score = -negamax<PVNode, timeLimit>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             augmentMate(score);

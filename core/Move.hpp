@@ -50,7 +50,6 @@ public :
     }
 
     void updatePromotion(int promotionPiece){
-        int oldPromotion = promotion();
         moveInfo &= ~clearPromot;
         moveInfo |= (int16_t)( promotionPiece << 12 );    
     }
