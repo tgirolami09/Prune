@@ -47,7 +47,7 @@ struct PolyglotEntry {
     }
 
     void printMove(){
-        printf("Key = %llu : ",key);
+        printf("Key = %lu : ",key);
 
         printf("going from %d to %d. Weight = %hd\n",from_square,to_square,weight);
         if (promotion != 0){
@@ -138,7 +138,7 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename) {
         }
     }
 
-    printf("From %d entries to %d entries in the opening book\n",InputBook.size(),book.size());
+    printf("From %ld entries to %ld entries in the opening book\n",InputBook.size(),book.size());
 
     return book;
 }

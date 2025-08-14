@@ -74,11 +74,11 @@ public :
         return o.moveInfo == moveInfo && o.piece == piece;
     }
 
-    bool isTactical(){
-        return moveInfo > 0 && capture != -2; // moveInfo > 0 is an equivalent of promotion() != -1
+    bool isTactical() const{
+        return moveInfo > 0 || capture != -2; // moveInfo > 0 is an equivalent of promotion() != -1
     }
 
-    bool isChanger(){
+    bool isChanger() const{
         return piece == PAWN || capture != -2;
     }
 };

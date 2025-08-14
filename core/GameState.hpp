@@ -88,7 +88,7 @@ public :
                 boardRepresentation[c][p] = 0;
         int id=0;
         int dec=63;
-        for(; id<fen.size(); id++){
+        for(; id<(int)fen.size(); id++){
             char c=fen[id];
             if(isalpha(c)){
                 int piece=piece_to_id.at(tolower(c));
@@ -117,7 +117,7 @@ public :
         if(fen[id] == '-')
             id++;
         else{
-            for(; id<fen.size(); id++){
+            for(; id<(int)fen.size(); id++){
                 if(fen[id] == ' ')break;
 
                 bool isBlack = true;
@@ -194,14 +194,12 @@ public :
         if(friendlyColor() == WHITE)fen += "w";
         else fen += "b";
         fen += " ";
-        bool isCastling=false;
         for(int c=0; c<2; c++){
             for(int side=0; side < 2; side++){
                 char s=side?'k':'q';
                 if(!c)s = toupper(s);
                 if(castlingRights[c][side]){
                     fen += s;
-                    isCastling = true;
                 }
             }
         }
@@ -216,12 +214,12 @@ public :
         return fen;
     }
 
-    const int friendlyColor() const{
+    int friendlyColor() const{
         //Turn 1 is white (so friend on odd is white)
         return (turnNumber%2)?WHITE:BLACK;
     }
 
-    const int enemyColor() const{
+    int enemyColor() const{
         //Turn 1 is white (so enemy on odd is black)
         return (turnNumber%2)?BLACK:WHITE;
     }
@@ -525,7 +523,7 @@ public :
             printf(" %c", 'h' - (lastDoublePawnPush%8));
             printf("%c", '0'+ (lastDoublePawnPush / 8 + 1));
         }
-        printf("\n%16llx\n", zobristHash);
+        printf("\n%16lx\n", zobristHash);
         printf("%s", toFen().c_str());
         printf("\n");
     }

@@ -80,7 +80,7 @@ void doUCI(string UCI_instruction, Chess& state){
     }
     if(command == "go"){
         if(args.count("perft")){
-            printf("Nodes searched: %lld\n", doPerft.perft(state.root, args["perft"]));
+            printf("Nodes searched: %ld\n", doPerft.perft(state.root, args["perft"]));
         }else{
             Move move;
             if(args.count("btime") && args.count("wtime")){
@@ -144,6 +144,8 @@ void doUCI(string UCI_instruction, Chess& state){
         printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor(), state.root.getPawnStruct()  ));
     }else if(command == "stop"){
         bestMoveFinder.stop();
+    }else if(command == "ucinewgame"){
+        bestMoveFinder.clear();
     }
     //Implement actual logic for UCI management
 }

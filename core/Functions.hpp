@@ -5,26 +5,26 @@
 #include <cstdio>
 #include <string>
 using namespace std;
-const inline  int col(const int& square){
+inline  int col(const int& square){
     return square&7;
 }
 
-const inline int row(const int& square){
+inline int row(const int& square){
     return square >> 3;
 }
 
-const inline int color(const int& piece){
+inline int color(const int& piece){
     return piece%2;
 }
 
-const inline int type(const int& piece){
+inline int type(const int& piece){
     return piece/2;
 }
 
-const inline int countbit(const big& board){
+inline int countbit(const big& board){
     return __builtin_popcountll(board);
 }
-const inline int flip(const int& square){
+inline int flip(const int& square){
     return square^56;
 }
 inline int places(big mask, ubyte* positions){
@@ -55,7 +55,7 @@ inline void print_mask(big mask){
     }
 }
 
-const inline big addBitToMask(const big& mask, const int& pos){
+inline big addBitToMask(const big& mask, const int& pos){
     return mask | 1ul << pos;
 }
 

@@ -75,7 +75,7 @@ public:
 
 string scoreToStr(int score){
     if(score > MAXIMUM-maxDepth)
-        return ((string)"mate ")+to_string((MAXIMUM-score)/2);
+        return ((string)"mate ")+to_string((MAXIMUM-score+1)/2);
     if(score < MINIMUM+maxDepth)
         return ((string)"mate ")+to_string((-(MAXIMUM+score))/2);
     return "cp "+to_string(score);
@@ -284,17 +284,14 @@ private:
         return bestScore;
     }
     template<bool timeLimit>
-    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, Order<maxMoves>& order, int actDepth, int lastChange){
+    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, RootOrder& order, int actDepth, int lastChange){
         bestScore = -INF;
         Move bestMove = nullMove;
-        bool inCheck;
-        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
-        order.init(state.friendlyColor(), lastBest.moveInfo, history, 1);
-        //order.initLoop();
-        int bestIdx = 0;
+        order.reinit(lastBest.moveInfo);
         for(idMove=0; idMove < order.nbMoves; idMove++){
             Move curMove = order.pop_max();
             //printf("%s\n", curMove.to_str().c_str());
+            int startNodes = nodes+Qnodes;
             int score;
             int curLastChange = lastChange;
             if(curMove.isChanger())
@@ -310,21 +307,21 @@ private:
             augmentMate(score);
             state.undoLastMove();
             if(!running)return bestMove.from() == bestMove.to()?curMove:bestMove;
+            int nodeUsed = nodes+Qnodes-startNodes;
+            order.pushNodeUsed(nodeUsed);
             if(score >= beta){
                 bestScore = score;
+                order.cutoff();
                 return curMove;
             }if(score > alpha){
                 bestMove = curMove;
                 alpha = score;
                 bestScore = score;
-                bestIdx = idMove;
             }else if(score > bestScore){
                 bestMove = curMove;
                 bestScore = score;
-                bestIdx = idMove;
             }
         }
-        //order.updateBest(bestIdx);
         return bestMove;
     }
 
@@ -359,23 +356,23 @@ public:
         }else{
             depthMax = alloted;
         }
-        printf("info string use a tt of %d entries (%ld MB) (%dB by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
+        printf("info string use a tt of %d entries (%ld MB) (%ldB by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
         printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
-        //history.init();
         Move bestMove=nullMove;
         Qnodes = nodes = 0;
         clock_t start=clock();
         int lastNodes = 1;
         int lastScore = eval.getScore(state.friendlyColor(), state.getPawnStruct());
+        bool inCheck;
+        RootOrder order;
+        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+        order.init(state.friendlyColor(), history);
         for(int depth=1; depth<depthMax && running && !midtime; depth++){
             int deltaUp = 10;
             int deltaDown = 10;
             int startNodes = nodes+Qnodes;
             int idMove;
             int bestScore;
-            Order<maxMoves> order;
-            //bool inCheck;
-            //order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
@@ -414,7 +411,7 @@ public:
         int score = quiescenceSearch<false>(state, -INF, INF);
         clock_t end = clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
-        printf("speed: %d; Qnodes:%d\n\n", (int)(Qnodes/tcpu), Qnodes);
+        printf("speed: %d; Qnodes:%d score %s\n\n", (int)(Qnodes/tcpu), Qnodes, scoreToStr(score).c_str());
         return 0;
     }
 
@@ -442,7 +439,7 @@ public:
         visitedNodes++;
         if(depth == 0)return 1;
         big lastCall=tt.get_eval(state.zobristHash, depth);
-        if(lastCall != -1)return lastCall;
+        if(lastCall != MAX_BIG)return lastCall;
         bool inCheck;
         Move moves[maxMoves];
         big dangerPositions = 0;
@@ -476,14 +473,14 @@ public:
             state.undoLastMove<false>();
             clock_t end=clock();
             double tcpu = double(end-startMove)/CLOCKS_PER_SEC;
-            printf("%s: %lld (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
+            printf("%s: %ld (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
             fflush(stdout);
             count += nbNodes;
         }
         tt.push({state.zobristHash, count, depth});
         clock_t end=clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
-        printf("%.3f : %.3f nps %lld visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
+        printf("%.3f : %.3f nps %ld visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
         fflush(stdout);
         tt.clearMem();
         return count;

@@ -60,8 +60,9 @@ public:
     Order():dangerPositions(0){
     }
 
-    bool isChanger(Move move) const{
-        return move.capture != -2 || move.promotion() != -1;
+    void swap(int idMove1, int idMove2){
+        std::swap(moves[idMove1], moves[idMove2]);
+        std::swap(scores[idMove1], scores[idMove2]);
     }
 
     void init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth=-1){
@@ -70,30 +71,106 @@ public:
         for(int i=0; i<nbMoves; i++){
             scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c));
             if(moveInfoPriority == moves[i].moveInfo){
-                swap(scores[i], scores[0]);
-                swap(moves[i], moves[0]);
+                this->swap(i, 0);
                 isPriority = true;
             }
         }
     }
 
+    inline bool compareMove(int idMove1, int idMove2){
+        if(moves[idMove1].isTactical() != moves[idMove2].isTactical())return moves[idMove2].isTactical() > moves[idMove1].isTactical();
+        return scores[idMove2] > scores[idMove1];
+    }
+
     Move pop_max(){
         if(isPriority && pointer == 0){
-            pointer++;
+            pointer = 1;
             return moves[0];
         }else{
             int bPointer=pointer;
             for(int i=pointer+1; i<nbMoves; i++){
-                if(isChanger(moves[bPointer])){
-                    if(isChanger(moves[i]) && scores[i] > scores[bPointer])
-                        bPointer = i;
-                }else if(isChanger(moves[i]) || scores[i] > scores[bPointer])
+                if(compareMove(bPointer, i))
                     bPointer = i;
             }
-            swap(moves[pointer], moves[bPointer]);
-            swap(scores[pointer], scores[bPointer]);
+            this->swap(bPointer, pointer);
             pointer++;
             return moves[pointer-1];
+        }
+    }
+};
+
+class RootOrder{
+    int nodeUsed[maxMoves];
+    int scores[maxMoves];
+    int pointer;
+    bool isPriority;
+    bool compareScore(int idMove1, int idMove2) const{
+        if(moves[idMove1].isTactical() != moves[idMove2].isTactical())return moves[idMove2].isTactical() > moves[idMove1].isTactical();
+        return scores[idMove2] > scores[idMove1];
+    }
+
+    bool compareMoves(int idMove1, int idMove2) const{
+        if(nodeUsed[idMove1] != nodeUsed[idMove2])return nodeUsed[idMove2] > nodeUsed[idMove1];
+        return compareScore(idMove1, idMove2);
+    }
+public:
+    int nbMoves;
+    big dangerPositions;
+    Move moves[maxMoves];
+    RootOrder():dangerPositions(0){}
+
+    void init(bool c, const HelpOrdering& history){
+        isPriority = false;
+        pointer = 0;
+        for(int i=0; i<nbMoves; i++){
+            scores[i] = score_move(moves[i], c, dangerPositions, false, history.getHistoryScore(moves[i], c));
+            nodeUsed[i] = 0;
+        }
+    }
+
+    void reinit(int16_t priorityMove){
+        isPriority = false;
+        for(int i=0; i<nbMoves; i++){
+            if(moves[i].moveInfo == priorityMove){
+                this->swap(i, 0);
+                isPriority = true;
+                break;
+            }
+        }
+        pointer = 0;
+    }
+
+    void pushNodeUsed(int usedNodes){
+        nodeUsed[pointer-1] = usedNodes;
+    }
+
+    void cutoff(){
+        for(int i=pointer; i<nbMoves; i++){
+            nodeUsed[pointer] = 0;
+        }
+    }
+
+    void swap(int idMove1, int idMove2){
+        if(idMove1 != idMove2){
+            std::swap(moves[idMove1], moves[idMove2]);
+            std::swap(scores[idMove1], scores[idMove2]);
+            std::swap(nodeUsed[idMove1], nodeUsed[idMove2]);
+        }
+    }
+
+    Move pop_max(){
+        if(isPriority){
+            isPriority = false;
+            pointer++;
+            return moves[0];
+        }else{
+            int bestPointer = pointer;
+            for(int i=pointer+1; i<nbMoves; i++){
+                if(compareMoves(bestPointer, i))
+                    bestPointer = i;
+            }
+            this->swap(bestPointer, pointer);
+            return moves[pointer++];
         }
     }
 };

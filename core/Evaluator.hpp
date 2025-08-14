@@ -269,7 +269,7 @@ public:
         return false;
     }
 
-    const inline bool isOnlyPawns() const{
+    inline bool isOnlyPawns() const{
         return !mgPhase;
     }
 
