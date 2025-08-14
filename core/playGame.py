@@ -1,6 +1,7 @@
 import sys
 import subprocess
 from chess import pgn, engine
+from datetime import date
 import chess
 import time
 startpos = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
@@ -74,11 +75,12 @@ node = game
 moves = []
 player1 = sys.argv[1]
 player2 = sys.argv[2]
-game.headers["White"] = sys.argv[1]
-game.headers["Black"] = sys.argv[2]
+game.headers["White"] = sys.argv[2-board.turn]
+game.headers["Black"] = sys.argv[board.turn+1]
+game.headers['TimeControl'] = str(startTime*60)+'+'+str(increment)
 winnerByTime = -1
 hasPlayedFirst = [False, False]
-while not board.is_game_over() and not board.is_seventyfive_moves():
+while not board.is_game_over():
     print(board.fen())
     print(' '.join(i.uci() for i in board.move_stack))
     startTime = time.time()
@@ -99,19 +101,25 @@ while not board.is_game_over() and not board.is_seventyfive_moves():
     prog1, prog2 = prog2, prog1
     nodes1, nodes2 = nodes2, nodes1
     player1, player2 = player2, player1
-print(game)
 #Won by time
+game.headers['Event'] = "Test Game"
 if board.outcome() == None:
     winner = winnerByTime
+    game.headers["Termination"] = "Time forfeit"
 else:
     winner = board.outcome().winner
-
+    game.headers["Termination"] = "Normal"
+game.headers["Date"] = str(date.today()).replace('-', '.')
 if winner == chess.WHITE:
     print(sys.argv[1])
+    game.headers['Result'] = '1-0'
 elif winner == chess.BLACK:
     print(sys.argv[2])
+    game.headers['Result'] = '0-1'
 else:
     print('draw')
+    game.headers['Result'] = '1/2-1/2'
+print(game)
 print(player1, nodes1)
 print(player2, nodes2)
 prog1.quit()
