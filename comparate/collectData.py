@@ -10,14 +10,14 @@ def playGame(startFen, prog1, prog2):
     board = Board(startFen)
     while not board.is_game_over():
         result = curProg.play(board, engine.Limit(time=movetime), info=engine.INFO_SCORE)
-        board.push(result.move)
         score = result.info['score'].relative
         if not score.is_mate():
-            curData[board.fen()] = score.score()
+            curData[board.fen()] = score.score(), result.move
         elif score.mate() < 0:
-            curData[board.fen()] = -10000
+            curData[board.fen()] = -100000, result.move
         else:
-            curData[board.fen()] = 10000
+            curData[board.fen()] = 100000, result.move
+        board.push(result.move)
 
         curProg, otherProg = otherProg, curProg
         curData, otherData = otherData, curData
@@ -42,7 +42,7 @@ def playBatch(args):
             results[min(result^idProg, 2)] += 1
             with open(f'data{id}.out', "a") as f:
                 for key, value in data.items():
-                    f.write(f'{key}|{value}\n')
+                    f.write(f'{key}|{value[0]}|{value[1].uci()}\n')
         sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, (results[0], results[2], results[1])))+'\033[F'*(id//10)+'\r')
     prog1.quit()
     prog2.quit()
