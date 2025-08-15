@@ -247,7 +247,7 @@ private:
                 if(rankMove > 0){
                     int reductionDepth = 0;
                     if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
-                        reductionDepth = 1;
+                        reductionDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
                     }
                     score = -negamax<((nodeType == CutNode)?AllNode:CutNode), timeLimit>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
                     bool fullSearch = false;
