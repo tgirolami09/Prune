@@ -6,8 +6,16 @@ from multiprocessing import Pool
 from multiprocessing.managers import SharedMemoryManager
 import time
 import numpy as np
-movetime = int(sys.argv[3])/1000
-goCommand = f"go movetime {movetime}\n"
+isMoveTime = False
+timeControl = sys.argv[3]
+
+#seconds+seconds
+if '+' in sys.argv[3]:
+    startTime, increment = map(float, sys.argv[3].split('+'))
+else:
+    isMoveTime = True
+    movetime = int(sys.argv[3])/1000
+overhead = 20
 
 from math import log, sqrt, pi
 def eloDiff(percentage):
@@ -64,27 +72,46 @@ def get_confidence(results):
         delta = np.nan
     return (low+high)/2, eloDelta, delta
 
+def getLimit(wTime, bTime):
+    if isMoveTime:
+        return engine.Limit(time=moveTime)
+    else:
+        return engine.Limit(white_clock=wTime, black_clock=bTime, white_inc=increment, black_inc=increment)
 
 def playGame(startFen, prog1, prog2):
+    global startTime
     curProg, otherProg = prog1, prog2
     board = Board(startFen)
+    remaindTimes = [startTime]*2
     moves = []
+    termination = "Normal"
     while not board.is_game_over() and not board.can_claim_draw():
-        result = curProg.play(board, engine.Limit(time=movetime))
+        if not isMoveTime:
+            startSpan = time.time()
+        result = curProg.play(board, getLimit(*remaindTimes))
+        if not isMoveTime:
+            endTime = time.time()
+            timeSpent = endTime-startSpan
+            remaindTimes[board.turn] -= timeSpent
+            if remaindTimes[board.turn] < 0:
+                winner = not board.turn
+                termination = "Time forfeit"
+                break
+            remaindTimes[board.turn] += increment+overhead/1000
         board.push(result.move)
         moves.append(result.move)
         curProg, otherProg = otherProg, curProg
     moves = board.root().variation_san(moves)
     if board.can_claim_draw():
         winner = None
-    else:
+    elif board.outcome():
         winner = board.outcome().winner
     if winner == WHITE:
-        return moves, 0
+        return moves, 0, termination
     elif winner == BLACK:
-        return moves, 1
+        return moves, 1, termination
     else:
-        return moves, 2
+        return moves, 2, termination
 
 def playBatch(args):
     id, rangeGame, globalRes = args
@@ -107,9 +134,10 @@ def playBatch(args):
         if idBeginBoard%2 == 1:
             order[0], order[1] = order[1], order[0]
         for idProg, prog, _prog in order:
-            moves, winner = playGame(beginBoard, prog, _prog)
+            moves, winner, termination = playGame(beginBoard, prog, _prog)
             log.write(f'[White "{sys.argv[1+idProg]}"]\n[Black "{sys.argv[2-idProg]}"]\n')
             log.write(f'[Variant "From Position"]\n[FEN "{beginBoard}"]\n')
+            log.write(f'[Termination "{termination}"]')
             log.write(moves+'\n\n')
             log.flush()
             interResults[min(winner ^ idProg, 2)] += 1
