@@ -137,7 +137,7 @@ def playBatch(args):
             moves, winner, termination = playGame(beginBoard, prog, _prog)
             log.write(f'[White "{sys.argv[1+idProg]}"]\n[Black "{sys.argv[2-idProg]}"]\n')
             log.write(f'[Variant "From Position"]\n[FEN "{beginBoard}"]\n')
-            log.write(f'[Termination "{termination}"]')
+            log.write(f'[Termination "{termination}"]\n')
             log.write(moves+'\n\n')
             log.flush()
             interResults[min(winner ^ idProg, 2)] += 1

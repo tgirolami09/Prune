@@ -111,10 +111,10 @@ else:
     game.headers["Termination"] = "Normal"
 game.headers["Date"] = str(date.today()).replace('-', '.')
 if winner == chess.WHITE:
-    print(sys.argv[1])
+    print(game.headers['White'])
     game.headers['Result'] = '1-0'
 elif winner == chess.BLACK:
-    print(sys.argv[2])
+    print(game.headers['Black'])
     game.headers['Result'] = '0-1'
 else:
     print('draw')
