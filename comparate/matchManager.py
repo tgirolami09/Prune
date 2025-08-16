@@ -11,11 +11,13 @@ isMoveTime = False
 parser = argparse.ArgumentParser(prog="matchManager")
 parser.add_argument("prog1", type=str, help="the executable of the new version")
 parser.add_argument("prog2", type=str, help="the executable of the base version")
-parser.add_argument("timeControl", type=str, help="the time control (60+1 for 1 minute and 1 second of increment by move, or 1000 => 1000ms by move)")
+parser.add_argument("timeControl", type=str, help="the time control (60+1 => 1 minute and 1 second of increment by move, or 1000 => 1000ms by move)")
 parser.add_argument('--sprt', action="store_true")
 parser.add_argument('--moveOverHead', type=int, default=100, help="overhead by move (different from increment)")
 parser.add_argument("--processes", '-p', type=int, default=70, help="the number of processes")
+parser.add_argument("--hypothesis", nargs=2, type=int, default=[0, 5], help="hypothesis for sprt")
 settings = parser.parse_args(sys.argv[1:])
+assert settings.hypothesis[0] < settings.hypothesis[1], "the first hypothesis must be less than the hypothsesis"
 timeControl = settings.timeControl
 
 #seconds+seconds
@@ -25,8 +27,6 @@ else:
     isMoveTime = True
     movetime = int(timeControl)/1000
 overhead = settings.moveOverHead
-if settings.sprt:
-    print('using sprt')
 from math import log, sqrt, pi, erf
 def eloDiff(percentage):
     return -400 * log(1 / percentage - 1, 10)
@@ -130,13 +130,16 @@ def likelihood(hypothesis, realScore, stdDeviation):
     return (1 + erf( (score - realScore) / (sqrt(2) * stdDeviation) ) ) / 2
 
 def playBatch(args):
-    id, rangeGame, globalRes = args
+    id, rangeGame, globalRes, cutoff = args
     file = f"games{id}.log"
     rangeGame = range(rangeGame.start, rangeGame.stop)
     log = open(file, "w")
     results = [0]*5 # (lose/lose) (lose/draw) ((lose/win) | (draw/draw)) (win/draw) (win/win)
     prog1 = engine.SimpleEngine.popen_uci(settings.prog1)
     prog2 = engine.SimpleEngine.popen_uci(settings.prog2)
+    nbL = id//10
+    glob = (nbProcess+9)//10
+    remaind = glob-nbL
     for idBeginBoard in rangeGame:
         beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
@@ -155,6 +158,10 @@ def playBatch(args):
             #print(board.outcome().winner)
             prog1.configure({'Clear Hash':None})
             prog2.configure({'Clear Hash':None})
+            if cutoff[0]:
+                break
+        if cutoff[0]:
+            break
         key = interResults[0]*2+interResults[2]
         results[key] += 1
         globalRes[key] += 1
@@ -162,21 +169,18 @@ def playBatch(args):
         eloChange, delta, stdDeviation, score = get_confidence(currentState)
         if settings.sprt:
             if currentState.sum() > 20:
-                likelihood1 = likelihood(0, score, stdDeviation)
-                likelihood2 = 1-likelihood(5, score, stdDeviation)
+                likelihood1 = likelihood(settings.hypothesis[0], score, stdDeviation)
+                likelihood2 = 1-likelihood(settings.hypothesis[1], score, stdDeviation)
             else:
                 likelihood1 = np.nan
                 likelihood2 = np.nan
             if currentState.sum() > 100:# for assurance
-                if likelihood1 > 0.95:
-                    return np.array(results)
-                elif likelihood2 > 0.95:
-                    return np.array(results)
-        nbL = id//10
-        glob = (nbProcess+9)//10
-        remaind = glob-nbL
-        if settings.sprt:
-            textInfo = f'{round(likelihood1, 2)} {round(likelihood2, 2)} {currentState.sum()}'
+                if likelihood1 > 0.95 or likelihood2 > 0.95:
+                    cutoff[0] = True
+                    print('\n'*glob+'\ncutoff', likelihood1, likelihood2)
+                    sys.stdout.flush()
+                    break
+            textInfo = f'{likelihood1:.3f} {likelihood2:.3f} {currentState.sum()}'
         else:
             textInfo = f'{currentState.sum()}'
         sys.stdout.write('\n'*nbL+'\r'+'\t'*(id%10)*2+'/'.join(map(str, results))+'\n'*remaind+'\r'+'/'.join(map(str, globalRes))+f' {eloChange:6.2f} +/- {delta:6.2f} ({textInfo})'+'\033[F'*glob+'\r')
@@ -195,8 +199,9 @@ nbProcess = settings.processes
 nbBoards = len(beginBoards)
 with SharedMemoryManager() as smm:
     sl = smm.ShareableList([0]*5)
+    cutoff = smm.ShareableList([False])
     pool = Pool(nbProcess)
-    results = np.array(list(pool.imap_unordered(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl) for id in range(nbProcess)])))
+    results = np.array(list(pool.imap_unordered(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl, cutoff) for id in range(nbProcess)])))
 print("\n"*((nbProcess+9)//10))
 Aresults = results.sum(axis=0)
 print('/'.join(map(str, Aresults)))
