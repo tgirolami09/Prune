@@ -6,20 +6,33 @@ from multiprocessing import Pool
 from multiprocessing.managers import SharedMemoryManager
 import time
 import numpy as np
+import argparse
 isMoveTime = False
-timeControl = sys.argv[3]
+parser = argparse.ArgumentParser(prog="matchManager")
+parser.add_argument("prog1", type=str, help="the executable of the new version")
+parser.add_argument("prog2", type=str, help="the executable of the base version")
+parser.add_argument("timeControl", type=str, help="the time control (60+1 for 1 minute and 1 second of increment by move, or 1000 => 1000ms by move)")
+parser.add_argument('--sprt', action="store_true")
+parser.add_argument('--moveOverHead', type=int, default=100, help="overhead by move (different from increment)")
+parser.add_argument("--processes", '-p', type=int, default=70, help="the number of processes")
+settings = parser.parse_args(sys.argv[1:])
+timeControl = settings.timeControl
 
 #seconds+seconds
-if '+' in sys.argv[3]:
-    startTime, increment = map(float, sys.argv[3].split('+'))
+if '+' in timeControl:
+    startTime, increment = map(float, timeControl.split('+'))
 else:
     isMoveTime = True
-    movetime = int(sys.argv[3])/1000
-overhead = 20
-
-from math import log, sqrt, pi
+    movetime = int(timeControl)/1000
+overhead = settings.moveOverHead
+if settings.sprt:
+    print('using sprt')
+from math import log, sqrt, pi, erf
 def eloDiff(percentage):
     return -400 * log(1 / percentage - 1, 10)
+
+def eloScore(diff):
+    return 1/(1+10**(-diff/400))
 
 def inverseErrorFunction(x):
     a = 8 * (pi - 3) / (3 * pi * (4 - pi))
@@ -42,35 +55,34 @@ def get_delta(percentage, confidenceP, stdDeviation):
     difference = eloDiff(devMax) - eloDiff(devMin)
     return difference/2
 
-def get_confidence(results):
-    scores = np.arange(5)/4
-    score = (results*scores).sum()
-    tot = results.sum()
-    if(tot == scores[0]):return 1, -1000, 100
-    if(tot == scores[4]):return 1, 1000, 100
-    percentage = score/tot
-    eloDelta = eloDiff(percentage)
-    resP = results/tot
-    resDev = resP*(scores-percentage)**2
-    stdDeviation = sqrt(resDev.sum()) / sqrt(tot)
+def getConfidenceGuess(hypothesis, score, stdDeviation):
     low = 0
     high = 1
     for i in range(100):
         mid = (low+high)/2
-        try:
-            x = get_delta(percentage, mid, stdDeviation)
-        except:
-            low = high = 1
-            break
-        if x > abs(eloDelta):
+        x = get_delta(score, mid, stdDeviation)
+        if x > hypothesis:
             high = mid
         else:
             low = mid
+    return (low+high)/2
+
+def get_confidence(results):
+    scores = np.arange(5)/4
+    score = (results*scores).sum()
+    tot = results.sum()
+    percentage = score/tot
+    if(tot == scores[0]):return -1000, 100, 100, percentage
+    if(tot == scores[4]):return 1000, 100, 100, percentage
+    eloDelta = eloDiff(percentage)
+    resP = results/tot
+    resDev = resP*(scores-percentage)**2
+    stdDeviation = sqrt(resDev.sum()/tot)
     try:
         delta = get_delta(percentage, 0.95, stdDeviation)
     except:
         delta = np.nan
-    return (low+high)/2, eloDelta, delta
+    return eloDelta, delta, stdDeviation, percentage
 
 def getLimit(wTime, bTime):
     if isMoveTime:
@@ -92,12 +104,12 @@ def playGame(startFen, prog1, prog2):
         if not isMoveTime:
             endTime = time.time()
             timeSpent = endTime-startSpan
-            remaindTimes[board.turn] -= timeSpent
+            remaindTimes[board.turn] -= timeSpent-overhead/1000
             if remaindTimes[board.turn] < 0:
                 winner = not board.turn
                 termination = "Time forfeit"
                 break
-            remaindTimes[board.turn] += increment+overhead/1000
+            remaindTimes[board.turn] += increment
         board.push(result.move)
         moves.append(result.move)
         curProg, otherProg = otherProg, curProg
@@ -113,29 +125,28 @@ def playGame(startFen, prog1, prog2):
     else:
         return moves, 2, termination
 
+def likelihood(hypothesis, realScore, stdDeviation):
+    score = eloScore(hypothesis)
+    return (1 + erf( (score - realScore) / (sqrt(2) * stdDeviation) ) ) / 2
+
 def playBatch(args):
     id, rangeGame, globalRes = args
     file = f"games{id}.log"
-    with open(file, 'r') as f:
-        previousGames = f.readlines()
-    previousGames = previousGames[:len(previousGames)-len(previousGames)%2]
-    rangeGame = range(rangeGame.start+len(previousGames), rangeGame.stop)
+    rangeGame = range(rangeGame.start, rangeGame.stop)
     log = open(file, "w")
-    log.writelines(previousGames)
-    log.flush()
     results = [0]*5 # (lose/lose) (lose/draw) ((lose/win) | (draw/draw)) (win/draw) (win/win)
-    prog1 = engine.SimpleEngine.popen_uci(sys.argv[1])
-    prog2 = engine.SimpleEngine.popen_uci(sys.argv[2])
+    prog1 = engine.SimpleEngine.popen_uci(settings.prog1)
+    prog2 = engine.SimpleEngine.popen_uci(settings.prog2)
     for idBeginBoard in rangeGame:
         beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
         interResults = [0, 0, 0]
-        order = [(0, prog1, prog2), (1, prog2, prog1)]
-        if idBeginBoard%2 == 1:
+        order = [(0, prog1, prog2, settings.prog1, settings.prog2), (1, prog2, prog1, settings.prog2, settings.prog1)]
+        if (idBeginBoard+id)%2 == 1:
             order[0], order[1] = order[1], order[0]
-        for idProg, prog, _prog in order:
+        for idProg, prog, _prog, prog1Name, prog2Name in order:
             moves, winner, termination = playGame(beginBoard, prog, _prog)
-            log.write(f'[White "{sys.argv[1+idProg]}"]\n[Black "{sys.argv[2-idProg]}"]\n')
+            log.write(f'[White "{prog1Name}"]\n[Black "{prog2Name}"]\n')
             log.write(f'[Variant "From Position"]\n[FEN "{beginBoard}"]\n')
             log.write(f'[Termination "{termination}"]\n')
             log.write(moves+'\n\n')
@@ -147,11 +158,28 @@ def playBatch(args):
         key = interResults[0]*2+interResults[2]
         results[key] += 1
         globalRes[key] += 1
-        _, eloChange, delta = get_confidence(np.array(globalRes))
+        currentState = np.array(globalRes)
+        eloChange, delta, stdDeviation, score = get_confidence(currentState)
+        if settings.sprt:
+            if currentState.sum() > 20:
+                likelihood1 = likelihood(0, score, stdDeviation)
+                likelihood2 = 1-likelihood(5, score, stdDeviation)
+            else:
+                likelihood1 = np.nan
+                likelihood2 = np.nan
+            if currentState.sum() > 100:# for assurance
+                if likelihood1 > 0.95:
+                    return np.array(results)
+                elif likelihood2 > 0.95:
+                    return np.array(results)
         nbL = id//10
         glob = (nbProcess+9)//10
         remaind = glob-nbL
-        sys.stdout.write('\n'*nbL+'\r'+'\t'*(id%10)*2+'/'.join(map(str, results))+'\n'*remaind+'\r'+'/'.join(map(str, globalRes))+f' {eloChange:6.2f} +/- {delta:6.2f} ({sum(globalRes)})'+'\033[F'*glob+'\r')
+        if settings.sprt:
+            textInfo = f'{round(likelihood1, 2)} {round(likelihood2, 2)} {currentState.sum()}'
+        else:
+            textInfo = f'{currentState.sum()}'
+        sys.stdout.write('\n'*nbL+'\r'+'\t'*(id%10)*2+'/'.join(map(str, results))+'\n'*remaind+'\r'+'/'.join(map(str, globalRes))+f' {eloChange:6.2f} +/- {delta:6.2f} ({textInfo})'+'\033[F'*glob+'\r')
         #sys.stdout.write('\r'+'\t'*id*2+str(round(get_confidence(results[0], results[2], results[1])[0], 5)))
         sys.stdout.flush()
     log.close()
@@ -163,21 +191,17 @@ def playBatch(args):
 with open("beginBoards.out") as games:
     beginBoards = list(games.readlines())
 
-nbProcess = 70
-if not (len(sys.argv) > 4 and sys.argv[4] == "continue"):
-    for i in range(nbProcess):
-        with open(f'games{i}.log', "w") as f:f.write('')
+nbProcess = settings.processes
 nbBoards = len(beginBoards)
 with SharedMemoryManager() as smm:
     sl = smm.ShareableList([0]*5)
     pool = Pool(nbProcess)
-    results = np.array(pool.map(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl) for id in range(nbProcess)]))
+    results = np.array(list(pool.imap_unordered(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl) for id in range(nbProcess)])))
 print("\n"*((nbProcess+9)//10))
 Aresults = results.sum(axis=0)
 print('/'.join(map(str, Aresults)))
 #thank to https://3dkingdoms.com/chess/elo.htm
 
 
-confidence, eloDelta, difference = get_confidence(Aresults)
+eloDelta, difference, stdDeviation, score = get_confidence(Aresults)
 print(f"{eloDelta} +/- {difference}")
-print(f"the first version is better than the second with a probability of {confidence}")
