@@ -366,6 +366,11 @@ public:
         bool inCheck;
         RootOrder order;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+        if(order.nbMoves == 1){
+            running = false;
+            timerThread.join();
+            return order.moves[0];
+        }
         order.init(state.friendlyColor(), history);
         for(int depth=1; depth<depthMax && running && !midtime; depth++){
             int deltaUp = 10;

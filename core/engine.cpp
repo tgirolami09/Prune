@@ -24,7 +24,7 @@ public :
     int binc=0;
     int winc=0;
 };
-int moveOverhead = 10;
+int moveOverhead = 100;
 const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
@@ -43,7 +43,9 @@ int computeAllotedTime(Chess& state){
     bool color = state.root.friendlyColor()^(state.movesFromRoot.size()&1);
     int time = color == WHITE?state.w_time:state.b_time;
     int inc = color == WHITE?state.winc:state.binc;
-    return time/20+inc/2-moveOverhead;
+    int maxTime = time/20+inc/2;
+    //maxTime = min(maxTime, time/10);
+    return maxTime-moveOverhead;
 }
 
 void doUCI(string UCI_instruction, Chess& state){
