@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include "Const.hpp"
 #include "Functions.hpp"
-#include "PieceBoard.hpp"
 #include <random>
 #include <vector>
 using namespace std;
@@ -17,7 +16,7 @@ const int nbZobrist=zobrTurn+1;
 const int sizeThreeFold=8192;
 //Represents a state in the game
 class GameState{
-    PieceBoard pieceBoard;
+    bool isFinished = false;
 
     // (not necessary if we create new states for exploration)
     Move movesSinceBeginning[8848*2+2]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
@@ -380,15 +379,6 @@ public :
                 return increaseThreeFold(zobristHash);
             }
         }
-        if (!back){
-            pieceBoard.setSquare(move.piece,move.to(),friendlyColor());
-        }
-        else{
-            pieceBoard.setSquare(move.piece,move.from(),friendlyColor());
-            if (move.capture != 2){
-                pieceBoard.setSquare(move.capture,move.to(),enemyColor());
-            }
-        }
         return 0;
     }
 
@@ -455,12 +445,11 @@ public :
     }
 
     int getPiece(int square, int c){
-        // big mask=1ULL << square;
-        // for(int p=0; p<nbPieces; p++){
-            // if(mask&boardRepresentation[c][p])return p;
-        // }
-        // return SPACE;
-        return pieceBoard.getPiece(square,c);
+        big mask=1ULL << square;
+        for(int p=0; p<nbPieces; p++){
+            if(mask&boardRepresentation[c][p])return p;
+        }
+        return SPACE;
     }
 
     int getfullPiece(int square) const{
