@@ -1,6 +1,6 @@
 import subprocess
 import sys
-from chess import Board, BLACK, WHITE, engine
+from chess import Board, BLACK, WHITE, engine, pgn
 from tqdm import tqdm, trange
 from multiprocessing import Pool
 from multiprocessing.managers import SharedMemoryManager
@@ -13,7 +13,7 @@ parser.add_argument("prog1", type=str, help="the executable of the new version")
 parser.add_argument("prog2", type=str, help="the executable of the base version")
 parser.add_argument("timeControl", type=str, help="the time control (60+1 => 1 minute and 1 second of increment by move, or 1000 => 1000ms by move)")
 parser.add_argument('--sprt', action="store_true")
-parser.add_argument('--moveOverHead', type=int, default=100, help="overhead by move (different from increment)")
+parser.add_argument('--moveOverHead', type=int, default=10, help="overhead by move (different from increment)")
 parser.add_argument("--processes", '-p', type=int, default=70, help="the number of processes")
 parser.add_argument("--hypothesis", nargs=2, type=int, default=[0, 5], help="hypothesis for sprt")
 settings = parser.parse_args(sys.argv[1:])
@@ -84,7 +84,7 @@ def get_confidence(results):
         delta = np.nan
     return eloDelta, delta, stdDeviation, percentage
 
-def getLimit(wTime, bTime):
+def getLimit(bTime, wTime):
     if isMoveTime:
         return engine.Limit(time=moveTime)
     else:
@@ -95,8 +95,9 @@ def playGame(startFen, prog1, prog2):
     curProg, otherProg = prog1, prog2
     board = Board(startFen)
     remaindTimes = [startTime]*2
-    moves = []
     termination = "Normal"
+    game = pgn.Game(dict(Variant="From Position", FEN=startFen))
+    node = game
     while not board.is_game_over() and not board.can_claim_draw():
         if not isMoveTime:
             startSpan = time.time()
@@ -110,20 +111,21 @@ def playGame(startFen, prog1, prog2):
                 termination = "Time forfeit"
                 break
             remaindTimes[board.turn] += increment
+
+        node = node.add_variation(result.move)
+        node.comment = f'[%clk {remaindTimes[board.turn]}]'
         board.push(result.move)
-        moves.append(result.move)
         curProg, otherProg = otherProg, curProg
-    moves = board.root().variation_san(moves)
     if board.can_claim_draw():
         winner = None
     elif board.outcome():
         winner = board.outcome().winner
     if winner == WHITE:
-        return moves, 0, termination
+        return game, 0, termination
     elif winner == BLACK:
-        return moves, 1, termination
+        return game, 1, termination
     else:
-        return moves, 2, termination
+        return game, 2, termination
 
 def likelihood(hypothesis, realScore, stdDeviation):
     score = eloScore(hypothesis)
@@ -148,11 +150,13 @@ def playBatch(args):
         if (idBeginBoard+id)%2 == 1:
             order[0], order[1] = order[1], order[0]
         for idProg, prog, _prog, prog1Name, prog2Name in order:
-            moves, winner, termination = playGame(beginBoard, prog, _prog)
-            log.write(f'[White "{prog1Name}"]\n[Black "{prog2Name}"]\n')
-            log.write(f'[Variant "From Position"]\n[FEN "{beginBoard}"]\n')
-            log.write(f'[Termination "{termination}"]\n')
-            log.write(moves+'\n\n')
+            game, winner, termination = playGame(beginBoard, prog, _prog)
+            game.headers['White'] = prog1Name
+            game.headers['Black'] = prog2Name
+            game.headers['Result'] = ["1-0", "0-1", "1/2-1/2"][winner]
+            game.headers['Termination'] = termination
+            game.headers['TimeControl'] = settings.timeControl
+            log.write(str(game)+'\n\n')
             log.flush()
             interResults[min(winner ^ idProg, 2)] += 1
             #print(board.outcome().winner)
@@ -189,7 +193,6 @@ def playBatch(args):
     log.close()
     prog1.quit()
     prog2.quit()
-    time.sleep(1)
     return np.array(results)
 
 with open("beginBoards.out") as games:
@@ -202,7 +205,8 @@ with SharedMemoryManager() as smm:
     cutoff = smm.ShareableList([False])
     pool = Pool(nbProcess)
     results = np.array(list(pool.imap_unordered(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl, cutoff) for id in range(nbProcess)])))
-print("\n"*((nbProcess+9)//10))
+if not cutoff[0]:
+    print("\n"*((nbProcess+9)//10))
 Aresults = results.sum(axis=0)
 print('/'.join(map(str, Aresults)))
 #thank to https://3dkingdoms.com/chess/elo.htm
