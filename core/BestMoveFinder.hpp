@@ -425,10 +425,24 @@ public:
         setElement(state.zobristHash, actDepth);
         bool moveInTable = false;
         Move bookMove = findPolyglot(state,moveInTable,book);
+        bool inCheck;
+        RootOrder order;
+        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         //Return early because a move was found in a book
         if (moveInTable){
-            printf("Found book move for fen : %s\n",state.toFen().c_str());
-            return bookMove;
+            moveInTable = false;
+            for(int i=0; i<order.nbMoves; i++){
+                if(order.moves[i].moveInfo == bookMove.moveInfo){
+                    moveInTable = true;
+                    break;
+                }
+            }
+            if(moveInTable){
+                printf("Found book move for fen : %s\n",state.toFen().c_str());
+                return bookMove;
+            }else{
+                printf("bad move find in table %s (in %s)\n", bookMove.to_str().c_str(), state.toFen().c_str());
+            }
         }
         eval.init(state);
         running = true;
@@ -441,6 +455,11 @@ public:
         }else{
             depthMax = alloted;
         }
+        if(order.nbMoves == 1){
+            running = false;
+            timerThread.join();
+            return order.moves[0];
+        }
         printf("info string use a tt of %d entries (%ld MB) (%ldB by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
         printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
         Move bestMove=nullMove;
@@ -448,14 +467,6 @@ public:
         clock_t start=clock();
         int lastNodes = 1;
         int lastScore = eval.getScore(state.friendlyColor(), state.getPawnStruct());
-        bool inCheck;
-        RootOrder order;
-        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
-        if(order.nbMoves == 1){
-            running = false;
-            timerThread.join();
-            return order.moves[0];
-        }
         order.init(state.friendlyColor(), history, state);
         for(int depth=1; depth<depthMax && running && !midtime; depth++){
             int deltaUp = 10;
