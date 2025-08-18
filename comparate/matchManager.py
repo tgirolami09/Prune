@@ -98,10 +98,11 @@ def playGame(startFen, prog1, prog2):
     termination = "Normal"
     game = pgn.Game(dict(Variant="From Position", FEN=startFen))
     node = game
+    thinkMate = False
     while not board.is_game_over() and not board.can_claim_draw():
         if not isMoveTime:
             startSpan = time.time()
-        result = curProg.play(board, getLimit(*remaindTimes))
+        result = curProg.play(board, limit=getLimit(*remaindTimes), info=engine.INFO_ALL)
         if not isMoveTime:
             endTime = time.time()
             timeSpent = endTime-startSpan
@@ -111,7 +112,8 @@ def playGame(startFen, prog1, prog2):
                 termination = "Time forfeit"
                 break
             remaindTimes[board.turn] += increment
-
+        if 'score' in result.info and result.info['score'].is_mate():
+            thinkMate = True
         node = node.add_variation(result.move)
         node.comment = f'[%clk {remaindTimes[board.turn]}]'
         board.push(result.move)
@@ -121,11 +123,11 @@ def playGame(startFen, prog1, prog2):
     elif board.outcome():
         winner = board.outcome().winner
     if winner == WHITE:
-        return game, 0, termination
+        return game, 0, termination, thinkMate
     elif winner == BLACK:
-        return game, 1, termination
+        return game, 1, termination, thinkMate
     else:
-        return game, 2, termination
+        return game, 2, termination, thinkMate
 
 def likelihood(hypothesis, realScore, stdDeviation):
     score = eloScore(hypothesis)
@@ -150,12 +152,15 @@ def playBatch(args):
         if (idBeginBoard+id)%2 == 1:
             order[0], order[1] = order[1], order[0]
         for idProg, prog, _prog, prog1Name, prog2Name in order:
-            game, winner, termination = playGame(beginBoard, prog, _prog)
+            game, winner, termination, thinkMate = playGame(beginBoard, prog, _prog)
             game.headers['White'] = prog1Name
             game.headers['Black'] = prog2Name
             game.headers['Result'] = ["1-0", "0-1", "1/2-1/2"][winner]
             game.headers['Termination'] = termination
             game.headers['TimeControl'] = settings.timeControl
+            if winner == 2 and thinkMate:
+                with open('wasntItWinning.pgn', 'a') as f:
+                    f.write(str(game)+'\n\n')
             log.write(str(game)+'\n\n')
             log.flush()
             interResults[min(winner ^ idProg, 2)] += 1
@@ -198,6 +203,7 @@ def playBatch(args):
 with open("beginBoards.out") as games:
     beginBoards = list(games.readlines())
 
+with open('wasntItWinning.pgn', 'w') as f:f.write("")
 nbProcess = settings.processes
 nbBoards = len(beginBoards)
 with SharedMemoryManager() as smm:
