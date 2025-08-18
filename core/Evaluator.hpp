@@ -218,13 +218,32 @@ int SEE(int square, GameState& state){
     return value;
 }
 
-inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore, int SEEscore){
+inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore, bool useSEE, GameState& state, ubyte& flag){
     int score = 0;
-    if(move.capture == -2){
+    int SEEscore = 0;
+    flag = 0;
+    if(useSEE){
+        state.playMove<false, false>(move);
+        SEEscore = -SEE(move.to(), state);
+        if(move.capture != -2)
+            SEEscore += value_pieces[move.capture == -1?0:move.capture];
+        state.undoLastMove<false>();
+        if(SEEscore > 0)
+            flag += 2;
+    }else if(move.isTactical()){
+        int cap = move.capture;
+        if(cap == -1)cap = 0;
+        if(cap != -2)
+            SEEscore = value_pieces[cap]*10;
+        if((1ULL << move.to())&dangerPositions)
+            SEEscore -= value_pieces[move.piece];
+    }
+    if(!move.isTactical()){
         if(isKiller)score += KILLER_ADVANTAGE;
         score += historyScore;
         score += SEEscore*maxHistory;
-    }else {
+    }else{
+        flag++;
         score += SEEscore;
         if(move.promotion() != -1)score += value_pieces[move.promotion()];
     }

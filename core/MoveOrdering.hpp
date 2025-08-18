@@ -71,25 +71,7 @@ public:
         isPriority=false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            int SEEscore = 0;
-            if(useSEE){
-                state.playMove<false, false>(moves[i]);
-                SEEscore = -SEE(moves[i].to(), state);
-                if(moves[i].capture != -2)
-                    SEEscore += value_pieces[moves[i].capture == -1?0:moves[i].capture];
-                state.undoLastMove<false>();
-            }else if(moves[i].isTactical()){
-                int cap = moves[i].capture;
-                if(cap == -1)cap = 0;
-                if(cap != -2)
-                    SEEscore = value_pieces[cap]*10;
-                if((1ULL << moves[i].to())&dangerPositions)
-                    SEEscore -= value_pieces[moves[i].piece];
-            }
-            scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c), SEEscore);
-            if(SEEscore > 0)
-                flags[i] = 2;
-            else flags[i] = 0;
+            scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c), useSEE, state, flags[i]);
             if(moves[i].isTactical())
                 flags[i]++;
             if(moveInfoPriority == moves[i].moveInfo){
@@ -124,10 +106,11 @@ public:
 class RootOrder{
     int nodeUsed[maxMoves];
     int scores[maxMoves];
+    ubyte flags[maxMoves];
     int pointer;
     bool isPriority;
     bool compareScore(int idMove1, int idMove2) const{
-        if(moves[idMove1].isTactical() != moves[idMove2].isTactical())return moves[idMove2].isTactical() > moves[idMove1].isTactical();
+        if(flags[idMove1] != flags[idMove2])return flags[idMove2] > flags[idMove1];
         return scores[idMove2] > scores[idMove1];
     }
 
@@ -145,11 +128,7 @@ public:
         isPriority = false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            int SEEscore = 0;
-            state.playMove<false, false>(moves[i]);
-            SEEscore = SEE(moves[i].to(), state);
-            state.undoLastMove<false>();
-            scores[i] = score_move(moves[i], c, dangerPositions, false, history.getHistoryScore(moves[i], c), SEEscore);
+            scores[i] = score_move(moves[i], c, dangerPositions, false, history.getHistoryScore(moves[i], c), true, state, flags[i]);
             nodeUsed[i] = 0;
         }
     }
