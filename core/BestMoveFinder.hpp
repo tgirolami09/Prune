@@ -191,6 +191,84 @@ private:
         const big* ep = state.enemyPieces();
         return fp[BISHOP] || fp[KNIGHT] || fp[ROOK] || fp[QUEEN] || ep[BISHOP] || ep[KNIGHT] || ep[ROOK] || ep[QUEEN];
     }
+    pair<int, Move> MatedSearch(GameState& state, int depth, int lastChange, int relDepth){
+        if(!running)return {-1, nullMove};
+        if(depth <= 0 || relDepth-lastChange >= 100)
+            return {-1, nullMove};
+        Order<maxMoves> order;
+        bool inCheck=false;
+        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+        if(order.nbMoves == 0){
+            //return the number of plies gained by going in this way
+            if(inCheck) return {depth, nullMove};
+            else return {-1, nullMove};
+        }
+        int bestReduction = 100;
+        Move bestMove = nullMove;
+        order.init(state.friendlyColor(), nullMove.moveInfo, history, relDepth, state, false);
+        for(int rankMove=0; rankMove < order.nbMoves; rankMove++){
+            Move curMove = order.pop_max();
+            int score;
+            state.playMove<false, false>(curMove);
+            int newLastChange = lastChange;
+            if(curMove.isChanger())
+                newLastChange = relDepth;
+            ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
+            if(usableDepth != (ubyte)-1){
+                score = -1;
+            }else{
+                setElement(state.zobristHash, relDepth);
+                score = MaterSearch(state, depth-1, newLastChange, relDepth+1).first;
+            }
+            state.undoLastMove<false>();
+            if(score == -1)return {-1, curMove}; //found a way to escape the mate in this line
+            if(score < bestReduction){
+                bestReduction = score;
+                bestMove = curMove;
+            }
+            if(!running)return {bestReduction, bestMove};// there we can use the last iteration, and we must return the info for the mate because otherwise we cannot make at least one move
+        }
+        return {bestReduction, bestMove};
+
+    }
+    pair<int, Move> MaterSearch(GameState& state, int depth, int lastChange, int relDepth){
+        //when detect mate in x
+        if(!running)return {-1, nullMove};
+        if(depth <= 0 || relDepth-lastChange >= 100)
+            return {-1, nullMove};
+        Order<maxMoves> order;
+        bool inCheck=false;
+        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+        if(order.nbMoves == 0){
+            return {-1, nullMove}; // we search the mate for our side, not for the other
+        }
+        int bestReduction = -1;
+        Move bestMove = nullMove;
+        order.init(state.friendlyColor(), nullMove.moveInfo, history, relDepth, state, false);
+        for(int rankMove=0; rankMove < order.nbMoves; rankMove++){
+            Move curMove = order.pop_max();
+            int score;
+            state.playMove<false, false>(curMove);
+            int newLastChange = lastChange;
+            if(curMove.isChanger())
+                newLastChange = relDepth;
+            ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
+            if(usableDepth != (ubyte)-1){
+                score = -1;
+            }else{
+                setElement(state.zobristHash, relDepth);
+                score = MatedSearch(state, depth-2-bestReduction, newLastChange, relDepth+1).first;
+            }
+            state.undoLastMove<false>();
+            if(!running)return {bestReduction, bestMove}; // cannot take the las iteration, because the other side has not searched all the possible responses
+            if(score != -1){//this acts like a max
+                bestReduction += score+1;
+                //printf("%s : red %d move %s score %d\n", state.toFen().c_str(), bestReduction, curMove.to_str().c_str(), score);
+                bestMove = curMove;
+            }
+        }
+        return {bestReduction, bestMove};
+    }
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template <int nodeType, bool timeLimit>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
@@ -243,7 +321,7 @@ private:
                 newLastChange = relDepth;
             ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
             if(usableDepth != (ubyte)-1){
-                score = Score(MIDDLE, relDepth);
+                score = Score(MIDDLE, usableDepth);
             }else{
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, relDepth);
@@ -403,11 +481,21 @@ public:
             else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, order.nbMoves);
             fflush(stdout);
             if(abs(bestScore) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
+                pair<int, Move> result;
+                int searchDepth = MAXIMUM-abs(bestScore)+2;
+                if(bestScore >= MAXIMUM-maxDepth){//we can mate our opponent
+                    result = MaterSearch(state, searchDepth, lastChange, actDepth);
+                }else{//we are on the path to be mated
+                    result = MatedSearch(state, searchDepth, lastChange, actDepth);
+                }
+                if(result.second.moveInfo != nullMove.moveInfo)
+                    printf("info depth %d pv %s\n", searchDepth, result.second.to_str().c_str());
                 if(timeLimit){
                     running = false;
                     timerThread.join();
                 }
-                return bestMove;
+                if(result.second.moveInfo == nullMove.moveInfo)return bestMove; //have not enough time to find the mate
+                return result.second;
             }
             lastNodes = usedNodes;
         }
