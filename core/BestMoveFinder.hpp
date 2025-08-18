@@ -382,8 +382,8 @@ public:
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
                 bestMove = bestMoveClipped<timeLimit>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange);
-                if(bestScore <= alpha)deltaDown *= 2;
-                else if(bestScore >= beta)deltaUp *= 2;
+                if(bestScore <= alpha)deltaDown = max(deltaDown*2, lastScore-bestScore+1);
+                else if(bestScore >= beta)deltaUp = max(deltaUp*2, bestScore-lastScore+1);
                 else break;
             }while(running);
             lastScore = bestScore;
