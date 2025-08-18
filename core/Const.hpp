@@ -68,8 +68,9 @@ const int MIDDLE=0;
 const ubyte EXACT = 0;
 const ubyte LOWERBOUND = 1;
 const ubyte UPPERBOUND = 2;
-const int KILLER_ADVANTAGE = 100000;
-const int maxHistory=100;
+const int KILLER_ADVANTAGE = 1<<20;
+const int value_pieces[6] = {100, 300, 300, 500, 900, 0};
+const int maxHistory=KILLER_ADVANTAGE/value_pieces[QUEEN];
 
 class pawnStruct{
 public:

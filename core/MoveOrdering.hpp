@@ -26,7 +26,7 @@ public:
                 killers[relDepth][0] = move;
             }
             getIndex(move, c) += depth*depth;
-            if(getIndex(move, c) > KILLER_ADVANTAGE-PAWN){
+            if(getIndex(move, c) > maxHistory){
                 for(int a=0; a<2; a++){
                     for(int from=0; from<64; from++){
                         for(int to=0; to<64; to++){
@@ -55,6 +55,7 @@ public:
     int scores[maxMoves];
     bool isPriority;
     int pointer;
+    ubyte flags[maxMoves]; // winning captures, non-losing quiet move, losing captures, losing quiet moves
     big dangerPositions;
     bool sorted = false;
     Order():dangerPositions(0){
@@ -63,13 +64,34 @@ public:
     void swap(int idMove1, int idMove2){
         std::swap(moves[idMove1], moves[idMove2]);
         std::swap(scores[idMove1], scores[idMove2]);
+        std::swap(flags[idMove1], flags[idMove2]);
     }
 
-    void init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth=-1){
+    void init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, GameState& state, bool useSEE=true){
         isPriority=false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c));
+            int SEEscore = 0;
+            if(useSEE){
+                state.playMove<false, false>(moves[i]);
+                SEEscore = -SEE(moves[i].to(), state);
+                if(moves[i].capture != -2)
+                    SEEscore += value_pieces[moves[i].capture == -1?0:moves[i].capture];
+                state.undoLastMove<false>();
+            }else if(moves[i].isTactical()){
+                int cap = moves[i].capture;
+                if(cap == -1)cap = 0;
+                if(cap != -2)
+                    SEEscore = value_pieces[cap]*10;
+                if((1ULL << moves[i].to())&dangerPositions)
+                    SEEscore -= value_pieces[moves[i].piece];
+            }
+            scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c), SEEscore);
+            if(SEEscore > 0)
+                flags[i] = 2;
+            else flags[i] = 0;
+            if(moves[i].isTactical())
+                flags[i]++;
             if(moveInfoPriority == moves[i].moveInfo){
                 this->swap(i, 0);
                 isPriority = true;
@@ -78,7 +100,7 @@ public:
     }
 
     inline bool compareMove(int idMove1, int idMove2){
-        if(moves[idMove1].isTactical() != moves[idMove2].isTactical())return moves[idMove2].isTactical() > moves[idMove1].isTactical();
+        if(flags[idMove1] != flags[idMove2])return flags[idMove2] > flags[idMove1];
         return scores[idMove2] > scores[idMove1];
     }
 
@@ -119,11 +141,15 @@ public:
     Move moves[maxMoves];
     RootOrder():dangerPositions(0){}
 
-    void init(bool c, const HelpOrdering& history){
+    void init(bool c, const HelpOrdering& history, GameState& state){
         isPriority = false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], c, dangerPositions, false, history.getHistoryScore(moves[i], c));
+            int SEEscore = 0;
+            state.playMove<false, false>(moves[i]);
+            SEEscore = SEE(moves[i].to(), state);
+            state.undoLastMove<false>();
+            scores[i] = score_move(moves[i], c, dangerPositions, false, history.getHistoryScore(moves[i], c), SEEscore);
             nodeUsed[i] = 0;
         }
     }

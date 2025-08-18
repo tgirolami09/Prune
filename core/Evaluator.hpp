@@ -3,11 +3,11 @@
 #include "Const.hpp"
 #include "Functions.hpp"
 #include "GameState.hpp"
+#include "LegalMoveGenerator.hpp"
 #include <climits>
 #include <cstring>
 #include <cmath>
 #define COMPLICATED_EVALUATION
-const int value_pieces[6] = {100, 300, 300, 500, 900, 0};
 //https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
 const int eg_value[6] = { 94, 281, 297, 512,  936,  0};
@@ -195,18 +195,39 @@ void init_forwards(){
     }
 }
 
-inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore){
-    int score = 0;
-    if ((dangerPositions & (1ul<<move.to())) != 0){
-        score -= value_pieces[move.piece];
+int SEE(int square, GameState& state){
+    Move moves[maxCaptures];
+    int nbMoves;
+    bool inCheck;
+    big dangerPositions = 0;
+    nbMoves = generator.generateLegalMoves(state, inCheck, moves, dangerPositions, true);
+    int leastAttacker = 100;
+    Move goodMove=nullMove;
+    for(int idMove=0; idMove<nbMoves; idMove++){
+        if(moves[idMove].to() == square && moves[idMove].piece < leastAttacker){
+            leastAttacker = moves[idMove].piece;
+            goodMove = moves[idMove];
+        }
     }
-    if(move.capture != -2)
-        score += value_pieces[move.capture]*10;
-    else{
+    int value = 0;
+    if(leastAttacker != 100){
+        state.playMove<false, false>(goodMove);
+        value = max(0, value_pieces[leastAttacker]-SEE(square, state));
+        state.undoLastMove<false>();
+    }
+    return value;
+}
+
+inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore, int SEEscore){
+    int score = 0;
+    if(move.capture == -2){
         if(isKiller)score += KILLER_ADVANTAGE;
         score += historyScore;
+        score += SEEscore*maxHistory;
+    }else {
+        score += SEEscore;
+        if(move.promotion() != -1)score += value_pieces[move.promotion()];
     }
-    if(move.promotion() != -1)score += value_pieces[move.promotion()];
     score += mg_table[c][move.piece][move.to()]-mg_table[c][move.piece][move.from()];
     return score;
 }

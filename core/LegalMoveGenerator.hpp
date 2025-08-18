@@ -691,4 +691,5 @@ class LegalMoveGenerator{
     }
 };
 
+LegalMoveGenerator generator;
 #endif

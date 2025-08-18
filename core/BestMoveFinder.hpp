@@ -86,7 +86,6 @@ class BestMoveFinder{
     unordered_map<uint64_t,PolyglotEntry> book;
 
     //Returns the best move given a position and time to use
-    LegalMoveGenerator generator;
     transpositionTable transposition;
     QuiescenceTT QTT;
     std::atomic<bool> running;
@@ -119,6 +118,8 @@ public:
 
 private:
     int nodes, Qnodes;
+    int nbCutoff;
+    int nbFirstCutoff;
     big isInSearch[1000];
     template<bool timeLimit>
     int quiescenceSearch(GameState& state, int alpha, int beta){
@@ -149,7 +150,7 @@ private:
         Order<maxCaptures> order;
         bool inCheck;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-        order.init(state.friendlyColor(), nullMove.moveInfo, history);
+        order.init(state.friendlyColor(), nullMove.moveInfo, history, -1, state, false);
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
@@ -159,6 +160,8 @@ private:
             state.undoLastMove<false>();
             if(timeLimit && !running)return 0;
             if(score >= beta){
+                nbCutoff++;
+                if(i == 0)nbFirstCutoff++;
                 QTT.push(state, score, LOWERBOUND);
                 return score;
             }
@@ -228,7 +231,7 @@ private:
             state.undoNullMove();
             if(v.score >= beta)return Score(beta, v.depth);
         }
-        order.init(state.friendlyColor(), lastBest, history, relDepth);
+        order.init(state.friendlyColor(), lastBest, history, relDepth, state, depth > 6);
         Move bestMove;
         Score bestScore(-INF, -1);
         for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
@@ -267,6 +270,8 @@ private:
                 if(score.usable(relDepth)){
                     transposition.push(state, score.score, LOWERBOUND, curMove, depth);
                 }
+                nbCutoff++;
+                if(rankMove == 0)nbFirstCutoff++;
                 history.addKiller(curMove, depth, relDepth, state.friendlyColor());
                 return score;
             }
@@ -312,6 +317,8 @@ private:
             if(score >= beta){
                 bestScore = score;
                 order.cutoff();
+                nbCutoff++;
+                if(idMove == 0)nbFirstCutoff++;
                 return curMove;
             }if(score > alpha){
                 bestMove = curMove;
@@ -371,7 +378,7 @@ public:
             timerThread.join();
             return order.moves[0];
         }
-        order.init(state.friendlyColor(), history);
+        order.init(state.friendlyColor(), history, state);
         for(int depth=1; depth<depthMax && running && !midtime; depth++){
             int deltaUp = 10;
             int deltaDown = 10;
@@ -392,7 +399,7 @@ public:
             int totNodes = nodes+Qnodes;
             int usedNodes = totNodes-startNodes;
             if(idMove == order.nbMoves)
-                printf("info depth %d score %s nodes %d nps %d time %d pv %s string branching factor %.3f\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), (double)usedNodes/lastNodes);
+                printf("info depth %d score %s nodes %d nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
             else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), bestMove.to_str().c_str(), idMove, order.nbMoves);
             fflush(stdout);
             if(abs(bestScore) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
