@@ -309,7 +309,7 @@ private:
             state.undoNullMove();
             if(v.score >= beta)return Score(beta, v.depth);
         }
-        order.init(state.friendlyColor(), lastBest, history, relDepth, state, depth > 6);
+        order.init(state.friendlyColor(), lastBest, history, relDepth, state, depth > 5);
         Move bestMove;
         Score bestScore(-INF, -1);
         for(int rankMove=0; rankMove<order.nbMoves; rankMove++){

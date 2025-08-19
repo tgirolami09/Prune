@@ -200,7 +200,10 @@ int SEE(int square, GameState& state){
     int value = 0;
     if(goodMove.moveInfo != nullMove.moveInfo){
         state.playMove<false, false>(goodMove);
-        value = max(0, value_pieces[goodMove.capture < 0?0:goodMove.capture]-SEE(square, state));
+        int SEErec = value_pieces[goodMove.capture < 0?0:goodMove.capture]-SEE(square, state);
+        if(goodMove.promotion() != -1)
+            SEErec += value_pieces[goodMove.promotion()];
+        value = max(0, SEErec);
         state.undoLastMove<false>();
     }
     return value;

@@ -805,6 +805,9 @@ class LegalMoveGenerator{
                     if(pinnedMasks[pos[p]] & captureMask){
                         LVAmove.piece = piece;
                         LVAmove.updateFrom(pos[p]);
+                        if(piece == PAWN && (row(posCapture) == 0 || row(posCapture) == 7)){
+                            LVAmove.updatePromotion(QUEEN);
+                        }
                         return LVAmove;
                     }
                 }
