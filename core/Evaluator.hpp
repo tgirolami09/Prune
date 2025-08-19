@@ -196,23 +196,11 @@ void init_forwards(){
 }
 
 int SEE(int square, GameState& state){
-    Move moves[maxCaptures];
-    int nbMoves;
-    bool inCheck;
-    big dangerPositions = 0;
-    nbMoves = generator.generateLegalMoves(state, inCheck, moves, dangerPositions, true);
-    int leastAttacker = 100;
-    Move goodMove=nullMove;
-    for(int idMove=0; idMove<nbMoves; idMove++){
-        if(moves[idMove].to() == square && moves[idMove].piece < leastAttacker){
-            leastAttacker = moves[idMove].piece;
-            goodMove = moves[idMove];
-        }
-    }
+    Move goodMove = generator.getLVA(square, state);
     int value = 0;
-    if(leastAttacker != 100){
+    if(goodMove.moveInfo != nullMove.moveInfo){
         state.playMove<false, false>(goodMove);
-        value = max(0, value_pieces[leastAttacker]-SEE(square, state));
+        value = max(0, value_pieces[goodMove.capture < 0?0:goodMove.capture]-SEE(square, state));
         state.undoLastMove<false>();
     }
     return value;

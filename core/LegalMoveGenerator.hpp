@@ -567,7 +567,7 @@ class LegalMoveGenerator{
     big allPieces;
 
     int friendlyKingPosition;
-    int enemyyKingPosition;
+    int enemyKingPosition;
 
     public : int generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves,big& dangerPositions, bool onlyCapture=false){
         //Set all pinned masks to -1 (= no pinning)
@@ -587,7 +587,7 @@ class LegalMoveGenerator{
         enemyPieces = state.enemyPieces();
 
         friendlyKingPosition = __builtin_ctzll(friendlyPieces[KING]);
-        enemyyKingPosition = __builtin_ctzll(enemyPieces[KING]);
+        enemyKingPosition = __builtin_ctzll(enemyPieces[KING]);
 
         allFriends = 0;
         allEnemies = 0;
@@ -605,7 +605,7 @@ class LegalMoveGenerator{
 
         big allDangerSquares = 0;
 
-        dealWithEnemyKing(enemyyKingPosition,allDangerSquares);
+        dealWithEnemyKing(enemyKingPosition,allDangerSquares);
 
         //Updates the danger squares and retrieves the possibe pawn checker
         int pawnCheckerPos = dealWithEnemyPawns(enemyPieces[PAWN],friendlyKingPosition,state.enemyColor(),allDangerSquares);
@@ -660,12 +660,11 @@ class LegalMoveGenerator{
             legalKingMoves(state, legalMoves, nbMoves, allFriends, allPieces, allDangerSquares);
         }
         big pawnMoveMask = ~allFriends;
-        if (nbCheckers == 2){
+        if (nbCheckers >= 2){
             inCheck = true;
             //Because if there are two checkers than only king moves are interesting
             return nbMoves;
-        }
-        else if (nbCheckers == 1){
+        }else if (nbCheckers == 1){
             inCheck = true;
             captureMask = (1ul << checkerPos);
             if (checkerType == BISHOP){
@@ -688,6 +687,130 @@ class LegalMoveGenerator{
         legalKnightMoves(friendlyPieces[KNIGHT], moveMask, captureMask, legalMoves, nbMoves);
         legalSlidingMoves(moveMask, captureMask, legalMoves, nbMoves, allPieces);
         return nbMoves;
+    }
+
+    Move getLVA(int posCapture, GameState& state){
+        memset(pinnedMasks, 0xFF, sizeof(pinnedMasks));
+        Move LVAmove;
+        //All allowed spots for a piece to move (not allowed if king is in check)
+        //All allowed spots for a piece to capture another one (not allowed if there is a checker)
+        big captureMask = -1; //Totaly false
+
+        int nbCheckers = 0;
+        int checkerPos = -1;
+
+        friendlyPieces = state.friendlyPieces();
+        enemyPieces = state.enemyPieces();
+
+        friendlyKingPosition = __builtin_ctzll(friendlyPieces[KING]);
+        enemyKingPosition = __builtin_ctzll(enemyPieces[KING]);
+
+        allFriends = 0;
+        allEnemies = 0;
+        for (int i = 0; i < 6; ++i){
+            big boardFriend = friendlyPieces[i];
+            allFriends |= boardFriend;
+            big boardEnemy = enemyPieces[i];
+            allEnemies |= boardEnemy;
+        }
+
+        allPieces = allFriends | allEnemies;
+
+        captureMask = allEnemies;
+
+        big allDangerSquares = 0;
+
+        dealWithEnemyKing(enemyKingPosition,allDangerSquares);
+
+        //Updates the danger squares and retrieves the possibe pawn checker
+        int pawnCheckerPos = dealWithEnemyPawns(enemyPieces[PAWN],friendlyKingPosition,state.enemyColor(),allDangerSquares);
+        if (pawnCheckerPos != -1){
+            nbCheckers += 1;
+            checkerPos = pawnCheckerPos;
+        }
+
+        //Updates the danger squares and retrieves the possibe knight checker
+        int knightCheckerPos = dealWithEnemyKnights(enemyPieces[KNIGHT],friendlyKingPosition,allDangerSquares);
+        if (knightCheckerPos != -1){
+            nbCheckers += 1;
+            checkerPos = knightCheckerPos;
+        }
+
+        //Now pieces can pin and have multiple of a type attacking the king
+
+        //Add the queen for its bishop rays
+        int bishopCheckerPos = dealWithEnemyBishops(enemyPieces[BISHOP] | enemyPieces[QUEEN], allPieces,friendlyKingPosition,allDangerSquares);
+        if (bishopCheckerPos != -1){
+            nbCheckers += 1;
+            if (bishopCheckerPos == doubleCheckFromSameType){
+                nbCheckers += 1;
+            }
+            else{
+                checkerPos = bishopCheckerPos;
+            }
+        }
+
+        //Add the queen for its rook rays
+        int rookCheckerPos = dealWithEnemyRooks(enemyPieces[ROOK] | enemyPieces[QUEEN], allPieces, friendlyKingPosition,allDangerSquares);
+        if (rookCheckerPos != -1){
+            nbCheckers += 1;
+            if (rookCheckerPos == doubleCheckFromSameType){
+                nbCheckers += 1;
+            }
+            else{
+                checkerPos = rookCheckerPos;
+            }
+        }
+
+        captureMask = 1ULL << posCapture;
+
+        int capturedPiece = PAWN;
+        for(int i=1; i<6; i++){
+            if(enemyPieces[i]&captureMask){
+                capturedPiece = i;
+                break;
+            }
+        }
+        LVAmove.capture = capturedPiece;
+        LVAmove.updateTo(posCapture);
+        //From here we have the pinned pieces, the number of checkers, and the danger squares
+        bool curColor = state.friendlyColor();
+        big kingEndMask = pseudoLegalKingMoves(friendlyKingPosition, allPieces, curColor, false, false, allDangerSquares);
+        kingEndMask &= (~allDangerSquares);
+        if(kingEndMask & captureMask){//because this is for SEE, we do not care if we take with a king or a pawn if the opponent cannot retake
+            LVAmove.updateFrom(friendlyKingPosition);
+            LVAmove.piece = KING;
+            return LVAmove;
+        }
+        if (nbCheckers >= 2){
+            return nullMove;
+        }else if (nbCheckers == 1){
+            captureMask &= (1ULL << checkerPos);
+            if(!captureMask)return nullMove;
+        }
+        big fromCaseBishop = moves_table(posCapture, allPieces&mask_empty_bishop(posCapture));
+        big fromCaseRook = moves_table(posCapture+64, allPieces&mask_empty_rook(posCapture));
+        big possiblePieces[5] = {
+            friendlyPieces[PAWN]   & attackPawns[state.enemyColor()*64+posCapture],
+            friendlyPieces[KNIGHT] & KnightMoves[posCapture],
+            friendlyPieces[BISHOP] & fromCaseBishop,
+            friendlyPieces[ROOK]   & fromCaseRook,
+            friendlyPieces[QUEEN]  & (fromCaseBishop | fromCaseRook),
+        };
+        for(int piece=0; piece<KING; piece++){
+            if(possiblePieces[piece]){
+                ubyte pos[8];
+                int nbPiece = places(possiblePieces[piece], pos);
+                for(int p=0; p<nbPiece; p++){
+                    if(pinnedMasks[pos[p]] & captureMask){
+                        LVAmove.piece = piece;
+                        LVAmove.updateFrom(pos[p]);
+                        return LVAmove;
+                    }
+                }
+            }
+        }
+        return nullMove;
     }
 };
 
