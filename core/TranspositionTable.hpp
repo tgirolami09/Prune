@@ -82,9 +82,10 @@ public:
     }
 };
 
-class infoQ{
+class __attribute__((packed)) infoQ{
 public:
-    int score, typeNode;
+    int score;
+    ubyte typeNode;
     big hash;
 };
 class QuiescenceTT{

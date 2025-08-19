@@ -499,8 +499,13 @@ public:
                 }else{//we are on the path to be mated
                     result = MatedSearch(state, searchDepth, lastChange, actDepth);
                 }
-                if(result.second.moveInfo != nullMove.moveInfo)
-                    printf("info depth %d pv %s\n", searchDepth, result.second.to_str().c_str());
+                clock_t end = clock();
+                double tcpu = double(end-start)/CLOCKS_PER_SEC;
+                if(result.second.moveInfo != nullMove.moveInfo){
+                    int sign = bestScore < 0 ? -1 : 1;
+                    bestScore = (abs(bestScore)+result.first)*sign;
+                    printf("info depth %d time %d score %s pv %s\n", searchDepth, (int)(tcpu*1000), scoreToStr(bestScore).c_str(), result.second.to_str().c_str());
+                }
                 if(timeLimit){
                     running = false;
                     timerThread.join();
