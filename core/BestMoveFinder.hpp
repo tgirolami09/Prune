@@ -303,18 +303,18 @@ private:
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(timeLimit && !running)return 0;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
-            if(nodeType != PVNode)beginLine(relDepth-startRelDepth);
+            if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
             return Score(0, -1);
         }
         if(depth == 0){
-            if(nodeType != PVNode)beginLine(relDepth-startRelDepth);
+            if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
             return Score(quiescenceSearch<timeLimit>(state, alpha, beta), -1);
         }
         nodes++;
         int16_t lastBest = nullMove.moveInfo;
         int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
         if(lastEval != INVALID){
-            if(nodeType != PVNode)beginLine(relDepth-startRelDepth);
+            if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
             return Score(lastEval, -1);
         }
         ubyte typeNode = UPPERBOUND;
@@ -322,7 +322,7 @@ private:
         bool inCheck=false;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         if(order.nbMoves == 0){
-            if(nodeType != PVNode)beginLine(relDepth-startRelDepth);
+            if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
             if(inCheck)
                 return Score(MINIMUM, -1);
             return Score(MIDDLE, -1);
@@ -337,7 +337,7 @@ private:
             Score sc = -negamax<-nodeType, timeLimit>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
-            if(nodeType != PVNode)transfer(relDepth-startRelDepth, order.moves[0]);
+            if(nodeType == PVNode)transfer(relDepth-startRelDepth, order.moves[0]);
             return sc;
         }
         int r = 3;
@@ -382,7 +382,7 @@ private:
             state.undoLastMove<false>();
             if(timeLimit && !running)return 0;
             score.augmentMate();
-            if(score >= beta){ //no need to copy the pv, because it will fail low on the "before recursion"
+            if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
                 if(score.usable(relDepth)){
                     transposition.push(state, score.score, LOWERBOUND, curMove, depth);
                 }
@@ -505,6 +505,7 @@ public:
         printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
         Move bestMove=nullMove;
         Qnodes = nodes = 0;
+        nbCutoff = nbFirstCutoff = 0;
         clock_t start=clock();
         int lastNodes = 1;
         int lastScore = eval.getScore(state.friendlyColor(), state.getPawnStruct());
