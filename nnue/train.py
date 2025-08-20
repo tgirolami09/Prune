@@ -4,12 +4,20 @@ from chess import Board, Move, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, WHITE, B
 import numpy as np
 from tqdm import tqdm
 
+def reverse_mask(board):
+    board = (board&0xFFFFFFFF00000000) >> 32 | (board&0x00000000FFFFFFFF) << 32
+    board = (board&0xFFFF0000FFFF0000) >> 16 | (board&0x0000FFFF0000FFFF) << 16
+    board = (board&0xFF00FF00FF00FF00) >>  8 | (board&0x00FF00FF00FF00FF) <<  8
+    return board
+
 def boardToInput(board):
-    res = np.zeros(12*64)
+    res = np.zeros(12*64*2)
     for p, piece in enumerate((PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING)):
         for c, color in enumerate((WHITE, BLACK)):
-            index = (p*2+c)*64
-            res[index:index+64] = np.array(list(map(int, bin(board.pieces(piece, color))[2:].zfill(64))))
+            index = (p*2+c)*64*2
+            mask = int(board.pieces(piece, color))
+            res[index   :index+64 ] = np.array(list(map(int, bin(mask              )[2:].zfill(64))))
+            res[index+64:index+128] = np.array(list(map(int, bin(reverse_mask(mask))[2:].zfill(64))))#yes, I like when same caracter are on the same column
     return res
 
 
@@ -43,3 +51,4 @@ print('initisalise the trainer')
 trainer = Trainer(settings.lr, settings.device)
 print('launch training')
 trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize)
+trainer.save()

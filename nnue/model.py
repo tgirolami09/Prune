@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import sys
 from torch.utils.data import DataLoader, TensorDataset
 from random import shuffle, seed, randrange
 from tqdm import trange
@@ -21,15 +22,18 @@ class Model(nn.Module):
 
     def __init__(self, device):
         super().__init__()
-        self.tohidden = nn.Linear(self.inputSize, self.HLSize*2)
+        self.tohidden = nn.Linear(self.inputSize, self.HLSize)
         self.toout = nn.Linear(self.HLSize*2, 1)
         self.to(device)
     
     def forward(self, x, color):
-        hidden = self.activation(self.tohidden(x))
+        hidden1 = self.activation(self.tohidden(x[:, :self.inputSize]))
+        hidden2 = self.activation(self.tohidden(x[:, self.inputSize:]))
         if color:
-            hidden = torch.concatenate((hidden[:self.HLSize], hidden[self.HLSize:]))
-        return self.outAct(self.toout(hidden))
+            hiddenRes = torch.concatenate((hidden2, hidden1), axis=1) # for black, reverse the perspective (side to move's perspective must be on the first place)
+        else:
+            hiddenRes = torch.concatenate((hidden1, hidden2), axis=1)
+        return self.outAct(self.toout(hiddenRes))
     
 class Trainer:
     def __init__(self, lr, device):
@@ -71,6 +75,7 @@ class Trainer:
         dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
         testDataL2 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True)
         testDataL1 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
+        lastTestLoss = lastLoss = 0.0
         for i in range(epoch):
             totLoss = 0
             for c, dataL in enumerate((dataL1, dataL2)):
@@ -85,4 +90,21 @@ class Trainer:
                         xBatch = xBatch.to(self.device)
                         yBatch = yBatch.to(self.device)
                         totTestLoss += self.testLoss(xBatch, yBatch, c)
-            print(f'epoch {i} training loss {totLoss} test loss {totTestLoss}')
+            print(f'\repoch {i} training loss {totLoss:.5f} ({lastLoss:.5f}) test loss {totTestLoss:.5f} ({lastTestLoss:.5f})', end='')
+            sys.stdout.flush()
+            lastTestLoss = totTestLoss
+            lastLoss = totLoss
+
+    def save(self, filename="model.txt"):
+        with open(filename) as f:
+            for i in range(self.model.inputSize):
+                for j in range(self.model.HLSize):
+                    f.write(str(self.model.tohidden.weights[i][j])+' ')
+                f.write('\n')
+            for i in range(self.model.HLSize):
+                f.write(str(self.model.tohidden.biases[i])+' ')
+            f.write('\n')
+            for i in range(self.model.HLSize*2):
+                f.write(str(self.model.toout.weights[i][0])+' ')
+            f.write('\n')
+            f.write(str(self.model.toout.biases[0])+'\n')

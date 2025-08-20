@@ -29,9 +29,8 @@ def getLimit(bTime, wTime):
 
 def playGame(startFen, prog1, prog2):
     global startTime
-    data1, data2 = {}, {} # fen:score
     curProg, otherProg = prog1, prog2
-    curData, otherData = data1, data2
+    data = {} #fen:(score, move)
     board = Board(startFen)
     remaindTimes = [startTime]*2
     while not board.is_game_over() and not board.can_claim_draw():
@@ -46,18 +45,26 @@ def playGame(startFen, prog1, prog2):
                 winner = not board.turn
                 break
             remaindTimes[board.turn] += increment
+        if 'score' in result.info:
+            score = result.info['score'].relative
+            if score.is_mate():
+                if score.mate() > 0:
+                    data[board.fen()] = (1, result.move)
+                else:
+                    data[board.fen()] = (0, result.move)
+            else:
+                data[board.fen()] = (1/(1+math.exp(-score.score()/60000)), result.move)
         board.push(result.move)
         curProg, otherProg = otherProg, curProg
-        curData, otherData = otherData, curData
     winner = None
     if board.outcome() is not None:
         winner = board.outcome().winner
     if winner == WHITE:
-        return data1|data2, 0
+        return data, 0
     elif winner == BLACK:
-        return data2|data2, 1
+        return data, 1
     else:
-        return data1|data2, 2
+        return data, 2
 
 def playBatch(args):
     id, rangeGame = args
