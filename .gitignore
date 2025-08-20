@@ -10,3 +10,4 @@ build
 *.png
 *.pgn
 *.log
+*/__pycache__*
