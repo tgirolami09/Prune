@@ -1,30 +1,61 @@
 from chess import Board, engine, WHITE, BLACK
-import sys
+import sys, math, time
 from multiprocessing import Pool
-movetime = int(sys.argv[3])/1000
+import argparse
+isMoveTime = False
+parser = argparse.ArgumentParser(prog="matchManager")
+parser.add_argument("prog1", type=str, help="the executable of one of the version")
+parser.add_argument("prog2", type=str, help="the executable of another or the same version")
+parser.add_argument("timeControl", type=str, help="the time control (60+1 => 1 minute and 1 second of increment by move, or 1000 => 1000ms by move)")
+parser.add_argument('--moveOverHead', type=int, default=10, help="overhead by move (different from increment)")
+parser.add_argument("--processes", '-p', type=int, default=70, help="the number of processes")
+settings = parser.parse_args(sys.argv[1:])
+timeControl = settings.timeControl
+
+#seconds+seconds
+if '+' in timeControl:
+    startTime, increment = map(float, timeControl.split('+'))
+else:
+    isMoveTime = True
+    movetime = int(timeControl)/1000
+    startTime = 0
+overhead = settings.moveOverHead
+
+def getLimit(bTime, wTime):
+    if isMoveTime:
+        return engine.Limit(time=moveTime)
+    else:
+        return engine.Limit(white_clock=wTime, black_clock=bTime, white_inc=increment, black_inc=increment)
 
 def playGame(startFen, prog1, prog2):
+    global startTime
     data1, data2 = {}, {} # fen:score
     curProg, otherProg = prog1, prog2
     curData, otherData = data1, data2
     board = Board(startFen)
-    while not board.is_game_over():
-        result = curProg.play(board, engine.Limit(time=movetime), info=engine.INFO_SCORE)
-        score = result.info['score'].relative
-        if not score.is_mate():
-            curData[board.fen()] = score.score(), result.move
-        elif score.mate() < 0:
-            curData[board.fen()] = -100000, result.move
-        else:
-            curData[board.fen()] = 100000, result.move
+    remaindTimes = [startTime]*2
+    while not board.is_game_over() and not board.can_claim_draw():
+        if not isMoveTime:
+            startSpan = time.time()
+        result = curProg.play(board, limit=getLimit(*remaindTimes), info=engine.INFO_ALL)
+        if not isMoveTime:
+            endTime = time.time()
+            timeSpent = endTime-startSpan
+            remaindTimes[board.turn] -= timeSpent-overhead/1000
+            if remaindTimes[board.turn] < 0:
+                winner = not board.turn
+                break
+            remaindTimes[board.turn] += increment
         board.push(result.move)
-
         curProg, otherProg = otherProg, curProg
         curData, otherData = otherData, curData
-    if board.outcome().winner == WHITE:
-        return data1, 0
-    elif board.outcome().winner == BLACK:
-        return data2, 1
+    winner = None
+    if board.outcome() is not None:
+        winner = board.outcome().winner
+    if winner == WHITE:
+        return data1|data2, 0
+    elif winner == BLACK:
+        return data2|data2, 1
     else:
         return data1|data2, 2
 
