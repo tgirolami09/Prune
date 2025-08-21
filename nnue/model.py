@@ -18,7 +18,7 @@ class Model(nn.Module):
         return torch.clamp(x, min=0, max=self.QA)**2
 
     def outAct(self, x):
-        return F.sigmoid(x)
+        return F.sigmoid(x/200)
 
     def __init__(self, device):
         super().__init__()
@@ -33,7 +33,9 @@ class Model(nn.Module):
             hiddenRes = torch.concatenate((hidden2, hidden1), axis=1) # for black, reverse the perspective (side to move's perspective must be on the first place)
         else:
             hiddenRes = torch.concatenate((hidden1, hidden2), axis=1)
-        return self.outAct(self.toout(hiddenRes))
+        x = self.toout(hiddenRes)
+        x2 = (x-self.toout.bias[0])/self.QA+self.toout.bias[0]
+        return self.outAct(x2*self.SCALE/(self.QA*self.QB))
     
 class Trainer:
     def __init__(self, lr, device):
@@ -76,6 +78,8 @@ class Trainer:
         testDataL2 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True)
         testDataL1 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
         lastTestLoss = lastLoss = 0.0
+        miniLoss = 1000
+        isMin = False
         for i in range(epoch):
             totLoss = 0
             for c, dataL in enumerate((dataL1, dataL2)):
@@ -92,19 +96,41 @@ class Trainer:
                         totTestLoss += self.testLoss(xBatch, yBatch, c)
             print(f'\repoch {i} training loss {totLoss:.5f} ({lastLoss:.5f}) test loss {totTestLoss:.5f} ({lastTestLoss:.5f})', end='')
             sys.stdout.flush()
+            if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
+                self.save('bestModel.bin')#we save the model
             lastTestLoss = totTestLoss
+            if totTestLoss < miniLoss:
+                miniLoss = totTestLoss
+                isMin = True
+            else:
+                isMin = False
             lastLoss = totLoss
 
+    def get_int(self, tensor):
+        tensor = float(tensor)
+        self.maxi = max(self.maxi, tensor)
+        self.mini = min(self.mini, tensor)
+        self.s += tensor
+        self.count += 1
+        return str(int(tensor))
+
     def save(self, filename="model.txt"):
-        with open(filename) as f:
+        self.maxi = -1000
+        self.mini =  1000
+        self.s = 0
+        self.count = 0
+        with open(filename, "w") as f:
             for i in range(self.model.inputSize):
                 for j in range(self.model.HLSize):
-                    f.write(str(self.model.tohidden.weights[i][j])+' ')
+                    f.write(self.get_int(self.model.tohidden.weight[j][i])+' ')
                 f.write('\n')
             for i in range(self.model.HLSize):
-                f.write(str(self.model.tohidden.biases[i])+' ')
+                f.write(self.get_int(self.model.tohidden.bias[i])+' ')
             f.write('\n')
             for i in range(self.model.HLSize*2):
-                f.write(str(self.model.toout.weights[i][0])+' ')
+                f.write(self.get_int(self.model.toout.weight[0][i])+' ')
             f.write('\n')
-            f.write(str(self.model.toout.biases[0])+'\n')
+            f.write(self.get_int(self.model.toout.bias[0])+'\n')
+        
+        print(self.mini, '-', self.maxi, ':', self.s, self.count, self.s/self.count, end='')
+        sys.stdout.flush()

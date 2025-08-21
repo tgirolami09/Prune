@@ -5,9 +5,9 @@ import numpy as np
 from tqdm import tqdm
 
 def reverse_mask(board):
-    board = (board&0xFFFFFFFF00000000) >> 32 | (board&0x00000000FFFFFFFF) << 32
-    board = (board&0xFFFF0000FFFF0000) >> 16 | (board&0x0000FFFF0000FFFF) << 16
-    board = (board&0xFF00FF00FF00FF00) >>  8 | (board&0x00FF00FF00FF00FF) <<  8
+    board = ((board&0xFFFFFFFF00000000) >> 32) | ((board&0x00000000FFFFFFFF) << 32)
+    board = ((board&0xFFFF0000FFFF0000) >> 16) | ((board&0x0000FFFF0000FFFF) << 16)
+    board = ((board&0xFF00FF00FF00FF00) >>  8) | ((board&0x00FF00FF00FF00FF) <<  8)
     return board
 
 def boardToInput(board):
@@ -36,15 +36,17 @@ dataY = [[], []]
 with open(settings.dataFile) as f:
     tq = tqdm()
     for line in f:
-        assert line.count('|') == 2, line
-        fen, score, move = line.split('|')
-        board = Board(fen)
-        board.push(Move.from_uci(move.strip()))
-        dataX[not board.turn].append(boardToInput(board))
-        dataY[not board.turn].append([float(score)])
+        assert line.count('|') == 3, line
         tq.update(1)
+        fen, score, staticScore, move = line.split('|')
+        score, staticScore = int(score), int(staticScore.split()[-1])
+        if abs(staticScore-score) >= 70:continue
+        board = Board(fen)
+        dataX[not board.turn].append(boardToInput(board))
+        score = 1/(1+np.exp(-float(score)/200))
+        dataY[not board.turn].append([score])
 tq.close()
-print('data collected')
+print('data collected:', len(dataX[0])+len(dataX[1]))
 dataX = [torch.from_numpy(np.array(i)).float() for i in dataX]
 dataY = [torch.from_numpy(np.array(i)).float() for i in dataY]
 print('initisalise the trainer')

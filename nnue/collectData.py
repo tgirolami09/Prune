@@ -47,13 +47,8 @@ def playGame(startFen, prog1, prog2):
             remaindTimes[board.turn] += increment
         if 'score' in result.info:
             score = result.info['score'].relative
-            if score.is_mate():
-                if score.mate() > 0:
-                    data[board.fen()] = (1, result.move)
-                else:
-                    data[board.fen()] = (0, result.move)
-            else:
-                data[board.fen()] = (1/(1+math.exp(-score.score()/60000)), result.move)
+            if not score.is_mate():
+                data[board.fen()] = (str(score.score()), str(curProg.staticEval()), result.move)
         board.push(result.move)
         curProg, otherProg = otherProg, curProg
     winner = None
@@ -80,7 +75,7 @@ def playBatch(args):
             results[min(result^idProg, 2)] += 1
             with open(f'data{id}.out', "a") as f:
                 for key, value in data.items():
-                    f.write(f'{key}|{value[0]}|{value[1].uci()}\n')
+                    f.write(f'{key}|{value[0]}|{value[1]}|{value[2].uci()}\n')
         sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, (results[0], results[2], results[1])))+'\033[F'*(id//10)+'\r')
     prog1.quit()
     prog2.quit()
