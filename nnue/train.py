@@ -29,7 +29,16 @@ parser.add_argument("--device", '-d', type=str, default="cpu", help="on which de
 parser.add_argument("--epoch", type=int, default=100000, help="number of epoch of training")
 parser.add_argument("--batchSize", type=int, default=100000, help="batch size")
 parser.add_argument("--percentTrain", type=float, default=0.9, help="percent of the dataset dedicated to training")
+parser.add_argument("--reload", action="store_true", help="to not start from nothing each time")
+parser.add_argument("--outFile", "-o", type=str, default="bestModel.bin", help="the file where the current best model is written")
 settings = parser.parse_args(sys.argv[1:])
+
+print('initisalise the trainer')
+trainer = Trainer(settings.lr, settings.device)
+
+if settings.reload:
+    print("load old model")
+    trainer.load(settings.outFile)
 
 dataX = [[], []]
 dataY = [[], []]
@@ -49,8 +58,6 @@ tq.close()
 print('data collected:', len(dataX[0])+len(dataX[1]))
 dataX = [torch.from_numpy(np.array(i)).float() for i in dataX]
 dataY = [torch.from_numpy(np.array(i)).float() for i in dataY]
-print('initisalise the trainer')
-trainer = Trainer(settings.lr, settings.device)
 print('launch training')
-trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize)
+trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, parser.outFile)
 trainer.save()

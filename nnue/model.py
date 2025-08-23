@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import sys
+import time
 from torch.utils.data import DataLoader, TensorDataset
 from random import shuffle, seed, randrange
 from tqdm import trange
@@ -59,7 +60,7 @@ class Trainer:
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
-    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000):
+    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin"):
         s = randrange(0, 2**64)
         seed(s)
         shuffle(dataX[0])
@@ -83,6 +84,7 @@ class Trainer:
         miniLoss = 1000
         isMin = False
         for i in range(epoch):
+            startTime = time.time()
             totLoss = 0
             for c, dataL in enumerate((dataL1, dataL2)):
                 for xBatch, yBatch in dataL:
@@ -98,10 +100,11 @@ class Trainer:
                         totTestLoss += self.testLoss(xBatch, yBatch, c)*len(xBatch)
             totLoss /= totTrainData
             totTestLoss /= totTestData
-            print(f'epoch {i} training loss {totLoss:.5f} test loss {totTestLoss:.5f}')
+            endTime = time.time()
+            print(f'epoch {i} training loss {totLoss:.5f} test loss {totTestLoss:.5f} in {endTime-startTime:.3f}s')
             sys.stdout.flush()
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
-                self.save('bestModel.bin')#we save the model
+                self.save(fileBest)#we save the model
             lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
@@ -116,25 +119,38 @@ class Trainer:
         self.mini = min(self.mini, tensor)
         self.s += tensor
         self.count += 1
-        return str(int(tensor))
+        return int(round(tensor)).to_bytes(2, "little", signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
+
+    def read_bytes(self, bytes):
+        return torch.tensor(int.from_bytes(bytes, "little", signed=True), dtype=torch.float)
 
     def save(self, filename="model.txt"):
+        startTime = time.time()
         self.maxi = -1000
         self.mini =  1000
         self.s = 0
         self.count = 0
-        with open(filename, "w") as f:
+        with open(filename, "wb") as f:
             for i in range(self.model.inputSize):
                 for j in range(self.model.HLSize):
-                    f.write(self.get_int(self.model.tohidden.weight[j][i])+' ')
-                f.write('\n')
+                    f.write(self.get_int(self.model.tohidden.weight[j][i]))
             for i in range(self.model.HLSize):
-                f.write(self.get_int(self.model.tohidden.bias[i])+' ')
-            f.write('\n')
+                f.write(self.get_int(self.model.tohidden.bias[i]))
             for i in range(self.model.HLSize*2):
-                f.write(self.get_int(self.model.toout.weight[0][i])+' ')
-            f.write('\n')
-            f.write(self.get_int(self.model.toout.bias[0])+'\n')
-        
-        print(self.mini, '-', self.maxi, ':', self.s, self.count, self.s/self.count)
+                f.write(self.get_int(self.model.toout.weight[0][i]))
+            f.write(self.get_int(self.model.toout.bias[0]))
+        endTime = time.time()
+        print(f'min {self.mini} max {self.maxi} sum {self.s:.2f} number of weights {self.count} mean {self.s/self.count:.5f} in {endTime-startTime:.3f}s')
         sys.stdout.flush()
+    
+    def load(self, filename):
+        with open(filename, "rb") as f:
+            with torch.no_grad():
+                for i in range(self.model.inputSize):
+                    for j in range(self.model.HLSize):
+                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(2))
+                for i in range(self.model.HLSize):
+                    self.model.tohidden.bias[i] = self.read_bytes(f.read(2))
+                for i in range(self.model.HLSize*2):
+                    self.model.toout.weight[0][i] = self.read_bytes(f.read(2))
+                self.model.toout.bias[0] = self.read_bytes(f.read(2))
