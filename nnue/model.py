@@ -69,6 +69,8 @@ class Trainer:
         shuffle(dataY[1])
         sizeTrain1 = int(len(dataX[0])*percentTrain)
         sizeTrain2 = int(len(dataX[1])*percentTrain)
+        totTrainData = sizeTrain1+sizeTrain2
+        totTestData = sum(map(len, dataX))-totTrainData
         dataTrain1 = TensorDataset(dataX[0][:sizeTrain1], dataY[0][:sizeTrain1])
         dataTrain2 = TensorDataset(dataX[1][:sizeTrain2], dataY[1][:sizeTrain2])
         dataTest1 = TensorDataset(dataX[0][sizeTrain1:], dataY[0][sizeTrain1:])
@@ -86,15 +88,17 @@ class Trainer:
                 for xBatch, yBatch in dataL:
                     xBatch = xBatch.to(self.device)
                     yBatch = yBatch.to(self.device)
-                    totLoss += self.trainStep(xBatch, yBatch, c)
+                    totLoss += self.trainStep(xBatch, yBatch, c)*len(xBatch)
             totTestLoss = 0
             with torch.no_grad():
                 for c, testDataL in enumerate((testDataL1, testDataL2)):
                     for xBatch, yBatch in testDataL:
                         xBatch = xBatch.to(self.device)
                         yBatch = yBatch.to(self.device)
-                        totTestLoss += self.testLoss(xBatch, yBatch, c)
-            print(f'\repoch {i} training loss {totLoss:.5f} ({lastLoss:.5f}) test loss {totTestLoss:.5f} ({lastTestLoss:.5f})', end='')
+                        totTestLoss += self.testLoss(xBatch, yBatch, c)*len(xBatch)
+            totLoss /= totTrainData
+            totTestLoss /= totTestData
+            print(f'epoch {i} training loss {totLoss:.5f} test loss {totTestLoss:.5f}')
             sys.stdout.flush()
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
                 self.save('bestModel.bin')#we save the model
@@ -132,5 +136,5 @@ class Trainer:
             f.write('\n')
             f.write(self.get_int(self.model.toout.bias[0])+'\n')
         
-        print(self.mini, '-', self.maxi, ':', self.s, self.count, self.s/self.count, end='')
+        print(self.mini, '-', self.maxi, ':', self.s, self.count, self.s/self.count)
         sys.stdout.flush()
