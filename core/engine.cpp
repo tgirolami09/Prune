@@ -142,7 +142,11 @@ void doUCI(string UCI_instruction, Chess& state){
     }else if(command == "runQ"){
         bestMoveFinder.testQuiescenceSearch(state.root);
     }else if(command == "eval"){
+        for(Move move:state.movesFromRoot)
+            state.root.playPartialMove(move);
         bestMoveFinder.eval.init(state.root);
+        for(Move move:state.movesFromRoot)
+            state.root.undoLastMove();
         printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor(), state.root.getPawnStruct()  ));
     }else if(command == "stop"){
         bestMoveFinder.stop();

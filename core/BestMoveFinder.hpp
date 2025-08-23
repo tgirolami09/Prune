@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #define MoveScore pair<int, Move>
+//#define CalculatePV
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;
     int second = ((MoveScore*)b)->first;
@@ -275,6 +276,7 @@ private:
         }
         return {bestReduction, bestMove};
     }
+#ifdef CalculatePV
     int startRelDepth;
     LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
 
@@ -298,23 +300,40 @@ private:
         PVlines[relDepth-1].cmove = 0;
     }
 
+    void beginLineMove(int relDepth, Move move){
+        PVlines[relDepth-1].argMoves[0] = move.moveInfo;
+        PVlines[relDepth-1].cmove = 1;
+    }
+
+    void resetLines(){
+        for(int i=0; i<maxDepth; i++){
+            PVlines[i].cmove = 0;
+        }
+    }
+#endif
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template <int nodeType, bool timeLimit>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(timeLimit && !running)return 0;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
+#ifdef CalculatePV
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
+#endif
             return Score(0, -1);
         }
         if(depth == 0){
+#ifdef CalculatePV
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
+#endif
             return Score(quiescenceSearch<timeLimit>(state, alpha, beta), -1);
         }
         nodes++;
         int16_t lastBest = nullMove.moveInfo;
         int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
         if(lastEval != INVALID){
+#ifdef CalculatePV
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
+#endif
             return Score(lastEval, -1);
         }
         ubyte typeNode = UPPERBOUND;
@@ -322,7 +341,9 @@ private:
         bool inCheck=false;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         if(order.nbMoves == 0){
+#ifdef CalculatePV
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
+#endif
             if(inCheck)
                 return Score(MINIMUM, -1);
             return Score(MIDDLE, -1);
@@ -337,7 +358,9 @@ private:
             Score sc = -negamax<-nodeType, timeLimit>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
-            if(nodeType == PVNode)transfer(relDepth-startRelDepth, order.moves[0]);
+#ifdef CalculatePV
+            if((running || !timeLimit) && nodeType == PVNode && sc.score > alpha)transfer(relDepth-startRelDepth, order.moves[0]);
+#endif
             return sc;
         }
         int r = 3;
@@ -358,8 +381,14 @@ private:
             if(curMove.isChanger())
                 newLastChange = relDepth;
             ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
+#ifdef CalculatePV
+            bool isDraw = false;
+#endif
             if(usableDepth != (ubyte)-1){
                 score = Score(MIDDLE, usableDepth);
+#ifdef CalculatePV
+                isDraw = true;
+#endif
             }else{
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, relDepth);
@@ -394,7 +423,12 @@ private:
             if(score > alpha){
                 alpha = score.score;
                 typeNode=EXACT;
-                if(typeNode == PVNode)transfer(relDepth-startRelDepth, curMove);
+#ifdef CalculatePV
+                if(nodeType == PVNode){
+                    if(isDraw)beginLineMove(relDepth-startRelDepth, curMove);
+                    else transfer(relDepth-startRelDepth, curMove);
+                }
+#endif
             }
             if(score > bestScore)bestScore = score;
         }
@@ -410,7 +444,9 @@ private:
         bestScore = -INF;
         Move bestMove = nullMove;
         order.reinit(lastBest.moveInfo);
+#ifdef CalculatePV
         startRelDepth = actDepth-1;
+#endif
         for(idMove=0; idMove < order.nbMoves; idMove++){
             Move curMove = order.pop_max();
             //printf("%s\n", curMove.to_str().c_str());
@@ -442,7 +478,9 @@ private:
                 bestMove = curMove;
                 alpha = score;
                 bestScore = score;
+#ifdef CalculatePV
                 transfer(1, curMove);
+#endif
             }else if(score > bestScore){
                 bestMove = curMove;
                 bestScore = score;
@@ -529,7 +567,11 @@ public:
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
             int totNodes = nodes+Qnodes;
             int usedNodes = totNodes-startNodes;
+#ifdef CalculatePV
             string PV = PVprint(PVlines[0]);
+#else
+            string PV = bestMove.to_str().c_str();
+#endif
             if(idMove == order.nbMoves)
                 printf("info depth %d score %s nodes %d nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
             else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
@@ -549,12 +591,9 @@ public:
                     bestScore = (abs(bestScore)+result.first)*sign;
                     printf("info depth %d time %d score %s pv %s\n", searchDepth, (int)(tcpu*1000), scoreToStr(bestScore).c_str(), result.second.to_str().c_str());
                 }
-                if(timeLimit){
-                    running = false;
-                    timerThread.join();
-                }
-                if(result.second.moveInfo == nullMove.moveInfo)return bestMove; //have not enough time to find the mate
-                return result.second;
+                if(result.second.moveInfo != nullMove.moveInfo)//have enough time to find the mate
+                    bestMove = result.second;
+                break;
             }
             lastNodes = usedNodes;
         }
@@ -562,6 +601,8 @@ public:
             running = false;
             timerThread.join();
         }
+        for(int i=0; i<movesFromRoot.size(); i++)
+            state.undoLastMove();
         return bestMove;
     }
     int testQuiescenceSearch(GameState& state){
