@@ -1,6 +1,7 @@
 from chess import Board, engine, WHITE, BLACK
 import sys, math, time
 from multiprocessing import Pool
+import asyncio
 import argparse
 isMoveTime = False
 parser = argparse.ArgumentParser(prog="matchManager")
@@ -27,6 +28,38 @@ def getLimit(bTime, wTime):
     else:
         return engine.Limit(white_clock=wTime, black_clock=bTime, white_inc=increment, black_inc=increment)
 
+class EvalResult:
+    ev = 0
+    def __init__(self, ev:int):
+        self.ev = ev
+
+    def __repr__(self):
+        return f'static eval: {self.ev}'
+
+async def staticEval(protocol, board):
+    class UciStaticEval(engine.BaseCommand[EvalResult]):
+        def __init__(self, prot:engine.UciProtocol) -> None:
+            super().__init__(prot)
+            self.engine = prot
+
+        def start(self) -> None:
+            self.engine._position(board)
+            self.engine.send_line('isready')
+
+        def line_received(self, line:str) -> None:
+            if line.startswith('static evaluation:'):
+                self.result.set_result(int(line.split()[2]))
+                self.set_finished()
+            elif line.strip() == "readyok":
+                self.engine.send_line('eval')
+    return await protocol.communicate(UciStaticEval)
+
+def getStaticEval(motor, board):
+    with motor._not_shut_down():
+        coro = asyncio.wait_for(staticEval(motor.protocol, board), motor.timeout)
+        future = asyncio.run_coroutine_threadsafe(coro, motor.protocol.loop)
+    return future.result()
+
 def playGame(startFen, prog1, prog2):
     global startTime
     curProg, otherProg = prog1, prog2
@@ -48,7 +81,7 @@ def playGame(startFen, prog1, prog2):
         if 'score' in result.info:
             score = result.info['score'].relative
             if not score.is_mate():
-                data[board.fen()] = (str(score.score()), str(curProg.staticEval()), result.move)
+                data[board.fen()] = (str(score.score()), str(getStaticEval(curProg, board)), result.move)
         board.push(result.move)
         curProg, otherProg = otherProg, curProg
     winner = None
