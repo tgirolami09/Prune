@@ -10,6 +10,7 @@ parser.add_argument("prog2", type=str, help="the executable of another or the sa
 parser.add_argument("timeControl", type=str, help="the time control (60+1 => 1 minute and 1 second of increment by move, or 1000 => 1000ms by move)")
 parser.add_argument('--moveOverHead', type=int, default=10, help="overhead by move (different from increment)")
 parser.add_argument("--processes", '-p', type=int, default=70, help="the number of processes")
+parser.add_argument("--file", type=str, default="beginBoards.out", help="the file where the straing boards are")
 settings = parser.parse_args(sys.argv[1:])
 timeControl = settings.timeControl
 
@@ -115,7 +116,7 @@ def playBatch(args):
     return results
 
 nbProcess = 70
-with open("beginBoards.out") as games:
+with open(settings.file) as games:
     beginBoards = list(games.readlines())
 nbBoards = len(beginBoards)
 pool = Pool(nbProcess)
