@@ -10,14 +10,18 @@ def reverse_mask(board):
     board = ((board&0xFF00FF00FF00FF00) >>  8) | ((board&0x00FF00FF00FF00FF) <<  8)
     return board
 
+L = [np.array(tuple(map(int, bin(i)[2:].zfill(8))), dtype=np.float32) for i in range(256)]
 def boardToInput(board):
     res = np.zeros(12*64*2)
     for p, piece in enumerate((PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING)):
         for c, color in enumerate((WHITE, BLACK)):
             index = (p*2+c)*64*2
             mask = int(board.pieces(piece, color))
-            res[index   :index+64 ] = np.array(list(map(int, bin(mask              )[2:].zfill(64))))
-            res[index+64:index+128] = np.array(list(map(int, bin(reverse_mask(mask))[2:].zfill(64))))#yes, I like when same caracter are on the same column
+            for i, b in enumerate(mask.to_bytes(8, 'big')):
+                eight = 8*i
+                bs = L[b]
+                res[index+eight:index+8+eight] = bs
+                res[index+120-eight:index+128-eight] = bs
     return res
 
 
@@ -37,8 +41,11 @@ print('initisalise the trainer')
 trainer = Trainer(settings.lr, settings.device)
 
 if settings.reload:
+    startTime = time.time()
     print("load old model")
     trainer.load(settings.outFile)
+    endTime = time.time()
+    print(f'in {endTime-startTime:.3f}s')
 
 dataX = [[], []]
 dataY = [[], []]
@@ -59,5 +66,5 @@ print('data collected:', len(dataX[0])+len(dataX[1]))
 dataX = [torch.from_numpy(np.array(i)).float() for i in dataX]
 dataY = [torch.from_numpy(np.array(i)).float() for i in dataY]
 print('launch training')
-trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, parser.outFile)
+trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile)
 trainer.save()
