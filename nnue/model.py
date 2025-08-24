@@ -26,10 +26,11 @@ class Model(nn.Module):
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
         self.toout = nn.Linear(self.HLSize*2, 1)
         self.to(device)
-    
+        self.transfo = torch.arange(self.inputSize)^56
+
     def forward(self, x, color):
-        hidden1 = self.activation(self.tohidden(x[:, :self.inputSize]))
-        hidden2 = self.activation(self.tohidden(x[:, self.inputSize:]))
+        hidden1 = self.activation(self.tohidden(x))
+        hidden2 = self.activation(self.tohidden(x[:, self.transfo]))
         if color:
             hiddenRes = torch.concatenate((hidden2, hidden1), axis=1) # for black, reverse the perspective (side to move's perspective must be on the first place)
         else:
@@ -88,15 +89,15 @@ class Trainer:
             totLoss = 0
             for c, dataL in enumerate((dataL1, dataL2)):
                 for xBatch, yBatch in dataL:
-                    xBatch = xBatch.to(self.device)
-                    yBatch = yBatch.to(self.device)
+                    xBatch = xBatch.float().to(self.device)
+                    yBatch = yBatch.float().to(self.device)
                     totLoss += self.trainStep(xBatch, yBatch, c)*len(xBatch)
             totTestLoss = 0
             with torch.no_grad():
                 for c, testDataL in enumerate((testDataL1, testDataL2)):
                     for xBatch, yBatch in testDataL:
-                        xBatch = xBatch.to(self.device)
-                        yBatch = yBatch.to(self.device)
+                        xBatch = xBatch.float().to(self.device)
+                        yBatch = yBatch.float().to(self.device)
                         totTestLoss += self.testLoss(xBatch, yBatch, c)*len(xBatch)
             totLoss /= totTrainData
             totTestLoss /= totTestData
