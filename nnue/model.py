@@ -39,12 +39,19 @@ class Model(nn.Module):
         x2 = (x-self.toout.bias[0])/self.QA+self.toout.bias[0]
         return self.outAct(x2*self.SCALE/(self.QA*self.QB))
     
+    def _round(self):
+        self.toout.weight = self.toout.weight.round()
+        self.toout.bias = self.toout.bias.round()
+        self.tohidden.weight = self.tohidden.weight.round()
+        self.tohidden.bias = self.tohidden.bias.round()
+
 class Trainer:
     def __init__(self, lr, device):
         self.model = Model(device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
         self.loss_fn = nn.MSELoss(reduction="mean")
         self.device = device
+        self.modelEval = Model(device)
     
     def trainStep(self, dataX, dataY, color):
         self.model.train()
@@ -56,8 +63,7 @@ class Trainer:
         return loss.item()
 
     def testLoss(self, dataX, dataY, color):
-        self.model.eval()
-        yhat = self.model(dataX, color)
+        yhat = self.modelEval(dataX, color)
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
@@ -95,6 +101,8 @@ class Trainer:
                     totLoss += self.trainStep(xBatch, yBatch, c)*len(xBatch)
             totTestLoss = 0
             with torch.no_grad():
+                self.modelEval.load_state_dict(self.model.state_dict())
+                self.modelEval.eval()
                 for c, testDataL in enumerate((testDataL1, testDataL2)):
                     for xBatch, yBatch in testDataL:
                         xBatch = xBatch.float().to(self.device)
@@ -114,7 +122,7 @@ class Trainer:
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
                 isMin = True
-                lastModel.load_state_dict(self.model.state_dict())
+                lastModel.load_state_dict(self.modelEval.state_dict())
             else:
                 isMin = False
             lastLoss = totLoss
