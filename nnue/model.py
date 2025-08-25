@@ -84,6 +84,7 @@ class Trainer:
         lastTestLoss = lastLoss = 0.0
         miniLoss = 1000
         isMin = False
+        lastModel = Model(self.device)
         for i in range(epoch):
             startTime = time.time()
             totLoss = 0
@@ -102,14 +103,18 @@ class Trainer:
             totLoss /= totTrainData
             totTestLoss /= totTestData
             endTime = time.time()
-            print(f'epoch {i} training loss {totLoss:.5f} test loss {totTestLoss:.5f} in {endTime-startTime:.3f}s')
+            if lastTestLoss == 0.0:
+                lastTestLoss = totTestLoss
+                lastLoss = totLoss
+            print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {endTime-startTime:.3f}s')
             sys.stdout.flush()
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
-                self.save(fileBest)#we save the model
+                self.save(fileBest, lastModel)#we save the model
             lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
                 isMin = True
+                lastModel.load_state_dict(self.model.state_dict())
             else:
                 isMin = False
             lastLoss = totLoss
@@ -125,21 +130,23 @@ class Trainer:
     def read_bytes(self, bytes):
         return torch.tensor(int.from_bytes(bytes, "little", signed=True), dtype=torch.float)
 
-    def save(self, filename="model.txt"):
+    def save(self, filename="model.txt", model=None):
+        if model is None:
+            model = self.model
         startTime = time.time()
         self.maxi = -1000
         self.mini =  1000
         self.s = 0
         self.count = 0
         with open(filename, "wb") as f:
-            for i in range(self.model.inputSize):
-                for j in range(self.model.HLSize):
-                    f.write(self.get_int(self.model.tohidden.weight[j][i]))
-            for i in range(self.model.HLSize):
-                f.write(self.get_int(self.model.tohidden.bias[i]))
-            for i in range(self.model.HLSize*2):
-                f.write(self.get_int(self.model.toout.weight[0][i]))
-            f.write(self.get_int(self.model.toout.bias[0]))
+            for i in range(model.inputSize):
+                for j in range(model.HLSize):
+                    f.write(self.get_int(model.tohidden.weight[j][i]))
+            for i in range(model.HLSize):
+                f.write(self.get_int(model.tohidden.bias[i]))
+            for i in range(model.HLSize*2):
+                f.write(self.get_int(model.toout.weight[0][i]))
+            f.write(self.get_int(model.toout.bias[0]))
         endTime = time.time()
         print(f'min {self.mini} max {self.maxi} sum {self.s:.2f} number of weights {self.count} mean {self.s/self.count:.5f} in {endTime-startTime:.3f}s')
         sys.stdout.flush()
