@@ -88,8 +88,8 @@ class Trainer:
         dataTest2 = TensorDataset(dataX[1][sizeTrain2:], dataY[1][sizeTrain2:])
         dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True)
         dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
-        testDataL2 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True)
-        testDataL1 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
+        testDataL2 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=False)
+        testDataL1 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=False)
         lastTestLoss = lastLoss = 0.0
         miniLoss = 1000
         isMin = False
