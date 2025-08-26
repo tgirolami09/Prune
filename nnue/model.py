@@ -27,14 +27,18 @@ class Model(nn.Module):
         self.toout = nn.Linear(self.HLSize*2, 1)
         self.to(device)
         self.transfo = torch.arange(self.inputSize)^56
+        self.device = device
 
     def forward(self, x, color):
-        hidden1 = self.activation(self.tohidden(x))
-        hidden2 = self.activation(self.tohidden(x[:, self.transfo]))
-        if color:
-            hiddenRes = torch.concatenate((hidden2, hidden1), axis=1) # for black, reverse the perspective (side to move's perspective must be on the first place)
-        else:
-            hiddenRes = torch.concatenate((hidden1, hidden2), axis=1)
+        hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
+        firstIndex = color*self.HLSize
+        secondIndex = (1-color)*self.HLSize
+        hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.activation(self.tohidden(x))
+        hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.activation(self.tohidden(x[:, self.transfo]))
+        #if color:
+        #    hiddenRes = torch.concatenate((hidden2, hidden1), axis=1) # for black, reverse the perspective (side to move's perspective must be on the first place)
+        #else:
+        #    hiddenRes = torch.concatenate((hidden1, hidden2), axis=1)
         x = self.toout(hiddenRes)
         x2 = (x-self.toout.bias[0])/self.QA+self.toout.bias[0]
         return self.outAct(x2*self.SCALE/(self.QA*self.QB))
@@ -54,7 +58,6 @@ class Trainer:
         self.modelEval = Model(device)
     
     def trainStep(self, dataX, dataY, color):
-        self.model.train()
         yhat = self.model(dataX, color)
         loss = self.loss_fn(dataY, yhat)
         loss.backward()
@@ -94,6 +97,7 @@ class Trainer:
         for i in range(epoch):
             startTime = time.time()
             totLoss = 0
+            self.model.train()
             for c, dataL in enumerate((dataL1, dataL2)):
                 for xBatch, yBatch in dataL:
                     xBatch = xBatch.float().to(self.device)
