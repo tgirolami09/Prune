@@ -3,7 +3,8 @@ from model import *
 from chess import Board, Move, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, WHITE, BLACK
 import numpy as np
 from tqdm import tqdm
-
+import os
+import pickle
 def reverse_mask(board):
     board = ((board&0xFFFFFFFF00000000) >> 32) | ((board&0x00000000FFFFFFFF) << 32)
     board = ((board&0xFFFF0000FFFF0000) >> 16) | ((board&0x0000FFFF0000FFFF) << 16)
@@ -35,6 +36,8 @@ parser.add_argument("--percentTrain", type=float, default=0.9, help="percent of 
 parser.add_argument("--reload", action="store_true", help="to not start from nothing each time")
 parser.add_argument("--outFile", "-o", type=str, default="bestModel.bin", help="the file where the current best model is written")
 parser.add_argument("--limit", type=int, default=-1, help="the number of training samples (-1 for all the file)")
+parser.add_argument("--pickledData", type=str, default="dataPickled.bin", help="where the collected data is")
+parser.add_argument("--remake", action="store_true", help="to remake training data")
 settings = parser.parse_args(sys.argv[1:])
 
 print('initisalise the trainer')
@@ -46,29 +49,36 @@ if settings.reload:
     trainer.load(settings.outFile)
     endTime = time.time()
     print(f'in {endTime-startTime:.3f}s')
-
-dataX = [[], []]
-dataY = [[], []]
-with open(settings.dataFile) as f:
-    tq = tqdm()
-    count = 0
-    for line in f:
-        assert line.count('|') == 3, line
-        tq.update(1)
-        fen, score, staticScore, move = line.split('|')
-        score, staticScore = int(score), int(staticScore.split()[-1])
-        if abs(staticScore-score) >= 70:continue
-        board = Board(fen)
-        dataX[not board.turn].append(boardToInput(board))
-        score = 1/(1+np.exp(-float(score)/200))
-        dataY[not board.turn].append([score])
-        count += 1
-        if count >= settings.limit and settings.limit != -1:
-            break
-tq.close()
-print('data collected:', len(dataX[0])+len(dataX[1]))
-dataX = [torch.from_numpy(np.array(i)) for i in dataX]
-dataY = [torch.from_numpy(np.array(i)) for i in dataY]
+if settings.pickledData in os.listdir() and not settings.remake:
+    print("read pickled data")
+    startTime = time.time()
+    dataX, dataY = pickle.load(open(settings.pickledData, "rb"))
+    endTime = time.time()
+    print(f"finished in {endTime-startTime}s")
+else:
+    dataX = [[], []]
+    dataY = [[], []]
+    with open(settings.dataFile) as f:
+        tq = tqdm()
+        count = 0
+        for line in f:
+            assert line.count('|') == 3, line
+            tq.update(1)
+            fen, score, staticScore, move = line.split('|')
+            score, staticScore = int(score), int(staticScore.split()[-1])
+            if abs(staticScore-score) >= 70:continue
+            board = Board(fen)
+            dataX[not board.turn].append(boardToInput(board))
+            score = 1/(1+np.exp(-float(score)/200))
+            dataY[not board.turn].append([score])
+            count += 1
+            if count >= settings.limit and settings.limit != -1:
+                break
+    tq.close()
+    print('data collected:', len(dataX[0])+len(dataX[1]))
+    dataX = [torch.from_numpy(np.array(i)) for i in dataX]
+    dataY = [torch.from_numpy(np.array(i)) for i in dataY]
+    pickle.dump((dataX, dataY), open(settings.pickledData, "wb"))
 print('launch training')
 trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile)
 trainer.save()
