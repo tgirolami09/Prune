@@ -668,12 +668,12 @@ class LegalMoveGenerator{
             inCheck = true;
             captureMask = (1ul << checkerPos);
             if (checkerType == BISHOP){
-                big maskDiag = pseudoLegalBishopMoves(checkerPos, allPieces) & pseudoLegalBishopMoves(friendlyKingPosition, allPieces);
+                big maskDiag = directions[friendlyKingPosition][checkerPos] ^ ((1ul << checkerPos) | (1ul << friendlyKingPosition));
                 moveMask &= maskDiag;
                 pawnMoveMask &= maskDiag;
             }
             else if (checkerType == ROOK){
-                big maskLine = pseudoLegalRookMoves(checkerPos, allPieces) & pseudoLegalRookMoves(friendlyKingPosition, allPieces);
+                big maskLine = directions[friendlyKingPosition][checkerPos] ^ ((1ul << checkerPos) | (1ul << friendlyKingPosition));
                 moveMask &= maskLine;
                 pawnMoveMask &= maskLine;
             }
