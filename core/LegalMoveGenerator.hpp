@@ -125,6 +125,12 @@ big directions[64][64];
 // big fullDir[64][8];
 static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
 void precomputeDirections(){
+    //Set everything to 0 first just to be sure
+    for (int i = 0; i < 64; ++i){
+        for (int j = 0; j < 64; ++j){
+            directions[i][j] = 0;
+        }    
+    }
     for(int row=0; row<8; row++){
         for(int col=0; col<8; col++){
             int square = row*8+col;
@@ -667,20 +673,12 @@ class LegalMoveGenerator{
         }else if (nbCheckers == 1){
             inCheck = true;
             captureMask = (1ul << checkerPos);
-            if (checkerType == BISHOP){
-                big maskDiag = directions[friendlyKingPosition][checkerPos] ^ ((1ul << checkerPos) | (1ul << friendlyKingPosition));
-                moveMask &= maskDiag;
-                pawnMoveMask &= maskDiag;
-            }
-            else if (checkerType == ROOK){
-                big maskLine = directions[friendlyKingPosition][checkerPos] ^ ((1ul << checkerPos) | (1ul << friendlyKingPosition));
-                moveMask &= maskLine;
-                pawnMoveMask &= maskLine;
-            }
-            else{
-                moveMask = 0;
-                pawnMoveMask = 0;
-            }
+            //If checker is a slider this is perfect logic
+            //If it's a pawn then logic is fine too (because king is already excluded and the pawn is already in the captureMask)
+            //If it's a knight then no valid ray exists so the mask is 0 (which is what we want)
+            big rayToChecker = directions[friendlyKingPosition][checkerPos];
+            moveMask &= rayToChecker;
+            pawnMoveMask &= rayToChecker;
         }
         pawnMoveMask = (onlyCapture?0:pawnMoveMask)|(pawnMoveMask&(~clipped_brow));
         legalPawnMoves(friendlyPieces[PAWN], state.friendlyColor(), state.lastDoublePawnPush, pawnMoveMask, captureMask, legalMoves, nbMoves, allPieces, allEnemies, enemyPieces[ROOK] | enemyPieces[QUEEN], onlyCapture);
