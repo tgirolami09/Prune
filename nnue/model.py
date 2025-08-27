@@ -4,13 +4,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 import sys
 import time
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, random_split
 from random import shuffle, seed, randrange
 from tqdm import trange
 
 class Model(nn.Module):
     inputSize = 64*12
-    HLSize = 4096
+    HLSize = 64
     SCALE = 400
     QA = 255
     QB = 64
@@ -72,24 +72,16 @@ class Trainer:
 
     def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin"):
         s = randrange(0, 2**64)
-        seed(s)
-        shuffle(dataX[0])
-        shuffle(dataX[1])
-        seed(s)
-        shuffle(dataY[0])
-        shuffle(dataY[1])
-        sizeTrain1 = int(len(dataX[0])*percentTrain)
-        sizeTrain2 = int(len(dataX[1])*percentTrain)
-        totTrainData = sizeTrain1+sizeTrain2
+        dataset1 = TensorDataset(dataX[0], dataY[0])
+        dataset2 = TensorDataset(dataX[1], dataY[1])
+        dataTrain1, dataTest1 = random_split(dataset1, [percentTrain, 1-percentTrain])
+        dataTrain2, dataTest2 = random_split(dataset2, [percentTrain, 1-percentTrain])
+        totTrainData = len(dataTrain1)+len(dataTrain2)
         totTestData = sum(map(len, dataX))-totTrainData
-        dataTrain1 = TensorDataset(dataX[0][:sizeTrain1], dataY[0][:sizeTrain1])
-        dataTrain2 = TensorDataset(dataX[1][:sizeTrain2], dataY[1][:sizeTrain2])
-        dataTest1 = TensorDataset(dataX[0][sizeTrain1:], dataY[0][sizeTrain1:])
-        dataTest2 = TensorDataset(dataX[1][sizeTrain2:], dataY[1][sizeTrain2:])
         dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True)
         dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
-        testDataL2 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=False)
-        testDataL1 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=False)
+        testDataL2 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False)
+        testDataL1 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False)
         lastTestLoss = lastLoss = 0.0
         miniLoss = 1000
         isMin = False
