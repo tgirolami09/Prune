@@ -26,22 +26,21 @@ class Model(nn.Module):
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
         self.toout = nn.Linear(self.HLSize*2, 1)
         self.to(device)
-        self.transfo = torch.arange(self.inputSize)^56
+        self.transfo = torch.arange(self.inputSize)^56^64
         self.device = device
 
-    def forward(self, x, color):
+    def calc_score(self, x, color):
         hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
         firstIndex = color*self.HLSize
         secondIndex = (1-color)*self.HLSize
         hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.activation(self.tohidden(x))
         hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.activation(self.tohidden(x[:, self.transfo]))
-        #if color:
-        #    hiddenRes = torch.concatenate((hidden2, hidden1), axis=1) # for black, reverse the perspective (side to move's perspective must be on the first place)
-        #else:
-        #    hiddenRes = torch.concatenate((hidden1, hidden2), axis=1)
         x = self.toout(hiddenRes)
         x2 = (x-self.toout.bias[0])/self.QA+self.toout.bias[0]
-        return self.outAct(x2*self.SCALE/(self.QA*self.QB))
+        return x2*self.SCALE/(self.QA*self.QB)
+
+    def forward(self, x, color):
+        return self.outAct(self.calc_score(x, color))
     
     def _round(self):
         self.toout.weight = self.toout.weight.round()
@@ -70,8 +69,8 @@ class Trainer:
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
-    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin"):
-        s = randrange(0, 2**64)
+    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None):
+        startTime = time.time()
         dataset1 = TensorDataset(dataX[0], dataY[0])
         dataset2 = TensorDataset(dataX[1], dataY[1])
         dataTrain1, dataTest1 = random_split(dataset1, [percentTrain, 1-percentTrain])
@@ -86,6 +85,13 @@ class Trainer:
         miniLoss = 1000
         isMin = False
         lastModel = Model(self.device)
+        endTime = time.time()
+        print(f"setup in {endTime-startTime:.5f}s")
+        if testPos is not None:
+            self.modelEval.load_state_dict(self.model.state_dict())
+            self.modelEval.eval()
+            with torch.no_grad():
+                print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), 0)[:, 0].tolist())
         for i in range(epoch):
             startTime = time.time()
             totLoss = 0
@@ -111,6 +117,9 @@ class Trainer:
                 lastTestLoss = totTestLoss
                 lastLoss = totLoss
             print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {endTime-startTime:.3f}s')
+            if testPos is not None:
+                with torch.no_grad():
+                    print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0)[:, 0].tolist())
             sys.stdout.flush()
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
                 self.save(fileBest, lastModel)#we save the model

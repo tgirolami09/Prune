@@ -54,7 +54,7 @@ if settings.pickledData in os.listdir() and not settings.remake:
     startTime = time.time()
     dataX, dataY = pickle.load(open(settings.pickledData, "rb"))
     endTime = time.time()
-    print(f"finished in {endTime-startTime}s")
+    print(f"finished in {endTime-startTime}s with {len(dataX[0])+len(dataX[1])} data")
 else:
     dataX = [[], []]
     dataY = [[], []]
@@ -80,5 +80,13 @@ else:
     dataY = [torch.from_numpy(np.array(i)) for i in dataY]
     pickle.dump((dataX, dataY), open(settings.pickledData, "wb"))
 print('launch training')
-trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile)
+testPos = torch.from_numpy(np.array([boardToInput(Board(fen)) for fen in [
+    'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',           # starting position
+    'r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w QKqk -'    # kiwipete position
+]]))
+for A in testPos.reshape(testPos.shape[0], 12, 64).tolist():
+    for line in A:
+        print(*line, sep=' ')
+    print()
+trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile, testPos)
 trainer.save()
