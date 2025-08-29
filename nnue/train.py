@@ -68,9 +68,10 @@ else:
             score, staticScore = int(score), int(staticScore.split()[-1])
             if abs(staticScore-score) >= 70:continue
             board = Board(fen)
-            dataX[not board.turn].append(boardToInput(board))
-            score = 1/(1+np.exp(-float(score)/200))
-            dataY[not board.turn].append([score])
+            dataX[board.turn == BLACK].append(boardToInput(board))
+            target = staticScore-score
+            target = 1/(1+np.exp(-target/trainer.model.normal))
+            dataY[board.turn == BLACK].append([target])
             count += 1
             if count >= settings.limit and settings.limit != -1:
                 break
@@ -84,9 +85,5 @@ testPos = torch.from_numpy(np.array([boardToInput(Board(fen)) for fen in [
     'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',           # starting position
     'r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w QKqk -'    # kiwipete position
 ]]))
-for A in testPos.reshape(testPos.shape[0], 12, 64).tolist():
-    for line in A:
-        print(*line, sep=' ')
-    print()
 trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile, testPos)
 trainer.save()

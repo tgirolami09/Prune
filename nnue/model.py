@@ -14,12 +14,12 @@ class Model(nn.Module):
     SCALE = 400
     QA = 255
     QB = 64
-
+    normal = 20
     def activation(self, x):
         return torch.clamp(x, min=0, max=self.QA)**2
 
     def outAct(self, x):
-        return F.sigmoid(x/200)
+        return F.sigmoid(x/self.normal)
 
     def __init__(self, device):
         super().__init__()
@@ -29,15 +29,23 @@ class Model(nn.Module):
         self.transfo = torch.arange(self.inputSize)^56^64
         self.device = device
 
-    def calc_score(self, x, color):
+    def calc_score(self, x, color, isInt=False):
         hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
         firstIndex = color*self.HLSize
         secondIndex = (1-color)*self.HLSize
         hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.activation(self.tohidden(x))
         hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.activation(self.tohidden(x[:, self.transfo]))
         x = self.toout(hiddenRes)
-        x2 = (x-self.toout.bias[0])/self.QA+self.toout.bias[0]
-        return x2*self.SCALE/(self.QA*self.QB)
+        x2 = x-self.toout.bias[0]
+        if isInt:
+            x2 //= self.QA
+        else:
+            x2 /= self.QA
+        x2 += self.toout.bias[0]
+        if isInt:
+            return x2*self.SCALE//(self.QA*self.QB)
+        else:
+            return x2*self.SCALE/(self.QA*self.QB)
 
     def forward(self, x, color):
         return self.outAct(self.calc_score(x, color))
@@ -91,7 +99,7 @@ class Trainer:
             self.modelEval.load_state_dict(self.model.state_dict())
             self.modelEval.eval()
             with torch.no_grad():
-                print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), 0)[:, 0].tolist())
+                print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
         for i in range(epoch):
             startTime = time.time()
             totLoss = 0
@@ -119,9 +127,10 @@ class Trainer:
             print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {endTime-startTime:.3f}s')
             if testPos is not None:
                 with torch.no_grad():
-                    print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0)[:, 0].tolist())
+                    print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
             sys.stdout.flush()
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
+                lastModel._round()
                 self.save(fileBest, lastModel)#we save the model
             lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:

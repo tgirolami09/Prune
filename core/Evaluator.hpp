@@ -247,11 +247,14 @@ static const int tableSize=1<<10;//must be a power of two, for now it's pretty s
 
 class IncrementalEvaluator{
     int mgPhase;
+    int mgScore, egScore;
     int presentPieces[2][6]; //keep trace of number of pieces by side
     NNUE nnue;
     template<int f>
     void changePiece(int pos, int piece, bool c){
         int sign = (c == WHITE) ? 1 : -1;
+        mgScore += f*sign*mg_table[c][piece][pos];
+        egScore += f*sign*eg_table[c][piece][pos];
         nnue.change2<f>(piece*2+c, pos);
         mgPhase += f*gamephaseInc[piece];
         presentPieces[c][piece] += f;
@@ -269,11 +272,13 @@ public:
     IncrementalEvaluator():nnue("model64.bin"){
         init_tables();
         init_forwards();
+        mgScore = egScore = 0;
         memset(presentPieces, 0, sizeof(presentPieces));
     }
 
     void init(const GameState& state){//should be only call at the start of the search
         mgPhase = 0;
+        mgScore = egScore = 0;
         nnue.clear();
         memset(presentPieces, 0, sizeof(presentPieces));
         for(int square=0; square<64; square++){
@@ -302,10 +307,12 @@ public:
     }
 
     int getScore(bool c, pawnStruct s){
-        /*int clampPhase = min(mgPhase, 24);
+        int clampPhase = min(mgPhase, 24);
         int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
-        if(c == BLACK)score = -score;*/
-        return nnue.eval(c);
+        if(c == BLACK)score = -score;
+        int nnueCorrection = nnue.eval(c);
+        //printf("%d\n", nnueCorrection);
+        return score-nnueCorrection;
     }
     template<int f=1>
     void playMove(Move move, bool c){

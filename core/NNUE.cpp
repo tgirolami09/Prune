@@ -89,6 +89,6 @@ public:
         }
         res /= QA;
         res += outbias;
-        return res*SCALE/(QA*QB);
+        return -res*SCALE/(QA*QB);
     }
 };
