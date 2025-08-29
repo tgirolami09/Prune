@@ -14,7 +14,7 @@
 #include <string>
 #include <thread>
 #define MoveScore pair<int, Move>
-//#define CalculatePV
+#define CalculatePV
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;
     int second = ((MoveScore*)b)->first;

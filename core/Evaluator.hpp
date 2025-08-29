@@ -4,6 +4,7 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
+#include "NNUE.cpp"
 #include <climits>
 #include <cstring>
 #include <cmath>
@@ -245,21 +246,18 @@ inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKil
 static const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
 
 class IncrementalEvaluator{
-    int mgScore, egScore;
     int mgPhase;
-    pawnStruct table[tableSize];
     int presentPieces[2][6]; //keep trace of number of pieces by side
+    NNUE nnue;
     template<int f>
     void changePiece(int pos, int piece, bool c){
         int sign = (c == WHITE) ? 1 : -1;
-        mgScore += f*sign*mg_table[c][piece][pos];
-        egScore += f*sign*eg_table[c][piece][pos];
+        nnue.change2<f>(piece*2+c, pos);
         mgPhase += f*gamephaseInc[piece];
         presentPieces[c][piece] += f;
     }
 public:
     void print(){
-        printf("mg = %d; eg = %d\n", mgScore, egScore);
         printf("phase = %d\n", mgPhase);
         for(int i=0; i<2; i++){
             for(int j=0; j<6; j++){
@@ -268,16 +266,15 @@ public:
         }
     }
 
-    IncrementalEvaluator(){
+    IncrementalEvaluator():nnue("model64.bin"){
         init_tables();
         init_forwards();
         memset(presentPieces, 0, sizeof(presentPieces));
     }
 
     void init(const GameState& state){//should be only call at the start of the search
-        mgScore = 0;
-        egScore = 0;
         mgPhase = 0;
+        nnue.clear();
         memset(presentPieces, 0, sizeof(presentPieces));
         for(int square=0; square<64; square++){
             int piece=state.getfullPiece(square);
@@ -304,47 +301,11 @@ public:
         return !mgPhase;
     }
 
-    int get_eval(pawnStruct s){
-        static const int bonus[8] = {0, 15, 15, 25, 40, 60, 90, 0};
-        int key = s.whitePawn&(tableSize-1);
-        if(table[key] == s){//should hit the table pretty often because the pawn structure is very similar in siblings nodes
-            return table[key].score;
-        }
-        int score = 0;
-        big opponentPawns=s.blackPawn;
-        ubyte pos[8];
-        int nbPawns = places(s.whitePawn, pos);
-        for(int idPawn=0; idPawn<nbPawns; idPawn++){
-            if((mask_forward[pos[idPawn]]&opponentPawns) == 0){
-                score += bonus[row(pos[idPawn])];
-            }
-            if((mask_forward_inv[pos[idPawn]]&~maskCol(pos[idPawn]))&s.blackPawn) // can be protected by friendly pawn
-                score += 10;
-            if(maskCol(pos[idPawn])&s.whitePawn) //doubled pawns
-                score -= 5;
-        }
-        opponentPawns = s.whitePawn;
-        nbPawns = places(s.blackPawn, pos);
-        for(int idPawn=0; idPawn<nbPawns; idPawn++){
-            if((mask_forward_inv[pos[idPawn]]&opponentPawns) == 0){
-                score -= bonus[8-row(pos[idPawn])];
-            }
-            if((mask_forward[pos[idPawn]]&~maskCol(pos[idPawn]))&s.blackPawn)
-                score -= 10;
-            if(maskCol(pos[idPawn])&s.blackPawn)
-                score += 5;
-        }
-        table[key] = s;
-        table[key].score = score;
-        return score;
-    }
-
     int getScore(bool c, pawnStruct s){
-        int clampPhase = min(mgPhase, 24);
+        /*int clampPhase = min(mgPhase, 24);
         int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
-        //score += get_eval(s);
-        if(c == BLACK)score = -score;
-        return score;
+        if(c == BLACK)score = -score;*/
+        return nnue.eval(c);
     }
     template<int f=1>
     void playMove(Move move, bool c){
