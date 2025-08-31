@@ -54,7 +54,15 @@ if settings.pickledData in os.listdir() and not settings.remake:
     startTime = time.time()
     dataX, dataY = pickle.load(open(settings.pickledData, "rb"))
     endTime = time.time()
-    print(f"finished in {endTime-startTime}s with {len(dataX[0])+len(dataX[1])} data")
+    totLength = len(dataX[0])+len(dataX[1])
+    print(f"finished in {endTime-startTime}s with {totLength} data")
+    if settings.limit != -1:
+        per = int(round(len(dataX[0])*settings.limit/totLength)), int(round(len(dataX[1])*settings.limit/totLength))
+        dataX[0] = dataX[0][:per[0]]
+        dataX[1] = dataX[1][:per[1]]
+        dataY[0] = dataY[0][:per[0]]
+        dataY[1] = dataY[1][:per[1]]
+        print("remaining:", len(dataX[0])+len(dataX[1]))
 else:
     dataX = [[], []]
     dataY = [[], []]

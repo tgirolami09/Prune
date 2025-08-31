@@ -51,10 +51,10 @@ class Model(nn.Module):
         return self.outAct(self.calc_score(x, color))
     
     def _round(self):
-        self.toout.weight = self.toout.weight.round()
-        self.toout.bias = self.toout.bias.round()
-        self.tohidden.weight = self.tohidden.weight.round()
-        self.tohidden.bias = self.tohidden.bias.round()
+        self.toout.weight[:] = self.toout.weight.round()
+        self.toout.bias[:] = self.toout.bias.round()
+        self.tohidden.weight[:] = self.tohidden.weight.round()
+        self.tohidden.bias[:] = self.tohidden.bias.round()
 
 class Trainer:
     def __init__(self, lr, device):
@@ -99,6 +99,7 @@ class Trainer:
             self.modelEval.load_state_dict(self.model.state_dict())
             self.modelEval.eval()
             with torch.no_grad():
+                self.modelEval._round()
                 print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
         for i in range(epoch):
             startTime = time.time()
@@ -112,6 +113,7 @@ class Trainer:
             totTestLoss = 0
             with torch.no_grad():
                 self.modelEval.load_state_dict(self.model.state_dict())
+                self.modelEval._round()
                 self.modelEval.eval()
                 for c, testDataL in enumerate((testDataL1, testDataL2)):
                     for xBatch, yBatch in testDataL:
@@ -130,7 +132,6 @@ class Trainer:
                     print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
             sys.stdout.flush()
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
-                lastModel._round()
                 self.save(fileBest, lastModel)#we save the model
             lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:
