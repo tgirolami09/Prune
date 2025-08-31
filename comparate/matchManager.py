@@ -261,7 +261,10 @@ def playBatch(args):
         results[key] += 1
         globalRes[key] += 1
         currentState = np.array(globalRes)
-        eloChange, delta, stdDeviation, score = get_confidence(currentState)
+        try:
+            eloChange, delta, stdDeviation, score = get_confidence(currentState)
+        except:
+            eloChange, delta, stdDeviation, score = (np.nan,)*5
         if settings.sprt:
             try:
                 llr = PentanomialSPRT(currentState, *settings.hypothesis)
