@@ -63,8 +63,9 @@ def getStaticEval(motor, board):
 
 def playGame(startFen, prog1, prog2):
     global startTime
+    data1, data2 = {}, {}
     curProg, otherProg = prog1, prog2
-    data = {} #fen:(score, move)
+    curData, otherData = data1, data2 #fen:(score, move)
     board = Board(startFen)
     remaindTimes = [startTime]*2
     while not board.is_game_over() and not board.can_claim_draw():
@@ -82,18 +83,19 @@ def playGame(startFen, prog1, prog2):
         if 'score' in result.info:
             score = result.info['score'].relative
             if not score.is_mate():
-                data[board.fen()] = (str(score.score()), str(getStaticEval(curProg, board)), result.move)
+                curData[board.fen()] = (str(score.score()), str(getStaticEval(curProg, board)), result.move)
         board.push(result.move)
         curProg, otherProg = otherProg, curProg
+        curData, otherData = otherData, curData
     winner = None
     if board.outcome() is not None:
         winner = board.outcome().winner
     if winner == WHITE:
-        return data, 0
+        return data1, data2, 0
     elif winner == BLACK:
-        return data, 1
+        return data2, data1, 1
     else:
-        return data, 2
+        return data1, data2, 2
 
 def playBatch(args):
     id, rangeGame = args
@@ -105,11 +107,15 @@ def playBatch(args):
         beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
         for idProg, prog, _prog in ((0, prog1, prog2), (1, prog2, prog1)):
-            data, result = playGame(beginBoard, prog, _prog)
+            data1, data2, result = playGame(beginBoard, prog, _prog)
             results[min(result^idProg, 2)] += 1
+            score = 1 if result != 2 else 0.5
             with open(f'data{id}.out', "a") as f:
-                for key, value in data.items():
-                    f.write(f'{key}|{value[0]}|{value[1]}|{value[2].uci()}\n')
+                for key, value in data1.items():
+                    f.write(f'{key}|{value[0]}|{value[1]}|{value[2].uci()}|{score}\n')
+                score = 1-score
+                for key, value in data2.items():
+                    f.write(f'{key}|{value[0]}|{value[1]}|{value[2].uci()}|{score}\n')
         sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, (results[0], results[2], results[1])))+'\033[F'*(id//10)+'\r')
     prog1.quit()
     prog2.quit()

@@ -38,6 +38,8 @@ parser.add_argument("--outFile", "-o", type=str, default="bestModel.bin", help="
 parser.add_argument("--limit", type=int, default=-1, help="the number of training samples (-1 for all the file)")
 parser.add_argument("--pickledData", type=str, default="dataPickled.bin", help="where the collected data is")
 parser.add_argument("--remake", action="store_true", help="to remake training data")
+parser.add_argument("--fullsave", action="store_true", help="to remake training data")
+parser.add_argument("--wdl", type=float, default=0.0, help="the portion of result in the target")
 settings = parser.parse_args(sys.argv[1:])
 
 print('initisalise the trainer')
@@ -66,32 +68,40 @@ if settings.pickledData in os.listdir() and not settings.remake:
 else:
     dataX = [[], []]
     dataY = [[], []]
+    mini = 10000
+    maxi = -10000
     with open(settings.dataFile) as f:
         tq = tqdm()
         count = 0
         for line in f:
-            assert line.count('|') == 3, line
+            assert line.count('|') == 4, line
             tq.update(1)
-            fen, score, staticScore, move = line.split('|')
+            fen, score, staticScore, move, result = line.split('|')
             score, staticScore = int(score), int(staticScore.split()[-1])
+            result = float(result)
             if abs(staticScore-score) >= 70:continue
             board = Board(fen)
             dataX[board.turn == BLACK].append(boardToInput(board))
-            target = staticScore-score
-            target = 1/(1+np.exp(-target/trainer.model.normal))
-            dataY[board.turn == BLACK].append([target])
+            mini = min(mini, score)
+            maxi = max(maxi, score)
+            dataY[board.turn == BLACK].append([score, result])
             count += 1
             if count >= settings.limit and settings.limit != -1:
                 break
     tq.close()
+    print(f'range: [{mini}, {maxi}]')
     print('data collected:', len(dataX[0])+len(dataX[1]))
     dataX = [torch.from_numpy(np.array(i)) for i in dataX]
     dataY = [torch.from_numpy(np.array(i)) for i in dataY]
     pickle.dump((dataX, dataY), open(settings.pickledData, "wb"))
 print('launch training')
+dataY = [1/(1+torch.exp(-Y[:, 0]/trainer.model.normal))*(1-settings.wdl)+settings.wdl*Y[:, 1] for Y in dataY]
+dataY = [Y.reshape(Y.shape[0], 1) for Y in dataY]
 testPos = torch.from_numpy(np.array([boardToInput(Board(fen)) for fen in [
     'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',           # starting position
-    'r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w QKqk -'    # kiwipete position
+    'r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w QKqk -',   # kiwipete position
+    '8/8/2k5/2q5/8/8/8/3K4 b - - 0 1',                                    # one queen advantage
+    '8/8/2k5/2qq4/8/8/8/3K4 b - - 0 1'                                    # two queen advantage
 ]]))
-trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile, testPos)
+trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile, testPos, settings.fullsave)
 trainer.save()

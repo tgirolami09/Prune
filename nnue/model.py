@@ -19,12 +19,17 @@ class Model(nn.Module):
         return torch.clamp(x, min=0, max=self.QA)**2
 
     def outAct(self, x):
-        return F.sigmoid(x/self.normal)
+        return F.sigmoid(-x/self.normal)
 
     def __init__(self, device):
         super().__init__()
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
         self.toout = nn.Linear(self.HLSize*2, 1)
+        with torch.no_grad():
+            self.tohidden.weight *= 500
+            self.tohidden.bias *= 500
+            self.toout.weight *= 500
+            self.toout.bias *= 500
         self.to(device)
         self.transfo = torch.arange(self.inputSize)^56^64
         self.device = device
@@ -77,7 +82,7 @@ class Trainer:
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
-    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None):
+    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, fullsave=False):
         startTime = time.time()
         dataset1 = TensorDataset(dataX[0], dataY[0])
         dataset2 = TensorDataset(dataX[1], dataY[1])
@@ -87,8 +92,8 @@ class Trainer:
         totTestData = sum(map(len, dataX))-totTrainData
         dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True)
         dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
-        testDataL2 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False)
-        testDataL1 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False)
+        testDataL1 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False)
+        testDataL2 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False)
         lastTestLoss = lastLoss = 0.0
         miniLoss = 1000
         isMin = False
@@ -105,12 +110,22 @@ class Trainer:
             startTime = time.time()
             totLoss = 0
             self.model.train()
-            for c, dataL in enumerate((dataL1, dataL2)):
-                for xBatch, yBatch in dataL:
+            colors = {0:iter(dataL1), 1:iter(dataL2)}
+            while colors:
+                for color in list(colors.keys()):
+                    try:
+                        xBatch, yBatch = next(colors[color])
+                    except StopIteration:
+                        colors.pop(color)
+                        continue
+                    except:
+                        print(colors, color)
+                        raise StopIteration()
                     xBatch = xBatch.float().to(self.device)
                     yBatch = yBatch.float().to(self.device)
-                    totLoss += self.trainStep(xBatch, yBatch, c)*len(xBatch)
+                    totLoss += self.trainStep(xBatch, yBatch, color)*len(xBatch)
             totTestLoss = 0
+            endTimeTrain = time.time()
             with torch.no_grad():
                 self.modelEval.load_state_dict(self.model.state_dict())
                 self.modelEval._round()
@@ -126,13 +141,17 @@ class Trainer:
             if lastTestLoss == 0.0:
                 lastTestLoss = totTestLoss
                 lastLoss = totLoss
-            print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {endTime-startTime:.3f}s')
+            span = endTime-startTime
+            span2 = endTimeTrain-startTime
+            print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {span:.3f}s ({span2/span*100:.2f}% for training)')
             if testPos is not None:
                 with torch.no_grad():
                     print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
             sys.stdout.flush()
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
                 self.save(fileBest, lastModel)#we save the model
+            if fullsave:
+                self.save("model.bin", self.modelEval)
             lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
@@ -144,10 +163,7 @@ class Trainer:
 
     def get_int(self, tensor):
         tensor = float(tensor)
-        self.maxi = max(self.maxi, tensor)
-        self.mini = min(self.mini, tensor)
-        self.s += tensor
-        self.count += 1
+        self.maxi = max(self.maxi, abs(tensor))
         return int(round(tensor)).to_bytes(2, "little", signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
 
     def read_bytes(self, bytes):
@@ -171,7 +187,7 @@ class Trainer:
                 f.write(self.get_int(model.toout.weight[0][i]))
             f.write(self.get_int(model.toout.bias[0]))
         endTime = time.time()
-        print(f'min {self.mini} max {self.maxi} sum {self.s:.2f} number of weights {self.count} mean {self.s/self.count:.5f} in {endTime-startTime:.3f}s')
+        print(f'save model to {filename} (max |weight| {self.maxi}) in {endTime-startTime:.3f}s')
         sys.stdout.flush()
     
     def load(self, filename):
