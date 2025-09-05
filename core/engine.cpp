@@ -65,6 +65,9 @@ void doUCI(string UCI_instruction, Chess& state){
             }else if(arg == "Move" && inter == "Overhead"){
                 stream >> inter >> precision;
                 moveOverhead = precision;
+            }else if(arg == "nnueFile"){
+                stream >> inter;
+                bestMoveFinder.eval.nnue = NNUE(inter);
             }else{
                 stream >> precision;
                 if(arg == "Hash"){
@@ -103,6 +106,7 @@ void doUCI(string UCI_instruction, Chess& state){
         printf("option name Hash type spin default 64 min 1 max 512\n");
         printf("option name Move Overhead type spin default 10 min 0 max 5000\n");
         printf("option name Clear Hash type button\n");
+        printf("option name nnueFile type string default model.bin\n");
         printf("uciok\n");
     }else if(command == "position"){
         string arg;

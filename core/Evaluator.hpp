@@ -8,7 +8,7 @@
 #include <climits>
 #include <cstring>
 #include <cmath>
-#define COMPLICATED_EVALUATION
+//#define NNUE_CORRECT
 //https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
 const int eg_value[6] = { 94, 281, 297, 512,  936,  0};
@@ -247,19 +247,23 @@ static const int tableSize=1<<10;//must be a power of two, for now it's pretty s
 
 class IncrementalEvaluator{
     int mgPhase;
+#ifdef NNUE_CORRECT
     int mgScore, egScore;
+#endif
     int presentPieces[2][6]; //keep trace of number of pieces by side
-    NNUE nnue;
     template<int f>
     void changePiece(int pos, int piece, bool c){
         int sign = (c == WHITE) ? 1 : -1;
+#ifdef NNUE_CORRECT
         mgScore += f*sign*mg_table[c][piece][pos];
         egScore += f*sign*eg_table[c][piece][pos];
+#endif
         nnue.change2<f>(piece*2+c, pos);
         mgPhase += f*gamephaseInc[piece];
         presentPieces[c][piece] += f;
     }
 public:
+    NNUE nnue;
     void print(){
         printf("phase = %d\n", mgPhase);
         for(int i=0; i<2; i++){
@@ -272,13 +276,17 @@ public:
     IncrementalEvaluator():nnue("model64.bin"){
         init_tables();
         init_forwards();
+#ifdef NNUE_CORRECT
         mgScore = egScore = 0;
+#endif
         memset(presentPieces, 0, sizeof(presentPieces));
     }
 
     void init(const GameState& state){//should be only call at the start of the search
         mgPhase = 0;
+#ifdef NNUE_CORRECT
         mgScore = egScore = 0;
+#endif
         nnue.clear();
         memset(presentPieces, 0, sizeof(presentPieces));
         for(int square=0; square<64; square++){
@@ -307,12 +315,16 @@ public:
     }
 
     int getScore(bool c, pawnStruct s){
+#ifdef NNUE_CORRECT
         int clampPhase = min(mgPhase, 24);
         int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
         if(c == BLACK)score = -score;
         int nnueCorrection = nnue.eval(c);
         //printf("%d\n", nnueCorrection);
         return score-nnueCorrection;
+#else
+        return nnue.eval(c);
+#endif
     }
     template<int f=1>
     void playMove(Move move, bool c){
