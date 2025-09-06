@@ -22,6 +22,7 @@ parser.add_argument("--processes", '-p', type=int, default=70, help="the number 
 parser.add_argument("--hypothesis", nargs=2, type=int, default=[0, 5], help="hypothesis for sprt")
 parser.add_argument("--confidence", nargs=1, type=float, default=0.95, help="confidence of the bounds for sprt")
 parser.add_argument("--configs", nargs=2, type=eval, default=[{}, {}], help="config of the different engines")
+parser.add_argument("--openingFile", type=str, default="beginBoards.out", help="file where are the starting fens")
 settings = parser.parse_args(sys.argv[1:])
 assert isinstance(settings.configs[0], dict) and isinstance(settings.configs[1], dict), f"configs must be a dict {settings.configs}"
 assert settings.hypothesis[0] < settings.hypothesis[1], "the first hypothesis must be less than the hypothsesis"
@@ -295,13 +296,12 @@ def playBatch(args):
     prog2.quit()
     return np.array(results)
 
-with open("beginBoards.out") as games:
+with open(settings.openingFile) as games:
     beginBoards = list(games.readlines())
 
 with open('wasntItWinning.pgn', 'w') as f:f.write("")
 nbProcess = settings.processes
 nbBoards = len(beginBoards)
-print(settings.configs)
 with SharedMemoryManager() as smm:
     sl = smm.ShareableList([0]*5)
     cutoff = smm.ShareableList([False])
