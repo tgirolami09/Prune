@@ -62,18 +62,19 @@ class Model(nn.Module):
         self.tohidden.bias[:] = self.tohidden.bias.round()
 
 class Clipper:
+    clamp = 127
     def __call__(self, module):
         if hasattr(module, 'weight'):
             w = module.weight.data
-            w = w.clamp(-128, 128)
+            w = w.clamp(-self.clamp, self.clamp)
             module.weight.data = w
         if hasattr(module, 'bias') and module.bias is not None:
             b = module.bias.data
-            b = b.clamp(-128, 128)
+            b = b.clamp(-self.clamp, self.clamp)
             module.bias.data = b
         elif hasattr(module, 'endBias'):
             b = module.endBias.data
-            b = b.clamp(-128, 128)
+            b = b.clamp(-self.clamp, self.clamp)
             module.endBias.data = b
 
 class Trainer:
