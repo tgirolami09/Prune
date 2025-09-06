@@ -66,29 +66,48 @@ if settings.pickledData in os.listdir() and not settings.remake:
         dataY[1] = dataY[1][:per[1]]
         print("remaining:", len(dataX[0])+len(dataX[1]))
 else:
+    import re
+    rule = re.compile(settings.dataFile)
     dataX = [[], []]
     dataY = [[], []]
+    passed = set()
     mini = 10000
     maxi = -10000
-    with open(settings.dataFile) as f:
-        tq = tqdm()
-        count = 0
-        for line in f:
-            assert line.count('|') == 4, line
-            tq.update(1)
-            fen, score, staticScore, move, result = line.split('|')
-            score, staticScore = int(score), int(staticScore.split()[-1])
-            result = float(result)
-            if abs(staticScore-score) >= 70:continue
-            board = Board(fen)
-            dataX[board.turn == BLACK].append(boardToInput(board))
-            mini = min(mini, score)
-            maxi = max(maxi, score)
-            dataY[board.turn == BLACK].append([score, result])
-            count += 1
-            if count >= settings.limit and settings.limit != -1:
-                break
-    tq.close()
+    corrFiles = []
+    for file in os.listdir():
+        if rule.match(file):
+            corrFiles.append(file)
+    collision = 0
+    filtredPos = 0
+    kMaxScoreMagnitude = 1500
+    kMaxMaterialImbalance = 1200
+    for file in tqdm(corrFiles):
+        with open(file) as f:
+            count = 0
+            lines = f.readlines()
+            for line in tqdm(lines, leave=False):
+                assert line.count('|') == 4, line
+                if line in passed:
+                    collision += 1
+                    continue
+                passed.add(line)
+                fen, score, staticScore, move, result = line.split('|')
+                score, staticScore = int(score), int(staticScore.split()[-1])
+                board = Board(fen)
+                if abs(score) > kMaxScoreMagnitude or abs(staticScore) > kMaxMaterialImbalance or board.is_check() or board.is_capture(Move.from_uci(move)):
+                    filtredPos += 1
+                    continue
+                result = float(result)
+                #if abs(staticScore-score) >= 70:continue
+                dataX[board.turn == BLACK].append(boardToInput(board))
+                mini = min(mini, score)
+                maxi = max(maxi, score)
+                dataY[board.turn == BLACK].append([score, result])
+                count += 1
+                if count >= settings.limit and settings.limit != -1:
+                    break
+    print('collision', collision)
+    print(f'{filtredPos*100/(filtredPos+count)}% of pos were not filtred')
     print(f'range: [{mini}, {maxi}]')
     print('data collected:', len(dataX[0])+len(dataX[1]))
     dataX = [torch.from_numpy(np.array(i)) for i in dataX]
