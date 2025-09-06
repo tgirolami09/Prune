@@ -6,18 +6,8 @@ const int QA = 255;
 const int QB = 64;
 #define dbyte int16_t
 
-template<dbyte min, dbyte max>
-dbyte CReLU(dbyte value){
-    if (value <= min)
-        return min;
-
-    if (value >= max)
-        return max;
-
-    return value;
-}
-template<dbyte min, dbyte max>
-dbyte SCReLU(dbyte value){
+template<int min, int max>
+int SCReLU(int value){
     if(value <= min)
         return min*min;
     else if(value >= max)
@@ -25,7 +15,7 @@ dbyte SCReLU(dbyte value){
     return value*value;
 }
 
-int activation(dbyte value){
+int activation(int value){
     return SCReLU<0, QA>(value);
 }
 
@@ -36,20 +26,24 @@ public:
     dbyte outWeights[2*HL_SIZE];
     dbyte outbias;
     dbyte accs[2][HL_SIZE];
-
+    dbyte read_bytes(ifstream& file){
+        dbyte ret;
+        file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
+        return ret;
+    }
     NNUE(string name){
         ifstream file(name);
         for(int i=0; i<INPUT_SIZE; i++)
             for(int j=0; j<HL_SIZE; j++)
-                file.read(reinterpret_cast<char*>(&hlWeights[i][j]), sizeof(hlWeights[i][j]));
+                hlWeights[i][j] = read_bytes(file);
         for(int i=0; i<HL_SIZE; i++){
-            file.read(reinterpret_cast<char*>(&hlBiases[i]), sizeof(hlBiases[i]));
+            hlBiases[i] = read_bytes(file);
             accs[WHITE][i] = hlBiases[i];
             accs[BLACK][i] = hlBiases[i];
         }
         for(int i=0; i<2*HL_SIZE; i++)
-            file.read(reinterpret_cast<char*>(&outWeights[i]), sizeof(outWeights[i]));
-        file >> outbias;
+            outWeights[i] = read_bytes(file);
+        outbias = read_bytes(file);
     }
 
     void clear(){
@@ -84,11 +78,14 @@ public:
     dbyte eval(bool side){
         int res=0;
         for(int i=0; i<HL_SIZE; i++){
-            res += static_cast<int>(activation(accs[side  ][i]))*outWeights[i];
-            res += static_cast<int>(activation(accs[side^1][i]))*outWeights[i+HL_SIZE];
+            res += activation(accs[side  ][i])*static_cast<int>(outWeights[i]);
+            res += activation(accs[side^1][i])*static_cast<int>(outWeights[i+HL_SIZE]);
         }
         res /= QA;
         res += outbias;
-        return res*SCALE/(QA*QB);
+        if(res >= 0)
+            res = res*SCALE/(QA*QB);
+        else res = (res*SCALE-(QA*QB-1))/(QA*QB);
+        return res;
     }
 };
