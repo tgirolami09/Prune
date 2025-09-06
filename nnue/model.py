@@ -14,22 +14,23 @@ class Model(nn.Module):
     SCALE = 400
     QA = 255
     QB = 64
-    normal = 20
+    normal = 200
     def activation(self, x):
         return torch.clamp(x, min=0, max=self.QA)**2
 
     def outAct(self, x):
-        return F.sigmoid(-x/self.normal)
+        return F.sigmoid(x/self.normal)
 
     def __init__(self, device):
         super().__init__()
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
-        self.toout = nn.Linear(self.HLSize*2, 1)
+        self.toout = nn.Linear(self.HLSize*2, 1, bias=False)
+        self.endBias = nn.Parameter(torch.randn(1))
         with torch.no_grad():
             self.tohidden.weight *= 500
             self.tohidden.bias *= 500
             self.toout.weight *= 500
-            self.toout.bias *= 500
+            self.endBias *= 500
         self.to(device)
         self.transfo = torch.arange(self.inputSize)^56^64
         self.device = device
@@ -41,25 +42,39 @@ class Model(nn.Module):
         hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.activation(self.tohidden(x))
         hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.activation(self.tohidden(x[:, self.transfo]))
         x = self.toout(hiddenRes)
-        x2 = x-self.toout.bias[0]
         if isInt:
-            x2 //= self.QA
+            x //= self.QA
         else:
-            x2 /= self.QA
-        x2 += self.toout.bias[0]
+            x /= self.QA
+        x += self.endBias
         if isInt:
-            return x2*self.SCALE//(self.QA*self.QB)
+            return x*self.SCALE//(self.QA*self.QB)
         else:
-            return x2*self.SCALE/(self.QA*self.QB)
+            return x*self.SCALE/(self.QA*self.QB)
 
     def forward(self, x, color):
         return self.outAct(self.calc_score(x, color))
     
     def _round(self):
         self.toout.weight[:] = self.toout.weight.round()
-        self.toout.bias[:] = self.toout.bias.round()
+        self.endBias[:] = self.endBias.round()
         self.tohidden.weight[:] = self.tohidden.weight.round()
         self.tohidden.bias[:] = self.tohidden.bias.round()
+
+class Clipper:
+    def __call__(self, module):
+        if hasattr(module, 'weight'):
+            w = module.weight.data
+            w = w.clamp(-128, 128)
+            module.weight.data = w
+        if hasattr(module, 'bias') and module.bias is not None:
+            b = module.bias.data
+            b = b.clamp(-128, 128)
+            module.bias.data = b
+        elif hasattr(module, 'endBias'):
+            b = module.endBias.data
+            b = b.clamp(-128, 128)
+            module.endBias.data = b
 
 class Trainer:
     def __init__(self, lr, device):
@@ -106,6 +121,7 @@ class Trainer:
             with torch.no_grad():
                 self.modelEval._round()
                 print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
+        clipper = Clipper()
         for i in range(epoch):
             startTime = time.time()
             totLoss = 0
@@ -126,6 +142,7 @@ class Trainer:
                     totLoss += self.trainStep(xBatch, yBatch, color)*len(xBatch)
             totTestLoss = 0
             endTimeTrain = time.time()
+            self.model.apply(clipper)
             with torch.no_grad():
                 self.modelEval.load_state_dict(self.model.state_dict())
                 self.modelEval._round()
@@ -185,7 +202,7 @@ class Trainer:
                 f.write(self.get_int(model.tohidden.bias[i]))
             for i in range(model.HLSize*2):
                 f.write(self.get_int(model.toout.weight[0][i]))
-            f.write(self.get_int(model.toout.bias[0]))
+            f.write(self.get_int(model.endBias[0]))
         endTime = time.time()
         print(f'save model to {filename} (max |weight| {self.maxi}) in {endTime-startTime:.3f}s')
         sys.stdout.flush()
@@ -200,4 +217,4 @@ class Trainer:
                     self.model.tohidden.bias[i] = self.read_bytes(f.read(2))
                 for i in range(self.model.HLSize*2):
                     self.model.toout.weight[0][i] = self.read_bytes(f.read(2))
-                self.model.toout.bias[0] = self.read_bytes(f.read(2))
+                self.model.endBias[0] = self.read_bytes(f.read(2))

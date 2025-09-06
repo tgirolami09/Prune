@@ -95,13 +95,13 @@ else:
     dataY = [torch.from_numpy(np.array(i)) for i in dataY]
     pickle.dump((dataX, dataY), open(settings.pickledData, "wb"))
 print('launch training')
-dataY = [1/(1+torch.exp(-Y[:, 0]/trainer.model.normal))*(1-settings.wdl)+settings.wdl*Y[:, 1] for Y in dataY]
+dataY = [trainer.model.outAct(Y[:, 0])*(1-settings.wdl)+settings.wdl*Y[:, 1] for Y in dataY]
 dataY = [Y.reshape(Y.shape[0], 1) for Y in dataY]
 testPos = torch.from_numpy(np.array([boardToInput(Board(fen)) for fen in [
     'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',           # starting position
     'r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w QKqk -',   # kiwipete position
-    '8/8/2k5/2q5/8/8/8/3K4 b - - 0 1',                                    # one queen advantage
-    '8/8/2k5/2qq4/8/8/8/3K4 b - - 0 1'                                    # two queen advantage
+    '8/8/2K5/2Q5/8/8/8/3k4 w - - 0 1',                                    # one queen advantage
+    '8/8/2K5/2QQ4/8/8/8/3k4 w - - 0 1'                                    # two queen advantage
 ]]))
 trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile, testPos, settings.fullsave)
 trainer.save()
