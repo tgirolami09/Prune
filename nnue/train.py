@@ -14,14 +14,15 @@ def reverse_mask(board):
 L = [np.array(tuple(map(int, bin(i)[2:].zfill(8))), dtype=np.int8) for i in range(256)]
 def boardToInput(board):
     res = np.zeros(12*64, dtype=np.int8)
-    for p, piece in enumerate((PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING)):
+    index = 0
+    for p, piece in enumerate((board.pawns, board.knights, board.bishops, board.rooks, board.queens, board.kings)):
         for c, color in enumerate((WHITE, BLACK)):
-            index = (p*2+c)*64
-            mask = int(board.pieces(piece, color))
+            mask = piece&board.occupied_co[color]
             for i, b in enumerate(mask.to_bytes(8, 'big')):
                 eight = 8*i
                 bs = L[b]
                 res[index+eight:index+8+eight] = bs
+            index += 64
     return res
 
 
@@ -93,8 +94,11 @@ else:
                 passed.add(line)
                 fen, score, staticScore, move, result = line.split('|')
                 score, staticScore = int(score), int(staticScore.split()[-1])
+                if abs(score) > kMaxScoreMagnitude or abs(staticScore) > kMaxMaterialImbalance:
+                    filtredPos += 1
+                    continue
                 board = Board(fen)
-                if abs(score) > kMaxScoreMagnitude or abs(staticScore) > kMaxMaterialImbalance or board.is_check() or board.is_capture(Move.from_uci(move)):
+                if board.is_capture(Move.from_uci(move)) or board.is_check():
                     filtredPos += 1
                     continue
                 result = float(result)
