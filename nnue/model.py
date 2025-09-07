@@ -26,11 +26,6 @@ class Model(nn.Module):
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
         self.toout = nn.Linear(self.HLSize*2, 1, bias=False)
         self.endBias = nn.Parameter(torch.randn(1))
-        with torch.no_grad():
-            self.tohidden.weight *= 500
-            self.tohidden.bias *= 500
-            self.toout.weight *= 500
-            self.endBias *= 500
         self.to(device)
         self.transfo = torch.arange(self.inputSize)^56^64
         self.device = device
