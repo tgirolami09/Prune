@@ -1,33 +1,34 @@
 #include <cstdint>
 #include <experimental/simd>
-using namespace std::experimental;
+namespace stdx = std::experimental;
 const int INPUT_SIZE = 12*64;
 const int HL_SIZE = 64;
 const int SCALE = 400;
 const int QA = 255;
 const int QB = 64;
 #define dbyte int16_t
-#define simd16 native_simd<dbyte>
+#define simd16 stdx::native_simd<dbyte>
 const int nb16 = std::size(simd16());
-#define simdint fixed_size_simd<int, nb16>
+#define simdint stdx::fixed_size_simd<int, nb16>
 static_assert(HL_SIZE%nb16 == 0);
 
 simdint convert16(simd16 var){
-    return simdint([var](int i){return var[i];});
+    return stdx::static_simd_cast<int>(var);
 }
 
 template<int min, int max>
 simdint SCReLU(simdint value){
-    where(value <= min, value) = min*min;
-    where(value >= max, value) = max*max;
-    where(value > min && value < max, value) = value*value;
-    return value;
+    const simdint mini = min;
+    const simdint maxi = max;
+    value = stdx::clamp(value, mini, maxi);
+    return value*value;
 }
 
 simdint activation(simdint value){
     return SCReLU<0, QA>(value);
 }
 int mysum(simdint x){
+    return stdx::reduce(x, std::plus{});
     int res=0;
     for(int i=0; i<size(x); i++)
         res += x[i];
