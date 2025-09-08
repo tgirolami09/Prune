@@ -1,8 +1,10 @@
 from chess import Board, engine, WHITE, BLACK
 import sys, math, time
 from multiprocessing import Pool
+from multiprocessing.managers import SharedMemoryManager
 import asyncio
 import argparse
+import os
 isMoveTime = False
 parser = argparse.ArgumentParser(prog="matchManager")
 parser.add_argument("prog1", type=str, help="the executable of one of the version")
@@ -63,8 +65,9 @@ def getStaticEval(motor, board):
 
 def playGame(startFen, prog1, prog2):
     global startTime
+    data1, data2 = {}, {}
     curProg, otherProg = prog1, prog2
-    data = {} #fen:(score, move)
+    curData, otherData = data1, data2 #fen:(score, move)
     board = Board(startFen)
     remaindTimes = [startTime]*2
     while not board.is_game_over() and not board.can_claim_draw():
@@ -82,35 +85,74 @@ def playGame(startFen, prog1, prog2):
         if 'score' in result.info:
             score = result.info['score'].relative
             if not score.is_mate():
-                data[board.fen()] = (str(score.score()), str(getStaticEval(curProg, board)), result.move)
+                curData[board.fen()] = (str(score.score()), str(getStaticEval(curProg, board)), result.move)
         board.push(result.move)
         curProg, otherProg = otherProg, curProg
+        curData, otherData = otherData, curData
     winner = None
     if board.outcome() is not None:
         winner = board.outcome().winner
     if winner == WHITE:
-        return data, 0
+        return data1, data2, 0
     elif winner == BLACK:
-        return data, 1
+        return data2, data1, 1
     else:
-        return data, 2
+        return data1, data2, 2
+
+def renderTime(s):
+    res = ''
+    if s > 60:
+        m = int(s//60)
+        s -= 60*m
+        if m > 60:
+            h, m = divmod(m, 60)
+            if h > 24:
+                d, h = divmod(h, 24)
+                res += f'{d:2d}d '
+            res += f'{h:2d}h '
+        res += f'{m:2d}m '
+    res += f'{s:5.2f}s'
+    return res
 
 def playBatch(args):
-    id, rangeGame = args
+    id, rangeGame, cumul = args
     results = [0, 0, 0]
     with open(f'data{id}.out', "w") as f:f.write('')
     prog1 = engine.SimpleEngine.popen_uci(sys.argv[1])
     prog2 = engine.SimpleEngine.popen_uci(sys.argv[2])
+    total = len(beginBoards)
+    startGen = time.time()
     for idBeginBoard in rangeGame:
         beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
         for idProg, prog, _prog in ((0, prog1, prog2), (1, prog2, prog1)):
-            data, result = playGame(beginBoard, prog, _prog)
+            data1, data2, result = playGame(beginBoard, prog, _prog)
             results[min(result^idProg, 2)] += 1
+            score = 1 if result != 2 else 0.5
             with open(f'data{id}.out', "a") as f:
-                for key, value in data.items():
-                    f.write(f'{key}|{value[0]}|{value[1]}|{value[2].uci()}\n')
-        sys.stdout.write('\n'*(id//10)+'\r'+'\t'*(id%10)*2+'/'.join(map(str, (results[0], results[2], results[1])))+'\033[F'*(id//10)+'\r')
+                for key, value in data1.items():
+                    f.write(f'{key}|{value[0]}|{value[1]}|{value[2].uci()}|{score}\n')
+                score = 1-score
+                for key, value in data2.items():
+                    f.write(f'{key}|{value[0]}|{value[1]}|{value[2].uci()}|{score}\n')
+        cumul[0] += 1
+        columns = os.get_terminal_size().columns
+        elapsedTime = time.time()-startGen
+        if elapsedTime > cumul[0]:
+            unit = 's/it'
+            speed = elapsedTime/cumul[0]
+            remainingTime = (total-cumul[0])*speed
+        else:
+            unit = 'it/s'
+            speed = cumul[0]/elapsedTime
+            remainingTime = (total-cumul[0])*elapsedTime/cumul[0]
+        string = f'{cumul[0]*100/total:4.1f}% {speed:.2f}{unit} {renderTime(remainingTime)} ['
+        percent = cumul[0]*(columns-len(string)-1)/total
+        string += '█'*int(percent)
+        string += chr(9615-int(percent*7)%7)
+        string += (columns-1-len(string)) * ' ' + ']\r'
+        sys.stdout.write(string)
+        sys.stdout.flush()
     prog1.quit()
     prog2.quit()
     return results
@@ -120,7 +162,9 @@ with open(settings.file) as games:
     beginBoards = list(games.readlines())
 nbBoards = len(beginBoards)
 pool = Pool(nbProcess)
-results = pool.map(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess)) for id in range(nbProcess)])
+with SharedMemoryManager() as smm:
+    sl = smm.ShareableList([0])
+    results = pool.map(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl) for id in range(nbProcess)])
 
 print("\n"*((nbProcess+9)//10))
 wins = 0
