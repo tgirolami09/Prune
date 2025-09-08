@@ -69,10 +69,6 @@ public:
         }
     }
 
-    void boardFlip(int& piece, int& square){
-        piece ^= 1;
-        square ^= 56;
-    }
     int get_index(int piece, int square){
         return piece*64+(square^56);
     }
