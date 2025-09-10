@@ -107,6 +107,8 @@ def playGame(startFen, prog1, prog2):
     game = pgn.Game(dict(Variant="From Position", FEN=startFen))
     node = game
     thinkMate = False
+    if board.turn == BLACK:
+        curProg, otherProg = otherProg, curProg
     while not board.is_game_over() and not board.can_claim_draw():
         if not isMoveTime:
             startSpan = time.time()
