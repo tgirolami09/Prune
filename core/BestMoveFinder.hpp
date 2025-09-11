@@ -100,8 +100,8 @@ class BestMoveFinder{
     HelpOrdering history;
 public:
     IncrementalEvaluator eval;
-    BestMoveFinder(int memory):transposition(memory), QTT(memory){
-        book = load_book("./book.bin");
+    BestMoveFinder(int memory, bool mute=false):transposition(memory), QTT(memory){
+        book = load_book("./book.bin", mute);
         history.init();
     }
 
@@ -124,15 +124,16 @@ public:
     }
 
 private:
-    int nodes, Qnodes;
+    LegalMoveGenerator generator;
+    int nodes;
     int nbCutoff;
     int nbFirstCutoff;
     big isInSearch[1000];
-    template<bool timeLimit>
+    template<int limitWay>
     int quiescenceSearch(GameState& state, int alpha, int beta){
-        if(timeLimit && !running)return 0;
+        if(limitWay <= 1 && !running)return 0;
         if(eval.isInsufficientMaterial())return 0;
-        Qnodes++;
+        nodes++;
         int lastEval=QTT.get_eval(state, alpha, beta);
         if(lastEval != INVALID)
             return lastEval;
@@ -157,15 +158,15 @@ private:
         Order<maxCaptures> order;
         bool inCheck;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-        order.init(state.friendlyColor(), nullMove.moveInfo, history, -1, state, false);
+        order.init(state.friendlyColor(), nullMove.moveInfo, history, -1, state, generator, false);
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
             eval.playMove(capture, !state.friendlyColor());
-            int score = -quiescenceSearch<timeLimit>(state, -beta, -alpha);
+            int score = -quiescenceSearch<limitWay>(state, -beta, -alpha);
             eval.undoMove(capture, !state.friendlyColor());
             state.undoLastMove<false>();
-            if(timeLimit && !running)return 0;
+            if(limitWay <= 1 && !running)return 0;
             if(score >= beta){
                 nbCutoff++;
                 if(i == 0)nbFirstCutoff++;
@@ -198,10 +199,13 @@ private:
         const big* ep = state.enemyPieces();
         return fp[BISHOP] || fp[KNIGHT] || fp[ROOK] || fp[QUEEN] || ep[BISHOP] || ep[KNIGHT] || ep[ROOK] || ep[QUEEN];
     }
+    template<int limitWay> 
     pair<int, Move> MatedSearch(GameState& state, int depth, int lastChange, int relDepth){
         if(!running)return {-1, nullMove};
         if(depth <= 0 || relDepth-lastChange >= 100)
             return {-1, nullMove};
+        nodes++;
+        if(nodes > alloted_time)running=false;
         Order<maxMoves> order;
         bool inCheck=false;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
@@ -212,7 +216,7 @@ private:
         }
         int bestReduction = 100;
         Move bestMove = nullMove;
-        order.init(state.friendlyColor(), nullMove.moveInfo, history, relDepth, state, false);
+        order.init(state.friendlyColor(), nullMove.moveInfo, history, relDepth, state, generator, false);
         for(int rankMove=0; rankMove < order.nbMoves; rankMove++){
             Move curMove = order.pop_max();
             int score;
@@ -225,7 +229,7 @@ private:
                 score = -1;
             }else{
                 setElement(state.zobristHash, relDepth);
-                score = MaterSearch(state, depth-1, newLastChange, relDepth+1).first;
+                score = MaterSearch<limitWay>(state, depth-1, newLastChange, relDepth+1).first;
             }
             state.undoLastMove<false>();
             if(score == -1)return {-1, curMove}; //found a way to escape the mate in this line
@@ -238,11 +242,14 @@ private:
         return {bestReduction, bestMove};
 
     }
+    template<int limitWay>
     pair<int, Move> MaterSearch(GameState& state, int depth, int lastChange, int relDepth){
         //when detect mate in x
         if(!running)return {-1, nullMove};
         if(depth <= 0 || relDepth-lastChange >= 100)
             return {-1, nullMove};
+        nodes++;
+        if(nodes > alloted_time)running=false;
         Order<maxMoves> order;
         bool inCheck=false;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
@@ -251,7 +258,7 @@ private:
         }
         int bestReduction = -1;
         Move bestMove = nullMove;
-        order.init(state.friendlyColor(), nullMove.moveInfo, history, relDepth, state, false);
+        order.init(state.friendlyColor(), nullMove.moveInfo, history, relDepth, state, generator, false);
         for(int rankMove=0; rankMove < order.nbMoves; rankMove++){
             Move curMove = order.pop_max();
             int score;
@@ -264,7 +271,7 @@ private:
                 score = -1;
             }else{
                 setElement(state.zobristHash, relDepth);
-                score = MatedSearch(state, depth-2-bestReduction, newLastChange, relDepth+1).first;
+                score = MatedSearch<limitWay>(state, depth-2-bestReduction, newLastChange, relDepth+1).first;
             }
             state.undoLastMove<false>();
             if(!running)return {bestReduction, bestMove}; // cannot take the las iteration, because the other side has not searched all the possible responses
@@ -312,9 +319,9 @@ private:
     }
 #endif
     enum{PVNode=0, CutNode=1, AllNode=-1};
-    template <int nodeType, bool timeLimit>
+    template <int nodeType, int limitWay>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
-        if(timeLimit && !running)return 0;
+        if(limitWay <= 1 && !running)return 0;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
 #ifdef CalculatePV
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
@@ -325,7 +332,9 @@ private:
 #ifdef CalculatePV
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
 #endif
-            return Score(quiescenceSearch<timeLimit>(state, alpha, beta), -1);
+            Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta), -1);
+            if(limitWay == 1 && nodes > alloted_time)running=false;
+            return score;
         }
         nodes++;
         int16_t lastBest = nullMove.moveInfo;
@@ -355,22 +364,22 @@ private:
         if(order.nbMoves == 1){
             state.playMove<false, false>(order.moves[0]);
             eval.playMove(order.moves[0], !state.friendlyColor());
-            Score sc = -negamax<-nodeType, timeLimit>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
+            Score sc = -negamax<-nodeType, limitWay>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
 #ifdef CalculatePV
-            if((running || !timeLimit) && nodeType == PVNode && sc.score > alpha)transfer(relDepth-startRelDepth, order.moves[0]);
+            if((running || limitWay == 2) && nodeType == PVNode && sc.score > alpha)transfer(relDepth-startRelDepth, order.moves[0]);
 #endif
             return sc;
         }
         int r = 3;
         if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
             state.playNullMove();
-            Score v = -negamax<CutNode, timeLimit>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
+            Score v = -negamax<CutNode, limitWay>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
             if(v.score >= beta)return Score(beta, v.depth);
         }
-        order.init(state.friendlyColor(), lastBest, history, relDepth, state, depth > 5);
+        order.init(state.friendlyColor(), lastBest, history, relDepth, state, generator, depth > 5);
         Move bestMove;
         Score bestScore(-INF, -1);
         for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
@@ -397,19 +406,19 @@ private:
                     if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
                         reductionDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
                     }
-                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), timeLimit>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
                     bool fullSearch = false;
                     if((score > alpha && score < beta) || (nodeType == PVNode && score.score == beta && beta == alpha+1)){
                         fullSearch = true;
                     }
                     if(fullSearch)
-                        score = -negamax<nodeType, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                        score = -negamax<nodeType, limitWay>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 }else
-                    score = -negamax<-nodeType, timeLimit>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<-nodeType, limitWay>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove<false>();
-            if(timeLimit && !running)return 0;
+            if(limitWay <= 1 && !running)return 0;
             score.augmentMate();
             if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
                 if(score.usable(relDepth)){
@@ -439,7 +448,7 @@ private:
         }
         return bestScore;
     }
-    template<bool timeLimit>
+    template<int limitWay>
     Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, RootOrder& order, int actDepth, int lastChange){
         bestScore = -INF;
         Move bestMove = nullMove;
@@ -450,7 +459,7 @@ private:
         for(idMove=0; idMove < order.nbMoves; idMove++){
             Move curMove = order.pop_max();
             //printf("%s\n", curMove.to_str().c_str());
-            int startNodes = nodes+Qnodes;
+            int startNodes = nodes;
             int score;
             int curLastChange = lastChange;
             if(curMove.isChanger())
@@ -460,13 +469,13 @@ private:
             else{
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, actDepth);
-                score = -negamax<PVNode, timeLimit>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
+                score = -negamax<PVNode, limitWay>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             augmentMate(score);
             state.undoLastMove();
             if(!running)return bestMove.from() == bestMove.to()?curMove:bestMove;
-            int nodeUsed = nodes+Qnodes-startNodes;
+            int nodeUsed = nodes-startNodes;
             order.pushNodeUsed(nodeUsed);
             if(score >= beta){
                 bestScore = score;
@@ -490,8 +499,8 @@ private:
     }
 
 public:
-    template <bool timeLimit=true>
-    Move bestMove(GameState& state, int alloted, vector<Move> movesFromRoot){
+    template <int limitWay=0>
+    pair<Move, int> bestMove(GameState& state, int alloted, vector<Move> movesFromRoot, bool verbose=true){
         int actDepth=0;
         int lastChange = 0;
         for(Move move:movesFromRoot){
@@ -517,9 +526,10 @@ public:
                 }
             }
             if(moveInTable){
-                printf("Found book move for fen : %s\n",state.toFen().c_str());
-                return bookMove;
-            }else{
+                if(verbose)
+                    printf("Found book move for fen : %s\n",state.toFen().c_str());
+                return {bookMove, INF};
+            }else if(verbose){
                 printf("bad move find in table %s (in %s)\n", bookMove.to_str().c_str(), state.toFen().c_str());
             }
         }
@@ -528,90 +538,105 @@ public:
         midtime = false;
         thread timerThread;
         int depthMax = maxDepth;
-        if(timeLimit){
+        if(limitWay == 0){
             this->alloted_time = alloted;
             timerThread = thread(&BestMoveFinder::stopAfter, this);
+        }else if(limitWay == 1){
+            this->alloted_time = alloted*1000; //hard bound
         }else{
             depthMax = alloted;
         }
         if(order.nbMoves == 1){
             running = false;
-            timerThread.join();
-            return order.moves[0];
+            if(limitWay == 0)
+                timerThread.join();
+            return {order.moves[0], INF};
         }
-        printf("info string use a tt of %d entries (%ld MB) (%ldB by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
-        printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
+        if(verbose){
+            printf("info string use a tt of %d entries (%ld MB) (%ldB by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
+            printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
+        }
         Move bestMove=nullMove;
-        Qnodes = nodes = 0;
+        nodes = 0;
         nbCutoff = nbFirstCutoff = 0;
         clock_t start=clock();
         int lastNodes = 1;
         int lastScore = eval.getScore(state.friendlyColor(), state.getPawnStruct());
-        order.init(state.friendlyColor(), history, state);
+        order.init(state.friendlyColor(), history, state, generator);
         for(int depth=1; depth<depthMax && running && !midtime; depth++){
             int deltaUp = 10;
             int deltaDown = 10;
-            int startNodes = nodes+Qnodes;
+            int startNodes = nodes;
             int idMove;
             int bestScore;
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
-                bestMove = bestMoveClipped<timeLimit>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange);
+                bestMove = bestMoveClipped<limitWay>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange);
                 if(bestScore <= alpha)deltaDown = max(deltaDown*2, lastScore-bestScore+1);
                 else if(bestScore >= beta)deltaUp = max(deltaUp*2, bestScore-lastScore+1);
                 else break;
             }while(running);
-            lastScore = bestScore;
+            if(idMove)
+                lastScore = bestScore;
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            int totNodes = nodes+Qnodes;
+            int totNodes = nodes;
             int usedNodes = totNodes-startNodes;
 #ifdef CalculatePV
             string PV = PVprint(PVlines[0]);
 #else
             string PV = bestMove.to_str().c_str();
 #endif
-            if(idMove == order.nbMoves)
-                printf("info depth %d score %s nodes %d nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
-            else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
-            fflush(stdout);
+            if(verbose){
+                if(idMove == order.nbMoves)
+                    printf("info depth %d score %s nodes %d nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
+                else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
+                fflush(stdout);
+            }
             if(abs(bestScore) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
                 pair<int, Move> result;
                 int searchDepth = MAXIMUM-abs(bestScore)+2;
+                if(limitWay == 1)
+                    this->alloted_time = alloted;
                 if(bestScore >= MAXIMUM-maxDepth){//we can mate our opponent
-                    result = MaterSearch(state, searchDepth, lastChange, actDepth);
+                    result = MaterSearch<limitWay>(state, searchDepth, lastChange, actDepth);
                 }else{//we are on the path to be mated
-                    result = MatedSearch(state, searchDepth, lastChange, actDepth);
+                    result = MatedSearch<limitWay>(state, searchDepth, lastChange, actDepth);
                 }
                 clock_t end = clock();
                 double tcpu = double(end-start)/CLOCKS_PER_SEC;
                 if(result.second.moveInfo != nullMove.moveInfo){
                     int sign = bestScore < 0 ? -1 : 1;
                     bestScore = (abs(bestScore)+result.first)*sign;
-                    printf("info depth %d time %d score %s pv %s\n", searchDepth, (int)(tcpu*1000), scoreToStr(bestScore).c_str(), result.second.to_str().c_str());
+                    if(verbose)
+                        printf("info depth %d time %d score %s pv %s\n", searchDepth, (int)(tcpu*1000), scoreToStr(bestScore).c_str(), result.second.to_str().c_str());
                 }
                 if(result.second.moveInfo != nullMove.moveInfo)//have enough time to find the mate
                     bestMove = result.second;
+                if(bestScore < 0)
+                    lastScore = -INF-1;
+                else lastScore = INF+1;
                 break;
             }
             lastNodes = usedNodes;
+            if(limitWay == 1 && nodes > alloted)break;
         }
-        if(timeLimit){
+        if(limitWay == 0){
             running = false;
             timerThread.join();
         }
         for(int i=0; i<movesFromRoot.size(); i++)
             state.undoLastMove();
-        return bestMove;
+        return {bestMove, lastScore};
     }
     int testQuiescenceSearch(GameState& state){
-        Qnodes = 0;
+        nodes = 0;
         clock_t start=clock();
         int score = quiescenceSearch<false>(state, -INF, INF);
         clock_t end = clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
-        printf("speed: %d; Qnodes:%d score %s\n\n", (int)(Qnodes/tcpu), Qnodes, scoreToStr(score).c_str());
+        printf("speed: %d; Qnodes:%d score %s\n\n", (int)(nodes/tcpu), nodes, scoreToStr(score).c_str());
         return 0;
     }
 

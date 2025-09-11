@@ -28,9 +28,9 @@ int moveOverhead = 100;
 const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
-template<bool isTimeLimit=true>
+template<int limitWay=0>
 Move getBotMove(Chess state, int alloted_time){
-    Move moveToPlay = bestMoveFinder.bestMove<isTimeLimit>(state.root, alloted_time, state.movesFromRoot);
+    Move moveToPlay = bestMoveFinder.bestMove<limitWay>(state.root, alloted_time, state.movesFromRoot).first;
     return moveToPlay;
 }
 
@@ -96,8 +96,10 @@ void doUCI(string UCI_instruction, Chess& state){
                 move=getBotMove(state, computeAllotedTime(state));
             }else if(args.count("movetime")){
                 move = getBotMove(state, args["movetime"]);
+            }else if(args.count("nodes")){
+                move = getBotMove<1>(state, args["nodes"]);
             }else{
-                move = getBotMove<false>(state, args["depth"]);
+                move = getBotMove<2>(state, args["depth"]);
             }
             printf("bestmove %s\n", move.to_str().c_str());
         }

@@ -8,149 +8,6 @@
 #include <cstring>
 using namespace std;
 
-big KnightMoves[64]; //Knight moves for each position of the board
-
-void PrecomputeKnightMoveData(){
-    const pair<int, int> moves[8] = {
-        {-2,  1},
-        {-2, -1},
-        {-1,  2},
-        {-1, -2},
-        { 1,  2},
-        { 1, -2},
-        { 2,  1},
-        { 2, -1}};
-    for (int row = 0; row<8; ++row){
-        for (int col = 0; col<8; ++col){
-            int squareIndex = row * 8 + col;
-            //Precompute knight moves
-            big knightMoveMask = 0;
-            for(pair<int, int> move:moves){
-                //0 is up and 1 is down
-                int square = squareIndex;
-                if(row+move.first < 8 && row+move.first >= 0)
-                    square += 8*move.first;
-                else continue;
-                if(col+move.second < 8 && col+move.second >= 0)
-                    square += move.second;
-                else continue;
-                knightMoveMask |= 1ULL << square;
-            }
-            KnightMoves[squareIndex] = knightMoveMask;
-        }
-    }  
-}
-
-big pieceCastlingMasks[2][2];
-
-big attackCastlingMasks[2][2];
-
-void precomputeCastlingMasks(){
-    pieceCastlingMasks[0][1] = 0b00000110;
-    pieceCastlingMasks[0][0] = 0b01110000;
-    pieceCastlingMasks[1][1] = pieceCastlingMasks[0][1] << 56;
-    pieceCastlingMasks[1][0] = pieceCastlingMasks[0][0] << 56;
-
-    attackCastlingMasks[0][1] = 0b00001110;
-    attackCastlingMasks[0][0] = 0b00111000;
-    attackCastlingMasks[1][1] = attackCastlingMasks[0][1] << 56;
-    attackCastlingMasks[1][0] = attackCastlingMasks[0][0] << 56;
-}
-
-big normalKingMoves[64];
-
-void precomputeNormlaKingMoves(){
-    for (int kingPosition = 0; kingPosition < 64 ; ++ kingPosition){
-        big kingEndMask = 0;
-
-        int transitionsRow[2] = {8, -8};
-        int transitionsCol[2] = {-1, 1};
-
-        int nbCol=2;
-        int nbRow=2;
-
-        if (row(kingPosition)==7){
-            swap(transitionsRow[0], transitionsRow[1]);
-            nbRow--;
-        }else if (row(kingPosition)==0){
-            nbRow--;
-        }
-
-        if (col(kingPosition)==0){
-            swap(transitionsCol[0], transitionsCol[1]);
-            nbCol--;
-        }else if (col(kingPosition)==7){
-            nbCol--;
-        }
-
-        for (int i = 0; i < nbRow;++i){
-            int trans1 = transitionsRow[i];
-            int cardEnd = kingPosition + trans1;
-            kingEndMask |= (1ul << cardEnd);
-            for (int j = 0; j < nbCol;++j){
-                int trans2 = transitionsCol[j];
-
-                int diagEnd = cardEnd + trans2;
-                kingEndMask |= (1ul << diagEnd);
-
-                int secondCardEnd = kingPosition + trans2;
-                kingEndMask |= (1ul << secondCardEnd);
-            }
-        }
-        normalKingMoves[kingPosition] = kingEndMask;
-    }
-}
-
-big attackPawns[128];
-
-void precomputePawnsAttack(){
-    for(int c=0; c<2; c++){
-        int leftLimit = c ?  7 : 0;
-        int rightLimit = leftLimit^7;
-        int moveFactor = c ? -1 : 1;
-        for(int square=0; square<64; square++){
-            int key = c*64+square;
-            attackPawns[key] = 0;
-            if(square+8*moveFactor < 0 || square+8*moveFactor >= 64)continue;
-            int pieceCol = col(square);
-            if(pieceCol != leftLimit)
-                attackPawns[key] |= 1ul<<(square + 7 * moveFactor);
-            if(pieceCol != rightLimit)
-                attackPawns[key] |= 1ul<<(square + 9 * moveFactor);
-        }
-    }
-}
-
-big directions[64][64];
-// big fullDir[64][8];
-static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
-void precomputeDirections(){
-    //Set everything to 0 first just to be sure
-    for (int i = 0; i < 64; ++i){
-        for (int j = 0; j < 64; ++j){
-            directions[i][j] = 0;
-        }    
-    }
-    for(int row=0; row<8; row++){
-        for(int col=0; col<8; col++){
-            int square = row*8+col;
-            for(int idDir=0; idDir<8; idDir++){
-                int r=row+dirs[idDir][0];
-                int c=col+dirs[idDir][1];
-                big mask = 0;
-                while(r >= 0 && r < 8 && c >= 0 && c < 8){
-                    int sq = (r*8+c);
-                    mask |= 1ULL << sq;
-                    directions[square][sq] = mask; // line of 1 between square and sq
-                    r += dirs[idDir][0];
-                    c += dirs[idDir][1];
-                }
-                // fullDir[square][idDir] = mask;
-            }
-        }
-    }
-}
-
 class constTable{
 public:
     int bits;
@@ -159,6 +16,149 @@ public:
 };
 
 class LegalMoveGenerator{
+    big KnightMoves[64]; //Knight moves for each position of the board
+
+    void PrecomputeKnightMoveData(){
+        const pair<int, int> moves[8] = {
+            {-2,  1},
+            {-2, -1},
+            {-1,  2},
+            {-1, -2},
+            { 1,  2},
+            { 1, -2},
+            { 2,  1},
+            { 2, -1}};
+        for (int row = 0; row<8; ++row){
+            for (int col = 0; col<8; ++col){
+                int squareIndex = row * 8 + col;
+                //Precompute knight moves
+                big knightMoveMask = 0;
+                for(pair<int, int> move:moves){
+                    //0 is up and 1 is down
+                    int square = squareIndex;
+                    if(row+move.first < 8 && row+move.first >= 0)
+                        square += 8*move.first;
+                    else continue;
+                    if(col+move.second < 8 && col+move.second >= 0)
+                        square += move.second;
+                    else continue;
+                    knightMoveMask |= 1ULL << square;
+                }
+                KnightMoves[squareIndex] = knightMoveMask;
+            }
+        }  
+    }
+
+    big pieceCastlingMasks[2][2];
+
+    big attackCastlingMasks[2][2];
+
+    void precomputeCastlingMasks(){
+        pieceCastlingMasks[0][1] = 0b00000110;
+        pieceCastlingMasks[0][0] = 0b01110000;
+        pieceCastlingMasks[1][1] = pieceCastlingMasks[0][1] << 56;
+        pieceCastlingMasks[1][0] = pieceCastlingMasks[0][0] << 56;
+
+        attackCastlingMasks[0][1] = 0b00001110;
+        attackCastlingMasks[0][0] = 0b00111000;
+        attackCastlingMasks[1][1] = attackCastlingMasks[0][1] << 56;
+        attackCastlingMasks[1][0] = attackCastlingMasks[0][0] << 56;
+    }
+
+    big normalKingMoves[64];
+
+    void precomputeNormlaKingMoves(){
+        for (int kingPosition = 0; kingPosition < 64 ; ++ kingPosition){
+            big kingEndMask = 0;
+
+            int transitionsRow[2] = {8, -8};
+            int transitionsCol[2] = {-1, 1};
+
+            int nbCol=2;
+            int nbRow=2;
+
+            if (row(kingPosition)==7){
+                swap(transitionsRow[0], transitionsRow[1]);
+                nbRow--;
+            }else if (row(kingPosition)==0){
+                nbRow--;
+            }
+
+            if (col(kingPosition)==0){
+                swap(transitionsCol[0], transitionsCol[1]);
+                nbCol--;
+            }else if (col(kingPosition)==7){
+                nbCol--;
+            }
+
+            for (int i = 0; i < nbRow;++i){
+                int trans1 = transitionsRow[i];
+                int cardEnd = kingPosition + trans1;
+                kingEndMask |= (1ul << cardEnd);
+                for (int j = 0; j < nbCol;++j){
+                    int trans2 = transitionsCol[j];
+
+                    int diagEnd = cardEnd + trans2;
+                    kingEndMask |= (1ul << diagEnd);
+
+                    int secondCardEnd = kingPosition + trans2;
+                    kingEndMask |= (1ul << secondCardEnd);
+                }
+            }
+            normalKingMoves[kingPosition] = kingEndMask;
+        }
+    }
+
+    big attackPawns[128];
+
+    void precomputePawnsAttack(){
+        for(int c=0; c<2; c++){
+            int leftLimit = c ?  7 : 0;
+            int rightLimit = leftLimit^7;
+            int moveFactor = c ? -1 : 1;
+            for(int square=0; square<64; square++){
+                int key = c*64+square;
+                attackPawns[key] = 0;
+                if(square+8*moveFactor < 0 || square+8*moveFactor >= 64)continue;
+                int pieceCol = col(square);
+                if(pieceCol != leftLimit)
+                    attackPawns[key] |= 1ul<<(square + 7 * moveFactor);
+                if(pieceCol != rightLimit)
+                    attackPawns[key] |= 1ul<<(square + 9 * moveFactor);
+            }
+        }
+    }
+
+    big directions[64][64];
+    // big fullDir[64][8];
+    static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+    void precomputeDirections(){
+        //Set everything to 0 first just to be sure
+        for (int i = 0; i < 64; ++i){
+            for (int j = 0; j < 64; ++j){
+                directions[i][j] = 0;
+            }    
+        }
+        for(int row=0; row<8; row++){
+            for(int col=0; col<8; col++){
+                int square = row*8+col;
+                for(int idDir=0; idDir<8; idDir++){
+                    int r=row+dirs[idDir][0];
+                    int c=col+dirs[idDir][1];
+                    big mask = 0;
+                    while(r >= 0 && r < 8 && c >= 0 && c < 8){
+                        int sq = (r*8+c);
+                        mask |= 1ULL << sq;
+                        directions[square][sq] = mask; // line of 1 between square and sq
+                        r += dirs[idDir][0];
+                        c += dirs[idDir][1];
+                    }
+                    // fullDir[square][idDir] = mask;
+                }
+            }
+        }
+    }
+
     big* tableMagic[129];
 
     constTable constantsMagic[128];
@@ -814,6 +814,4 @@ class LegalMoveGenerator{
         return nullMove;
     }
 };
-
-LegalMoveGenerator generator;
 #endif

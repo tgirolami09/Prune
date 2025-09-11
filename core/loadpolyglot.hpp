@@ -105,17 +105,18 @@ struct PolyglotEntry {
     }
 };
 
-unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename) {
+unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mute) {
     vector<PolyglotEntry> InputBook;
     unordered_map<uint64_t,PolyglotEntry> book;
     ifstream file(filename, ios::binary);
     if (!file){
         //throw runtime_error("Cannot open book file");
-        printf("Book file could not be openened, returning empty book\n");
+        if(!mute)
+            printf("Book file could not be openened, returning empty book\n");
         return book;
     }
-
-    printf("Loading file '%s' for opening book\n",filename.c_str());
+    if(!mute)
+        printf("Loading file '%s' for opening book\n",filename.c_str());
 
     while (file) {
         PolyglotEntry entry;
@@ -137,13 +138,13 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename) {
             lastKey = entry.key;
         }
     }
-
-    printf("From %ld entries to %ld entries in the opening book\n",InputBook.size(),book.size());
+    if(!mute)
+        printf("From %ld entries to %ld entries in the opening book\n",InputBook.size(),book.size());
 
     return book;
 }
 
-Move findPolyglot(GameState state, bool& inTable, unordered_map<uint64_t,PolyglotEntry> book){
+Move findPolyglot(const GameState& state, bool& inTable, unordered_map<uint64_t,PolyglotEntry> book){
     uint64_t gameHash = polyglotHash(state);
 
     Move bestMove;

@@ -67,11 +67,11 @@ public:
         std::swap(flags[idMove1], flags[idMove2]);
     }
 
-    void init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, GameState& state, bool useSEE=true){
+    void init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE=true){
         isPriority=false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c), useSEE, state, flags[i]);
+            scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c), useSEE, state, flags[i], generator);
             if(moves[i].isTactical())
                 flags[i]++;
             if(moveInfoPriority == moves[i].moveInfo){
@@ -124,11 +124,11 @@ public:
     Move moves[maxMoves];
     RootOrder():dangerPositions(0){}
 
-    void init(bool c, const HelpOrdering& history, GameState& state){
+    void init(bool c, const HelpOrdering& history, GameState& state, LegalMoveGenerator& generator){
         isPriority = false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], c, dangerPositions, false, history.getHistoryScore(moves[i], c), true, state, flags[i]);
+            scores[i] = score_move(moves[i], c, dangerPositions, false, history.getHistoryScore(moves[i], c), true, state, flags[i], generator);
             nodeUsed[i] = 0;
         }
     }

@@ -213,7 +213,7 @@ uint64_t key_hash(uint64_t piece, uint64_t castle, uint64_t enpassant, uint64_t 
     return key;
 };
 
-uint64_t piece_hash(GameState state){
+uint64_t piece_hash(const GameState& state){
     uint64_t piece = 0;
     const uint64_t* whitePieces = state.friendlyColor() == WHITE ? state.friendlyPieces() : state.enemyPieces();
     const uint64_t* blackPieces = state.friendlyColor() == BLACK ? state.friendlyPieces() : state.enemyPieces();
@@ -239,7 +239,7 @@ uint64_t piece_hash(GameState state){
     return piece;
 }
 
-uint64_t castle_hash(GameState state){
+uint64_t castle_hash(const GameState& state){
     uint64_t castle = 0;
     //White king side
     if (state.castlingRights[0][1]){
@@ -261,7 +261,7 @@ uint64_t castle_hash(GameState state){
     return castle;
 }
 
-uint64_t enPassant_hash(GameState state){
+uint64_t enPassant_hash(const GameState& state){
     if (state.lastDoublePawnPush != -1){
         //Should only bet set if there is a pawn that can capture
         uint64_t enPassant = 0;
@@ -286,7 +286,7 @@ uint64_t enPassant_hash(GameState state){
     return 0;
 }
 
-uint64_t turn_hash(GameState state){
+uint64_t turn_hash(const GameState& state){
     uint64_t turn = 0;
     int baseOffset = 780;
     if (state.friendlyColor() == WHITE){
@@ -296,7 +296,7 @@ uint64_t turn_hash(GameState state){
     return turn;
 }
 
-uint64_t polyglotHash(GameState state){
+uint64_t polyglotHash(const GameState& state){
     uint64_t piece = piece_hash(state);
     uint64_t castle = castle_hash(state);
     uint64_t enPassant = enPassant_hash(state);
