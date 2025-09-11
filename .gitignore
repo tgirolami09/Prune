@@ -12,3 +12,4 @@ build
 *.log
 *.bin
 */__pycache__*
+!model.bin
