@@ -9,6 +9,28 @@
 const int alloted_space = 64*1000*1000;
 //int omp_get_thread_num(){return 0;}
 //#define DEBUG
+
+string secondsToStr(big s){
+    string res="";
+    if(s >= 60){
+        big m=s/60;
+        s %= 60;
+        if(m >= 60){
+            big h=m/60;
+            m %= 60;
+            if(h >= 24){
+                big d=h/24;
+                h %= 24;
+                res += to_string(d)+"d ";
+            }
+            res += to_string(h)+"h ";
+        }
+        res += to_string(m)+"m ";
+    }
+    res += to_string(s)+"s ";
+    return res;
+}
+
 int main(int argc, char** argv){
     ifstream file(argv[1]);
     vector<string> fens;
@@ -20,7 +42,7 @@ int main(int argc, char** argv){
         limitNodes = 200000;
     while(getline(file, curFen))
         fens.push_back(curFen);
-    int gamesMade = 0;
+    big gamesMade = 0;
     auto start=chrono::high_resolution_clock::now();
     LegalMoveGenerator generator;
 #ifndef DEBUG
@@ -95,7 +117,7 @@ int main(int argc, char** argv){
             struct winsize w;
             ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
             auto end=chrono::high_resolution_clock::now();
-            int duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
+            big duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
             string unit;
             int speed;
             if(duration > gamesMade*1000){
@@ -105,10 +127,12 @@ int main(int argc, char** argv){
                 speed = gamesMade*1000*100/duration;
                 unit = "g/s";
             }
+            string remaindTime = secondsToStr(duration*(fens.size()-gamesMade)/(gamesMade*1000)); // in seconds
             int percent = 1000*gamesMade/fens.size();
             string printed = to_string(percent/10)+string(".")+to_string(percent%10);
             printed += "% (";
-            printed += to_string(gamesMade)+string("/")+to_string(fens.size())+") ";
+            printed += to_string(gamesMade)+string("/")+to_string(fens.size())+" in ";
+            printed += to_string(duration/1000.0)+"s) "+remaindTime+" ";
             printed += to_string(speed/100);
             if(speed%100 >= 10)
                 printed += string(".")+to_string(speed%100);

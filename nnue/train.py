@@ -68,14 +68,16 @@ if settings.pickledData in os.listdir() and not settings.remake:
         print("remaining:", len(dataX[0])+len(dataX[1]))
 else:
     import re
-    rule = re.compile(settings.dataFile)
+    parts = settings.dataFile.split('/')
+    directory = '/'.join(parts[:-1])
+    rule = re.compile(parts[-1])
     dataX = [[], []]
     dataY = [[], []]
     passed = set()
     mini = 10000
     maxi = -10000
     corrFiles = []
-    for file in os.listdir():
+    for file in os.listdir(directory):
         if rule.match(file):
             corrFiles.append(file)
     collision = 0
