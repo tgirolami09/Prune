@@ -20,6 +20,8 @@ const int SPACE=6;
 const int nbPieces=6;
 const big colA=0x8080808080808080;
 const big colH=0x0101010101010101;
+const big row1 = 0xff;
+const big row8 = 0xffULL << 56;
 const map<char, int> piece_to_id = {{'r', ROOK}, {'n', KNIGHT}, {'b', BISHOP}, {'q', QUEEN}, {'k', KING}, {'p', PAWN}};
 const char id_to_piece[7] = {'p', 'n', 'b', 'r', 'q', 'k', ' '};
 
@@ -52,4 +54,31 @@ void init_lines(){
         clipped_idiag[i] = idiag&clipped_mask;
     }
 }
+
+const int maxDepth=200;
+const int maxMoves=218;
+const int maxCaptures = 12*8+4*4;
+const int maxExtension = 16;
+
+const int MINIMUM=-10000;
+const int MAXIMUM=10000;
+const int INF=MAXIMUM+200;
+const int MIDDLE=0;
+
+const ubyte EXACT = 0;
+const ubyte LOWERBOUND = 1;
+const ubyte UPPERBOUND = 2;
+const int KILLER_ADVANTAGE = 1<<20;
+const int value_pieces[6] = {100, 300, 300, 500, 900, 0};
+const int maxHistory=KILLER_ADVANTAGE/value_pieces[QUEEN];
+
+class pawnStruct{
+public:
+    big blackPawn;
+    big whitePawn;
+    int score;
+    bool operator==(pawnStruct s){
+        return blackPawn == s.blackPawn && whitePawn == s.whitePawn;
+    }
+};
 #endif

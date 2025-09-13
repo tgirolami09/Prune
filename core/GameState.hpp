@@ -77,6 +77,7 @@ public :
             }
         }
         printf("oups\n");
+        assert(false);
         return false;
     }
 
@@ -87,7 +88,7 @@ public :
                 boardRepresentation[c][p] = 0;
         int id=0;
         int dec=63;
-        for(; id<fen.size(); id++){
+        for(; id<(int)fen.size(); id++){
             char c=fen[id];
             if(isalpha(c)){
                 int piece=piece_to_id.at(tolower(c));
@@ -107,6 +108,8 @@ public :
         turnNumber = fen[id] == 'w';
         if(!turnNumber)
             zobristHash ^= zobrist[zobrTurn];
+        else
+            movesSinceBeginning[0] = nullMove;
         id += 2;
         for(int side=0; side<2; side++)
             for(int kingside=0; kingside<2; kingside++)
@@ -114,7 +117,7 @@ public :
         if(fen[id] == '-')
             id++;
         else{
-            for(; id<fen.size(); id++){
+            for(; id<(int)fen.size(); id++){
                 if(fen[id] == ' ')break;
 
                 bool isBlack = true;
@@ -159,7 +162,7 @@ public :
         }
         //printf("In fen to data -> en passant goes to %d\n",lastDoublePawnPush);
         if(lastDoublePawnPush != -1)
-            zobristHash ^= zobrist[zobrPassant+lastDoublePawnPush];
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         id += 2;
         increaseThreeFold(zobristHash);
         startEnPassant = lastDoublePawnPush;
@@ -191,14 +194,12 @@ public :
         if(friendlyColor() == WHITE)fen += "w";
         else fen += "b";
         fen += " ";
-        bool isCastling=false;
         for(int c=0; c<2; c++){
             for(int side=0; side < 2; side++){
                 char s=side?'k':'q';
                 if(!c)s = toupper(s);
                 if(castlingRights[c][side]){
                     fen += s;
-                    isCastling = true;
                 }
             }
         }
@@ -213,12 +214,12 @@ public :
         return fen;
     }
 
-    const int friendlyColor() const{
+    int friendlyColor() const{
         //Turn 1 is white (so friend on odd is white)
         return (turnNumber%2)?WHITE:BLACK;
     }
 
-    const int enemyColor() const{
+    int enemyColor() const{
         //Turn 1 is white (so enemy on odd is black)
         return (turnNumber%2)?BLACK:WHITE;
     }
@@ -289,13 +290,13 @@ public :
     }
     template<bool back>
     inline bool isEnPassantPossibility(const Move& move){
-        big sidePawn=((1ULL << clipped_left(move.end_pos))|(1ULL << clipped_right(move.end_pos)));
+        big sidePawn=((1ULL << clipped_left(move.to()))|(1ULL << clipped_right(move.to())));
         if(back)
             sidePawn &= friendlyPieces()[PAWN];
         else
             sidePawn &= enemyPieces()[PAWN];
         return move.piece == PAWN && 
-            abs(move.start_pos-move.end_pos) == 2*8 && 
+            abs(move.from()-move.to()) == 2*8 && 
             sidePawn;
     }
 
@@ -305,26 +306,26 @@ public :
             zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         const bool curColor=friendlyColor();
         const int add=(curColor*6+(int)move.piece)*64;
-        if(move.promoteTo == -1){
-            zobristHash ^= zobrist[add+move.end_pos];
-            boardRepresentation[curColor][move.piece] ^= (1ULL << move.end_pos);
+        if(move.promotion() == -1){
+            zobristHash ^= zobrist[add+move.to()];
+            boardRepresentation[curColor][move.piece] ^= (1ULL << move.to());
         }else{
-            boardRepresentation[curColor][move.promoteTo] ^= (1ULL << move.end_pos);
-            zobristHash ^= zobrist[(curColor*6+(int)move.promoteTo)*64|move.end_pos];
+            boardRepresentation[curColor][move.promotion()] ^= (1ULL << move.to());
+            zobristHash ^= zobrist[(curColor*6+(int)move.promotion())*64|move.to()];
         }
-        boardRepresentation[curColor][move.piece] ^= (1ULL<<move.start_pos);
-        zobristHash ^= zobrist[add|move.start_pos];
+        boardRepresentation[curColor][move.piece] ^= (1ULL<<move.from());
+        zobristHash ^= zobrist[add|move.from()];
         if(move.capture != -2){
             const bool enColor=enemyColor();
             if(move.capture == ROOK){
                 if(back)
-                    uncaptureRook(move.end_pos, enColor);
+                    uncaptureRook(move.to(), enColor);
                 else
-                    captureRook(move.end_pos, enColor);
+                    captureRook(move.to(), enColor);
             }
             int pieceCapture = move.capture>=0?move.capture:PAWN;
             int indexCapture = (enColor*6+pieceCapture)*64;
-            int posCapture = move.end_pos;
+            int posCapture = move.to();
             if(move.capture == -1){
                 if(enColor == BLACK)posCapture -= 8;
                 else posCapture += 8;
@@ -336,17 +337,17 @@ public :
             movesSinceBeginning[turnNumber] = move;
         }
         if(!back && isEnPassantPossibility<false>(move)){//is there a pawn on his side
-            // printf("There is an en-passant generated for postion %d, 8 * row = %d, col = %d\n",move.start_pos,((row(move.start_pos) + row(move.end_pos)) / 2),col(move.start_pos));
-            lastDoublePawnPush = 8 * ((row(move.start_pos) + row(move.end_pos)) / 2) + col(move.start_pos);
+            // printf("There is an en-passant generated for postion %d, 8 * row = %d, col = %d\n",move.from(),((row(move.from()) + row(move.to())) / 2),col(move.from()));
+            lastDoublePawnPush = 8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
             zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         }else{
             lastDoublePawnPush = -1;
         }
         if(move.piece == KING){
             moveKing<back>(curColor);
-            if(abs(move.end_pos-move.start_pos) == 2){//castling
-                int startRook=move.start_pos, endRook=move.end_pos;
-                if(move.start_pos > move.end_pos){//queen side
+            if(abs(move.to()-move.from()) == 2){//castling
+                int startRook=move.from(), endRook=move.to();
+                if(move.from() > move.to()){//queen side
                     startRook &= ~7;
                     endRook++;
                 }else{ //king side
@@ -364,11 +365,11 @@ public :
                 boardRepresentation[curColor][ROOK] ^= (1ULL << startRook)^(1ULL << endRook);
             }
         }else if(move.piece == ROOK){
-            if(back)swap(move.start_pos, move.end_pos);
-            if(move.start_pos == posRook[curColor][0])
-                updateCastlingRights<back, 0>(curColor, move.end_pos);
-            else if(move.start_pos == posRook[curColor][1]){ //otherwise, it's just another rook
-                updateCastlingRights<back, 1>(curColor, move.end_pos);
+            if(back)move.swapMove();//swap(move.from(), move.to());
+            if(move.from() == posRook[curColor][0])
+                updateCastlingRights<back, 0>(curColor, move.to());
+            else if(move.from() == posRook[curColor][1]){ //otherwise, it's just another rook
+                updateCastlingRights<back, 1>(curColor, move.to());
             }
         }
         if(!back){
@@ -380,6 +381,32 @@ public :
         }
         return 0;
     }
+
+    void playNullMove(){
+        movesSinceBeginning[turnNumber] = nullMove;
+        turnNumber++;
+        zobristHash ^= zobrist[zobrTurn];
+        if(lastDoublePawnPush != -1){
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+            lastDoublePawnPush = -1;
+        }
+    }
+    void undoNullMove(){
+        turnNumber--;
+        zobristHash ^= zobrist[zobrTurn];
+        if(turnNumber > 1){
+            Move nextMove=movesSinceBeginning[turnNumber-1];
+            if(isEnPassantPossibility<true>(nextMove)){
+                // printf("Undoing move and there is en-passant\n");
+                lastDoublePawnPush = 8 * ((row(nextMove.from()) + row(nextMove.to()))/2) + col(nextMove.from());
+                zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+            }
+        }else if(startEnPassant != -1){
+            lastDoublePawnPush = startEnPassant;
+            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+        }
+    }
+
     template<bool noperft=true>
     void undoLastMove(){
         if(noperft){
@@ -389,11 +416,11 @@ public :
         zobristHash ^= zobrist[zobrTurn];
         Move move=movesSinceBeginning[turnNumber];
         playMove<true>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
-        if(turnNumber > 1){
+        if(turnNumber > 0 && (movesSinceBeginning[0].from() != movesSinceBeginning[0].to() || turnNumber > 1)){
             Move nextMove=movesSinceBeginning[turnNumber-1];
             if(isEnPassantPossibility<true>(nextMove)){
                 // printf("Undoing move and there is en-passant\n");
-                lastDoublePawnPush = 8 * ((row(nextMove.start_pos) + row(nextMove.end_pos))/2) + col(nextMove.start_pos);
+                lastDoublePawnPush = 8 * ((row(nextMove.from()) + row(nextMove.to()))/2) + col(nextMove.from());
                 zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
             }
         }else if(startEnPassant != -1){
@@ -402,17 +429,19 @@ public :
         }
     }
 
-    void playPartialMove(Move move){
-        int piece=getPiece(move.end_pos, enemyColor());
+    template<bool noperft=true>
+    Move playPartialMove(Move move){
+        int piece=getPiece(move.to(), enemyColor());
         if(piece != SPACE){
             move.capture = piece;
         }
-        int mover = getPiece(move.start_pos, friendlyColor());
-        if(mover == PAWN && col(move.start_pos) != col(move.end_pos) && move.capture == -2){
+        int mover = getPiece(move.from(), friendlyColor());
+        if(mover == PAWN && col(move.from()) != col(move.to()) && move.capture == -2){
             move.capture = -1;
         }
         move.piece = mover;
-        playMove<false>(move);
+        playMove<false, noperft>(move);
+        return move;
     }
 
     int getPiece(int square, int c){
@@ -431,6 +460,13 @@ public :
             }
         }
         return SPACE*2;
+    }
+
+    pawnStruct getPawnStruct(){
+        pawnStruct res;
+        res.whitePawn = boardRepresentation[WHITE][PAWN];
+        res.blackPawn = boardRepresentation[BLACK][PAWN];
+        return res;
     }
 
     void print(){
@@ -487,7 +523,7 @@ public :
             printf(" %c", 'h' - (lastDoublePawnPush%8));
             printf("%c", '0'+ (lastDoublePawnPush / 8 + 1));
         }
-        printf("\n%16llx\n", zobristHash);
+        printf("\n%16lx\n", zobristHash);
         printf("%s", toFen().c_str());
         printf("\n");
     }

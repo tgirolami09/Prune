@@ -1,19 +1,15 @@
 #ifndef TRANSPOSITION_TABLE_HPP
 #define TRANSPOSITION_TABLE_HPP
 #include "Const.hpp"
-#include "Evaluator.hpp"
 #include "GameState.hpp"
 #include <climits>
-const ubyte EXACT = 0;
-const ubyte LOWERBOUND = 1;
-const ubyte UPPERBOUND = 2;
 
-class infoScore{
+class __attribute__((packed)) infoScore{
 public:
     int score;
     ubyte typeNode;
-    Move bestMove;
-    int depth;
+    int16_t bestMoveInfo;
+    ubyte depth;
     big hash;
 };
 const int INVALID = INT_MAX;
@@ -43,26 +39,26 @@ public:
         return INVALID;
     }
 
-    int get_eval(const GameState& state, int alpha, int beta, int depth, Move& best){
+    int get_eval(const GameState& state, int alpha, int beta, ubyte depth, int16_t& best){
         int index=state.zobristHash%modulo;
         if(byDepth[index].hash == state.zobristHash){
             int score = storedScore(alpha, beta, depth, byDepth[index]);
             if(score != INVALID)return score;
-            best = byDepth[index].bestMove; //probably a good move
+            best = byDepth[index].bestMoveInfo; //probably a good move
         }else if(always[index].hash == state.zobristHash){
             int score = storedScore(alpha, beta, depth, always[index]);
             if(score != INVALID)return score;
-            best = always[index].bestMove; //probably a good move
+            best = always[index].bestMoveInfo; //probably a good move
         }
         return INVALID;
     }
-    void push(GameState& state, int score, ubyte typeNode, Move move, int depth){
+    void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth){
         //if(score == 0)return; //because of the repetition
         if(score <= -INF || score >= INF)return;
         infoScore info;
         info.score = score;
         info.hash = state.zobristHash;
-        info.bestMove = move;
+        info.bestMoveInfo = move.moveInfo;
         info.depth = depth;
         info.typeNode = typeNode;
         int index = info.hash%modulo;
@@ -86,9 +82,10 @@ public:
     }
 };
 
-class infoQ{
+class __attribute__((packed)) infoQ{
 public:
-    int score, typeNode;
+    int score;
+    ubyte typeNode;
     big hash;
 };
 class QuiescenceTT{
@@ -106,21 +103,17 @@ public:
             if(table[index].typeNode == EXACT)
                 return table[index].score;
             if(table[index].score >= beta  && table[index].typeNode == LOWERBOUND)
-                return beta;
+                return table[index].score;
             if(table[index].score <= alpha && table[index].typeNode == UPPERBOUND)
-                return alpha;
+                return table[index].score;
         }
         return INVALID;
     }
-    void push(GameState& state, int score, int alpha, int beta){
+    void push(GameState& state, int score, int typeNode){
         infoQ info;
         info.score = score;
         info.hash = state.zobristHash;
-        if(score >= beta)
-            info.typeNode = LOWERBOUND;
-        else if(score < alpha)
-            info.typeNode = UPPERBOUND;
-        else info.typeNode = EXACT;
+        info.typeNode = typeNode;
         int index = info.hash%modulo;
         table[index] = info;
     }
@@ -162,6 +155,10 @@ public:
         count /= sizeof(perftMem);
         mem.resize(count);
         modulo = count;
+    }
+    void clearMem(){
+        mem = vector<perftMem>(0);
+        modulo = 0;
     }
 };
 
