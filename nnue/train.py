@@ -70,6 +70,7 @@ else:
     import re
     parts = settings.dataFile.split('/')
     directory = '/'.join(parts[:-1])
+    print(directory)
     rule = re.compile(parts[-1])
     dataX = [[], []]
     dataY = [[], []]
@@ -79,7 +80,7 @@ else:
     corrFiles = []
     for file in os.listdir(directory):
         if rule.match(file):
-            corrFiles.append(file)
+            corrFiles.append('/'.join((directory, file)))
     collision = 0
     filtredPos = 0
     kMaxScoreMagnitude = 1500

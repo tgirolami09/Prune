@@ -164,7 +164,7 @@ class Trainer:
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
                 self.save(fileBest, lastModel)#we save the model
             if fullsave:
-                self.save("model.bin", self.modelEval)
+                self.save("_model.bin", self.modelEval)
             lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
