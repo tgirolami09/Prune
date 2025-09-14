@@ -406,6 +406,12 @@ public :
             zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         }
     }
+    Move getLastMove() const{
+        if(turnNumber > 0 && (movesSinceBeginning[0].moveInfo != nullMove.moveInfo || turnNumber > 1))
+            return movesSinceBeginning[turnNumber-1];
+        return nullMove;
+    }
+
 
     template<bool noperft=true>
     void undoLastMove(){

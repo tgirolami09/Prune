@@ -1,10 +1,14 @@
 #include "Evaluator.hpp"
 #include "Move.hpp"
 #include <cstring>
+#define COUNTER
 
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
+#ifdef COUNTER
+    int16_t counterMove[64*64];
+#endif
     int& getIndex(Move move, bool c){
         return history[c][move.from()][move.to()];
     }
@@ -18,8 +22,12 @@ public:
             killers[i][1] = nullMove;
         }
         memset(history, 0, sizeof(history));
+#ifdef COUNTER
+        for(int f=0; f<64*64; f++)
+            counterMove[f] = nullMove.moveInfo;
+#endif
     }
-    void addKiller(Move move, int depth, int relDepth, bool c){
+    void addKiller(Move move, int depth, int relDepth, bool c, Move lastMove){
         if(move.capture == -2){
             if(!fastEq(move, killers[relDepth][0])){
                 killers[relDepth][1] = killers[relDepth][0];
@@ -35,6 +43,9 @@ public:
                     }
                 }
             }
+#ifdef COUNTER
+            counterMove[lastMove.getMovePart()] = move.moveInfo;
+#endif
         }
     }
 
@@ -44,6 +55,22 @@ public:
     }
     int getHistoryScore(Move move, bool c) const{
         return history[c][move.from()][move.to()];
+    }
+#ifdef COUNTER
+    bool isCounter(Move move, Move lastMove) const{
+        return move.moveInfo == counterMove[lastMove.getMovePart()];
+    }
+#endif
+
+    int getMoveScore(Move move, bool c, int relDepth, Move lastMove) const{
+        int score = 0;
+        if(isKiller(move, relDepth))
+            score = KILLER_ADVANTAGE;
+#ifdef COUNTER
+        if(isCounter(move, lastMove))
+            score += KILLER_ADVANTAGE/2;
+#endif
+        return score+getHistoryScore(move, c);
     }
 };
 
@@ -71,7 +98,7 @@ public:
         isPriority=false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], c, dangerPositions, history.isKiller(moves[i], relDepth), history.getHistoryScore(moves[i], c), useSEE, state, flags[i], generator);
+            scores[i] = score_move(moves[i], c, dangerPositions, history.getMoveScore(moves[i], c, relDepth, state.getLastMove()), useSEE, state, flags[i], generator);
             if(moves[i].isTactical())
                 flags[i]++;
             if(moveInfoPriority == moves[i].moveInfo){
@@ -128,7 +155,7 @@ public:
         isPriority = false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], c, dangerPositions, false, history.getHistoryScore(moves[i], c), true, state, flags[i], generator);
+            scores[i] = score_move(moves[i], c, dangerPositions, history.getMoveScore(moves[i], c, 0, state.getLastMove()), true, state, flags[i], generator);
             nodeUsed[i] = 0;
         }
     }

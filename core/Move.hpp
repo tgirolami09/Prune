@@ -81,6 +81,9 @@ public :
     bool isChanger() const{
         return piece == PAWN || capture != -2;
     }
+    int getMovePart() const{
+        return moveInfo&~(clearTo|clearFrom);
+    }
 };
 // const Move nullMove={0, 0, 0, -1, -2, -4096};
 const Move nullMove = {0, -2, -4096};

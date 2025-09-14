@@ -426,7 +426,7 @@ private:
                 }
                 nbCutoff++;
                 if(rankMove == 0)nbFirstCutoff++;
-                history.addKiller(curMove, depth, relDepth, state.friendlyColor());
+                history.addKiller(curMove, depth, relDepth, state.friendlyColor(), state.getLastMove());
                 return score;
             }
             if(score > alpha){

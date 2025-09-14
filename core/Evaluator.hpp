@@ -210,7 +210,7 @@ int SEE(int square, GameState& state, LegalMoveGenerator& generator){
     return value;
 }
 
-inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKiller, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator){
+inline int score_move(const Move& move, bool c, big& dangerPositions, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator){
     int score = 0;
     int SEEscore = 0;
     flag = 0;
@@ -231,7 +231,6 @@ inline int score_move(const Move& move, bool c, big& dangerPositions, bool isKil
             SEEscore -= value_pieces[move.piece];
     }
     if(!move.isTactical()){
-        if(isKiller)score += KILLER_ADVANTAGE;
         score += historyScore;
         score += SEEscore*maxHistory;
     }else{
