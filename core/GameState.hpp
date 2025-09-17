@@ -194,15 +194,19 @@ public :
         if(friendlyColor() == WHITE)fen += "w";
         else fen += "b";
         fen += " ";
+        string castlingPart="";
         for(int c=0; c<2; c++){
             for(int side=0; side < 2; side++){
                 char s=side?'k':'q';
                 if(!c)s = toupper(s);
                 if(castlingRights[c][side]){
-                    fen += s;
+                    castlingPart += s;
                 }
             }
         }
+        if(castlingPart == "")
+            fen += "-";
+        else fen += castlingPart;
         fen += " ";
         if(lastDoublePawnPush != -1){
             // fen += (char)7-lastDoublePawnPush+'a';

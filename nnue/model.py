@@ -164,7 +164,7 @@ class Trainer:
             if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
                 self.save(fileBest, lastModel)#we save the model
             if fullsave:
-                self.save("model.bin", self.modelEval)
+                self.save("_model.bin", self.modelEval)
             lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
@@ -177,7 +177,7 @@ class Trainer:
     def get_int(self, tensor):
         tensor = float(tensor)
         self.maxi = max(self.maxi, abs(tensor))
-        return int(round(tensor)).to_bytes(2, "little", signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
+        return int(round(tensor)).to_bytes(1, "little", signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
 
     def read_bytes(self, bytes):
         return torch.tensor(int.from_bytes(bytes, "little", signed=True), dtype=torch.float)
@@ -208,9 +208,9 @@ class Trainer:
             with torch.no_grad():
                 for i in range(self.model.inputSize):
                     for j in range(self.model.HLSize):
-                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(2))
+                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))
                 for i in range(self.model.HLSize):
-                    self.model.tohidden.bias[i] = self.read_bytes(f.read(2))
+                    self.model.tohidden.bias[i] = self.read_bytes(f.read(1))
                 for i in range(self.model.HLSize*2):
-                    self.model.toout.weight[0][i] = self.read_bytes(f.read(2))
-                self.model.endBias[0] = self.read_bytes(f.read(2))
+                    self.model.toout.weight[0][i] = self.read_bytes(f.read(1))
+                self.model.endBias[0] = self.read_bytes(f.read(1))

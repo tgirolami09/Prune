@@ -109,7 +109,7 @@ int main(int argc, char** argv){
             for(int j=0; j<scores[i].size(); j++){
                 datafile << playedFens[i][j] << "|" << scores[i][j] << "|" << statics[i][j] << "|" << movesPlayed[i][j] << "|" << result/2.0 << '\n';
             }
-            result = 1-result;
+            result = 2-result;
         }
         #pragma omp critical
         {

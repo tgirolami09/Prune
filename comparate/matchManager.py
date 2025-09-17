@@ -256,8 +256,8 @@ def playBatch(args):
             log.flush()
             interResults[min(winner ^ idProg, 2)] += 1
             #print(board.outcome().winner)
-            prog1.configure({'Clear Hash':None})
-            prog2.configure({'Clear Hash':None})
+            #prog1.configure({'Clear Hash':None})
+            #prog2.configure({'Clear Hash':None})
             if cutoff[0]:
                 break
         if cutoff[0]:
