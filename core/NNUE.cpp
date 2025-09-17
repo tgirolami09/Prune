@@ -40,7 +40,7 @@ public:
     dbyte outbias;
     simd16 accs[2][HL_SIZE/nb16];
     dbyte read_bytes(ifstream& file){
-        dbyte ret;
+        char ret;
         file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
         return ret;
     }
