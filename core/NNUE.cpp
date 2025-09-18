@@ -32,6 +32,9 @@ int mysum(simdint x){
     return stdx::reduce(x, std::plus{});
 }
 
+extern const char _binary____nnue_model_bin_start;
+extern const char _binary____nnue_model_bin_end;
+
 class NNUE{
 public:
     simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
@@ -44,6 +47,7 @@ public:
         file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
         return ret;
     }
+
     NNUE(string name){
         ifstream file(name);
         for(int i=0; i<INPUT_SIZE; i++)
@@ -62,6 +66,24 @@ public:
         outbias = read_bytes(file);
     }
 
+    NNUE(){
+        const char* p=&_binary____nnue_model_bin_start;
+        for(int i=0; i<INPUT_SIZE; i++)
+            for(int j=0; j<HL_SIZE/nb16; j++)
+                for(int k=0; k<nb16; k++)
+                    hlWeights[i][j][k] = *p++;
+        for(int i=0; i<HL_SIZE/nb16; i++){
+            for(int id16=0; id16<nb16; id16++)
+                hlBiases[i][id16] = *p++;
+            accs[WHITE][i] = hlBiases[i];
+            accs[BLACK][i] = hlBiases[i];
+        }
+        for(int i=0; i<2*HL_SIZE/nb16; i++)
+            for(int id16=0; id16<nb16; id16++)
+                outWeights[i][id16] = *p++;
+        outbias = *p++;
+    }
+
     void clear(){
         for(int i=0; i<HL_SIZE/nb16; i++){
             accs[WHITE][i] = hlBiases[i];
@@ -70,7 +92,7 @@ public:
     }
 
     int get_index(int piece, int square){
-        return piece*64+(square^56);
+        return (piece<<6)|(square^56);
     }
 
     template<int f>

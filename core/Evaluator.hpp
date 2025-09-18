@@ -272,7 +272,7 @@ public:
         }
     }
 
-    IncrementalEvaluator():nnue("../nnue/model.bin"){
+    IncrementalEvaluator():nnue(){
         init_tables();
         init_forwards();
 #ifdef NNUE_CORRECT
