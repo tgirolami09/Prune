@@ -137,7 +137,7 @@ private:
         int lastEval=QTT.get_eval(state, alpha, beta);
         if(lastEval != INVALID)
             return lastEval;
-        int staticEval = eval.getScore(state.friendlyColor(), state.getPawnStruct());
+        int staticEval = eval.getScore(state.friendlyColor());
         if(staticEval >= beta){
             QTT.push(state, staticEval, LOWERBOUND);
             return staticEval;
@@ -373,7 +373,7 @@ private:
             return sc;
         }
         int r = 3;
-        if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
+        if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor()) >= beta){
             state.playNullMove();
             Score v = -negamax<CutNode, limitWay>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
@@ -561,7 +561,7 @@ public:
         nbCutoff = nbFirstCutoff = 0;
         clock_t start=clock();
         int lastNodes = 1;
-        int lastScore = eval.getScore(state.friendlyColor(), state.getPawnStruct());
+        int lastScore = eval.getScore(state.friendlyColor());
         order.init(state.friendlyColor(), history, state, generator);
         for(int depth=1; depth<depthMax && running && !midtime; depth++){
             int deltaUp = 10;
@@ -626,7 +626,7 @@ public:
             running = false;
             timerThread.join();
         }
-        for(int i=0; i<movesFromRoot.size(); i++)
+        for(unsigned long i=0; i<movesFromRoot.size(); i++)
             state.undoLastMove();
         return {bestMove, lastScore};
     }

@@ -14,6 +14,23 @@ public:
     int decR;
     big magic;
 };
+extern const char _binary_magics_out_start;
+extern const char _binary_magics_out_end;
+
+big parseInt(const char*& p){
+    big current = 0;
+    if(p == &_binary_magics_out_end)return 0;
+    while(*p > '9' || *p < '0'){
+        p++; //remove useless char
+        if(p == &_binary_magics_out_end)return 0;
+    }
+    while(*p <= '9' && *p >= '0'){
+        current = current*10+((*p)-'0');
+        p++;
+        if(p == &_binary_magics_out_end)return 0;
+    }
+    return current;
+}
 
 class LegalMoveGenerator{
     big KnightMoves[64]; //Knight moves for each position of the board
@@ -163,19 +180,21 @@ class LegalMoveGenerator{
 
     constTable constantsMagic[128];
 
-    void load_table(string name){
-        ifstream file(name);
+    void load_table(){
         big magic;
         int decR, minimum, size;
-        big mask;
         int current = 0;
-        while(file >> magic){
-            file >> decR >> minimum >> size;
+        const char* p=&_binary_magics_out_start;
+        while(p != &_binary_magics_out_end){
+            magic = parseInt(p);
+            if(!magic)break;
+            decR = parseInt(p);
+            minimum = parseInt(p);
+            size = parseInt(p);
             constantsMagic[current] = {minimum, decR, magic};
             tableMagic[current] = (big*)calloc(size, sizeof(big));
             for(int i=0; i<size; i++){
-                file >> mask;
-                tableMagic[current][i] = mask;
+                tableMagic[current][i] = parseInt(p);
             }
             current++;
         }
@@ -185,7 +204,7 @@ class LegalMoveGenerator{
 
     LegalMoveGenerator(){
         PrecomputeKnightMoveData();
-        load_table("magics.out");
+        load_table();
         init_lines();
         precomputePawnsAttack();
         precomputeCastlingMasks();
@@ -587,7 +606,6 @@ class LegalMoveGenerator{
         int nbMoves = 0;
         int nbCheckers = 0;
         int checkerPos = -1;
-        int checkerType = -1;
 
         friendlyPieces = state.friendlyPieces();
         enemyPieces = state.enemyPieces();
@@ -638,7 +656,6 @@ class LegalMoveGenerator{
             }
             else{
                 checkerPos = bishopCheckerPos;
-                checkerType = BISHOP;
             }
         }
 
@@ -651,7 +668,6 @@ class LegalMoveGenerator{
             }
             else{
                 checkerPos = rookCheckerPos;
-                checkerType = ROOK;
             }
         }
 
