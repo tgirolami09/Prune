@@ -84,7 +84,7 @@ int main(int argc, char** argv){
             if(res.second != INF){
                 scores[isWhite].push_back(res.second);
                 player.eval.init(current);
-                statics[isWhite].push_back(player.eval.getScore(current.friendlyColor(), current.getPawnStruct()));
+                statics[isWhite].push_back(player.eval.getScore(current.friendlyColor()));
                 playedFens[isWhite].push_back(current.toFen());
                 movesPlayed[isWhite].push_back(res.first.to_str());
             }
