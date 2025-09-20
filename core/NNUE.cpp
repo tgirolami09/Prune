@@ -32,8 +32,7 @@ int mysum(simdint x){
     return stdx::reduce(x, std::plus{});
 }
 
-extern const char _binary____nnue_model_bin_start;
-extern const char _binary____nnue_model_bin_end;
+BINARY_ASM_INCLUDE("../nnue/model.bin", baseModel);
 
 class NNUE{
 public:
@@ -67,21 +66,21 @@ public:
     }
 
     NNUE(){
-        const char* p=&_binary____nnue_model_bin_start;
+        int pointer = 0;
         for(int i=0; i<INPUT_SIZE; i++)
             for(int j=0; j<HL_SIZE/nb16; j++)
                 for(int k=0; k<nb16; k++)
-                    hlWeights[i][j][k] = *p++;
+                    hlWeights[i][j][k] = transform(baseModel[pointer++]);
         for(int i=0; i<HL_SIZE/nb16; i++){
             for(int id16=0; id16<nb16; id16++)
-                hlBiases[i][id16] = *p++;
+                hlBiases[i][id16] = transform(baseModel[pointer++]);
             accs[WHITE][i] = hlBiases[i];
             accs[BLACK][i] = hlBiases[i];
         }
         for(int i=0; i<2*HL_SIZE/nb16; i++)
             for(int id16=0; id16<nb16; id16++)
-                outWeights[i][id16] = *p++;
-        outbias = *p++;
+                outWeights[i][id16] = transform(baseModel[pointer++]);
+        outbias = transform(baseModel[pointer++]);
     }
 
     void clear(){

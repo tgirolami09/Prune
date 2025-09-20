@@ -14,20 +14,19 @@ public:
     int decR;
     big magic;
 };
-extern const char _binary_magics_out_start;
-extern const char _binary_magics_out_end;
+BINARY_ASM_INCLUDE("magics.out", magicsData);
 
-big parseInt(const char*& p){
+big parseInt(int& pointer){
     big current = 0;
-    if(p == &_binary_magics_out_end)return 0;
-    while(*p > '9' || *p < '0'){
-        p++; //remove useless char
-        if(p == &_binary_magics_out_end)return 0;
+    if(pointer >= magicsData_size)return 0;
+    while(transform(magicsData[pointer]) > '9' || transform(magicsData[pointer]) < '0'){
+        pointer++; //remove useless char
+        if(pointer >= magicsData_size)return 0;
     }
-    while(*p <= '9' && *p >= '0'){
-        current = current*10+((*p)-'0');
-        p++;
-        if(p == &_binary_magics_out_end)return 0;
+    while(transform(magicsData[pointer]) <= '9' && transform(magicsData[pointer]) >= '0'){
+        current = current*10+(transform(magicsData[pointer])-'0');
+        pointer++;
+        if(pointer == magicsData_size)return 0;
     }
     return current;
 }
@@ -184,17 +183,19 @@ class LegalMoveGenerator{
         big magic;
         int decR, minimum, size;
         int current = 0;
-        const char* p=&_binary_magics_out_start;
-        while(p != &_binary_magics_out_end){
-            magic = parseInt(p);
+        int pointer = 0;
+        //printf("%d\n", magicsData_size);
+        while(pointer != magicsData_size){
+            magic = parseInt(pointer);
             if(!magic)break;
-            decR = parseInt(p);
-            minimum = parseInt(p);
-            size = parseInt(p);
+            decR = parseInt(pointer);
+            minimum = parseInt(pointer);
+            size = parseInt(pointer);
+            //printf("%d\n", size);
             constantsMagic[current] = {minimum, decR, magic};
             tableMagic[current] = (big*)calloc(size, sizeof(big));
             for(int i=0; i<size; i++){
-                tableMagic[current][i] = parseInt(p);
+                tableMagic[current][i] = parseInt(pointer);
             }
             current++;
         }
