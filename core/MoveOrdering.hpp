@@ -1,7 +1,7 @@
 #include "Evaluator.hpp"
 #include "Move.hpp"
 #include <cstring>
-#define COUNTER
+//#define COUNTER
 
 class HelpOrdering{
     Move killers[maxDepth][2];
