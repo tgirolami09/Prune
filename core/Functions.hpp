@@ -97,4 +97,10 @@ inline big mask_empty_bishop(int square){
 inline big maskCol(int square){
     return colH << col(square);
 }
+
+inline char transform(ubyte n){
+    if(n >= 128)
+        return ((char)n) - 256;
+    return n;
+}
 #endif
