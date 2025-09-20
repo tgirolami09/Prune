@@ -33,7 +33,7 @@ struct PolyglotEntry {
     int from_square; 
     int promotion; 
 
-    void parse(){
+    bool parse(){
         key = swap64(key);
         move = swap16(move);
         weight = swap16(weight);
@@ -44,6 +44,15 @@ struct PolyglotEntry {
         from_square = (move >> 6) & 0x3f;
         from_square = row(from_square) * 8 + (7 - col(from_square));
         promotion = (move >> 12) & 0x7;
+
+        // The move was parsed as a null move
+        if (from_square == to_square){
+            return false;
+        }
+
+        else{
+            return true;
+        }
     }
 
     void printMove(){
@@ -62,16 +71,16 @@ struct PolyglotEntry {
     Move toMove(int movingPiece, int capturedPiece){
         //Deal with chess960 notation for castling
         if (movingPiece == KING){
-            if (to_square == 7){
+            if (to_square == 7 && from_square == 3){
                 to_square = 5;
             }
-            else if (to_square == 0){
+            else if (to_square == 0 && from_square == 3){
                 to_square = 1;
             }
-            else if (to_square == 63){
+            else if (to_square == 63 && from_square == 59){
                 to_square = 61;
             }
-            else if (to_square == 56){
+            else if (to_square == 56 && from_square == 59){
                 to_square = 57;
             }
             
@@ -108,6 +117,8 @@ struct PolyglotEntry {
 unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mute) {
     vector<PolyglotEntry> InputBook;
     unordered_map<uint64_t,PolyglotEntry> book;
+    //Stores the amount of moves that where parsed as null
+    int nullMoveAmount = 0;
     ifstream file(filename, ios::binary);
     if (!file){
         //throw runtime_error("Cannot open book file");
@@ -124,8 +135,13 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mut
         file.read(reinterpret_cast<char*>(&entry.move), sizeof(entry.move));
         file.read(reinterpret_cast<char*>(&entry.weight), sizeof(entry.weight));
         file.read(reinterpret_cast<char*>(&entry.learn), sizeof(entry.learn));
-        entry.parse();
-        InputBook.push_back(entry);
+        bool succesfulParse = entry.parse();
+        if (succesfulParse){
+            InputBook.push_back(entry);
+        }
+        else{
+            ++nullMoveAmount;
+        }
     }
 
     //Just in case
@@ -138,19 +154,22 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mut
             lastKey = entry.key;
         }
     }
-    if(!mute)
+    if(!mute){
         printf("From %ld entries to %ld entries in the opening book\n",InputBook.size(),book.size());
+        printf("Parsed %d moves as null moves (they where consequently ignored)\n",nullMoveAmount);
+    }
 
     return book;
 }
 
-Move findPolyglot(const GameState& state, bool& inTable, unordered_map<uint64_t,PolyglotEntry> book){
+Move findPolyglot(const GameState& state, bool& inTable, unordered_map<uint64_t,PolyglotEntry>& book){
     uint64_t gameHash = polyglotHash(state);
 
     Move bestMove;
 
-    if (book.find(gameHash) != book.end()){
-        PolyglotEntry bestPolyglotEntry = book[gameHash];
+    auto moveIt = book.find(gameHash);
+    if (moveIt != book.end()){
+        PolyglotEntry bestPolyglotEntry = moveIt->second;
         //Determine moving piece
         int movingPiece = -1;
         for (int id = 0; id < 6; ++ id){
@@ -168,7 +187,7 @@ Move findPolyglot(const GameState& state, bool& inTable, unordered_map<uint64_t,
             }
         }
 
-        bestMove = book[gameHash].toMove(movingPiece,capturedPiece);
+        bestMove = bestPolyglotEntry.toMove(movingPiece,capturedPiece);
         inTable = true;
     }
     else{
