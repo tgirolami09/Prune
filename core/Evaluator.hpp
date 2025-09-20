@@ -283,13 +283,8 @@ public:
     }
 
     bool isInsufficientMaterial(){
-        if(mgPhase < 4 && !presentPieces[WHITE][PAWN] && !presentPieces[BLACK][PAWN] && !presentPieces[WHITE][QUEEN] && !presentPieces[BLACK][QUEEN] && !presentPieces[WHITE][ROOK] && !presentPieces[BLACK][ROOK]){
-            //theoric draw must have only knight or bishop, and must have at most 4 pieces (2 knight per side is a draw for a computer)
-            if(presentPieces[WHITE][BISHOP])
-                return presentPieces[WHITE][BISHOP] < 2 && presentPieces[WHITE][KNIGHT] == 0;
-            if(presentPieces[BLACK][BISHOP])
-                return presentPieces[BLACK][BISHOP] < 2 && presentPieces[BLACK][KNIGHT] == 0;
-            return presentPieces[BLACK][KNIGHT] <= 2 && presentPieces[WHITE][KNIGHT] <= 2;
+        if(mgPhase <= 1 && !presentPieces[WHITE][PAWN] && !presentPieces[BLACK][PAWN]){
+            return true;
         }
         return false;
     }
