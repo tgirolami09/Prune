@@ -98,8 +98,10 @@ void doUCI(string UCI_instruction, Chess& state){
                 move = getBotMove(state, args["movetime"]);
             }else if(args.count("nodes")){
                 move = getBotMove<1>(state, args["nodes"]);
-            }else{
+            }else if(args.count("depth")){
                 move = getBotMove<2>(state, args["depth"]);
+            }else{
+                move = getBotMove<2>(state, 200);
             }
             printf("bestmove %s\n", move.to_str().c_str());
         }
