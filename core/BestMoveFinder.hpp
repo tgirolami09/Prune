@@ -419,6 +419,8 @@ private:
                     if((score > alpha && score < beta) || (nodeType == PVNode && score.score == beta && beta == alpha+1)){
                         fullSearch = true;
                     }
+                    if(reductionDepth && score >= beta)
+                        fullSearch = true;
                     if(fullSearch)
                         score = -negamax<nodeType, limitWay>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 }else
