@@ -13,3 +13,4 @@ build
 *.bin
 */__pycache__*
 !model.bin
+!Makefile

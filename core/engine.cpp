@@ -98,8 +98,10 @@ void doUCI(string UCI_instruction, Chess& state){
                 move = getBotMove(state, args["movetime"]);
             }else if(args.count("nodes")){
                 move = getBotMove<1>(state, args["nodes"]);
-            }else{
+            }else if(args.count("depth")){
                 move = getBotMove<2>(state, args["depth"]);
+            }else{
+                move = getBotMove<2>(state, 200);
             }
             printf("bestmove %s\n", move.to_str().c_str());
         }
@@ -143,7 +145,7 @@ void doUCI(string UCI_instruction, Chess& state){
             state.root.playPartialMove(move);
         }
         state.root.print();
-        for(Move move:state.movesFromRoot)
+        for(unsigned long i=0; i<state.movesFromRoot.size(); i++)
             state.root.undoLastMove();
     }else if(command == "runQ"){
         bestMoveFinder.testQuiescenceSearch(state.root);
@@ -151,9 +153,9 @@ void doUCI(string UCI_instruction, Chess& state){
         for(Move move:state.movesFromRoot)
             state.root.playPartialMove(move);
         bestMoveFinder.eval.init(state.root);
-        for(Move move:state.movesFromRoot)
+        for(unsigned long i=0; i<state.movesFromRoot.size(); i++)
             state.root.undoLastMove();
-        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor(), state.root.getPawnStruct()  ));
+        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor()));
     }else if(command == "stop"){
         bestMoveFinder.stop();
     }else if(command == "ucinewgame"){

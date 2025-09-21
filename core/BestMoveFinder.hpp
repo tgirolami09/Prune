@@ -137,7 +137,7 @@ private:
         int lastEval=QTT.get_eval(state, alpha, beta);
         if(lastEval != INVALID)
             return lastEval;
-        int staticEval = eval.getScore(state.friendlyColor(), state.getPawnStruct());
+        int staticEval = eval.getScore(state.friendlyColor());
         if(staticEval >= beta){
             QTT.push(state, staticEval, LOWERBOUND);
             return staticEval;
@@ -328,7 +328,8 @@ private:
 #endif
             return Score(0, -1);
         }
-        if(depth == 0){
+        int static_eval = eval.getScore(state.friendlyColor());
+        if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
 #ifdef CalculatePV
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
 #endif
@@ -360,6 +361,13 @@ private:
         if((inCheck || order.nbMoves == 1) && numExtension < maxExtension){
             numExtension++;
             depth++;
+        }else if(!inCheck && nodeType != PVNode){
+            int margin = 150*depth;
+            if(static_eval >= beta+margin){
+                Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta), -1);
+                if(limitWay == 1 && nodes > alloted_time)running=false;
+                return score;
+            }
         }
         if(order.nbMoves == 1){
             state.playMove<false, false>(order.moves[0]);
@@ -373,7 +381,7 @@ private:
             return sc;
         }
         int r = 3;
-        if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor(), state.getPawnStruct()) >= beta){
+        if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor()) >= beta){
             state.playNullMove();
             Score v = -negamax<CutNode, limitWay>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
@@ -411,6 +419,8 @@ private:
                     if((score > alpha && score < beta) || (nodeType == PVNode && score.score == beta && beta == alpha+1)){
                         fullSearch = true;
                     }
+                    if(reductionDepth && score >= beta)
+                        fullSearch = true;
                     if(fullSearch)
                         score = -negamax<nodeType, limitWay>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 }else
@@ -560,8 +570,8 @@ public:
         nodes = 0;
         nbCutoff = nbFirstCutoff = 0;
         clock_t start=clock();
-        int lastNodes = 1;
-        int lastScore = eval.getScore(state.friendlyColor(), state.getPawnStruct());
+        big lastNodes = 1;
+        int lastScore = eval.getScore(state.friendlyColor());
         order.init(state.friendlyColor(), history, state, generator);
         for(int depth=1; depth<depthMax && running && !midtime; depth++){
             int deltaUp = 10;
@@ -581,8 +591,8 @@ public:
                 lastScore = bestScore;
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
-            int totNodes = nodes;
-            int usedNodes = totNodes-startNodes;
+            big totNodes = nodes;
+            big usedNodes = totNodes-startNodes;
 #ifdef CalculatePV
             string PV = PVprint(PVlines[0]);
 #else
@@ -590,8 +600,8 @@ public:
 #endif
             if(verbose){
                 if(idMove == order.nbMoves)
-                    printf("info depth %d score %s nodes %d nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
-                else if(idMove)printf("info depth %d score %s nodes %d nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
+                    printf("info depth %d score %s nodes %ld nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
+                else if(idMove)printf("info depth %d score %s nodes %ld nps %d time %d pv %s string %d/%d moves\n", depth+1, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
                 fflush(stdout);
             }
             if(abs(bestScore) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
@@ -626,7 +636,7 @@ public:
             running = false;
             timerThread.join();
         }
-        for(int i=0; i<movesFromRoot.size(); i++)
+        for(unsigned long i=0; i<movesFromRoot.size(); i++)
             state.undoLastMove();
         return {bestMove, lastScore};
     }
