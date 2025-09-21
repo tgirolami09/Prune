@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-Wall -Wextra -march=native -O3
+CFLAGS=-Wall -Wextra -march=native -O3 -std=gnu++17
 
 all: main
 
