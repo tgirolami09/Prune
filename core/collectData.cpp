@@ -59,7 +59,7 @@ int main(int argc, char** argv){
         GameState current;
         current.fromFen(fens[i]);
         vector<Move> moves;
-        int result; //0 black win 1 draw 2 white win
+        int result = 1; //0 black win 1 draw 2 white win
         Move LegalMoves[maxMoves];
         big dngpos;
         int countMoves = 0;
@@ -71,8 +71,8 @@ int main(int argc, char** argv){
             bool isWhite = current.friendlyColor() == WHITE;
             root.fromFen(fens[i]);
             pair<Move, int> res;
-            if(isWhite)res = player.bestMove<1>(root, limitNodes, moves, false);
-            else res = opponent.bestMove<1>(root, limitNodes, moves, false);
+            if(isWhite)res = player.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
+            else res = opponent.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
 #ifdef DEBUG
             //printf("%s\n", current.toFen().c_str());
 #endif
