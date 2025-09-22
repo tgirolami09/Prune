@@ -105,25 +105,19 @@ public:
         history.init();
     }
 
-    int alloted_time;
-    void stopAfter() {
-        //std::this_thread::sleep_for(std::chrono::milliseconds(alloted_time));
-        for(int i=0; i<2 && running; i++){
-            auto start=chrono::high_resolution_clock::now();
-            auto end=start;
-            do{
-                this_thread::sleep_for(chrono::milliseconds(10));
-                end = chrono::high_resolution_clock::now();
-            }while(chrono::duration_cast<chrono::milliseconds>(end-start).count() < alloted_time/2 && running);
-            midtime = true;
-        }
-        running = false; // Set running to false after the specified time
-    }
+    int hardBound;
+    using timeMesure=chrono::high_resolution_clock;
+    timeMesure::time_point startSearch;
+    chrono::milliseconds hardBoundTime;
     void stop(){
         running = false;
     }
 
 private:
+    inline auto getElapsedTime(){
+        return timeMesure::now()-startSearch;
+    }
+
     LegalMoveGenerator generator;
     int nodes;
     int nbCutoff;
@@ -132,6 +126,7 @@ private:
     template<int limitWay>
     int quiescenceSearch(GameState& state, int alpha, int beta){
         if(limitWay <= 1 && !running)return 0;
+        if(limitWay == 0 && (nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         if(eval.isInsufficientMaterial())return 0;
         nodes++;
         int lastEval=QTT.get_eval(state, alpha, beta);
@@ -205,7 +200,8 @@ private:
         if(depth <= 0 || relDepth-lastChange >= 100)
             return {-1, nullMove};
         nodes++;
-        if(nodes > alloted_time)running=false;
+        if(limitWay == 1 && nodes > hardBound)running=false;
+        if(limitWay == 0 && (nodes&1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         Order<maxMoves> order;
         bool inCheck=false;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
@@ -249,7 +245,8 @@ private:
         if(depth <= 0 || relDepth-lastChange >= 100)
             return {-1, nullMove};
         nodes++;
-        if(nodes > alloted_time)running=false;
+        if(limitWay == 1 && nodes > hardBound)running=false;
+        if(limitWay == 0 && (nodes&1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         Order<maxMoves> order;
         bool inCheck=false;
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
@@ -322,6 +319,7 @@ private:
     template <int nodeType, int limitWay>
     Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         if(limitWay <= 1 && !running)return 0;
+        if(limitWay == 0 && (nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
 #ifdef CalculatePV
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
@@ -334,7 +332,7 @@ private:
             if(nodeType == PVNode)beginLine(relDepth-startRelDepth);
 #endif
             Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta), -1);
-            if(limitWay == 1 && nodes > alloted_time)running=false;
+            if(limitWay == 1 && nodes > hardBound)running=false;
             return score;
         }
         nodes++;
@@ -365,7 +363,7 @@ private:
             int margin = 150*depth;
             if(static_eval >= beta+margin){
                 Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta), -1);
-                if(limitWay == 1 && nodes > alloted_time)running=false;
+                if(limitWay == 1 && nodes > hardBound)running=false;
                 return score;
             }
         }
@@ -510,7 +508,10 @@ private:
 
 public:
     template <int limitWay=0>
-    pair<Move, int> bestMove(GameState& state, int alloted, vector<Move> movesFromRoot, bool verbose=true){
+    pair<Move, int> bestMove(GameState& state, int softBound, int hardBound, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true){
+        startSearch = timeMesure::now();
+        hardBoundTime = chrono::milliseconds{hardBound};
+        chrono::milliseconds softBoundTime{softBound};
         int actDepth=0;
         int lastChange = 0;
         for(Move move:movesFromRoot){
@@ -545,21 +546,16 @@ public:
         }
         eval.init(state);
         running = true;
-        midtime = false;
-        thread timerThread;
         int depthMax = maxDepth;
         if(limitWay == 0){
-            this->alloted_time = alloted;
-            timerThread = thread(&BestMoveFinder::stopAfter, this);
+            this->hardBound = hardBound;
         }else if(limitWay == 1){
-            this->alloted_time = alloted*1000; //hard bound
+            this->hardBound = hardBound; //hard bound
         }else{
-            depthMax = alloted;
+            depthMax = hardBound;
         }
         if(order.nbMoves == 1){
             running = false;
-            if(limitWay == 0)
-                timerThread.join();
             return {order.moves[0], INF};
         }
         if(verbose){
@@ -573,7 +569,7 @@ public:
         big lastNodes = 1;
         int lastScore = eval.getScore(state.friendlyColor());
         order.init(state.friendlyColor(), history, state, generator);
-        for(int depth=1; depth<depthMax && running && !midtime; depth++){
+        for(int depth=1; depth<depthMax && running; depth++){
             int deltaUp = 10;
             int deltaDown = 10;
             int startNodes = nodes;
@@ -607,8 +603,7 @@ public:
             if(abs(bestScore) >= MAXIMUM-maxDepth && idMove == order.nbMoves){//checkmate found, stop the thread
                 pair<int, Move> result;
                 int searchDepth = MAXIMUM-abs(bestScore)+2;
-                if(limitWay == 1)
-                    this->alloted_time = alloted;
+                this->hardBound = mateHardBound ? hardBound : softBound;
                 if(bestScore >= MAXIMUM-maxDepth){//we can mate our opponent
                     result = MaterSearch<limitWay>(state, searchDepth, lastChange, actDepth);
                 }else{//we are on the path to be mated
@@ -630,11 +625,8 @@ public:
                 break;
             }
             lastNodes = usedNodes;
-            if(limitWay == 1 && nodes > alloted)break;
-        }
-        if(limitWay == 0){
-            running = false;
-            timerThread.join();
+            if(limitWay == 1 && nodes > softBound)break;
+            if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
         }
         for(unsigned long i=0; i<movesFromRoot.size(); i++)
             state.undoLastMove();
