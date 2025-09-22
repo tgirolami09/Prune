@@ -14,7 +14,7 @@
 #include <string>
 #include <thread>
 #define MoveScore pair<int, Move>
-//#define CalculatePV
+
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;
     int second = ((MoveScore*)b)->first;
@@ -470,11 +470,13 @@ private:
             int startNodes = nodes;
             int score;
             int curLastChange = lastChange;
+            bool isDraw = false;
             if(curMove.isChanger())
                 curLastChange = actDepth;
-            if(state.playMove<false>(curMove) > 1)
+            if(state.playMove<false>(curMove) > 1){
                 score = MIDDLE;
-            else{
+                isDraw = true;
+            }else{
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, actDepth);
                 score = -negamax<PVNode, limitWay>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
@@ -496,7 +498,8 @@ private:
                 alpha = score;
                 bestScore = score;
 #ifdef CalculatePV
-                transfer(1, curMove);
+                if(isDraw)beginLineMove(1, curMove);
+                else transfer(1, curMove);
 #endif
             }else if(score > bestScore){
                 bestMove = curMove;
@@ -589,8 +592,12 @@ public:
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
             big totNodes = nodes;
             big usedNodes = totNodes-startNodes;
+            string PV;
 #ifdef CalculatePV
-            string PV = PVprint(PVlines[0]);
+            if(abs(bestScore) > MAXIMUM-maxDepth)
+                PV = bestMove.to_str().c_str();
+            else 
+                PV = PVprint(PVlines[0]);
 #else
             string PV = bestMove.to_str().c_str();
 #endif
