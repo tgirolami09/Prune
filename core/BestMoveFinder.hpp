@@ -532,10 +532,7 @@ public:
             big usedNodes = totNodes-startNodes;
             string PV;
 #ifdef CalculatePV
-            //if(abs(bestScore) > MAXIMUM-maxDepth)
-            //    PV = bestMove.to_str().c_str();
-            //else 
-                PV = PVprint(PVlines[0]);
+            PV = PVprint(PVlines[0]);
 #else
             PV = bestMove.to_str().c_str();
 #endif
@@ -544,6 +541,10 @@ public:
                     printf("info depth %d seldepth %d score %s nodes %ld nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
                 else if(idMove)printf("info depth %d seldepth %d score %s nodes %ld nps %d time %d pv %s string %d/%d moves\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
                 fflush(stdout);
+            }
+            if(abs(bestScore) > MAXIMUM-maxDepth && mateHardBound){
+                softBound = hardBound;
+                softBoundTime = hardBoundTime;
             }
             lastNodes = usedNodes;
             if(limitWay == 1 && nodes > softBound)break;
