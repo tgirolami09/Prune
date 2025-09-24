@@ -1,5 +1,6 @@
 CC=g++
 CFLAGS=-Wall -Wextra -march=native -O3 -std=gnu++17
+COM=$(shell git rev-parse HEAD)
 
 all: main
 
@@ -11,6 +12,9 @@ main: engine.cpp
 
 coreGen: collectData.cpp
 	$(CC) $(CFLAGS) -fopenmp -o $@ $^
+
+coreNV: engine.cpp
+	$(CC) $(CFLAGS) -o $@ $^ -DCalculatePV -DCOMMIT=\"$(COM)\"
 
 clean:
 	rm *.o

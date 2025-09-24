@@ -162,6 +162,12 @@ void doUCI(string UCI_instruction, Chess& state){
         bestMoveFinder.stop();
     }else if(command == "ucinewgame"){
         bestMoveFinder.clear();
+    }else if(command == "version"){
+#ifdef COMMIT
+        printf("version: %s\n", COMMIT);
+#else
+        printf("version: test\n");
+#endif
     }
     //Implement actual logic for UCI management
 }
