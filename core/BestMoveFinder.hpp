@@ -237,8 +237,8 @@ private:
     }
 #endif
     enum{PVNode=0, CutNode=1, AllNode=-1};
-    template <int nodeType, int limitWay>
-    Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth, bool mateSearch){
+    template <int nodeType, int limitWay, bool mateSearch>
+    Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
         const int rootDist = relDepth-startRelDepth;
         if(rootDist >= MAXIMUM-alpha)return Score(MAXIMUM-maxDepth, 0);
         if(limitWay <= 1 && !running)return 0;
@@ -250,10 +250,11 @@ private:
             return Score(0, -1);
         }
         int static_eval = eval.getScore(state.friendlyColor());
-        if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100) && !mateSearch)){
+        if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
 #ifdef CalculatePV
             if(nodeType == PVNode)beginLine(rootDist);
 #endif
+            if(mateSearch)return Score(static_eval, -1);
             Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta, relDepth), -1);
             if(limitWay == 1 && nodes > hardBound)running=false;
             return score;
@@ -303,7 +304,7 @@ private:
         if(order.nbMoves == 1){
             state.playMove<false, false>(order.moves[0]);
             eval.playMove(order.moves[0], !state.friendlyColor());
-            Score sc = -negamax<-nodeType, limitWay>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1, mateSearch);
+            Score sc = -negamax<-nodeType, limitWay, mateSearch>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
 #ifdef CalculatePV
@@ -314,7 +315,7 @@ private:
         int r = 3;
         if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor()) >= beta){
             state.playNullMove();
-            Score v = -negamax<CutNode, limitWay>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1, mateSearch);
+            Score v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
             if(v.score >= beta)return Score(beta, v.depth);
         }
@@ -345,7 +346,7 @@ private:
                     if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
                         reductionDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
                     }
-                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1, mateSearch);
+                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
                     bool fullSearch = false;
                     if((score > alpha && score < beta) || (nodeType == PVNode && score.score == beta && beta == alpha+1)){
                         fullSearch = true;
@@ -353,9 +354,9 @@ private:
                     if(reductionDepth && score >= beta)
                         fullSearch = true;
                     if(fullSearch)
-                        score = -negamax<nodeType, limitWay>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1, mateSearch);
+                        score = -negamax<nodeType, limitWay, mateSearch>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 }else
-                    score = -negamax<-nodeType, limitWay>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1, mateSearch);
+                    score = -negamax<-nodeType, limitWay, mateSearch>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove<false>();
@@ -388,8 +389,8 @@ private:
         }
         return bestScore;
     }
-    template<int limitWay>
-    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, RootOrder& order, int actDepth, int lastChange, bool mateSearch){
+    template<int limitWay, bool mateSearch>
+    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, RootOrder& order, int actDepth, int lastChange){
         bestScore = -INF;
         Move bestMove = nullMove;
         order.reinit(lastBest.moveInfo);
@@ -413,7 +414,7 @@ private:
             }else{
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, actDepth);
-                score = -negamax<PVNode, limitWay>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1, mateSearch).score;
+                score = -negamax<PVNode, limitWay, mateSearch>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove();
@@ -514,7 +515,11 @@ public:
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
-                bestMove = bestMoveClipped<limitWay>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange, abs(lastScore) > MAXIMUM-maxDepth);
+                if(abs(lastScore) > MAXIMUM-maxDepth)
+                    bestMove = bestMoveClipped<limitWay, true>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange);
+                else
+                    bestMove = bestMoveClipped<limitWay, false>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange);
+
                 if(bestScore <= alpha)deltaDown = max(deltaDown*2, lastScore-bestScore+1);
                 else if(bestScore >= beta)deltaUp = max(deltaUp*2, bestScore-lastScore+1);
                 else break;
