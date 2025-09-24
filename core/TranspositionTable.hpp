@@ -43,12 +43,12 @@ public:
         int index=state.zobristHash%modulo;
         if(byDepth[index].hash == state.zobristHash){
             int score = storedScore(alpha, beta, depth, byDepth[index]);
-            if(score != INVALID)return score;
             best = byDepth[index].bestMoveInfo; //probably a good move
+            if(score != INVALID)return score;
         }else if(always[index].hash == state.zobristHash){
             int score = storedScore(alpha, beta, depth, always[index]);
-            if(score != INVALID)return score;
             best = always[index].bestMoveInfo; //probably a good move
+            if(score != INVALID)return score;
         }
         return INVALID;
     }
