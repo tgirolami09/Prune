@@ -16,5 +16,8 @@ coreGen: collectData.cpp
 coreNV: engine.cpp
 	$(CC) $(CFLAGS) -o $@ $^ -DCalculatePV -DCOMMIT=\"$(COM)\"
 
+coreTV: engine.cpp
+	$(CC) $(CFLAGS) -o $@ $^ -DCOMMIT=\"$(COM)\"
+
 clean:
 	rm *.o
