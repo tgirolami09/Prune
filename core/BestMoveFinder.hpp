@@ -29,54 +29,61 @@ public:
     Score(int _score):score(_score), depth(-1){}
     Score(int _score, ubyte _depth):score(_score), depth(_depth){}
 
-    bool isMate(){
+    bool isMate() const{
         return abs(score) > MAXIMUM-maxDepth;
     }
-    Score(int _score, int rootDist, bool useThisOne){
-        score = _score;
-        if(isMate())
-            score = (abs(score)-rootDist)*sign(score);
-        depth = -1;
-    }
 
-    int absoluteScore(int rootDist){
-        if(isMate())
-            return (abs(score)+rootDist)*sign(score);
+    int absoluteScore(int rootDist) const{
+        if(score > MAXIMUM-maxDepth)
+            return score+rootDist;
+        else if(score < MINIMUM+maxDepth)
+            return score-rootDist;
         return score;
     }
 
-    bool usable(ubyte _depth){
+    bool usable(ubyte _depth) const{
         return _depth <= depth;
     }
 
-    Score operator-(){
+    Score operator-() const{
         return Score(-score, depth);
     }
-    bool operator>(Score o){
+    bool operator>(Score o) const{
         return score > o.score;
     }
-    bool operator>=(Score o){
+    bool operator>=(Score o) const{
         return score >= o.score;
     }
-    bool operator<(Score o){
+    bool operator<(Score o) const{
         return score < o.score;
     }
-    bool operator<=(Score o){
+    bool operator<=(Score o) const{
         return score <= o.score;
     }
-    bool operator>(int otherScore){
+    bool operator>(int otherScore) const{
         return score > otherScore;
     }
-    bool operator>=(int otherScore){
+    bool operator>=(int otherScore) const{
         return score >= otherScore;
     }
-    bool operator<(int otherScore){
+    bool operator<(int otherScore) const{
         return score < otherScore;
     }
-    bool operator<=(int otherScore){
+    bool operator<=(int otherScore) const{
         return score <= otherScore;
     }
 };
+
+static Score fromTT(int _score, int rootDist){
+    Score res;
+    res.score = _score;
+    if(res.score < MINIMUM+maxDepth)
+            res.score += rootDist;
+    else if(res.score > MAXIMUM-maxDepth)
+        res.score -= rootDist;
+    res.depth = -1;
+    return res;
+}
 
 class LINE{
 public:
@@ -164,6 +171,7 @@ private:
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
             eval.playMove(capture, !state.friendlyColor());
+            generator.initDangers(state);
             int score = -quiescenceSearch<limitWay>(state, -beta, -alpha, relDepth+1);
             eval.undoMove(capture, !state.friendlyColor());
             state.undoLastMove<false>();
@@ -274,7 +282,7 @@ private:
                 }
             }
 #endif
-            return Score(lastEval, rootDist, true);
+            return fromTT(lastEval, rootDist);
         }
         ubyte typeNode = UPPERBOUND;
         Order<maxMoves> order;
@@ -290,7 +298,7 @@ private:
 #endif
             return score;
         }
-        if((inCheck || order.nbMoves == 1) && numExtension < maxExtension){
+        if(order.nbMoves == 1 && numExtension < maxExtension){
             numExtension++;
             depth++;
         }else if(!inCheck && nodeType != PVNode && !mateSearch){
@@ -304,6 +312,7 @@ private:
         if(order.nbMoves == 1){
             state.playMove<false, false>(order.moves[0]);
             eval.playMove(order.moves[0], !state.friendlyColor());
+            generator.initDangers(state);
             Score sc = -negamax<-nodeType, limitWay, mateSearch>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
@@ -315,6 +324,7 @@ private:
         int r = 3;
         if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor()) >= beta){
             state.playNullMove();
+            generator.initDangers(state);
             Score v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
             state.undoNullMove();
             if(v.score >= beta)return Score(beta, v.depth);
@@ -340,23 +350,31 @@ private:
 #endif
             }else{
                 eval.playMove(curMove, !state.friendlyColor());
+                bool inCheckPos = generator.initDangers(state);
+                int reductionDepth = 1;
+                if(inCheckPos && numExtension < maxExtension){
+                    reductionDepth--;
+                    numExtension++;
+                }
                 setElement(state.zobristHash, relDepth);
                 if(rankMove > 0){
-                    int reductionDepth = 0;
+                    int addRedDepth = 0;
                     if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
-                        reductionDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
+                        addRedDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
                     }
-                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(depth-1-reductionDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
                     bool fullSearch = false;
                     if((score > alpha && score < beta) || (nodeType == PVNode && score.score == beta && beta == alpha+1)){
                         fullSearch = true;
                     }
-                    if(reductionDepth && score >= beta)
+                    if(addRedDepth && score >= beta)
                         fullSearch = true;
-                    if(fullSearch)
-                        score = -negamax<nodeType, limitWay, mateSearch>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    if(fullSearch){
+                        generator.initDangers(state);
+                        score = -negamax<nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    }
                 }else
-                    score = -negamax<-nodeType, limitWay, mateSearch>(depth-1, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<-nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove<false>();
@@ -414,6 +432,7 @@ private:
             }else{
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, actDepth);
+                generator.initDangers(state);
                 score = -negamax<PVNode, limitWay, mateSearch>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
                 eval.undoMove(curMove, !state.friendlyColor());
             }
@@ -463,6 +482,7 @@ public:
         Move bookMove = findPolyglot(state,moveInTable,book);
         bool inCheck;
         RootOrder order;
+        generator.initDangers(state);
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         //Return early because a move was found in a book
         if (moveInTable){
@@ -592,6 +612,7 @@ public:
         bool inCheck;
         Move moves[maxMoves];
         big dangerPositions = 0;
+        generator.initDangers(state);
         int nbMoves=generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
         if(depth == 1)return nbMoves;
         big count=0;
@@ -612,6 +633,7 @@ public:
         bool inCheck;
         Move moves[maxMoves];
         big dangerPositions = 0;
+        generator.initDangers(state);
         int nbMoves=generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
         big count=0;
         for(int i=0; i<nbMoves; i++){
