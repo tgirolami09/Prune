@@ -237,7 +237,6 @@ inline int score_move(const Move& move, bool c, big& dangerPositions, int histor
         score += SEEscore;
         if(move.promotion() != -1)score += value_pieces[move.promotion()];
     }
-    score += mg_table[c][move.piece][move.to()]-mg_table[c][move.piece][move.from()];
     return score;
 }
 

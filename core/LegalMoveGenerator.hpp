@@ -594,20 +594,16 @@ class LegalMoveGenerator{
 
     int friendlyKingPosition;
     int enemyKingPosition;
+    big allDangerSquares;
+    int nbCheckers;
+    int checkerPos;
 
-    public : int generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves,big& dangerPositions, bool onlyCapture=false){
-        //Set all pinned masks to -1 (= no pinning)
+public : 
+    
+    bool initDangers(const GameState& state){
         memset(pinnedMasks, 0xFF, sizeof(pinnedMasks));
-
-        //All allowed spots for a piece to move (not allowed if king is in check)
-        big moveMask = -1; //Totaly true
-        //All allowed spots for a piece to capture another one (not allowed if there is a checker)
-        big captureMask = -1; //Totaly false
-
-        int nbMoves = 0;
-        int nbCheckers = 0;
-        int checkerPos = -1;
-
+        nbCheckers = 0;
+        checkerPos = -1;
         friendlyPieces = state.friendlyPieces();
         enemyPieces = state.enemyPieces();
 
@@ -624,12 +620,7 @@ class LegalMoveGenerator{
         }
 
         allPieces = allFriends | allEnemies;
-
-        moveMask = (~allFriends);
-        captureMask = allEnemies;
-
-        big allDangerSquares = 0;
-
+        allDangerSquares = 0;
         dealWithEnemyKing(enemyKingPosition,allDangerSquares);
 
         //Updates the danger squares and retrieves the possibe pawn checker
@@ -671,6 +662,20 @@ class LegalMoveGenerator{
                 checkerPos = rookCheckerPos;
             }
         }
+        return nbCheckers >= 1;
+    }
+
+    int generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves,big& dangerPositions, bool onlyCapture=false){
+        //Set all pinned masks to -1 (= no pinning)
+
+        //All allowed spots for a piece to move (not allowed if king is in check)
+        big moveMask = -1; //Totaly true
+        //All allowed spots for a piece to capture another one (not allowed if there is a checker)
+        big captureMask = -1; //Totaly false
+
+        int nbMoves = 0;
+        moveMask = (~allFriends);
+        captureMask = allEnemies;
 
         dangerPositions = allDangerSquares;
 

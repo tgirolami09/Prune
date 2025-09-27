@@ -103,4 +103,7 @@ inline char transform(ubyte n){
         return ((char)n) - 256;
     return n;
 }
+inline int sign(int n){
+    return n < 0 ? -1 : 1;
+}
 #endif

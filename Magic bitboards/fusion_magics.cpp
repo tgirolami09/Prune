@@ -2,6 +2,7 @@
 
 int main(int argc, char** argv){
     assert(argc > 3);
+    init_lines();
     vector<vector<info>> table1=load_info(argv[2]);
     vector<vector<info>> table2=load_info(argv[3]);
     vector<vector<info>> table_fusion(2, vector<info>(64));

@@ -29,8 +29,8 @@ const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
 template<int limitWay=0>
-Move getBotMove(Chess state, int alloted_time){
-    Move moveToPlay = bestMoveFinder.bestMove<limitWay>(state.root, alloted_time, state.movesFromRoot).first;
+Move getBotMove(Chess& state, int softBound, int hardBound){
+    Move moveToPlay = bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot).first;
     return moveToPlay;
 }
 
@@ -39,13 +39,14 @@ Move getOpponentMove(){
     return {};
 }
 
-int computeAllotedTime(Chess& state){
+pair<int, int> computeAllotedTime(Chess& state){
     bool color = state.root.friendlyColor()^(state.movesFromRoot.size()&1);
     int time = color == WHITE?state.w_time:state.b_time;
     int inc = color == WHITE?state.winc:state.binc;
-    int maxTime = time/20+inc/2;
+    int hardBound = time/20+inc/2-moveOverhead;
+    int softBound = hardBound/2;
     //maxTime = min(maxTime, time/10);
-    return maxTime-moveOverhead;
+    return {softBound, hardBound};
 }
 
 void doUCI(string UCI_instruction, Chess& state){
@@ -93,15 +94,16 @@ void doUCI(string UCI_instruction, Chess& state){
                 state.w_time = args["wtime"];
                 state.winc = args["winc"];
                 state.binc = args["binc"];
-                move=getBotMove(state, computeAllotedTime(state));
+                auto [softBound, hardBound] = computeAllotedTime(state);
+                move=getBotMove(state, softBound, hardBound);
             }else if(args.count("movetime")){
-                move = getBotMove(state, args["movetime"]);
+                move = getBotMove(state, args["movetime"], args["movetime"]);
             }else if(args.count("nodes")){
-                move = getBotMove<1>(state, args["nodes"]);
+                move = getBotMove<1>(state, args["nodes"], args["nodes"]);
             }else if(args.count("depth")){
-                move = getBotMove<2>(state, args["depth"]);
+                move = getBotMove<2>(state, args["depth"], args["depth"]);
             }else{
-                move = getBotMove<2>(state, 200);
+                move = getBotMove<2>(state, 200, 200);
             }
             printf("bestmove %s\n", move.to_str().c_str());
         }
@@ -160,6 +162,12 @@ void doUCI(string UCI_instruction, Chess& state){
         bestMoveFinder.stop();
     }else if(command == "ucinewgame"){
         bestMoveFinder.clear();
+    }else if(command == "version"){
+#ifdef COMMIT
+        printf("version: %s\n", COMMIT);
+#else
+        printf("version: test\n");
+#endif
     }
     //Implement actual logic for UCI management
 }
