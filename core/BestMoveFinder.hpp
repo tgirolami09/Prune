@@ -298,7 +298,7 @@ private:
 #endif
             return score;
         }
-        if(order.nbMoves == 1 && numExtension < maxExtension){
+        if(order.nbMoves == 1){
             numExtension++;
             depth++;
         }else if(!inCheck && nodeType != PVNode && !mateSearch){
@@ -352,7 +352,7 @@ private:
                 eval.playMove(curMove, !state.friendlyColor());
                 bool inCheckPos = generator.initDangers(state);
                 int reductionDepth = 1;
-                if(inCheckPos && numExtension < maxExtension){
+                if(inCheckPos){
                     reductionDepth--;
                     numExtension++;
                 }
