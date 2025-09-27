@@ -599,7 +599,9 @@ class LegalMoveGenerator{
     int checkerPos;
 
 public : 
-    
+    bool isCheck() const{
+        return nbCheckers >= 1;
+    }
     bool initDangers(const GameState& state){
         memset(pinnedMasks, 0xFF, sizeof(pinnedMasks));
         nbCheckers = 0;
@@ -672,7 +674,7 @@ public :
         big moveMask = -1; //Totaly true
         //All allowed spots for a piece to capture another one (not allowed if there is a checker)
         big captureMask = -1; //Totaly false
-
+        inCheck = false;
         int nbMoves = 0;
         moveMask = (~allFriends);
         captureMask = allEnemies;
