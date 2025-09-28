@@ -165,13 +165,13 @@ private:
         int bestEval = staticEval;
         Order<maxCaptures> order;
         bool inCheck;
+        generator.initDangers(state);
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
         order.init(state.friendlyColor(), nullMove.moveInfo, history, -1, state, generator, false);
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
             eval.playMove(capture, !state.friendlyColor());
-            generator.initDangers(state);
             int score = -quiescenceSearch<limitWay>(state, -beta, -alpha, relDepth+1);
             eval.undoMove(capture, !state.friendlyColor());
             state.undoLastMove<false>();
@@ -246,7 +246,7 @@ private:
 #endif
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template <int nodeType, int limitWay, bool mateSearch>
-    Score negamax(int depth, GameState& state, int alpha, int beta, int numExtension, int lastChange, int relDepth){
+    Score negamax(int depth, GameState& state, int alpha, int beta, int lastChange, int relDepth){
         const int rootDist = relDepth-startRelDepth;
         if(rootDist >= MAXIMUM-alpha)return Score(MAXIMUM-maxDepth, 0);
         if(limitWay <= 1 && !running)return 0;
@@ -286,7 +286,28 @@ private:
         }
         ubyte typeNode = UPPERBOUND;
         Order<maxMoves> order;
-        bool inCheck=false;
+        bool inCheck=generator.isCheck();
+        if(!inCheck){
+            if(nodeType != PVNode){
+                if(!mateSearch){
+                    int margin = 150*depth;
+                    if(static_eval >= beta+margin){
+                        Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta, relDepth), -1);
+                        if(limitWay == 1 && nodes > hardBound)running=false;
+                        return score;
+                    }
+                }
+                int r = 3;
+                if(depth >= r && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor()) >= beta){
+                    state.playNullMove();
+                    generator.initDangers(state);
+                    Score v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, lastChange, relDepth+1);
+                    state.undoNullMove();
+                    if(v.score >= beta)return Score(beta, v.depth);
+                    generator.initDangers(state);
+                }
+            }
+        }
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         if(order.nbMoves == 0){
             Score score;
@@ -299,35 +320,16 @@ private:
             return score;
         }
         if(order.nbMoves == 1){
-            numExtension++;
-            depth++;
-        }else if(!inCheck && nodeType != PVNode && !mateSearch){
-            int margin = 150*depth;
-            if(static_eval >= beta+margin){
-                Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta, relDepth), -1);
-                if(limitWay == 1 && nodes > hardBound)running=false;
-                return score;
-            }
-        }
-        if(order.nbMoves == 1){
             state.playMove<false, false>(order.moves[0]);
             eval.playMove(order.moves[0], !state.friendlyColor());
             generator.initDangers(state);
-            Score sc = -negamax<-nodeType, limitWay, mateSearch>(depth-1, state, -beta, -alpha, numExtension, lastChange, relDepth+1);
+            Score sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
 #ifdef CalculatePV
             if((running || limitWay == 2) && nodeType == PVNode && sc.score > alpha)transfer(rootDist, order.moves[0]);
 #endif
             return sc;
-        }
-        int r = 3;
-        if(depth >= r && !inCheck && nodeType != PVNode && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor()) >= beta){
-            state.playNullMove();
-            generator.initDangers(state);
-            Score v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, numExtension, lastChange, relDepth+1);
-            state.undoNullMove();
-            if(v.score >= beta)return Score(beta, v.depth);
         }
         order.init(state.friendlyColor(), lastBest, history, relDepth, state, generator, depth > 5);
         Move bestMove;
@@ -354,7 +356,6 @@ private:
                 int reductionDepth = 1;
                 if(inCheckPos){
                     reductionDepth--;
-                    numExtension++;
                 }
                 setElement(state.zobristHash, relDepth);
                 if(rankMove > 0){
@@ -362,7 +363,7 @@ private:
                     if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
                         addRedDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
                     }
-                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, newLastChange, relDepth+1);
                     bool fullSearch = false;
                     if((score > alpha && score < beta) || (nodeType == PVNode && score.score == beta && beta == alpha+1)){
                         fullSearch = true;
@@ -371,10 +372,10 @@ private:
                         fullSearch = true;
                     if(fullSearch){
                         generator.initDangers(state);
-                        score = -negamax<nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                        score = -negamax<nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, newLastChange, relDepth+1);
                     }
                 }else
-                    score = -negamax<-nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, numExtension, newLastChange, relDepth+1);
+                    score = -negamax<-nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, newLastChange, relDepth+1);
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove<false>();
@@ -433,7 +434,7 @@ private:
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, actDepth);
                 generator.initDangers(state);
-                score = -negamax<PVNode, limitWay, mateSearch>(depth, state, -beta, -alpha, 0, curLastChange, actDepth+1).score;
+                score = -negamax<PVNode, limitWay, mateSearch>(depth, state, -beta, -alpha, curLastChange, actDepth+1).score;
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove();

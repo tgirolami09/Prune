@@ -13,10 +13,10 @@ main: engine.cpp
 coreGen: collectData.cpp
 	$(CC) $(CFLAGS) -fopenmp -o $@ $^
 
-coreNV: engine.cpp
+core%: engine.cpp
 	$(CC) $(CFLAGS) -o $@ $^ -DCalculatePV -DCOMMIT=\"$(COM)\"
 
-coreTV: engine.cpp
+coreT%: engine.cpp
 	$(CC) $(CFLAGS) -o $@ $^ -DCOMMIT=\"$(COM)\"
 
 clean:

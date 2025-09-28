@@ -98,7 +98,7 @@ public:
         isPriority=false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], c, dangerPositions, history.getMoveScore(moves[i], c, relDepth, state.getLastMove()), useSEE, state, flags[i], generator);
+            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth, state.getLastMove()), useSEE, state, flags[i], generator);
             if(moves[i].isTactical())
                 flags[i]++;
             if(moveInfoPriority == moves[i].moveInfo){
@@ -155,7 +155,7 @@ public:
         isPriority = false;
         pointer = 0;
         for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], c, dangerPositions, history.getMoveScore(moves[i], c, 0, state.getLastMove()), true, state, flags[i], generator);
+            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, 0, state.getLastMove()), true, state, flags[i], generator);
             nodeUsed[i] = 0;
         }
     }

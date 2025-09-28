@@ -209,7 +209,7 @@ int SEE(int square, GameState& state, LegalMoveGenerator& generator){
     return value;
 }
 
-inline int score_move(const Move& move, bool c, big& dangerPositions, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator){
+inline int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator){
     int score = 0;
     int SEEscore = 0;
     flag = 0;
