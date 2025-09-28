@@ -106,4 +106,10 @@ inline char transform(ubyte n){
 inline int sign(int n){
     return n < 0 ? -1 : 1;
 }
+
+class depthInfo{
+public:
+    int node, time, nps, depth, seldepth, score;
+};
+
 #endif
