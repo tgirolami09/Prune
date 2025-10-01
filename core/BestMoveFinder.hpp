@@ -163,7 +163,6 @@ private:
     }
     int startRelDepth;
 
-#ifdef CalculatePV
     LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
 
     string PVprint(LINE pvLine){
@@ -203,13 +202,10 @@ private:
             PVlines[i].cmove = 0;
         }
     }
-#endif
 
     int16_t getPVMove(int relDepth){
-#ifdef CalculatePV
         if(lastPV.cmove < relDepth)
             return lastPV.argMoves[relDepth];
-#endif
         return nullMove.moveInfo;
     }
 
@@ -223,16 +219,12 @@ private:
         if constexpr(limitWay <= 1)if(!running)return 0;
         if constexpr(limitWay == 0)if((nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
-#ifdef CalculatePV
             if constexpr (nodeType == PVNode)beginLine(rootDist);
-#endif
             return 0;
         }
         int static_eval = eval.getScore(state.friendlyColor());
         if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
-#ifdef CalculatePV
             if constexpr(nodeType == PVNode)beginLine(rootDist);
-#endif
             if(mateSearch)return static_eval;
             int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
             if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
@@ -278,9 +270,7 @@ private:
             if(inCheck)
                 score = MINIMUM+rootDist;
             else score = MIDDLE;
-#ifdef CalculatePV
             if constexpr(nodeType == PVNode)if(score > alpha)beginLine(rootDist);
-#endif
             return score;
         }
         if(order.nbMoves == 1){
@@ -290,9 +280,7 @@ private:
             int sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
-#ifdef CalculatePV
             if constexpr(nodeType != PVNode)if((running || limitWay == 2) && sc > alpha)transfer(rootDist, order.moves[0]);
-#endif
             return sc;
         }
         order.init(state.friendlyColor(), lastBest, getPVMove(rootDist), history, relDepth, state, generator, depth > 5);
@@ -306,14 +294,10 @@ private:
             if(curMove.isChanger())
                 newLastChange = relDepth;
             ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
-#ifdef CalculatePV
             bool isDraw = false;
-#endif
             if(usableDepth != (ubyte)-1){
                 score = MIDDLE;
-#ifdef CalculatePV
                 isDraw = true;
-#endif
             }else{
                 eval.playMove(curMove, !state.friendlyColor());
                 bool inCheckPos = generator.initDangers(state);
@@ -356,12 +340,10 @@ private:
             if(score > alpha){
                 alpha = score;
                 typeNode=EXACT;
-#ifdef CalculatePV
                 if constexpr(nodeType == PVNode){
                     if(isDraw)beginLineMove(rootDist, curMove);
                     else transfer(rootDist, curMove);
                 }
-#endif
             }
             if(score > bestScore)bestScore = score;
         }
@@ -382,16 +364,12 @@ private:
             int startNodes = nodes;
             int score;
             int curLastChange = lastChange;
-#ifdef CalculatePV
             bool isDraw = false;
-#endif
             if(curMove.isChanger())
                 curLastChange = actDepth;
             if(state.playMove<false>(curMove) > 1){
                 score = MIDDLE;
-#ifdef CalculatePV
                 isDraw = true;
-#endif
             }else{
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, actDepth);
@@ -413,10 +391,8 @@ private:
                 bestMove = curMove;
                 alpha = score;
                 bestScore = score;
-#ifdef CalculatePV
                 if(isDraw)beginLineMove(1, curMove);
                 else transfer(1, curMove);
-#endif
             }else if(score > bestScore){
                 bestMove = curMove;
                 bestScore = score;
@@ -520,19 +496,14 @@ public:
             }while(running);
             if(idMove)
                 lastScore = bestScore;
-#ifdef CalculatePV
             transferLastPV();
-#endif
             clock_t end = clock();
             double tcpu = double(end-start)/CLOCKS_PER_SEC;
             big totNodes = nodes;
             big usedNodes = totNodes-startNodes;
             string PV;
-#ifdef CalculatePV
             PV = PVprint(PVlines[0]);
-#else
             PV = bestMove.to_str().c_str();
-#endif
             if(verbose){
                 if(idMove == order.nbMoves)
                     printf("info depth %d seldepth %d score %s nodes %ld nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
