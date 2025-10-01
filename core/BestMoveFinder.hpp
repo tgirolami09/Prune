@@ -21,68 +21,21 @@ int compScoreMove(const void* a, const void*b){
     return second-first; //https://stackoverflow.com/questions/8115624/using-quick-sort-in-c-to-sort-in-reverse-direction-descending
 }
 
-class Score{
-public:
-    int score;
-    ubyte depth;//when, if the score is 0, is usable in the tt
-    Score(){}
-    Score(int _score):score(_score), depth(-1){}
-    Score(int _score, ubyte _depth):score(_score), depth(_depth){}
+static int fromTT(int score, int rootDist){
+    if(score < MINIMUM+maxDepth)
+        return score + rootDist;
+    else if(score > MAXIMUM-maxDepth)
+        return score - rootDist;
+    return score;
+}
 
-    bool isMate() const{
-        return abs(score) > MAXIMUM-maxDepth;
-    }
+int absoluteScore(int score, int rootDist){
+    if(score < MINIMUM+maxDepth)
+        return score - rootDist;
+    else if(score > MAXIMUM-maxDepth)
+        return score + rootDist;
+    return score;
 
-    int absoluteScore(int rootDist) const{
-        if(score > MAXIMUM-maxDepth)
-            return score+rootDist;
-        else if(score < MINIMUM+maxDepth)
-            return score-rootDist;
-        return score;
-    }
-
-    bool usable(ubyte _depth) const{
-        return _depth <= depth;
-    }
-
-    Score operator-() const{
-        return Score(-score, depth);
-    }
-    bool operator>(Score o) const{
-        return score > o.score;
-    }
-    bool operator>=(Score o) const{
-        return score >= o.score;
-    }
-    bool operator<(Score o) const{
-        return score < o.score;
-    }
-    bool operator<=(Score o) const{
-        return score <= o.score;
-    }
-    bool operator>(int otherScore) const{
-        return score > otherScore;
-    }
-    bool operator>=(int otherScore) const{
-        return score >= otherScore;
-    }
-    bool operator<(int otherScore) const{
-        return score < otherScore;
-    }
-    bool operator<=(int otherScore) const{
-        return score <= otherScore;
-    }
-};
-
-static Score fromTT(int _score, int rootDist){
-    Score res;
-    res.score = _score;
-    if(res.score < MINIMUM+maxDepth)
-            res.score += rootDist;
-    else if(res.score > MAXIMUM-maxDepth)
-        res.score -= rootDist;
-    res.depth = -1;
-    return res;
 }
 
 class LINE{
@@ -262,76 +215,71 @@ private:
 
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template <int nodeType, int limitWay, bool mateSearch>
-    Score negamax(int depth, GameState& state, int alpha, int beta, int lastChange, int relDepth){
+    int negamax(const int depth, GameState& state, int alpha, int beta, const int lastChange, const int relDepth){
         const int rootDist = relDepth-startRelDepth;
-        if(rootDist >= MAXIMUM-alpha)return Score(MAXIMUM-maxDepth, 0);
-        if(limitWay <= 1 && !running)return 0;
-        if(limitWay == 0 && (nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
+        seldepth = max(seldepth, relDepth);
+        if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
+        if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
+        if constexpr(limitWay <= 1)if(!running)return 0;
+        if constexpr(limitWay == 0)if((nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
 #ifdef CalculatePV
-            if(nodeType == PVNode)beginLine(rootDist);
+            if constexpr (nodeType == PVNode)beginLine(rootDist);
 #endif
-            return Score(0, -1);
+            return 0;
         }
         int static_eval = eval.getScore(state.friendlyColor());
         if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
 #ifdef CalculatePV
-            if(nodeType == PVNode)beginLine(rootDist);
+            if constexpr(nodeType == PVNode)beginLine(rootDist);
 #endif
-            if(mateSearch)return Score(static_eval, -1);
-            Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta, relDepth), -1);
-            if(limitWay == 1 && nodes > hardBound)running=false;
+            if(mateSearch)return static_eval;
+            int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
+            if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
             return score;
         }
         nodes++;
         int16_t lastBest = nullMove.moveInfo;
-        int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
-        if(lastEval != INVALID){
-#ifdef CalculatePV
-            if(nodeType == PVNode){
-                if(lastBest != nullMove.moveInfo){
-                    Move rMove;
-                    rMove.moveInfo = lastBest;
-                    beginLineMove(rootDist, rMove);
-                }else{
-                    beginLine(rootDist);
-                }
+        if constexpr(nodeType != PVNode){
+            int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
+            if(lastEval != INVALID){
+                return fromTT(lastEval, rootDist);
             }
-#endif
-            return fromTT(lastEval, rootDist);
+        }else{
+            lastBest = transposition.getMove(state);
         }
         ubyte typeNode = UPPERBOUND;
         Order<maxMoves> order;
         bool inCheck=generator.isCheck();
         if(!inCheck){
-            if(nodeType != PVNode){
+            if constexpr(nodeType != PVNode){
                 if(!mateSearch){
                     int margin = 150*depth;
                     if(static_eval >= beta+margin){
-                        Score score = Score(quiescenceSearch<limitWay>(state, alpha, beta, relDepth), -1);
-                        if(limitWay == 1 && nodes > hardBound)running=false;
+                        int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
+                        if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
                         return score;
                     }
                 }
                 int r = 3;
-                if(depth >= r && !eval.isOnlyPawns() && eval.getScore(state.friendlyColor()) >= beta){
+                if(depth >= r && !eval.isOnlyPawns() && static_eval >= beta){
                     state.playNullMove();
                     generator.initDangers(state);
-                    Score v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, lastChange, relDepth+1);
+                    int v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, lastChange, relDepth+1);
                     state.undoNullMove();
-                    if(v.score >= beta)return Score(beta, v.depth);
+                    if(v >= beta)return beta;
                     generator.initDangers(state);
                 }
             }
         }
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         if(order.nbMoves == 0){
-            Score score;
+            int score;
             if(inCheck)
-                score = Score(MINIMUM+rootDist, -1);
-            else score = Score(MIDDLE, -1);
+                score = MINIMUM+rootDist;
+            else score = MIDDLE;
 #ifdef CalculatePV
-            if(nodeType == PVNode && score.score > alpha)beginLine(rootDist);
+            if constexpr(nodeType == PVNode)if(score > alpha)beginLine(rootDist);
 #endif
             return score;
         }
@@ -339,20 +287,20 @@ private:
             state.playMove<false, false>(order.moves[0]);
             eval.playMove(order.moves[0], !state.friendlyColor());
             generator.initDangers(state);
-            Score sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
+            int sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
 #ifdef CalculatePV
-            if((running || limitWay == 2) && nodeType == PVNode && sc.score > alpha)transfer(rootDist, order.moves[0]);
+            if constexpr(nodeType != PVNode)if((running || limitWay == 2) && sc > alpha)transfer(rootDist, order.moves[0]);
 #endif
             return sc;
         }
         order.init(state.friendlyColor(), lastBest, getPVMove(rootDist), history, relDepth, state, generator, depth > 5);
         Move bestMove;
-        Score bestScore(-INF, -1);
+        int bestScore = -INF;
         for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
             Move curMove = order.pop_max();
-            Score score;
+            int score;
             state.playMove<false, false>(curMove);
             int newLastChange = lastChange;
             if(curMove.isChanger())
@@ -362,7 +310,7 @@ private:
             bool isDraw = false;
 #endif
             if(usableDepth != (ubyte)-1){
-                score = Score(MIDDLE, usableDepth);
+                score = MIDDLE;
 #ifdef CalculatePV
                 isDraw = true;
 #endif
@@ -378,10 +326,12 @@ private:
                     int addRedDepth = 0;
                     if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
                         addRedDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
+                        if(mateSearch && inCheckPos)
+                            addRedDepth--;
                     }
                     score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, newLastChange, relDepth+1);
                     bool fullSearch = false;
-                    if((score > alpha && score < beta) || (nodeType == PVNode && score.score == beta && beta == alpha+1)){
+                    if((score > alpha && score < beta) || (nodeType == PVNode && score == beta && beta == alpha+1)){
                         fullSearch = true;
                     }
                     if(addRedDepth && score >= beta)
@@ -395,21 +345,19 @@ private:
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove<false>();
-            if(limitWay <= 1 && !running)return 0;
+            if constexpr(limitWay <= 1)if(!running)return 0;
             if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
-                if(score.usable(relDepth)){
-                    transposition.push(state, score.absoluteScore(rootDist), LOWERBOUND, curMove, depth);
-                }
+                transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth);
                 nbCutoff++;
                 if(rankMove == 0)nbFirstCutoff++;
                 history.addKiller(curMove, depth, relDepth, state.friendlyColor(), state.getLastMove());
                 return score;
             }
             if(score > alpha){
-                alpha = score.score;
+                alpha = score;
                 typeNode=EXACT;
 #ifdef CalculatePV
-                if(nodeType == PVNode){
+                if constexpr(nodeType == PVNode){
                     if(isDraw)beginLineMove(rootDist, curMove);
                     else transfer(rootDist, curMove);
                 }
@@ -417,11 +365,9 @@ private:
             }
             if(score > bestScore)bestScore = score;
         }
-        if(nodeType==CutNode && bestScore.score == alpha)
+        if constexpr(nodeType==CutNode)if(bestScore == alpha)
             return bestScore;
-        if(bestScore.usable(relDepth)){
-            transposition.push(state, bestScore.absoluteScore(rootDist), typeNode, bestMove, depth);
-        }
+        transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth);
         return bestScore;
     }
     template<int limitWay, bool mateSearch>
@@ -450,7 +396,7 @@ private:
                 eval.playMove(curMove, !state.friendlyColor());
                 setElement(state.zobristHash, actDepth);
                 generator.initDangers(state);
-                score = -negamax<PVNode, limitWay, mateSearch>(depth, state, -beta, -alpha, curLastChange, actDepth+1).score;
+                score = -negamax<PVNode, limitWay, mateSearch>(depth, state, -beta, -alpha, curLastChange, actDepth+1);
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove();
@@ -554,6 +500,9 @@ public:
         for(int depth=1; depth<depthMax && running; depth++){
             int deltaUp = 10;
             int deltaDown = 10;
+            seldepth = 0;
+            if(abs(lastScore) > MAXIMUM-maxDepth)
+                deltaDown = 1;
             int startNodes = nodes;
             int idMove;
             int bestScore;

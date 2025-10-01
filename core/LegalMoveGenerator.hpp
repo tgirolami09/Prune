@@ -747,15 +747,17 @@ public :
         //Updates the danger squares and retrieves the possibe pawn checker
         int pawnCheckerPos = dealWithEnemyPawns(enemyPieces[PAWN],friendlyKingPosition,state.enemyColor(),allDangerSquares);
         if (pawnCheckerPos != -1){
-            nbCheckers += 1;
+            nbCheckers++;
             checkerPos = pawnCheckerPos;
+            if(checkerPos != posCapture)return nullMove;
         }
 
         //Updates the danger squares and retrieves the possibe knight checker
         int knightCheckerPos = dealWithEnemyKnights(enemyPieces[KNIGHT],friendlyKingPosition,allDangerSquares);
         if (knightCheckerPos != -1){
-            nbCheckers += 1;
+            if(nbCheckers++)return nullMove;
             checkerPos = knightCheckerPos;
+            if(checkerPos != posCapture)return nullMove;
         }
 
         //Now pieces can pin and have multiple of a type attacking the king
@@ -763,24 +765,26 @@ public :
         //Add the queen for its bishop rays
         int bishopCheckerPos = dealWithEnemyBishops(enemyPieces[BISHOP] | enemyPieces[QUEEN], allPieces,friendlyKingPosition,allDangerSquares);
         if (bishopCheckerPos != -1){
-            nbCheckers += 1;
+            if(nbCheckers++)return nullMove;
             if (bishopCheckerPos == doubleCheckFromSameType){
-                nbCheckers += 1;
+                return nullMove;
             }
             else{
                 checkerPos = bishopCheckerPos;
+                if(checkerPos != posCapture)return nullMove;
             }
         }
 
         //Add the queen for its rook rays
         int rookCheckerPos = dealWithEnemyRooks(enemyPieces[ROOK] | enemyPieces[QUEEN], allPieces, friendlyKingPosition,allDangerSquares);
         if (rookCheckerPos != -1){
-            nbCheckers += 1;
+            if(nbCheckers++)return nullMove;
             if (rookCheckerPos == doubleCheckFromSameType){
-                nbCheckers += 1;
+                return nullMove;
             }
             else{
                 checkerPos = rookCheckerPos;
+                if(checkerPos != posCapture)return nullMove;
             }
         }
 
@@ -804,12 +808,13 @@ public :
             LVAmove.piece = KING;
             return LVAmove;
         }
+        /*assert(nbCheckers <= 1);
         if (nbCheckers >= 2){
             return nullMove;
         }else if (nbCheckers == 1){
             captureMask &= (1ULL << checkerPos);
             if(!captureMask)return nullMove;
-        }
+        }*/
         big fromCaseBishop = moves_table(posCapture, allPieces&mask_empty_bishop(posCapture));
         big fromCaseRook = moves_table(posCapture+64, allPieces&mask_empty_rook(posCapture));
         big possiblePieces[5] = {

@@ -237,6 +237,7 @@ void doUCI(string UCI_instruction, Chess& state){
             fflush(stdout);
             GameState pos;
             pos.fromFen(benches[idFen]);
+            bestMoveFinder.clear();
             vector<depthInfo> infos = get<2>(bestMoveFinder.bestMove<0>(pos, moveTime, moveTime, {}, false));
             for(depthInfo info:infos){
                 sumNodes[info.depth] += info.node;
@@ -255,10 +256,10 @@ void doUCI(string UCI_instruction, Chess& state){
             }
         }
         printf("\rposition %ld/%ld\n", benches.size(), benches.size());
-        printf("depth");
+        printf("depth\t");
         for(int i=0; i<=maxDepthAttain; i++)
             printf("\t%d", i);
-        printf("\nnodes");
+        printf("\nnodes\t");
         for(int i=0; i<=maxDepthAttain; i++){
             if(histDepth[i])
                 printf("\t%d", sumNodes[i]/histDepth[i]);

@@ -52,6 +52,16 @@ public:
         }
         return INVALID;
     }
+
+    int16_t getMove(const GameState& state){
+        int index=state.zobristHash%modulo;
+        if(byDepth[index].hash == state.zobristHash)
+            return byDepth[index].bestMoveInfo; //probably a good move
+        else if(always[index].hash == state.zobristHash)
+            return always[index].bestMoveInfo; //probably a good move
+        return nullMove.moveInfo;
+    }
+
     void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth){
         //if(score == 0)return; //because of the repetition
         if(score <= -INF || score >= INF)return;
