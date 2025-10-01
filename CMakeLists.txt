@@ -4,6 +4,7 @@ project(my_project)
 # GoogleTest requires at least C++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-march=native")
 
 include(FetchContent)
 FetchContent_Declare(
