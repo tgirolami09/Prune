@@ -2,22 +2,16 @@ CC=g++
 CFLAGS=-Wall -Wextra -march=native -O3 -std=gnu++17
 COM=$(shell git rev-parse HEAD)
 
-all: main
+all: prune
 
-coreTest: engine.cpp
-	$(CC) $(CFLAGS) -o $@ $^
-
-main: engine.cpp
-	$(CC) $(CFLAGS) -o $@ $^ -D CalculatePV
+prune: engine.cpp
+	$(CC) $(CFLAGS) -o $@ $^ -D CalculatePV -DCOMMIT=\"$(COM)\"
 
 coreGen: collectData.cpp
 	$(CC) $(CFLAGS) -fopenmp -o $@ $^
 
 core%: engine.cpp
 	$(CC) $(CFLAGS) -o $@ $^ -DCalculatePV -DCOMMIT=\"$(COM)\"
-
-coreT%: engine.cpp
-	$(CC) $(CFLAGS) -o $@ $^ -DCOMMIT=\"$(COM)\"
 
 clean:
 	rm *.o
