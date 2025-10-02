@@ -224,7 +224,7 @@ def PentanomialSPRT(results, elo0, elo1):
     return N * stats(mle_pdf)[0]
 
 def playBatch(args):
-    id, rangeGame, globalRes, cutoff = args
+    id, rangeGame, globalRes, globalRes3, cutoff = args
     file = f"games{id}.log"
     rangeGame = range(rangeGame.start, rangeGame.stop)
     log = open(file, "w")
@@ -237,7 +237,6 @@ def playBatch(args):
     prog2.configure(settings.configs[1])
     boundUp = math.log(settings.confidence/(1-settings.confidence))
     boundDown = -boundUp
-    simpleRes = np.array([0]*3)
     for idBeginBoard in rangeGame:
         beginBoard = beginBoards[idBeginBoard]
         beginBoard = beginBoard.replace('\n', '')
@@ -259,7 +258,7 @@ def playBatch(args):
             log.flush()
             index = min(winner ^ idProg, 2)
             interResults[index] += 1
-            simpleRes[index] += 1
+            globalRes3[index] += 1
             #print(board.outcome().winner)
             #prog1.configure({'Clear Hash':None})
             #prog2.configure({'Clear Hash':None})
@@ -301,7 +300,6 @@ def playBatch(args):
     log.close()
     prog1.quit()
     prog2.quit()
-    return np.array(simpleRes)
 
 with open(settings.openingFile) as games:
     beginBoards = list(games.readlines())
@@ -311,14 +309,15 @@ nbProcess = settings.processes
 nbBoards = len(beginBoards)
 with SharedMemoryManager() as smm:
     sl = smm.ShareableList([0]*5)
+    sl2 = smm.ShareableList([0]*3)
     cutoff = smm.ShareableList([False])
     pool = Pool(nbProcess)
-    results = np.array(list(pool.imap_unordered(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl, cutoff) for id in range(nbProcess)])))
+    try:
+        list(pool.imap_unordered(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl, sl2, cutoff) for id in range(nbProcess)]))
+    except KeyboardInterrupt:
+        print()
+    resultSimple = np.array(list(sl2))
     Aresults = np.array(list(sl))
-if not cutoff[0]:
-    print("\n"*((nbProcess+9)//10))
-resultSimple = results.sum(axis=0)
-print('/'.join(map(str, Aresults)))
 #thank to https://3dkingdoms.com/chess/elo.htm
 
 
