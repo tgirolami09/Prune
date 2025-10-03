@@ -64,7 +64,7 @@ class BestMoveFinder{
     HelpOrdering history;
 public:
     IncrementalEvaluator eval;
-    BestMoveFinder(int memory, bool mute=false):transposition(memory), QTT(memory){
+    BestMoveFinder(int memory, bool mute=false):transposition(memory*2/3), QTT(memory/3){
         book = load_book("./book.bin", mute);
         history.init();
     }
