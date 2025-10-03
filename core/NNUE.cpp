@@ -1,3 +1,7 @@
+#ifndef NNUE_CPP
+#define NNUE_CPP
+#include "Const.hpp"
+#include "Functions.hpp"
 #include <cstdint>
 #include <immintrin.h>  // For Intel intrinsics
 #include <fstream>
@@ -306,3 +310,4 @@ public:
         return finRes;
     }
 };
+#endif
