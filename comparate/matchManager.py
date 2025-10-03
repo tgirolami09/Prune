@@ -224,13 +224,15 @@ def PentanomialSPRT(results, elo0, elo1):
     return N * stats(mle_pdf)[0]
 
 def playBatch(args):
-    id, rangeGame, globalRes, cutoff = args
+    id, rangeGame, globalRes, globalRes3, cutoff = args
     file = f"games{id}.log"
     rangeGame = range(rangeGame.start, rangeGame.stop)
     log = open(file, "w")
     results = [0]*5 # (lose/lose) (lose/draw) ((lose/win) | (draw/draw)) (win/draw) (win/win)
     prog1 = engine.SimpleEngine.popen_uci(settings.prog1)
     prog2 = engine.SimpleEngine.popen_uci(settings.prog2)
+    os.system(f"taskset -pc {id} {prog1.transport.get_pid()} > /dev/null")
+    os.system(f"taskset -pc {id} {prog2.transport.get_pid()} > /dev/null")
     prog1.configure(settings.configs[0])
     prog2.configure(settings.configs[1])
     boundUp = math.log(settings.confidence/(1-settings.confidence))
@@ -254,7 +256,9 @@ def playBatch(args):
                     f.write(str(game)+'\n\n')
             log.write(str(game)+'\n\n')
             log.flush()
-            interResults[min(winner ^ idProg, 2)] += 1
+            index = min(winner ^ idProg, 2)
+            interResults[index] += 1
+            globalRes3[index] += 1
             #print(board.outcome().winner)
             #prog1.configure({'Clear Hash':None})
             #prog2.configure({'Clear Hash':None})
@@ -296,7 +300,6 @@ def playBatch(args):
     log.close()
     prog1.quit()
     prog2.quit()
-    return np.array(results)
 
 with open(settings.openingFile) as games:
     beginBoards = list(games.readlines())
@@ -306,15 +309,24 @@ nbProcess = settings.processes
 nbBoards = len(beginBoards)
 with SharedMemoryManager() as smm:
     sl = smm.ShareableList([0]*5)
+    sl2 = smm.ShareableList([0]*3)
     cutoff = smm.ShareableList([False])
     pool = Pool(nbProcess)
-    results = np.array(list(pool.imap_unordered(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl, cutoff) for id in range(nbProcess)])))
-if not cutoff[0]:
-    print("\n"*((nbProcess+9)//10))
-Aresults = results.sum(axis=0)
-print('/'.join(map(str, Aresults)))
+    try:
+        list(pool.imap_unordered(playBatch, [(id, range(id*nbBoards//nbProcess, (id+1)*nbBoards//nbProcess), sl, sl2, cutoff) for id in range(nbProcess)]))
+    except KeyboardInterrupt:
+        print()
+    resultSimple = np.array(list(sl2))
+    Aresults = np.array(list(sl))
 #thank to https://3dkingdoms.com/chess/elo.htm
 
 
 eloDelta, difference, stdDeviation, score = get_confidence(Aresults)
-print(f"{eloDelta} +/- {difference}")
+print(f"Elo   | {eloDelta} +/- {difference}")
+print(f"SPRT  | {timeControl}s")
+if settings.sprt:
+    boundUp = math.log(settings.confidence/(1-settings.confidence))
+    boundDown = -boundUp
+    print(f"LLR   | {PentanomialSPRT(Aresults, *settings.hypothesis)} ({boundDown}, {boundUp}) [{settings.hypothesis[0]}, {settings.hypothesis[1]}]")
+print(f"Games | N: {resultSimple.sum()} W: {resultSimple[0]} L: {resultSimple[1]} D: {resultSimple[2]}")
+print("Penta |", list(map(int, Aresults)))

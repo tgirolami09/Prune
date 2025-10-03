@@ -235,6 +235,7 @@ private:
         if constexpr(nodeType != PVNode){
             int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
             if(lastEval != INVALID){
+                beginLine(rootDist);
                 return fromTT(lastEval, rootDist);
             }
         }else{
@@ -270,7 +271,7 @@ private:
             if(inCheck)
                 score = MINIMUM+rootDist;
             else score = MIDDLE;
-            if constexpr(nodeType == PVNode)if(score > alpha)beginLine(rootDist);
+            if constexpr(nodeType == PVNode)beginLine(rootDist);
             return score;
         }
         if(order.nbMoves == 1){
@@ -280,7 +281,7 @@ private:
             int sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
-            if constexpr(nodeType != PVNode)if((running || limitWay == 2) && sc > alpha)transfer(rootDist, order.moves[0]);
+            if constexpr(nodeType != PVNode)transfer(rootDist, order.moves[0]);
             return sc;
         }
         order.init(state.friendlyColor(), lastBest, getPVMove(rootDist), history, relDepth, state, generator, depth > 5);
