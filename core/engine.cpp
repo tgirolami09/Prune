@@ -287,7 +287,7 @@ void doUCI(string UCI_instruction, Chess& state){
         printf("search score: (%.0f %.0f) (%.0f %.0f)", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
     }else if(command == "arch"){
 #ifdef __AVX512F__
-        printf("arch: AVX512")
+        printf("arch: AVX512");
 #elif defined(__AVX2__)
         printf("arch: AVX2\n");
 #elif defined(__AVX__)
