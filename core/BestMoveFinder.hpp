@@ -504,7 +504,6 @@ public:
             big usedNodes = totNodes-startNodes;
             string PV;
             PV = PVprint(PVlines[0]);
-            PV = bestMove.to_str().c_str();
             if(verbose){
                 if(idMove == order.nbMoves)
                     printf("info depth %d seldepth %d score %s nodes %ld nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
