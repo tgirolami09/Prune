@@ -34,6 +34,7 @@ currently, the engine includes:
         - runQ (run quiescnce search on the given position)
         - d (print the current position [after the moves])
         - position kiwipete (set kiwipete's position)
+- does not support multithreading yet
 
 to compile, just run 
 
