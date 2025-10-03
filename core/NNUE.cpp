@@ -159,7 +159,7 @@ int mysum(simdint x){
 #endif
 }
 
-BINARY_ASM_INCLUDE("../nnue/model.bin", baseModel);
+BINARY_ASM_INCLUDE("model.bin", baseModel);
 
 class NNUE{
 public:
