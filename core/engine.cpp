@@ -1,6 +1,7 @@
 #include <sstream>
 #include <string>
 #include <strings.h>
+#include <future>
 // #include "util_magic.cpp"
 #include "Move.hpp"
 #include "GameState.hpp"
@@ -79,24 +80,29 @@ const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
 
-void stop_calculations(){
+void stop_calculations(promise<string> && p){
+    string command;
     while(bestMoveFinder.running){
-        string command;
-        cin >> command;
+        getline(cin, command);
         if(command == "stop")
             bestMoveFinder.running = false;
     }
+    p.set_value(command);
 }
 
 template<int limitWay=0>
-Move getBotMove(Chess& state, int softBound, int hardBound){
+Move getBotMove(Chess& state, int softBound, int hardBound, string& nextCommand){
     bestMoveFinder.running = true;
 #ifdef STOP_POSS
-    thread t(&stop_calculations);
+    promise<string> p;
+    auto f=p.get_future();
+    thread t(&stop_calculations, move(p));
 #endif
     Move moveToPlay = get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
+    printf("bestmove %s\n", moveToPlay.to_str().c_str());
 #ifdef STOP_POSS
     t.join();
+    nextCommand = f.get();
 #endif
     return moveToPlay;
 }
@@ -116,7 +122,7 @@ pair<int, int> computeAllotedTime(Chess& state){
     return {softBound, hardBound};
 }
 
-void doUCI(string UCI_instruction, Chess& state){
+string doUCI(string UCI_instruction, Chess& state){
     istringstream stream(UCI_instruction);
     string command;
     stream >> command;
@@ -144,7 +150,7 @@ void doUCI(string UCI_instruction, Chess& state){
                 }
             }
         }
-        return;
+        return "";
     }else if(command != "position"){
         while(stream >> arg){
             stream >> precision;
@@ -156,23 +162,24 @@ void doUCI(string UCI_instruction, Chess& state){
             printf("Nodes searched: %ld\n", doPerft.perft(state.root, args["perft"]));
         }else{
             Move move;
+            string nextCommand;
             if(args.count("btime") && args.count("wtime")){
                 state.b_time = args["btime"];
                 state.w_time = args["wtime"];
                 state.winc = args["winc"];
                 state.binc = args["binc"];
                 auto [softBound, hardBound] = computeAllotedTime(state);
-                move=getBotMove(state, softBound, hardBound);
+                move=getBotMove(state, softBound, hardBound, nextCommand);
             }else if(args.count("movetime")){
-                move = getBotMove(state, args["movetime"], args["movetime"]);
+                move = getBotMove(state, args["movetime"], args["movetime"], nextCommand);
             }else if(args.count("nodes")){
-                move = getBotMove<1>(state, args["nodes"], args["nodes"]);
+                move = getBotMove<1>(state, args["nodes"], args["nodes"], nextCommand);
             }else if(args.count("depth")){
-                move = getBotMove<2>(state, args["depth"], args["depth"]);
+                move = getBotMove<2>(state, args["depth"], args["depth"], nextCommand);
             }else{
-                move = getBotMove<2>(state, 200, 200);
+                move = getBotMove<2>(state, 200, 200, nextCommand);
             }
-            printf("bestmove %s\n", move.to_str().c_str());
+            return nextCommand;
         }
     }else if(command == "uci"){
         printf("id name pruningBot\nid author tgirolami09 & jbienvenue\n");
@@ -319,6 +326,7 @@ void doUCI(string UCI_instruction, Chess& state){
 #endif
     }
     //Implement actual logic for UCI management
+    return "";
 }
 
 int main(int argc, char** argv){
@@ -331,8 +339,12 @@ int main(int argc, char** argv){
         return 0;
     }
     while (UCI_instruction != "quit"){
-        doUCI(UCI_instruction, state);
+        string nextCommand=doUCI(UCI_instruction, state);
         fflush(stdout);
+        if(nextCommand != ""){
+            UCI_instruction = nextCommand;
+            continue;
+        }
         if(!getline(cin,UCI_instruction)){
             printf("quit\n");
             break;
