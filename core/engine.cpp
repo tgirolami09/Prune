@@ -90,6 +90,7 @@ void stop_calculations(){
 
 template<int limitWay=0>
 Move getBotMove(Chess& state, int softBound, int hardBound){
+    bestMoveFinder.running = true;
 #ifdef STOP_POSS
     thread t(&stop_calculations);
 #endif
@@ -233,6 +234,9 @@ void doUCI(string UCI_instruction, Chess& state){
         printf("version: %s\n", COMMIT);
 #else
         printf("version: test\n");
+#endif
+#ifdef STOP_POSS
+        printf("stop possibility version\n");
 #endif
     }else if(command == "bench"){
         int sumNodes[maxDepth+1];
