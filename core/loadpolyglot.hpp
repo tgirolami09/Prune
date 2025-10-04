@@ -123,11 +123,11 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mut
     if (!file){
         //throw runtime_error("Cannot open book file");
         if(!mute)
-            printf("Book file could not be openened, returning empty book\n");
+            printf("info string Book file could not be openened, returning empty book\n");
         return book;
     }
     if(!mute)
-        printf("Loading file '%s' for opening book\n",filename.c_str());
+        printf("info string Loading file '%s' for opening book\n",filename.c_str());
 
     while (file) {
         PolyglotEntry entry;
@@ -155,8 +155,8 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mut
         }
     }
     if(!mute){
-        printf("From %ld entries to %ld entries in the opening book\n",InputBook.size(),book.size());
-        printf("Parsed %d moves as null moves (they where consequently ignored)\n",nullMoveAmount);
+        printf("info string From %ld entries to %ld entries in the opening book\n",InputBook.size(),book.size());
+        printf("info string Parsed %d moves as null moves (they where consequently ignored)\n",nullMoveAmount);
     }
 
     return book;

@@ -59,12 +59,11 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
     transpositionTable transposition;
     QuiescenceTT QTT;
-    std::atomic<bool> running;
-    std::atomic<bool> midtime;
     HelpOrdering history;
 public:
+    std::atomic<bool> running;
     IncrementalEvaluator eval;
-    BestMoveFinder(int memory, bool mute=false):transposition(memory), QTT(memory){
+    BestMoveFinder(int memory, bool mute=false):transposition(memory*2/3), QTT(memory/3){
         book = load_book("./book.bin", mute);
         history.init();
     }
@@ -216,7 +215,7 @@ private:
         seldepth = max(seldepth, relDepth);
         if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
         if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
-        if constexpr(limitWay <= 1)if(!running)return 0;
+        if(!running)return 0;
         if constexpr(limitWay == 0)if((nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
             if constexpr (nodeType == PVNode)beginLine(rootDist);
@@ -244,8 +243,8 @@ private:
         ubyte typeNode = UPPERBOUND;
         Order<maxMoves> order;
         bool inCheck=generator.isCheck();
-        if(!inCheck){
-            if constexpr(nodeType != PVNode){
+        if constexpr(nodeType != PVNode){
+            if(!inCheck){
                 if(!mateSearch){
                     int margin = 150*depth;
                     if(static_eval >= beta+margin){
@@ -504,7 +503,6 @@ public:
             big usedNodes = totNodes-startNodes;
             string PV;
             PV = PVprint(PVlines[0]);
-            PV = bestMove.to_str().c_str();
             if(verbose){
                 if(idMove == order.nbMoves)
                     printf("info depth %d seldepth %d score %s nodes %ld nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);

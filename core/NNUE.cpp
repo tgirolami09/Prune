@@ -1,3 +1,7 @@
+#ifndef NNUE_CPP
+#define NNUE_CPP
+#include "Const.hpp"
+#include "Functions.hpp"
 #include <cstdint>
 #include <immintrin.h>  // For Intel intrinsics
 #include <fstream>
@@ -159,7 +163,7 @@ int mysum(simdint x){
 #endif
 }
 
-BINARY_ASM_INCLUDE("../nnue/model.bin", baseModel);
+BINARY_ASM_INCLUDE("model.bin", baseModel);
 
 class NNUE{
 public:
@@ -306,3 +310,4 @@ public:
         return finRes;
     }
 };
+#endif

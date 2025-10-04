@@ -78,10 +78,35 @@ int moveOverhead = 100;
 const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
+
+template<int limitWay>
+void thread_getMove(Chess& state, int softBound, int hardBound){
+    Move move=get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
+    printf("bestmove %s\n", move.to_str().c_str());
+}
+
 template<int limitWay=0>
-Move getBotMove(Chess& state, int softBound, int hardBound){
+string printBotMove(Chess& state, int softBound, int hardBound){
+#ifdef STOP_POSS
+    thread t(&thread_getMove<limitWay>, ref(state), softBound, hardBound);
+    bestMoveFinder.running = true;
+    string nextCommand;
+    while(bestMoveFinder.running){
+        cin >> nextCommand;
+        if(nextCommand == "stop"){
+            printf("info string stopping the search\n");
+            bestMoveFinder.running=false;
+            break;
+        }
+    }
+    t.join();
+    bestMoveFinder.running = false;
+    return nextCommand;
+#else
     Move moveToPlay = get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
-    return moveToPlay;
+    printf("bestmove %s\n", moveToPlay.to_str().c_str());
+    return "";
+#endif
 }
 
 Move getOpponentMove(){
@@ -99,7 +124,7 @@ pair<int, int> computeAllotedTime(Chess& state){
     return {softBound, hardBound};
 }
 
-void doUCI(string UCI_instruction, Chess& state){
+string doUCI(string UCI_instruction, Chess& state){
     istringstream stream(UCI_instruction);
     string command;
     stream >> command;
@@ -127,7 +152,7 @@ void doUCI(string UCI_instruction, Chess& state){
                 }
             }
         }
-        return;
+        return "";
     }else if(command != "position"){
         while(stream >> arg){
             stream >> precision;
@@ -138,24 +163,22 @@ void doUCI(string UCI_instruction, Chess& state){
         if(args.count("perft")){
             printf("Nodes searched: %ld\n", doPerft.perft(state.root, args["perft"]));
         }else{
-            Move move;
             if(args.count("btime") && args.count("wtime")){
                 state.b_time = args["btime"];
                 state.w_time = args["wtime"];
                 state.winc = args["winc"];
                 state.binc = args["binc"];
                 auto [softBound, hardBound] = computeAllotedTime(state);
-                move=getBotMove(state, softBound, hardBound);
+                return printBotMove(state, softBound, hardBound);
             }else if(args.count("movetime")){
-                move = getBotMove(state, args["movetime"], args["movetime"]);
+                return printBotMove(state, args["movetime"], args["movetime"]);
             }else if(args.count("nodes")){
-                move = getBotMove<1>(state, args["nodes"], args["nodes"]);
+                return printBotMove<1>(state, args["nodes"], args["nodes"]);
             }else if(args.count("depth")){
-                move = getBotMove<2>(state, args["depth"], args["depth"]);
+                return printBotMove<2>(state, args["depth"], args["depth"]);
             }else{
-                move = getBotMove<2>(state, 200, 200);
+                return printBotMove<2>(state, 200, 200);
             }
-            printf("bestmove %s\n", move.to_str().c_str());
         }
     }else if(command == "uci"){
         printf("id name pruningBot\nid author tgirolami09 & jbienvenue\n");
@@ -217,6 +240,9 @@ void doUCI(string UCI_instruction, Chess& state){
         printf("version: %s\n", COMMIT);
 #else
         printf("version: test\n");
+#endif
+#ifdef STOP_POSS
+        printf("stop possibility version\n");
 #endif
     }else if(command == "bench"){
         int sumNodes[maxDepth+1];
@@ -287,7 +313,7 @@ void doUCI(string UCI_instruction, Chess& state){
         printf("search score: (%.0f %.0f) (%.0f %.0f)", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
     }else if(command == "arch"){
 #ifdef __AVX512F__
-        printf("arch: AVX512")
+        printf("arch: AVX512");
 #elif defined(__AVX2__)
         printf("arch: AVX2\n");
 #elif defined(__AVX__)
@@ -298,6 +324,7 @@ void doUCI(string UCI_instruction, Chess& state){
         printf("arch: unknow\n");
 #endif
     }
+    return "";
     //Implement actual logic for UCI management
 }
 
@@ -311,8 +338,12 @@ int main(int argc, char** argv){
         return 0;
     }
     while (UCI_instruction != "quit"){
-        doUCI(UCI_instruction, state);
+        string nextCom=doUCI(UCI_instruction, state);
         fflush(stdout);
+        if(nextCom != ""){
+            UCI_instruction = nextCom;
+            continue;
+        }
         if(!getline(cin,UCI_instruction)){
             printf("quit\n");
             break;

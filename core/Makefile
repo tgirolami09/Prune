@@ -5,13 +5,13 @@ COM=$(shell git rev-parse HEAD)
 all: prune
 
 prune: engine.cpp
-	$(CC) $(CFLAGS) -o $@ $^ -D CalculatePV -DCOMMIT=\"$(COM)\"
+	$(CC) $(CFLAGS) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
 
 coreGen: collectData.cpp
 	$(CC) $(CFLAGS) -fopenmp -o $@ $^
 
 core%: engine.cpp
-	$(CC) $(CFLAGS) -o $@ $^ -DCalculatePV -DCOMMIT=\"$(COM)\"
+	$(CC) $(CFLAGS) -o $@ $^ -DCOMMIT=\"$(COM)\"
 
 clean:
 	rm *.o
