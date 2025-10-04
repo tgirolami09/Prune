@@ -79,34 +79,26 @@ const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
 
-template<int limitWay>
-void thread_getMove(Chess& state, int softBound, int hardBound){
-    Move move=get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
-    printf("bestmove %s\n", move.to_str().c_str());
+void stop_calculations(){
+    while(bestMoveFinder.running){
+        string command;
+        cin >> command;
+        if(command == "stop")
+            bestMoveFinder.running = false;
+    }
 }
 
 template<int limitWay=0>
-string printBotMove(Chess& state, int softBound, int hardBound){
-#ifdef STOP_POSS
-    thread t(&thread_getMove<limitWay>, ref(state), softBound, hardBound);
+Move getBotMove(Chess& state, int softBound, int hardBound){
     bestMoveFinder.running = true;
-    string nextCommand;
-    while(bestMoveFinder.running){
-        cin >> nextCommand;
-        if(nextCommand == "stop"){
-            printf("info string stopping the search\n");
-            bestMoveFinder.running=false;
-            break;
-        }
-    }
-    t.join();
-    bestMoveFinder.running = false;
-    return nextCommand;
-#else
-    Move moveToPlay = get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
-    printf("bestmove %s\n", moveToPlay.to_str().c_str());
-    return "";
+#ifdef STOP_POSS
+    thread t(&stop_calculations);
 #endif
+    Move moveToPlay = get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
+#ifdef STOP_POSS
+    t.join();
+#endif
+    return moveToPlay;
 }
 
 Move getOpponentMove(){
@@ -124,7 +116,7 @@ pair<int, int> computeAllotedTime(Chess& state){
     return {softBound, hardBound};
 }
 
-string doUCI(string UCI_instruction, Chess& state){
+void doUCI(string UCI_instruction, Chess& state){
     istringstream stream(UCI_instruction);
     string command;
     stream >> command;
@@ -152,7 +144,7 @@ string doUCI(string UCI_instruction, Chess& state){
                 }
             }
         }
-        return "";
+        return;
     }else if(command != "position"){
         while(stream >> arg){
             stream >> precision;
@@ -163,22 +155,24 @@ string doUCI(string UCI_instruction, Chess& state){
         if(args.count("perft")){
             printf("Nodes searched: %ld\n", doPerft.perft(state.root, args["perft"]));
         }else{
+            Move move;
             if(args.count("btime") && args.count("wtime")){
                 state.b_time = args["btime"];
                 state.w_time = args["wtime"];
                 state.winc = args["winc"];
                 state.binc = args["binc"];
                 auto [softBound, hardBound] = computeAllotedTime(state);
-                return printBotMove(state, softBound, hardBound);
+                move=getBotMove(state, softBound, hardBound);
             }else if(args.count("movetime")){
-                return printBotMove(state, args["movetime"], args["movetime"]);
+                move = getBotMove(state, args["movetime"], args["movetime"]);
             }else if(args.count("nodes")){
-                return printBotMove<1>(state, args["nodes"], args["nodes"]);
+                move = getBotMove<1>(state, args["nodes"], args["nodes"]);
             }else if(args.count("depth")){
-                return printBotMove<2>(state, args["depth"], args["depth"]);
+                move = getBotMove<2>(state, args["depth"], args["depth"]);
             }else{
-                return printBotMove<2>(state, 200, 200);
+                move = getBotMove<2>(state, 200, 200);
             }
+            printf("bestmove %s\n", move.to_str().c_str());
         }
     }else if(command == "uci"){
         printf("id name pruningBot\nid author tgirolami09 & jbienvenue\n");
@@ -324,7 +318,6 @@ string doUCI(string UCI_instruction, Chess& state){
         printf("arch: unknow\n");
 #endif
     }
-    return "";
     //Implement actual logic for UCI management
 }
 
@@ -338,12 +331,8 @@ int main(int argc, char** argv){
         return 0;
     }
     while (UCI_instruction != "quit"){
-        string nextCom=doUCI(UCI_instruction, state);
+        doUCI(UCI_instruction, state);
         fflush(stdout);
-        if(nextCom != ""){
-            UCI_instruction = nextCom;
-            continue;
-        }
         if(!getline(cin,UCI_instruction)){
             printf("quit\n");
             break;
