@@ -5,7 +5,7 @@ COM=$(shell git rev-parse HEAD)
 all: prune
 
 prune: engine.cpp
-	$(CC) $(CFLAGS) -o $@ $^ -DCOMMIT=\"$(COM)\"
+	$(CC) $(CFLAGS) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
 
 coreGen: collectData.cpp
 	$(CC) $(CFLAGS) -fopenmp -o $@ $^

@@ -59,10 +59,9 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
     transpositionTable transposition;
     QuiescenceTT QTT;
-    std::atomic<bool> running;
-    std::atomic<bool> midtime;
     HelpOrdering history;
 public:
+    std::atomic<bool> running;
     IncrementalEvaluator eval;
     BestMoveFinder(int memory, bool mute=false):transposition(memory*2/3), QTT(memory/3){
         book = load_book("./book.bin", mute);

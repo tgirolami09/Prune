@@ -26,7 +26,6 @@ currently, the engine includes:
         - root move ordering based on node count
         - history heuristic
 - UCI protocol:
-    - stop command not supported yet
     - fancy commands:
         - version (give the commit's hash when it was compiled)
         - arch (give the arch used to compile)

@@ -78,9 +78,25 @@ int moveOverhead = 100;
 const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
+
+void stop_calculations(){
+    while(bestMoveFinder.running){
+        string command;
+        cin >> command;
+        if(command == "stop")
+            bestMoveFinder.running = false;
+    }
+}
+
 template<int limitWay=0>
 Move getBotMove(Chess& state, int softBound, int hardBound){
+#ifdef STOP_POSS
+    thread t(&stop_calculations);
+#endif
     Move moveToPlay = get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
+#ifdef STOP_POSS
+    t.join();
+#endif
     return moveToPlay;
 }
 
