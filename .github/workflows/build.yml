@@ -1,0 +1,35 @@
+name: Build Project
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Needed for git rev-parse
+      
+      # Linux setup
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ make
+      
+      - name: Build project
+        working-directory: ./core
+        run: |
+          make prune
+      
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ runner.os }}-binaries
+          path: |
+            core/prune
