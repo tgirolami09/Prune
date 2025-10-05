@@ -18,12 +18,21 @@ CPUSET=avx512f avx2
 all: prune
 
 prune: engine.cpp $(PLUSFILES)
-	$(CC) $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
+	$(CC) -m64 $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
 
-coreGen: collectData.cpp
+model.o: model.bin
+	objcopy --input-target=binary --output-target=elf64-x86-64 $^ $@
+
+magics.o: magics.out
+	objcopy --input-target=binary --output-target=elf64-x86-64 $^ $@
+
+coreGen: collectData.cpp $(PLUSFILES)
 	$(CC) $(CFLAGS) $(ARCHCOM) -fopenmp -o $@ $^
 
-core%: engine.cpp
+pruneDebug: engine.cpp $(PLUSFILES)
+	$(CC) -m64 $(ARCHCOM) -g -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
+
+core%: engine.cpp $(PLUSFILES)
 	$(CC) $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\"
 
 clean:

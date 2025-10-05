@@ -64,7 +64,7 @@ public:
     std::atomic<bool> running;
     IncrementalEvaluator eval;
     BestMoveFinder(int memory, bool mute=false):transposition(memory*2/3), QTT(memory/3){
-        book = load_book("./book.bin", mute);
+        book = load_book("book.bin", mute);
         history.init();
     }
 

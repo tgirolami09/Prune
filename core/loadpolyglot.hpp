@@ -120,7 +120,7 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mut
     //Stores the amount of moves that where parsed as null
     int nullMoveAmount = 0;
     ifstream file(filename, ios::binary);
-    if (!file){
+    if (!file.is_open()){
         //throw runtime_error("Cannot open book file");
         if(!mute)
             printf("info string Book file could not be openened, returning empty book\n");
