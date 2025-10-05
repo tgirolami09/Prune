@@ -6,8 +6,6 @@
 #include <immintrin.h>  // For Intel intrinsics
 #include <fstream>
 #include <string>
-#include <algorithm>
-#include <numeric>
 
 using namespace std;
 
@@ -163,13 +161,7 @@ int mysum(simdint x){
 #endif
 }
 
-#ifdef _WIN64
 BINARY_ASM_INCLUDE("model.bin", baseModel);
-//#define baseModel _binary_model_bin_start
-//#define baseModel_size _binary_model_bin_end-_binary_model_bin_start
-#else
-BINARY_ASM_INCLUDE("model.bin", baseModel);
-#endif
 
 class NNUE{
 public:

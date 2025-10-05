@@ -3,7 +3,6 @@
 #include "Const.hpp"
 #include "Functions.hpp"
 #include "GameState.hpp"
-#include <fstream>
 #include <utility>
 #include <cstring>
 using namespace std;
@@ -14,13 +13,7 @@ public:
     int decR;
     big magic;
 };
-#ifdef _WIN64
 BINARY_ASM_INCLUDE("magics.out", magicsData);
-//#define magicsData _binary_magics_out_start
-//#define magicsData_size _binary_magics_out_end-_binary_magics_out_start
-#else
-BINARY_ASM_INCLUDE("magics.out", magicsData);
-#endif
 
 big parseInt(int& pointer){
     big current = 0;

@@ -16,8 +16,6 @@ const int nbZobrist=zobrTurn+1;
 const int sizeThreeFold=8192;
 //Represents a state in the game
 class GameState{
-    bool isFinished = false;
-
     // (not necessary if we create new states for exploration)
     Move movesSinceBeginning[8848*2+2]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
 

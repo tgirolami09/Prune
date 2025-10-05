@@ -96,7 +96,7 @@ Move getBotMove(Chess& state, int softBound, int hardBound, string& nextCommand)
 #ifdef STOP_POSS
     promise<string> p;
     auto f=p.get_future();
-    thread t(&stop_calculations, move(p));
+    thread t(&stop_calculations, std::move(p));
 #endif
     Move moveToPlay = get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
     printf("bestmove %s\n", moveToPlay.to_str().c_str());
