@@ -49,3 +49,20 @@ include(GoogleTest)
 #Put in the name you chose
 gtest_discover_tests(perft_test)
 gtest_discover_tests(polyglotHash_test)
+
+include_directories(/usr/local/include/tensorflow)
+link_directories(/usr/local/lib)
+
+add_executable(
+  tf_test 
+  tests/tf_test.cpp
+)
+
+#Also need tensorflow for this one
+target_link_libraries(
+  tf_test
+  tensorflow
+  GTest::gtest_main
+)
+
+gtest_discover_tests(tf_test)

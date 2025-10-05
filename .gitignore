@@ -16,4 +16,8 @@ build
 */__pycache__*
 !model.bin
 !Makefile
-!magics.out
+*.keras
+*.pkl
+*.pb
+*variables*
+*.rtf
