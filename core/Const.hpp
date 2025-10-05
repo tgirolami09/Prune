@@ -99,10 +99,11 @@ public:
     #buffername"_size:\n" \
     ".int "#buffername"_end - "#buffername"\n"\
     ); \
+extern "C"{\
     extern const unsigned char buffername[]; \
     extern const unsigned char* buffername##_end; \
-    extern int buffername##_size
-
+    extern const int buffername##_size; \
+}
 #elif defined(__APPLE__)
 #define BINARY_ASM_INCLUDE(filename, buffername) \
     __asm__(".section __TEXT,__const\n" \
@@ -116,12 +117,14 @@ public:
     "_" #buffername"_size:\n" \
     ".long _" #buffername"_end - _" #buffername "\n"\
     ); \
+extern "C"{\
     extern const unsigned char buffername[]; \
     extern const unsigned char* buffername##_end; \
-    extern int buffername##_size
+    extern const int buffername##_size; \
+}
 #else
 #define BINARY_ASM_INCLUDE(filename, buffername) \
-    __asm__(".section .data\n" \
+    __asm__(".section .rdata\n" \
     ".global " #buffername "\n" \
     ".global " #buffername "_end\n" \
     "" #buffername":\n" \
@@ -131,8 +134,10 @@ public:
     "" #buffername"_size:\n" \
     ".long " #buffername"_end - " #buffername "\n"\
     ); \
+extern "C"{\
     extern const unsigned char buffername[]; \
     extern const unsigned char* buffername##_end; \
-    extern int buffername##_size
+    extern const int buffername##_size; \
+}
 #endif
 #endif
