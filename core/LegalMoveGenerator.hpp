@@ -14,7 +14,13 @@ public:
     int decR;
     big magic;
 };
+#ifdef _WIN64
+BINARY_ASM_INCLUDE(_binary_magics_out);
+#define magicsData _binary_magics_out_start
+#define magicsData_size _binary_magics_out_end-_binary_magics_out_start
+#else
 BINARY_ASM_INCLUDE("magics.out", magicsData);
+#endif
 
 big parseInt(int& pointer){
     big current = 0;

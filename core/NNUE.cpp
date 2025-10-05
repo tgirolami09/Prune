@@ -163,7 +163,13 @@ int mysum(simdint x){
 #endif
 }
 
+#ifdef _WIN64
+BINARY_ASM_INCLUDE(_binary_model_bin);
+#define baseModel _binary_model_bin_start
+#define baseModel_size _binary_model_bin_end-_binary_model_bin_start
+#else
 BINARY_ASM_INCLUDE("model.bin", baseModel);
+#endif
 
 class NNUE{
 public:
