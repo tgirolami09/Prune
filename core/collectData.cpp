@@ -70,30 +70,30 @@ int main(int argc, char** argv){
         do{
             bool isWhite = current.friendlyColor() == WHITE;
             root.fromFen(fens[i]);
-            pair<Move, int> res;
+            tuple<Move, int, vector<depthInfo>> res;
             if(isWhite)res = player.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
             else res = opponent.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
 #ifdef DEBUG
             //printf("%s\n", current.toFen().c_str());
 #endif
-            moves.push_back(res.first);
-            if(abs(res.second) == INF+1){
-                result = (res.second > 0)*2;
+            moves.push_back(get<0>(res));
+            if(abs(get<1>(res)) == INF+1){
+                result = (get<1>(res) > 0)*2;
                 break;
             }
-            if(res.second != INF){
-                scores[isWhite].push_back(res.second);
+            if(get<1>(res) != INF){
+                scores[isWhite].push_back(get<1>(res));
                 player.eval.init(current);
                 statics[isWhite].push_back(player.eval.getScore(current.friendlyColor()));
                 playedFens[isWhite].push_back(current.toFen());
-                movesPlayed[isWhite].push_back(res.first.to_str());
+                movesPlayed[isWhite].push_back(get<0>(res).to_str());
             }
-            if(current.playMove<false>(res.first) == 3){
+            if(current.playMove<false>(get<0>(res)) == 3){
                 result = 1;
                 break;
             }
             countMoves++;
-            if(res.first.isTactical())
+            if(get<0>(res).isTactical())
                 countMoves = 0;
             bool inCheck;
             int nbMoves = generator.generateLegalMoves(current, inCheck, LegalMoves, dngpos, false);

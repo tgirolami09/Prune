@@ -6,8 +6,6 @@
 #include <immintrin.h>  // For Intel intrinsics
 #include <fstream>
 #include <string>
-#include <algorithm>
-#include <numeric>
 
 using namespace std;
 
