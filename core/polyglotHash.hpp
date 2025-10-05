@@ -272,10 +272,10 @@ uint64_t enPassant_hash(const GameState& state){
         // int actualPawnLine = row(state.lastDoublePawnPush) + (-8 * moveFactor);
         big possibleCapturePawns = 0;
         if (enPassant_offset != 0){
-            possibleCapturePawns |= (1ul << (state.lastDoublePawnPush + (-8 * moveFactor) + (-1)));
+            possibleCapturePawns |= (1ull << (state.lastDoublePawnPush + (-8 * moveFactor) + (-1)));
         }
         if(enPassant_offset != 7){
-            possibleCapturePawns |= (1ul << (state.lastDoublePawnPush + (-8 * moveFactor) + (1)));
+            possibleCapturePawns |= (1ull << (state.lastDoublePawnPush + (-8 * moveFactor) + (1)));
         }
         if (possibleCapturePawns & state.friendlyPieces()[PAWN]){
             enPassant = Random64[baseOffset+7-enPassant_offset];

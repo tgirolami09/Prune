@@ -463,8 +463,8 @@ public:
             return make_tuple(order.moves[0], INF, vector<depthInfo>(0));
         }
         if(verbose){
-            printf("info string use a tt of %d entries (%ld MB) (%ldB by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
-            printf("info string use a quiescence tt of %d entries (%ld MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
+            printf("info string use a tt of %d entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
+            printf("info string use a quiescence tt of %d entries (%" PRId64 " MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
         }
         Move bestMove=nullMove;
         nodes = 0;
@@ -505,8 +505,8 @@ public:
             PV = PVprint(PVlines[0]);
             if(verbose){
                 if(idMove == order.nbMoves)
-                    printf("info depth %d seldepth %d score %s nodes %ld nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
-                else if(idMove)printf("info depth %d seldepth %d score %s nodes %ld nps %d time %d pv %s string %d/%d moves\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
+                    printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
+                else if(idMove)printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string %d/%d moves\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
                 fflush(stdout);
             }
             if(idMove == order.nbMoves)
@@ -593,14 +593,14 @@ public:
             state.undoLastMove<false>();
             clock_t end=clock();
             double tcpu = double(end-startMove)/CLOCKS_PER_SEC;
-            printf("%s: %ld (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
+            printf("%s: %" PRId64 " (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
             fflush(stdout);
             count += nbNodes;
         }
         tt.push({state.zobristHash, count, depth});
         clock_t end=clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
-        printf("%.3f : %.3f nps %ld visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
+        printf("%.3f : %.3f nps %" PRId64 " visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
         fflush(stdout);
         tt.clearMem();
         return count;

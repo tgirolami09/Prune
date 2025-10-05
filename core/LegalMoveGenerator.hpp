@@ -15,9 +15,9 @@ public:
     big magic;
 };
 #ifdef _WIN64
-BINARY_ASM_INCLUDE(_binary_magics_out);
-#define magicsData _binary_magics_out_start
-#define magicsData_size _binary_magics_out_end-_binary_magics_out_start
+BINARY_ASM_INCLUDE("magics.out", magicsData);
+//#define magicsData _binary_magics_out_start
+//#define magicsData_size _binary_magics_out_end-_binary_magics_out_start
 #else
 BINARY_ASM_INCLUDE("magics.out", magicsData);
 #endif
@@ -116,15 +116,15 @@ class LegalMoveGenerator{
             for (int i = 0; i < nbRow;++i){
                 int trans1 = transitionsRow[i];
                 int cardEnd = kingPosition + trans1;
-                kingEndMask |= (1ul << cardEnd);
+                kingEndMask |= (1ull << cardEnd);
                 for (int j = 0; j < nbCol;++j){
                     int trans2 = transitionsCol[j];
 
                     int diagEnd = cardEnd + trans2;
-                    kingEndMask |= (1ul << diagEnd);
+                    kingEndMask |= (1ull << diagEnd);
 
                     int secondCardEnd = kingPosition + trans2;
-                    kingEndMask |= (1ul << secondCardEnd);
+                    kingEndMask |= (1ull << secondCardEnd);
                 }
             }
             normalKingMoves[kingPosition] = kingEndMask;
@@ -144,9 +144,9 @@ class LegalMoveGenerator{
                 if(square+8*moveFactor < 0 || square+8*moveFactor >= 64)continue;
                 int pieceCol = col(square);
                 if(pieceCol != leftLimit)
-                    attackPawns[key] |= 1ul<<(square + 7 * moveFactor);
+                    attackPawns[key] |= 1ull<<(square + 7 * moveFactor);
                 if(pieceCol != rightLimit)
-                    attackPawns[key] |= 1ul<<(square + 9 * moveFactor);
+                    attackPawns[key] |= 1ull<<(square + 9 * moveFactor);
             }
         }
     }
@@ -334,12 +334,12 @@ class LegalMoveGenerator{
 
         finalMoveMask = (pawnMoveMask & moveMask) | (pawnAttackMask & captureMask & enemyPieces);
 
-        if (enPassant != -1 && ((pawnAttackMask & (1ul << enPassant)) != 0) && ((captureMask & (1ul << (enPassant + (-1 * 8 * moveFactor)))) != 0)){
+        if (enPassant != -1 && ((pawnAttackMask & (1ull << enPassant)) != 0) && ((captureMask & (1ull << (enPassant + (-1 * 8 * moveFactor)))) != 0)){
             //This means en-passant actually captures the pawn that is causing check
 
-            big kingAsRook = pseudoLegalRookMoves(friendKingPos,allPieces ^ ((1ul << pawnPosition) | (1ul << (enPassant + (-1 * 8 * moveFactor)))));
+            big kingAsRook = pseudoLegalRookMoves(friendKingPos,allPieces ^ ((1ull << pawnPosition) | (1ull << (enPassant + (-1 * 8 * moveFactor)))));
             if((row(friendKingPos) != row(enPassant + (8 * moveFactor * -1))) | ((kingAsRook&enemyRooks) == 0)){
-                finalMoveMask |= (1ul << enPassant);
+                finalMoveMask |= (1ull << enPassant);
             }
         }
 
@@ -368,7 +368,7 @@ class LegalMoveGenerator{
         int checkerPos = -1;
 
         //Attacks to the left
-        const big col1 = (1ul << 7) + (1ul << 15) + (1ul << 23) + (1ul << 31) + (1ul << 39) + (1ul << 47) + (1ul << 55) + (1ul << 63);
+        const big col1 = (1ull << 7) + (1ull << 15) + (1ull << 23) + (1ull << 31) + (1ull << 39) + (1ull << 47) + (1ull << 55) + (1ull << 63);
         big possibleToTheLeft = enemyPawnPositions & (~col1);
         big attacksToTheLeft;
         if (moveFactor == 1){
@@ -380,7 +380,7 @@ class LegalMoveGenerator{
         attacksToTheLeft <<= 1;
         allDangerSquares |= attacksToTheLeft;
 
-        if (attacksToTheLeft & (1ul << friendKingPos)){
+        if (attacksToTheLeft & (1ull << friendKingPos)){
             checkerPos = friendKingPos + (8 * moveFactor * -1) - 1;
         }
 
@@ -396,7 +396,7 @@ class LegalMoveGenerator{
         }
         attacksToTheRight >>= 1;
         allDangerSquares |= attacksToTheRight;
-        if (attacksToTheRight & (1ul << friendKingPos)){
+        if (attacksToTheRight & (1ull << friendKingPos)){
             checkerPos = friendKingPos + (8 * moveFactor * -1) + 1;
         }
  
@@ -413,7 +413,7 @@ class LegalMoveGenerator{
 
             allDangerSquares |= dangerSquares;
 
-            if (dangerSquares & (1ul << friendKingPos)){
+            if (dangerSquares & (1ull << friendKingPos)){
                 //Knight is giving check (only 1 knight can give check)
                 checkerPos = currentKnightPos;
             }
@@ -427,11 +427,11 @@ class LegalMoveGenerator{
         int nbPositions = places(enemyBishopPositions, positions);
         for (int i = 0; i < nbPositions; ++i){
             int currentBishopPos = positions[i];
-            big dangerSquares = pseudoLegalBishopMoves(currentBishopPos, allPieces ^ (1ul << friendKingPos));
+            big dangerSquares = pseudoLegalBishopMoves(currentBishopPos, allPieces ^ (1ull << friendKingPos));
 
             allDangerSquares |= dangerSquares;
 
-            if (dangerSquares & (1ul << friendKingPos)){
+            if (dangerSquares & (1ull << friendKingPos)){
                 if (checkerPos != -1){
                     //Already a piece giving check
                     //Const value just to know two of same type are giving check
@@ -448,7 +448,7 @@ class LegalMoveGenerator{
             //It makes sense for a bishop to pin a piece if its in the same diagonal as the king
             if (abs(kingRow - bishopRow) == abs(kingCol - bishopCol)){
                 big ray = directions[friendKingPos][currentBishopPos];
-                big pinnedPieceMask = (ray ^ (1ul << currentBishopPos)) & allPieces;
+                big pinnedPieceMask = (ray ^ (1ull << currentBishopPos)) & allPieces;
                 //There is a pinned piece;
                 if (countbit(pinnedPieceMask) == 1){
                     int pinnedPiecePos = __builtin_ctzll(pinnedPieceMask);
@@ -467,11 +467,11 @@ class LegalMoveGenerator{
         int nbPositions = places(enemyRookPositions, positions);
         for (int i = 0; i < nbPositions; ++i){
             int currentRookPos = positions[i];
-            big dangerSquares = pseudoLegalRookMoves(currentRookPos, allPieces ^ (1ul << friendKingPos));
+            big dangerSquares = pseudoLegalRookMoves(currentRookPos, allPieces ^ (1ull << friendKingPos));
 
             allDangerSquares |= dangerSquares;
 
-            if (dangerSquares & (1ul << friendKingPos)){
+            if (dangerSquares & (1ull << friendKingPos)){
                 if (checkerPos != -1){
                     //Already a piece giving check
                     //Const value just to know two of same type are giving check
@@ -488,7 +488,7 @@ class LegalMoveGenerator{
             //It makes sense for a rook to pin a piece if its on the same row or column as the king
             if (kingRow == rookRow || kingCol == rookCol){
                 big ray = directions[friendKingPos][currentRookPos];
-                big pinnedPieceMask = (ray ^ (1ul << currentRookPos)) & allPieces;
+                big pinnedPieceMask = (ray ^ (1ull << currentRookPos)) & allPieces;
                 //There is a pinned piece;
                 if (countbit(pinnedPieceMask) == 1){
                     int pinnedPiecePos = __builtin_ctzll(pinnedPieceMask);
@@ -530,7 +530,7 @@ class LegalMoveGenerator{
             // printf("Pawn at pos %d wants to move to :\n",pos[p]);
             // print_mask(pawnMoveMask);
             pawnMoveMask &= pinnedMasks[pos[p]];
-            // if(pinnedMasks[pos[p]] != -1ul){
+            // if(pinnedMasks[pos[p]] != -1ull){
             //     printf("Pinn mask for piece:\n");
             //     print_mask(pinnedMasks[pos[p]]);
             //     printf("After pin and:\n");
@@ -702,7 +702,7 @@ public :
             return nbMoves;
         }else if (nbCheckers == 1){
             inCheck = true;
-            captureMask = (1ul << checkerPos);
+            captureMask = (1ull << checkerPos);
             //If checker is a slider this is perfect logic
             //If it's a pawn then logic is fine too (because king is already excluded and the pawn is already in the captureMask)
             //If it's a knight then no valid ray exists so the mask is 0 (which is what we want)

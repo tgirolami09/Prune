@@ -56,11 +56,11 @@ inline void print_mask(big mask){
 }
 
 inline big addBitToMask(const big& mask, const int& pos){
-    return mask | 1ul << pos;
+    return mask | 1ull << pos;
 }
 
 inline big removeBitFromMask(big mask, int pos){
-    return mask & ~(1ul << pos);
+    return mask & ~(1ull << pos);
 }
 
 inline int from_str(string a){

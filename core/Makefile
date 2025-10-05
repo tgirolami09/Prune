@@ -3,9 +3,7 @@ CFLAGS=-Wall -Wextra -O3 -std=gnu++17
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 ifeq ($(OS), Windows_NT)
-	PLUSFILES = model.o magics.o
-else
-	PLUSFILES =
+	CC=clang++
 endif
 ifeq ($(ARCH), native)
 	ARCHCOM=-march=$(ARCH)
@@ -17,7 +15,7 @@ CPUSET=avx512f avx2
 
 all: prune
 
-prune: engine.cpp $(PLUSFILES)
+prune: engine.cpp
 	$(CC) -m64 $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
 
 model.o: model.bin
@@ -26,13 +24,13 @@ model.o: model.bin
 magics.o: magics.out
 	objcopy --input-target=binary --output-target=elf64-x86-64 $^ $@
 
-coreGen: collectData.cpp $(PLUSFILES)
+coreGen: collectData.cpp
 	$(CC) $(CFLAGS) $(ARCHCOM) -fopenmp -o $@ $^
 
-pruneDebug: engine.cpp $(PLUSFILES)
+pruneDebug: engine.cpp
 	$(CC) -m64 $(ARCHCOM) -g -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
 
-core%: engine.cpp $(PLUSFILES)
+core%: engine.cpp
 	$(CC) $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\"
 
 clean:

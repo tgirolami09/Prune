@@ -1,6 +1,7 @@
 #ifndef CONST_HPP
 #define CONST_HPP
 #include <cstdint>
+#include <cinttypes>
 #include <map>
 #include <cassert>
 //#define ASSERT
@@ -119,9 +120,19 @@ public:
     extern const unsigned char* buffername##_end; \
     extern int buffername##_size
 #else
-#define BINARY_ASM_INCLUDE(buffername) \
-    extern const char buffername##_start[];\
-    extern const char buffername##_end[];\
-    extern const int buffername##_size;
+#define BINARY_ASM_INCLUDE(filename, buffername) \
+    __asm__(".section .data\n" \
+    ".global " #buffername "\n" \
+    ".global " #buffername "_end\n" \
+    "" #buffername":\n" \
+    ".incbin " #filename "\n" \
+    "" #buffername"_end:\n" \
+    ".globl " #buffername"_size\n" \
+    "" #buffername"_size:\n" \
+    ".long " #buffername"_end - " #buffername "\n"\
+    ); \
+    extern const unsigned char buffername[]; \
+    extern const unsigned char* buffername##_end; \
+    extern int buffername##_size
 #endif
 #endif

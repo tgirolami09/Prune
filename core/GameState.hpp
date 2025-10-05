@@ -533,7 +533,7 @@ public :
             printf(" %c", 'h' - (lastDoublePawnPush%8));
             printf("%c", '0'+ (lastDoublePawnPush / 8 + 1));
         }
-        printf("\n%16lx\n", zobristHash);
+        printf("\n%16" PRIx64 "\n", zobristHash);
         printf("%s", toFen().c_str());
         printf("\n");
     }

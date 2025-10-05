@@ -56,7 +56,7 @@ struct PolyglotEntry {
     }
 
     void printMove(){
-        printf("Key = %lu : ",key);
+        printf("Key = %" PRIu64 " : ",key);
 
         printf("going from %d to %d. Weight = %hd\n",from_square,to_square,weight);
         if (promotion != 0){
@@ -155,7 +155,7 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mut
         }
     }
     if(!mute){
-        printf("info string From %ld entries to %ld entries in the opening book\n",InputBook.size(),book.size());
+        printf("info string From %" PRId64 " entries to %" PRId64 " entries in the opening book\n",InputBook.size(),book.size());
         printf("info string Parsed %d moves as null moves (they where consequently ignored)\n",nullMoveAmount);
     }
 
@@ -173,7 +173,7 @@ Move findPolyglot(const GameState& state, bool& inTable, unordered_map<uint64_t,
         //Determine moving piece
         int movingPiece = -1;
         for (int id = 0; id < 6; ++ id){
-            if ((state.friendlyPieces()[id] & (1ul << bestPolyglotEntry.from_square)) != 0){
+            if ((state.friendlyPieces()[id] & (1ull << bestPolyglotEntry.from_square)) != 0){
                 movingPiece = id;
                 break;
             }
@@ -181,7 +181,7 @@ Move findPolyglot(const GameState& state, bool& inTable, unordered_map<uint64_t,
 
         int capturedPiece = -2;
         for (int id = 0; id < 6; ++ id){
-            if ((state.enemyPieces()[id] & (1ul << bestPolyglotEntry.to_square)) != 0){
+            if ((state.enemyPieces()[id] & (1ull << bestPolyglotEntry.to_square)) != 0){
                 capturedPiece = id;
                 break;
             }

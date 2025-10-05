@@ -159,7 +159,7 @@ string doUCI(string UCI_instruction, Chess& state){
     }
     if(command == "go"){
         if(args.count("perft")){
-            printf("Nodes searched: %ld\n", doPerft.perft(state.root, args["perft"]));
+            printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, args["perft"]));
         }else{
             Move move;
             string nextCommand;
@@ -282,7 +282,7 @@ string doUCI(string UCI_instruction, Chess& state){
                 Scores.push_back({lastInfo.depth, lastInfo.node});
             }
         }
-        printf("\rposition %ld/%ld\n", benches.size(), benches.size());
+        printf("\rposition %" PRId64 "/%" PRId64 "\n", benches.size(), benches.size());
         printf("depth\t");
         for(int i=0; i<=maxDepthAttain; i++)
             printf("\t%d", i);
