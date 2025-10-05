@@ -2,6 +2,8 @@
 !*.*
 !*/
 *.out*
+*.exe
+*.o
 *.txt
 build
 .vscode
