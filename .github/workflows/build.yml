@@ -2,34 +2,45 @@ name: Build Project
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}  # Allow Windows to fail
     strategy:
+      fail-fast: false  # Don't cancel other jobs if one fails
       matrix:
-        os: [ubuntu-latest, macos-13]
+        os: [windows-latest, ubuntu-latest, macos-13]
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Needed for git rev-parse
-
-      # Linux setup
+          fetch-depth: 0
+      
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ make
-    
+      
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install mingw make
+      
       - name: Build project
         working-directory: ./core
         run: |
           make prune
       
       - name: Upload binaries
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-binaries
           path: |
             core/prune
+            core/prune.exe
