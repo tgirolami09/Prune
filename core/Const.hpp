@@ -119,8 +119,8 @@ public:
     extern const unsigned char* buffername##_end; \
     extern int buffername##_size
 #else
-#define BINARY_ASM_INCLUDE(filename, buffername) \
-    extern const char buffername[];\
+#define BINARY_ASM_INCLUDE(buffername) \
+    extern const char buffername##_start[];\
     extern const char buffername##_end[];\
     extern const int buffername##_size;
 #endif
