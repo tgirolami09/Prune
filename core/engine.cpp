@@ -1,6 +1,6 @@
 #include <sstream>
 #include <string>
-#include <strings.h>
+#include <cstring>
 #include <future>
 // #include "util_magic.cpp"
 #include "Move.hpp"
