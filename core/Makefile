@@ -1,5 +1,6 @@
 CC=g++
-CFLAGS=-Wall -Wextra -O3 -std=gnu++17
+CFLAGS=-Wall -Wextra -std=gnu++17
+OPT=-O3
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 ifeq ($(OS), Windows_NT)
@@ -16,7 +17,7 @@ CPUSET=avx512f avx2
 all: prune
 
 prune: engine.cpp
-	$(CC) -m64 $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
+	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
 
 model.o: model.bin
 	objcopy --input-target=binary --output-target=elf64-x86-64 $^ $@
@@ -25,13 +26,13 @@ magics.o: magics.out
 	objcopy --input-target=binary --output-target=elf64-x86-64 $^ $@
 
 coreGen: collectData.cpp
-	$(CC) $(CFLAGS) $(ARCHCOM) -fopenmp -o $@ $^
+	$(CC) $(CFLAGS) $(OPT) $(ARCHCOM) $(OPT) -fopenmp -o $@ $^
 
 pruneDebug: engine.cpp
-	$(CC) -m64 $(ARCHCOM) -g -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
+	$(CC) -m64 $(ARCHCOM) $(CFLAGS) -g -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
 
 core%: engine.cpp
-	$(CC) $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\"
+	$(CC) $(CFLAGS) $(ARCHCOM) $(OPT) -o $@ $^ -DCOMMIT=\"$(COM)\"
 
 clean:
 	rm *.o
