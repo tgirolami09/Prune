@@ -21,13 +21,25 @@ const int QB = 64;
 #if defined(__AVX2__)
     using simd16 = __m256i;  // 16 int16_t values
     const int nb16 = 16;
-    using simdint = __m256i;
-    const int nbint = 8;  // 8 int32 values total
+    // For AVX2, we need TWO __m256i to hold 16 int32 values
+    struct simdint_type {
+        __m256i lo, hi;
+        simdint_type() : lo(_mm256_setzero_si256()), hi(_mm256_setzero_si256()) {}
+        simdint_type(__m256i l, __m256i h) : lo(l), hi(h) {}
+    };
+    using simdint = simdint_type;
+    const int nbint = 16;  // 16 int32 values total
 #elif defined(__SSE2__)
     using simd16 = __m128i;  // 8 int16_t values  
     const int nb16 = 8;
-    using simdint = __m128i;
-    const int nbint = 4;  // 4 int32 values total
+    // For SSE2, we need TWO __m128i to hold 8 int32 values
+    struct simdint_type {
+        __m128i lo, hi;
+        simdint_type() : lo(_mm_setzero_si128()), hi(_mm_setzero_si128()) {}
+        simdint_type(__m128i l, __m128i h) : lo(l), hi(h) {}
+    };
+    using simdint = simdint_type;
+    const int nbint = 8;  // 8 int32 values total
 #else
     #error "This code requires at least SSE2 support"
 #endif
@@ -55,6 +67,14 @@ inline simd16 simd16_set1(dbyte value) {
 #endif
 }
 
+inline simdint simdint_set1(int value) {
+#if defined(__AVX2__)
+    return simdint(_mm256_set1_epi32(value), _mm256_set1_epi32(value));
+#else
+    return simdint(_mm_set1_epi32(value), _mm_set1_epi32(value));
+#endif
+}
+
 inline simd16 simd16_add(simd16 a, simd16 b) {
 #if defined(__AVX2__)
     return _mm256_add_epi16(a, b);
@@ -65,9 +85,9 @@ inline simd16 simd16_add(simd16 a, simd16 b) {
 
 inline simdint simdint_add(simdint a, simdint b) {
 #if defined(__AVX2__)
-    return _mm256_add_epi32(a, b);
+    return simdint(_mm256_add_epi32(a.lo, b.lo), _mm256_add_epi32(a.hi, b.hi));
 #else
-    return _mm_add_epi32(a, b);
+    return simdint(_mm_add_epi32(a.lo, b.lo), _mm_add_epi32(a.hi, b.hi));
 #endif
 }
 
@@ -87,53 +107,54 @@ inline simd16 simd16_clamp(simd16 value, simd16 min_val, simd16 max_val) {
 #endif
 }
 
-inline void convert16(simd16 var, simdint& lo, simdint& hi) {
+inline simdint convert16(simd16 var) {
 #if defined(__AVX2__)
     // Convert all 16 int16 values to 16 int32 values using two AVX2 registers
     __m128i lo_half = _mm256_extracti128_si256(var, 0);  // Lower 8 int16 values
     __m128i hi_half = _mm256_extracti128_si256(var, 1);  // Upper 8 int16 values
-    lo = _mm256_cvtepi16_epi32(lo_half);      // Convert lower 8 int16 to int32
-    hi = _mm256_cvtepi16_epi32(hi_half);      // Convert upper 8 int16 to int32
+    __m256i lo_32 = _mm256_cvtepi16_epi32(lo_half);      // Convert lower 8 int16 to int32
+    __m256i hi_32 = _mm256_cvtepi16_epi32(hi_half);      // Convert upper 8 int16 to int32
+    return simdint(lo_32, hi_32);
 #else
     // Convert all 8 int16 values to 8 int32 values using two SSE registers
-    lo = _mm_unpacklo_epi16(var, _mm_setzero_si128()); // Convert lower 4 int16 to int32
-    hi = _mm_unpackhi_epi16(var, _mm_setzero_si128()); // Convert upper 4 int16 to int32
+    __m128i lo_16 = _mm_unpacklo_epi16(var, _mm_setzero_si128()); // Convert lower 4 int16 to int32
+    __m128i hi_16 = _mm_unpackhi_epi16(var, _mm_setzero_si128()); // Convert upper 4 int16 to int32
+    return simdint(lo_16, hi_16);
 #endif
 }
 
 inline simdint simdint_mullo(simdint a, simdint b) {
 #if defined(__AVX2__)
-    return _mm256_mullo_epi32(a, b);
+    return simdint(_mm256_mullo_epi32(a.lo, b.lo), _mm256_mullo_epi32(a.hi, b.hi));
 #else
-    return _mm_mullo_epi32(a, b);
+    return simdint(_mm_mullo_epi32(a.lo, b.lo), _mm_mullo_epi32(a.hi, b.hi));
 #endif
 }
 
 template<int min, int max>
-void SCReLU(simd16 value, simdint& res1, simdint& res2){
+simdint SCReLU(simd16 value){
     static const simd16 mini = simd16_set1(min);
     static const simd16 maxi = simd16_set1(max);
     value = simd16_clamp(value, mini, maxi);
-    convert16(value, res1, res2);
-    res1 = simdint_mullo(res1, res1);
-    res2 = simdint_mullo(res2, res2);
+    simdint res = convert16(value);
+    return simdint_mullo(res, res);
 }
 
-void activation(simd16 value, simdint& res1, simdint& res2){
-    SCReLU<0, QA>(value, res1, res2);
+simdint activation(simd16 value){
+    return SCReLU<0, QA>(value);
 }
 
 int mysum(simdint x){
 #if defined(__AVX2__)
     // Sum all 16 int32 values from two AVX2 registers
-    __m256i sum256 = x;  // Add the two halves
+    __m256i sum256 = _mm256_add_epi32(x.lo, x.hi);  // Add the two halves
     __m128i sum128 = _mm_add_epi32(_mm256_extracti128_si256(sum256, 0), _mm256_extracti128_si256(sum256, 1));
     sum128 = _mm_hadd_epi32(sum128, sum128);
     sum128 = _mm_hadd_epi32(sum128, sum128);
     return _mm_extract_epi32(sum128, 0);
 #else
     // Sum all 8 int32 values from two SSE registers
-    __m128i sum = x;  // Add the two halves
+    __m128i sum = _mm_add_epi32(x.lo, x.hi);  // Add the two halves
     sum = _mm_hadd_epi32(sum, sum);
     sum = _mm_hadd_epi32(sum, sum);
     return _mm_extract_epi32(sum, 0);
@@ -146,7 +167,7 @@ class NNUE{
 public:
     simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
     simd16 hlBiases[HL_SIZE/nb16];
-    simdint outWeights[2*HL_SIZE/nbint];
+    simdint outWeights[2*HL_SIZE/nb16];
     dbyte outbias;
     simd16 accs[2][HL_SIZE/nb16];
     
@@ -163,8 +184,23 @@ public:
     }
     
     void set_simdint_element(simdint& vec, int index, int value) {
-        int* ptr = reinterpret_cast<int*>(&vec);
-        ptr[index] = value;
+#if defined(__AVX2__)
+        if (index < 8) {
+            int* ptr = reinterpret_cast<int*>(&vec.lo);
+            ptr[index] = value;
+        } else {
+            int* ptr = reinterpret_cast<int*>(&vec.hi);
+            ptr[index - 8] = value;
+        }
+#else
+        if (index < 4) {
+            int* ptr = reinterpret_cast<int*>(&vec.lo);
+            ptr[index] = value;
+        } else {
+            int* ptr = reinterpret_cast<int*>(&vec.hi);
+            ptr[index - 4] = value;
+        }
+#endif
     }
     
     NNUE(string name){
@@ -187,7 +223,7 @@ public:
             accs[BLACK][i] = hlBiases[i];
         }
         
-        for(int i=0; i<2*HL_SIZE/nbint; i++) {
+        for(int i=0; i<2*HL_SIZE/nb16; i++) {
             outWeights[i] = simdint_zero();
             for(int id16=0; id16<nbint; id16++) {
                 set_simdint_element(outWeights[i], id16, read_bytes(file));
@@ -217,7 +253,7 @@ public:
             accs[BLACK][i] = hlBiases[i];
         }
         
-        for(int i=0; i<2*HL_SIZE/nbint; i++) {
+        for(int i=0; i<2*HL_SIZE/nb16; i++) {
             outWeights[i] = simdint_zero();
             for(int id16=0; id16<nbint; id16++) {
                 set_simdint_element(outWeights[i], id16, transform(baseModel[pointer++]));
@@ -259,13 +295,8 @@ public:
     dbyte eval(bool side){
         simdint res = simdint_zero();
         for(int i=0; i<HL_SIZE/nb16; i++){
-            simdint act1, act2;
-            activation(accs[side][i], act1, act2);
-            res = simdint_add(res, simdint_mullo(act1, outWeights[2*i  ]));
-            res = simdint_add(res, simdint_mullo(act2, outWeights[2*i+1]));
-            activation(accs[side^1][i], act1, act2);
-            res = simdint_add(res, simdint_mullo(act1, outWeights[HL_SIZE/nbint+2*i  ]));
-            res = simdint_add(res, simdint_mullo(act2, outWeights[HL_SIZE/nbint+2*i+1]));
+            res = simdint_add(res, simdint_mullo(activation(accs[side][i]), outWeights[i]));
+            res = simdint_add(res, simdint_mullo(activation(accs[side^1][i]), outWeights[i+HL_SIZE/nb16]));
         }
         int finRes = mysum(res);
         finRes /= QA;
