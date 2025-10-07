@@ -96,6 +96,7 @@ int main(int argc, char** argv){
             if(get<0>(res).isTactical())
                 countMoves = 0;
             bool inCheck;
+            generator.initDangers(current);
             int nbMoves = generator.generateLegalMoves(current, inCheck, LegalMoves, dngpos, false);
             if(nbMoves == 0){
                 if(inCheck) result = (current.enemyColor() == WHITE)*2;
