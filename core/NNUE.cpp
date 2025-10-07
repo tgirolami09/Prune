@@ -223,7 +223,7 @@ public:
             accs[BLACK][i] = hlBiases[i];
         }
         
-        for(int i=0; i<2*HL_SIZE/nb16; i++) {
+        for(int i=0; i<2*HL_SIZE/nbint; i++) {
             outWeights[i] = simdint_zero();
             for(int id16=0; id16<nbint; id16++) {
                 set_simdint_element(outWeights[i], id16, read_bytes(file));
