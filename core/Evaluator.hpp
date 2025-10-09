@@ -243,16 +243,18 @@ inline int score_move(const Move& move, big& dangerPositions, int historyScore, 
 static const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
 
 class IncrementalEvaluator{
+    int mgScore, egScore;
     int mgPhase;
     int presentPieces[2][6]; //keep trace of number of pieces by side
     template<int f>
     void changePiece(int pos, int piece, bool c){
-        nnue.change2<f>(piece*2+c, pos);
+        int sign = (c == WHITE) ? 1 : -1;
+        mgScore += f*sign*mg_table[c][piece][pos];
+        egScore += f*sign*eg_table[c][piece][pos];
         mgPhase += f*gamephaseInc[piece];
         presentPieces[c][piece] += f;
     }
 public:
-    NNUE nnue;
     void print(){
         printf("phase = %d\n", mgPhase);
         for(int i=0; i<2; i++){
@@ -262,7 +264,7 @@ public:
         }
     }
 
-    IncrementalEvaluator():nnue(){
+    IncrementalEvaluator(){
         init_tables();
         init_forwards();
         memset(presentPieces, 0, sizeof(presentPieces));
@@ -270,7 +272,8 @@ public:
 
     void init(const GameState& state){//should be only call at the start of the search
         mgPhase = 0;
-        nnue.clear();
+        egScore = 0;
+        mgPhase = 0;
         memset(presentPieces, 0, sizeof(presentPieces));
         for(int square=0; square<64; square++){
             int piece=state.getfullPiece(square);
@@ -293,7 +296,10 @@ public:
     }
 
     int getScore(bool c){
-        return nnue.eval(c);
+        int clampPhase = min(mgPhase, 24);
+        int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
+        if(c == BLACK)score = -score;
+        return score;
     }
     template<int f=1>
     void playMove(Move move, bool c){

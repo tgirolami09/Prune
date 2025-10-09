@@ -141,7 +141,7 @@ string doUCI(string UCI_instruction, Chess& state){
                 moveOverhead = precision;
             }else if(arg == "nnueFile"){
                 stream >> inter;
-                bestMoveFinder.eval.nnue = NNUE(inter);
+                //TODO : for changing the model from ui
             }else{
                 stream >> precision;
                 if(arg == "Hash"){
