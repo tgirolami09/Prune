@@ -215,8 +215,8 @@ private:
         seldepth = max(seldepth, relDepth);
         if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
         if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
-        if(!running)return 0;
         if constexpr(limitWay == 0)if((nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
+        if(!running)return 0;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
             if constexpr (nodeType == PVNode)beginLine(rootDist);
             return 0;
