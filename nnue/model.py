@@ -161,15 +161,16 @@ class Trainer:
                 with torch.no_grad():
                     print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
             sys.stdout.flush()
-            if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
+            if not fullsave and lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
                 self.save(fileBest, lastModel)#we save the model
-            if fullsave:
-                self.save("_model.bin", self.modelEval)
             lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
                 isMin = True
-                lastModel.load_state_dict(self.modelEval.state_dict())
+                if fullsave:
+                    self.save(fileBest, self.modelEval)
+                else:
+                    lastModel.load_state_dict(self.modelEval.state_dict())
             else:
                 isMin = False
             lastLoss = totLoss
