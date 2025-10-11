@@ -89,7 +89,7 @@ private:
     big isInSearch[1000];
     template<int limitWay>
     int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth){
-        if(limitWay <= 1 && !running)return 0;
+        if(!running)return 0;
         if(limitWay == 0 && (nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         if(eval.isInsufficientMaterial())return 0;
         nodes++;
@@ -127,7 +127,7 @@ private:
             int score = -quiescenceSearch<limitWay>(state, -beta, -alpha, relDepth+1);
             eval.undoMove(capture, !state.friendlyColor());
             state.undoLastMove<false>();
-            if(limitWay <= 1 && !running)return 0;
+            if(!running)return 0;
             if(score >= beta){
                 nbCutoff++;
                 if(i == 0)nbFirstCutoff++;
@@ -215,8 +215,8 @@ private:
         seldepth = max(seldepth, relDepth);
         if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
         if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
-        if constexpr(limitWay <= 1)if(!running)return 0;
         if constexpr(limitWay == 0)if((nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
+        if(!running)return 0;
         if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
             if constexpr (nodeType == PVNode)beginLine(rootDist);
             return 0;
@@ -224,7 +224,7 @@ private:
         int static_eval = eval.getScore(state.friendlyColor());
         if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
             if constexpr(nodeType == PVNode)beginLine(rootDist);
-            if(mateSearch)return static_eval;
+            if constexpr(mateSearch)return static_eval;
             int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
             if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
             return score;
@@ -243,9 +243,9 @@ private:
         ubyte typeNode = UPPERBOUND;
         Order<maxMoves> order;
         bool inCheck=generator.isCheck();
-        if(!inCheck){
-            if constexpr(nodeType != PVNode){
-                if(!mateSearch){
+        if constexpr(nodeType != PVNode){
+            if(!inCheck){
+                if constexpr(!mateSearch){
                     int margin = 150*depth;
                     if(static_eval >= beta+margin){
                         int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
@@ -280,7 +280,7 @@ private:
             int sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
             state.undoLastMove<false>();
-            if constexpr(nodeType != PVNode)transfer(rootDist, order.moves[0]);
+            if constexpr(nodeType == PVNode)transfer(rootDist, order.moves[0]);
             return sc;
         }
         order.init(state.friendlyColor(), lastBest, getPVMove(rootDist), history, relDepth, state, generator, depth > 5);
@@ -329,7 +329,7 @@ private:
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove<false>();
-            if constexpr(limitWay <= 1)if(!running)return 0;
+            if(!running)return 0;
             if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
                 transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth);
                 nbCutoff++;

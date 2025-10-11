@@ -229,9 +229,46 @@ string doUCI(string UCI_instruction, Chess& state){
         for(Move move:state.movesFromRoot)
             state.root.playPartialMove(move);
         bestMoveFinder.eval.init(state.root);
+        int overall_eval = bestMoveFinder.eval.getScore(state.root.friendlyColor());
+        for(int r=7; r >= 0; r--){
+            pair<char, int> evals[8];
+            for(int c=0; c < 8; c++){
+                int square = (r << 3) | c;
+                int piece = state.root.getfullPiece(square);
+                if(type(piece) != SPACE){
+                    bestMoveFinder.eval.nnue.change2<-1>(piece, square);
+                    char repr=id_to_piece[type(piece)];
+                    int derived = overall_eval-bestMoveFinder.eval.getScore(state.root.friendlyColor());
+                    if(color(piece) == WHITE)repr = toupper(repr);
+                    evals[7-c] = {repr, derived};
+                    bestMoveFinder.eval.nnue.change2<1>(piece, square);
+                }else evals[7-c] = {' ', 0};
+            }
+            for(int i=0; i<8; i++)
+                printf("+-------");
+            printf("+\n");
+            for(int i=0; i<8; i++)
+                printf("|   %c   ", evals[i].first);
+            printf("|\n");
+            for(int i=0; i<8; i++){
+                if(evals[i].first == ' ')
+                    printf("|       ");
+                else{
+                    if(abs(evals[i].second) > 10*100)
+                        printf("| %+2.1f ", evals[i].second/100.0);
+                    else
+                        printf("| %+1.2f ", evals[i].second/100.0);
+                }
+            }
+            printf("|\n");
+        }
+        for(int i=0; i<8; i++)
+            printf("+-------");
+        printf("+\n");
+
         for(unsigned long i=0; i<state.movesFromRoot.size(); i++)
             state.root.undoLastMove();
-        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor()));
+        printf("static evaluation: %d cp\n", overall_eval);
     }else if(command == "stop"){
         bestMoveFinder.stop();
     }else if(command == "ucinewgame"){
