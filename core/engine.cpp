@@ -10,6 +10,13 @@
 #include <cmath>
 #include <iostream>
 
+#ifdef _WIN32
+#include <conio.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+#endif
 // big* table[128]; // [bishop, rook]
 // info constants[128];
 
@@ -80,29 +87,56 @@ const int alloted_space=64*1000*1000;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
 
-void stop_calculations(promise<string> && p){
-    string command;
-    while(bestMoveFinder.running){
-        getline(cin, command);
-        if(command == "stop")
-            bestMoveFinder.running = false;
+void stop_calculations() {
+    std::string inputBuffer;
+    while (bestMoveFinder.running) {
+#ifdef _WIN32
+        if (_kbhit()) {
+            char ch = _getch();
+            if (ch == '\n' || ch == '\r') {
+                if (inputBuffer == "stop") {
+                    bestMoveFinder.running = false; // Signal the worker to stop
+                }
+                inputBuffer.clear(); // Clear buffer after newline
+            } else {
+                inputBuffer += ch; // Build the input string
+            }
+        }
+#else
+        // Check if input is available
+        fd_set readfds;
+        struct timeval tv;
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000; // 100ms wait for input
+
+        if (select(STDIN_FILENO + 1, &readfds, NULL, NULL, &tv) > 0) {
+            char ch;
+            read(STDIN_FILENO, &ch, 1);
+            if (ch == '\n') {
+                if (inputBuffer == "stop") {
+                    bestMoveFinder.running = false; // Signal the worker to stop
+                }
+                inputBuffer.clear(); // Clear buffer after newline
+            } else {
+                inputBuffer += ch; // Build the input string
+            }
+        }
+#endif
     }
-    p.set_value(command);
 }
 
 template<int limitWay=0>
-Move getBotMove(Chess& state, int softBound, int hardBound, string& nextCommand){
+Move getBotMove(Chess& state, int softBound, int hardBound){
     bestMoveFinder.running = true;
 #ifdef STOP_POSS
-    promise<string> p;
-    auto f=p.get_future();
-    thread t(&stop_calculations, std::move(p));
+    thread t(&stop_calculations);
 #endif
     Move moveToPlay = get<0>(bestMoveFinder.bestMove<limitWay>(state.root, softBound, hardBound, state.movesFromRoot));
     printf("bestmove %s\n", moveToPlay.to_str().c_str());
 #ifdef STOP_POSS
     t.join();
-    nextCommand = f.get();
 #endif
     return moveToPlay;
 }
@@ -122,7 +156,7 @@ pair<int, int> computeAllotedTime(Chess& state){
     return {softBound, hardBound};
 }
 
-string doUCI(string UCI_instruction, Chess& state){
+void doUCI(string UCI_instruction, Chess& state){
     istringstream stream(UCI_instruction);
     string command;
     stream >> command;
@@ -150,7 +184,7 @@ string doUCI(string UCI_instruction, Chess& state){
                 }
             }
         }
-        return "";
+        return;
     }else if(command != "position"){
         while(stream >> arg){
             stream >> precision;
@@ -162,24 +196,23 @@ string doUCI(string UCI_instruction, Chess& state){
             printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, args["perft"]));
         }else{
             Move move;
-            string nextCommand;
             if(args.count("btime") && args.count("wtime")){
                 state.b_time = args["btime"];
                 state.w_time = args["wtime"];
                 state.winc = args["winc"];
                 state.binc = args["binc"];
                 auto [softBound, hardBound] = computeAllotedTime(state);
-                move=getBotMove(state, softBound, hardBound, nextCommand);
+                move=getBotMove(state, softBound, hardBound);
             }else if(args.count("movetime")){
-                move = getBotMove(state, args["movetime"], args["movetime"], nextCommand);
+                move = getBotMove(state, args["movetime"], args["movetime"]);
             }else if(args.count("nodes")){
-                move = getBotMove<1>(state, args["nodes"], args["nodes"], nextCommand);
+                move = getBotMove<1>(state, args["nodes"], args["nodes"]);
             }else if(args.count("depth")){
-                move = getBotMove<2>(state, args["depth"], args["depth"], nextCommand);
+                move = getBotMove<2>(state, args["depth"], args["depth"]);
             }else{
-                move = getBotMove<2>(state, 200, 200, nextCommand);
+                move = getBotMove<2>(state, 200, 200);
             }
-            return nextCommand;
+            return;
         }
     }else if(command == "uci"){
         printf("id name pruningBot\nid author tgirolami09 & jbienvenue\n");
@@ -363,7 +396,7 @@ string doUCI(string UCI_instruction, Chess& state){
 #endif
     }
     //Implement actual logic for UCI management
-    return "";
+    return;
 }
 
 int main(int argc, char** argv){
@@ -376,12 +409,8 @@ int main(int argc, char** argv){
         return 0;
     }
     while (UCI_instruction != "quit"){
-        string nextCommand=doUCI(UCI_instruction, state);
+        doUCI(UCI_instruction, state);
         fflush(stdout);
-        if(nextCommand != ""){
-            UCI_instruction = nextCommand;
-            continue;
-        }
         if(!getline(cin,UCI_instruction)){
             printf("quit\n");
             break;
