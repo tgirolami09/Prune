@@ -2,7 +2,7 @@
 #include <string>
 #include <cstring>
 #include <tuple>
-#include <unistd.h>
+#include <chrono>
 // #include "util_magic.cpp"
 #include "Const.hpp"
 #include "Move.hpp"
@@ -371,7 +371,7 @@ void manageSearch(){
             }
             fflush(stdout);
         }
-        usleep(100);
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
 }
 
