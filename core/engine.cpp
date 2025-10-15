@@ -106,7 +106,7 @@ void manageInput(){
         fflush(stdout);
     }
 }
-const set<string> keywords = {"fen", "name", "value", "moves"};
+const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete"};
 class Option{
 public:
     string name;
@@ -118,7 +118,7 @@ public:
         printf("option name %s type %s", name.c_str(), type.c_str());
         if(def != "")printf(" default %s", def.c_str());
         if(minimum != -1)printf(" min %d", minimum);
-        if(maximum != -1)printf(" min %d", maximum);
+        if(maximum != -1)printf(" max %d", maximum);
         printf("\n");
     }
 };
@@ -178,7 +178,7 @@ void manageSearch(){
     state.root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     while(!stop_all){
         if(startQ != endQ){
-            string com=queue[startQ];
+            string com=queue[startQ%sizeQ];
             startQ++;
             istringstream stream(com);
             string command;
@@ -187,7 +187,9 @@ void manageSearch(){
             string keyword = "";
             string value="";
             vector<pair<string, string>> parsed;
+            bool isarg=false;
             while(stream >> word){
+                isarg = true;
                 if(keywords.count(word)){
                     if(value.empty()){
                         if(!keyword.empty())
@@ -201,6 +203,11 @@ void manageSearch(){
                 }else{
                     value += word+" ";
                 }
+            }
+            if(isarg){
+                if(!value.empty())
+                    value.pop_back();
+                parsed.push_back({keyword, value});
             }
             if(command == "runQ"){
                 bestMoveFinder.testQuiescenceSearch(state.root);
@@ -344,14 +351,15 @@ void manageSearch(){
                 state.movesFromRoot.clear();
                 for(auto arg:parsed){
                     if(arg.first == "fen"){
-                        state.root.fromFen(parsed[1].second);
+                        state.root.fromFen(arg.second);
                     }if(arg.first == "startpos"){
-                        printf("setting startpos\n");
+                        //printf("setting startpos\n");
                         state.root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                     }else if(arg.first == "kiwipete"){
-                        printf("setting kiwipete\n");
+                        //printf("setting kiwipete\n");
                         state.root.fromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
                     }else if(arg.first == "moves"){
+                        //printf("moves called : %s\n", arg.second.c_str());
                         istringstream moves(arg.second);
                         string curMove;
                         while(moves >> curMove){
@@ -359,12 +367,14 @@ void manageSearch(){
                             move.from_uci(curMove);
                             state.movesFromRoot.push_back(move);
                         }
+                    }else{
+                        //printf("%s : %s\n", arg.first.c_str(), arg.second.c_str());
                     }
                 }
             }else if(command == "go"){
                 printf("bestmove %s\n", get<0>(goCommand(parsed, state)).to_str().c_str());
             }else if(command == "uci"){
-                printf("id name pruningBot\nid author tgirolami09 & jbienvenue\n");
+                printf("id name Prune\nid author tgirolami09 & jbienvenue\n");
                 for(Option opt:Options)
                     opt.print();
                 printf("uciok\n");
