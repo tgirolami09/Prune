@@ -65,7 +65,9 @@ public:
     static const int headerSize = sizeof(GameState::boardRepresentation)+sizeof(ubyte)+sizeof(dbyte);
 
     void dump(ofstream& datafile){
-        fastWrite(startPos.boardRepresentation, datafile);
+        for(int i=0; i<6; i++)
+            for(int j=0; j<2; j++)
+                fastWrite(startPos.boardRepresentation[j][i], datafile);
         ubyte gameInfo = result*2+startPos.friendlyColor(); //the result (0-1-2) and the color of the starting player
         fastWrite(gameInfo, datafile);
         dbyte sizeGame = game.size();
@@ -87,15 +89,19 @@ int main(int argc, char** argv){
         limitNodes = 200000;
     while(getline(file, curFen))
         fens.push_back(curFen);
+    int sizeGame = fens.size();
+    if(argc > 4)
+        sizeGame = atoi(argv[4]);
     big gamesMade = 0;
     auto start=chrono::high_resolution_clock::now();
     LegalMoveGenerator generator;
     int lastGamesMade=0;
+    int realThread = min(NUM_THREADS, sizeGame);
 #ifndef DEBUG
     #pragma omp parallel for shared(gamesMade, lastGamesMade) private(generator) num_threads(NUM_THREADS)
 #endif
-    for(int idThread=0; idThread<NUM_THREADS; idThread++){
-        int startReg=fens.size()*idThread/NUM_THREADS;
+    for(int idThread=0; idThread<realThread; idThread++){
+        int startReg=sizeGame*idThread/realThread;
         string nameDataFile = string("data")+to_string(idThread)+string(".out");
         ifstream infile(nameDataFile);
         if(infile.is_open()){
@@ -118,7 +124,7 @@ int main(int argc, char** argv){
             #pragma omp atomic update
             lastGamesMade += nbGames;
         }
-        int endReg = fens.size()*(idThread+1)/NUM_THREADS;
+        int endReg = sizeGame*(idThread+1)/realThread;
         for(int i=startReg; i<endReg; i++){
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
             BestMoveFinder player(alloted_space, true);
@@ -135,6 +141,7 @@ int main(int argc, char** argv){
             big dngpos;
             int countMoves = 0;
             GamePlayed Game;
+            Game.startPos.fromFen(fens[i]);
             do{
                 bool isWhite = current.friendlyColor() == WHITE;
                 root.fromFen(fens[i]);
@@ -154,8 +161,8 @@ int main(int argc, char** argv){
                     break;
                 }
                 MoveInfo curProc;
+                curProc.moveInfo = get<0>(res).moveInfo;
                 if(get<1>(res) != INF){
-                    curProc.moveInfo = get<0>(res).moveInfo;
                     curProc.score = get<1>(res);
                     player.eval.init(current);
                     curProc.staticScore = player.eval.getScore(current.friendlyColor());
@@ -197,11 +204,11 @@ int main(int argc, char** argv){
                     speed = gamesMade*1000*100/duration;
                     unit = "g/s";
                 }
-                string remaindTime = secondsToStr(duration*(fens.size()-totGamesMade)/(totGamesMade*1000)); // in seconds
-                int percent = 1000*totGamesMade/fens.size();
+                string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(totGamesMade*1000)); // in seconds
+                int percent = 1000*totGamesMade/sizeGame;
                 string printed = to_string(percent/10)+string(".")+to_string(percent%10);
                 printed += "% (";
-                printed += to_string(totGamesMade)+string("/")+to_string(fens.size())+" in ";
+                printed += to_string(totGamesMade)+string("/")+to_string(sizeGame)+" in ";
                 printed += to_string(duration/1000.0)+"s) "+remaindTime+" ";
                 printed += to_string(speed/100);
                 if(speed%100 >= 10)
@@ -209,10 +216,12 @@ int main(int argc, char** argv){
                 else 
                     printed += string(".0")+to_string(speed%100);
                 printed += unit+" [";
-                int percentWind = (w.ws_col-printed.size()-1)*totGamesMade*10/fens.size();
+                int percentWind = (w.ws_col-printed.size()-1)*totGamesMade*10/sizeGame;
                 printed += string(percentWind/10, '#');
-                printed += to_string(percentWind%10);
-                printed += string((w.ws_col-printed.size()-1), ' ');
+                if(totGamesMade != sizeGame){
+                    printed += to_string(percentWind%10);
+                    printed += string((w.ws_col-printed.size()-1), ' ');
+                }
                 printed += "]";
                 printf("%s\r", printed.c_str());
                 fflush(stdout);
