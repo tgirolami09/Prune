@@ -146,7 +146,7 @@ pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool
     return {softBound, hardBound};
 }
 
-auto goCommand(vector<pair<string, string>> args, Chess & state){
+auto goCommand(vector<pair<string, string>> args, Chess & state, bool verbose=true){
     if(!args.empty()){
         if(args[0].first == "perft"){
             printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, stoi(args[1].second)));
@@ -168,13 +168,13 @@ auto goCommand(vector<pair<string, string>> args, Chess & state){
             return bestMoveFinder.bestMove<0>(state.root, softBound, hardBound, state.movesFromRoot);
         }else if(args.size() && args[0].first == "movetime"){
             int movetime = stoi(args[0].second);
-            return bestMoveFinder.bestMove<0>(state.root, movetime, movetime, state.movesFromRoot);
+            return bestMoveFinder.bestMove<0>(state.root, movetime, movetime, state.movesFromRoot, verbose);
         }else if(args.size() && args[0].first == "nodes"){
             int nodes = stoi(args[0].second);
-            return bestMoveFinder.bestMove<1>(state.root, nodes, nodes, state.movesFromRoot);
+            return bestMoveFinder.bestMove<1>(state.root, nodes, nodes, state.movesFromRoot, verbose);
         }else if(args.size() && args[0].first == "depth"){
             int depth = stoi(args[0].second);
-            return bestMoveFinder.bestMove<2>(state.root, depth, depth, state.movesFromRoot);
+            return bestMoveFinder.bestMove<2>(state.root, depth, depth, state.movesFromRoot, verbose);
         }
     }
     return bestMoveFinder.bestMove<2>(state.root, 200, 200, state.movesFromRoot);
@@ -293,7 +293,7 @@ void manageSearch(){
                     testState.movesFromRoot = {};
                     testState.root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    vector<depthInfo> infos = get<2>(goCommand(parsed, testState));
+                    vector<depthInfo> infos = get<2>(goCommand(parsed, testState, false));
                     for(depthInfo info:infos){
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;
@@ -339,10 +339,10 @@ void manageSearch(){
                         scoreThird.second += locScore.second;
                     }
                 }
-                printf("search score: (%.0f %.0f) (%.0f %.0f)", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
+                printf("search score: (%.0f %.0f) (%.0f %.0f)\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
             }else if(command == "arch"){
 #ifdef __AVX512F__
-                printf("arch: AVX512");
+                printf("arch: AVX512\n");
 #elif defined(__AVX2__)
                 printf("arch: AVX2\n");
 #elif defined(__AVX__)
