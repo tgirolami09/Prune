@@ -224,7 +224,7 @@ private:
         int static_eval = eval.getScore(state.friendlyColor());
         if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
             if constexpr(nodeType == PVNode)beginLine(rootDist);
-            if(mateSearch)return static_eval;
+            if constexpr(mateSearch)return static_eval;
             int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
             if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
             return score;
@@ -242,9 +242,9 @@ private:
         ubyte typeNode = UPPERBOUND;
         Order<maxMoves> order;
         bool inCheck=generator.isCheck();
-        if(!inCheck){
-            if constexpr(nodeType != PVNode){
-                if(!mateSearch){
+        if constexpr(nodeType != PVNode){
+            if(!inCheck){
+                if constexpr(!mateSearch){
                     int margin = 150*depth;
                     if(static_eval >= beta+margin){
                         int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
