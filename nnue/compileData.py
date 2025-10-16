@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from chess import Board, BLACK, WHITE, Move
+from chess import Board, BLACK, WHITE, Move, PAWN
 import sys
 import argparse
 import re
@@ -56,6 +56,7 @@ def uciFromInfo(moveInfo):
 def readGame(file):
     global filtredPos, mini, maxi, count
     board = Board.empty()
+    board.castling_rights = Board().castling_rights
     for p, piece in enumerate(("pawns", "knights", "bishops", "rooks", "queens", "kings")):
         for c, color in enumerate((WHITE, BLACK)):
             bitboard = mirror(int.from_bytes(file.read(8), sys.byteorder))
@@ -85,7 +86,14 @@ def readGame(file):
                 dataY[board.turn == BLACK].append([score, result])
                 count += 1
         result = 1-result
-        board.push(nextMove)
+        try:
+            if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
+                board.ep_square = nextMove.to_square
+            board.push(nextMove)
+        except:
+            print(board.root().fen())
+            print(" ".join([i.uci() for i in board.move_stack]))
+            raise Exception()
 
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
