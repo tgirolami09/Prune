@@ -385,6 +385,22 @@ void manageSearch(){
                 for(Option opt:Options)
                     opt.print();
                 printf("uciok\n");
+            }else if(command == "setoption"){
+                for(int i=0; i<(int)parsed.size(); i++){
+                    if(parsed[i].first == "name"){
+                        bool incr=true;
+                        if(parsed[i].second == "Hash")
+                            bestMoveFinder.reinit(stoi(parsed[i+1].second));
+                        else if(parsed[i].second == "Move Overhead")
+                            moveOverhead = stoi(parsed[i+1].second);
+                        else if(parsed[i].second == "Clear Hash"){
+                            bestMoveFinder.clear();
+                            incr = false;
+                        }else if(parsed[i].second == "nnueFile")
+                            bestMoveFinder.eval.nnue = NNUE(parsed[i+1].second);
+                        i += incr;
+                    }
+                }
             }
             fflush(stdout);
         }

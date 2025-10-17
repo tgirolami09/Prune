@@ -539,8 +539,8 @@ public:
     }
 
     void reinit(size_t count){
-        transposition.reinit(count);
-        QTT.reinit(count);
+        transposition.reinit(count*2/3);
+        QTT.reinit(count/3);
     }
 };
 
