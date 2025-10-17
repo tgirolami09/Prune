@@ -62,8 +62,8 @@ const int maxMoves=218;
 const int maxCaptures = 12*8+4*4;
 const int maxExtension = 16;
 
-const int MINIMUM=-10000;
-const int MAXIMUM=10000;
+const int MINIMUM=-100000;
+const int MAXIMUM=100000;
 const int INF=MAXIMUM+200;
 const int MIDDLE=0;
 
