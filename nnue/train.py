@@ -38,8 +38,8 @@ parser.add_argument("--reload", action="store_true", help="to not start from not
 parser.add_argument("--outFile", "-o", type=str, default="bestModel.bin", help="the file where the current best model is written")
 parser.add_argument("--limit", type=int, default=-1, help="the number of training samples (-1 for all the file)")
 parser.add_argument("--remake", action="store_true", help="to remake training data")
-parser.add_argument("--fullsave", action="store_true", help="to remake training data")
 parser.add_argument("--wdl", type=float, default=0.0, help="the portion of result in the target")
+parser.add_argument("--processes", "-p", type=int, default=1, help="number of processes used for unpacking data")
 settings = parser.parse_args(sys.argv[1:])
 
 print('initisalise the trainer')
@@ -73,5 +73,5 @@ testPos = torch.from_numpy(np.array([boardToInput(Board(fen)) for fen in [
     '8/8/2K5/2Q5/8/8/8/3k4 w - - 0 1',                                    # one queen advantage
     '8/8/2K5/2QQ4/8/8/8/3k4 w - - 0 1'                                    # two queen advantage
 ]]))
-trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile, testPos, settings.fullsave)
+trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile, testPos, settings.processes)
 trainer.save()

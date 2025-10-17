@@ -94,7 +94,7 @@ class Trainer:
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
-    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, fullsave=False):
+    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, processes=1):
         startTime = time.time()
         dataset1 = TensorDataset(dataX[0], dataY[0])
         dataset2 = TensorDataset(dataX[1], dataY[1])
@@ -102,10 +102,10 @@ class Trainer:
         dataTrain2, dataTest2 = random_split(dataset2, [percentTrain, 1-percentTrain])
         totTrainData = len(dataTrain1)+len(dataTrain2)
         totTestData = sum(map(len, dataX))-totTrainData
-        dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True)
-        dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
-        testDataL1 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False)
-        testDataL2 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False)
+        dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True, num_workers=processes)
+        dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True, num_workers=processes)
+        testDataL1 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False, num_workers=processes)
+        testDataL2 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False, num_workers=processes)
         lastTestLoss = lastLoss = 0.0
         miniLoss = 1000
         current_lr = self.lr

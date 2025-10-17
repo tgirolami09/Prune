@@ -86,14 +86,9 @@ def readGame(file):
                 dataY[board.turn == BLACK].append([score, result])
                 count += 1
         result = 1-result
-        try:
-            if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
-                board.ep_square = nextMove.to_square
-            board.push(nextMove)
-        except:
-            print(board.root().fen())
-            print(" ".join([i.uci() for i in board.move_stack]))
-            raise Exception()
+        if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
+            board.ep_square = nextMove.to_square
+        board.push(nextMove)
 
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
