@@ -148,22 +148,20 @@ int main(int argc, char** argv){
                 tuple<Move, int, vector<depthInfo>> res;
                 if(isWhite)res = player.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
                 else res = opponent.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
-    #ifdef DEBUG
-                //printf("%s\n", current.toFen().c_str());
-    #endif
-                moves.push_back(get<0>(res));
-                if(abs(get<1>(res)) == INF+1){
-                    result = (get<1>(res) > 0)*2;
+                int score = get<1>(res);
+                Move curMove = get<0>(res);
+                if(abs(score) > MAXIMUM-maxDepth){
+                    result = (score > 0)*2;
                     break;
                 }
-                if(current.playMove<false>(get<0>(res)) == 3){
+                if(current.playMove<false>(curMove) == 3){
                     result = 1;
                     break;
                 }
                 MoveInfo curProc;
-                curProc.moveInfo = get<0>(res).moveInfo;
-                if(get<1>(res) != INF){
-                    curProc.score = get<1>(res);
+                curProc.moveInfo = curMove.moveInfo;
+                if(score != INF){
+                    curProc.score = score;
                     player.eval.init(current);
                     curProc.staticScore = player.eval.getScore(current.friendlyColor());
                     curProc.isVoid = false;
@@ -172,7 +170,7 @@ int main(int argc, char** argv){
                 }
                 Game.game.push_back(curProc);
                 countMoves++;
-                if(get<0>(res).isTactical())
+                if(curMove.isTactical())
                     countMoves = 0;
                 bool inCheck;
                 generator.initDangers(current);
@@ -182,6 +180,7 @@ int main(int argc, char** argv){
                     else result = 1;
                     break;
                 }
+                moves.push_back(curMove);
             }while(countMoves < 100);
             Game.result = result;
             ofstream datafile(nameDataFile, ios::app);
