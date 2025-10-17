@@ -322,11 +322,11 @@ with SharedMemoryManager() as smm:
 
 
 eloDelta, difference, stdDeviation, score = get_confidence(Aresults)
-print(f"Elo   | {eloDelta} +/- {difference}")
+print(f"Elo   | {eloDelta:.2f} +/- {difference:.2f}")
 print(f"SPRT  | {timeControl}s")
 if settings.sprt:
     boundUp = math.log(settings.confidence/(1-settings.confidence))
     boundDown = -boundUp
-    print(f"LLR   | {PentanomialSPRT(Aresults, *settings.hypothesis)} ({boundDown}, {boundUp}) [{settings.hypothesis[0]}, {settings.hypothesis[1]}]")
+    print(f"LLR   | {PentanomialSPRT(Aresults, *settings.hypothesis):.2f} ({boundDown:.2f}, {boundUp:.2f}) [{settings.hypothesis[0]}, {settings.hypothesis[1]}]")
 print(f"Games | N: {resultSimple.sum()} W: {resultSimple[0]} L: {resultSimple[1]} D: {resultSimple[2]}")
 print("Penta |", list(map(int, Aresults)))
