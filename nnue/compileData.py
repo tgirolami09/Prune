@@ -1,5 +1,6 @@
 from tqdm import tqdm
 from chess import Board, BLACK, WHITE, Move, PAWN
+from multiprocessing import Pool
 import sys
 import argparse
 import re
@@ -53,8 +54,9 @@ def uciFromInfo(moveInfo):
         mv += pieces[promot]
     return mv
 
-def readGame(file):
-    global filtredPos, mini, maxi, count
+def readGame(file, dataX, dataY):
+    count = 0
+    filtredPos = 0
     board = Board.empty()
     board.castling_rights = Board().castling_rights
     for p, piece in enumerate(("pawns", "knights", "bishops", "rooks", "queens", "kings")):
@@ -68,11 +70,11 @@ def readGame(file):
     result = gameInfo//2/2
     sizeGame = int.from_bytes(file.read(2), sys.byteorder, signed=True)
     for i in range(sizeGame):
-        doStore = not bool(f.read(1)[0])
-        moveInfo = int.from_bytes(f.read(2), sys.byteorder, signed=True)
+        doStore = not bool(file.read(1)[0])
+        moveInfo = int.from_bytes(file.read(2), sys.byteorder, signed=True)
         nextMove = Move.from_uci(uciFromInfo(moveInfo))
-        score = int.from_bytes(f.read(4), sys.byteorder, signed=True)
-        staticScore = int.from_bytes(f.read(4), sys.byteorder, signed=True)
+        score = int.from_bytes(file.read(4), sys.byteorder, signed=True)
+        staticScore = int.from_bytes(file.read(4), sys.byteorder, signed=True)
         if doStore:
             if abs(staticScore) > kMaxMaterialImbalance or abs(score) > kMaxScoreMagnitude:
                 filtredPos += 1
@@ -81,19 +83,31 @@ def readGame(file):
             else:
                 #if abs(staticScore-score) >= 70:continue
                 dataX[board.turn == BLACK].append(boardToInput(board))
-                mini = min(mini, score)
-                maxi = max(maxi, score)
                 dataY[board.turn == BLACK].append([score, result])
                 count += 1
         result = 1-result
         if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
             board.ep_square = nextMove.to_square
         board.push(nextMove)
+    return count, filtredPos
+
+def readFile(name):
+    count = 0
+    filtredPos = 0
+    dataX = [[], []]
+    dataY = [[], []]
+    with open(name, "rb") as f:
+        while f.tell() != os.fstat(f.fileno()).st_size:
+            a, b = readGame(f, dataX, dataY)
+            count += a
+            filtredPos += b
+    return count, filtredPos, dataX, dataY
 
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
 parser.add_argument("dataFile", type=str, help="the file where the data is")
 parser.add_argument("pickledData", type=str, help="where the training data will be")
+parser.add_argument("--processes", "-p", type=int, default=1, help="number of processes to process the data")
 settings = parser.parse_args(sys.argv[1:])
 
 parts = settings.dataFile.split('/')
@@ -103,8 +117,6 @@ rule = re.compile(parts[-1])
 dataX = [[], []]
 dataY = [[], []]
 passed = set()
-mini = 10000
-maxi = -10000
 corrFiles = []
 for file in os.listdir(directory):
     if rule.match(file):
@@ -113,17 +125,18 @@ collision = 0
 filtredPos = 0
 kMaxScoreMagnitude = 1500
 kMaxMaterialImbalance = 1200
-for file in tqdm(corrFiles):
-    with open(file, "rb") as f:
-        count = 0
-        tq = tqdm(leave=False)
-        while f.tell() != os.fstat(f.fileno()).st_size:
-            readGame(f)
-            tq.update(1)
-        tq.close()
-print('collision', collision)
+count = 0
+print(corrFiles)
+with Pool(settings.processes) as p:
+    for c, fP, X, Y in tqdm(p.imap(readFile, corrFiles), total=len(corrFiles)):
+        count += c
+        filtredPos += fP
+        dataX[0].extend(X[0])
+        dataX[1].extend(X[1])
+        dataY[0].extend(Y[0])
+        dataY[1].extend(Y[1])
+
 print(f'{filtredPos*100/(filtredPos+count)}% of pos were not filtred')
-print(f'range: [{mini}, {maxi}]')
 print('data collected:', len(dataX[0])+len(dataX[1]))
 dataX = [torch.from_numpy(np.array(i)) for i in dataX]
 dataY = [torch.from_numpy(np.array(i)) for i in dataY]
