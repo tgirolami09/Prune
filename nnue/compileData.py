@@ -112,7 +112,6 @@ settings = parser.parse_args(sys.argv[1:])
 
 parts = settings.dataFile.split('/')
 directory = '/'.join(parts[:-1])
-print(directory)
 rule = re.compile(parts[-1])
 dataX = [[], []]
 dataY = [[], []]
@@ -126,7 +125,6 @@ filtredPos = 0
 kMaxScoreMagnitude = 1500
 kMaxMaterialImbalance = 1200
 count = 0
-print(corrFiles)
 with Pool(settings.processes) as p:
     for c, fP, X, Y in tqdm(p.imap(readFile, corrFiles), total=len(corrFiles)):
         count += c
