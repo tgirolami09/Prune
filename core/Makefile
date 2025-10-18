@@ -20,6 +20,9 @@ ifeq ($(TAG), )
 else
 	REC=$(TAG)
 endif
+ifneq ($(shell git status --porcelain),)
+	REC=test
+endif
 ifeq ($(ARCH), native)
 	ARCHNAME=
 else
