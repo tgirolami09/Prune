@@ -1,7 +1,8 @@
 name: Build Project
 on:
   push:
-    branches: [ main ]
+    tags:
+      - '*'  # Pour tous les nouveaux tags 
   pull_request:
     branches: [ main ]
 
