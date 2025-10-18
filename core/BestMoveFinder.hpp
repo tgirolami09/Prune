@@ -244,7 +244,7 @@ private:
         bool inCheck=generator.isCheck();
         if constexpr(nodeType != PVNode){
             if(!inCheck){
-                if constexpr(!mateSearch){
+                if(beta > MINIMUM+maxDepth){
                     int margin = 150*depth;
                     if(static_eval >= beta+margin){
                         int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
