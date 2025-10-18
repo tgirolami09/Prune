@@ -5,6 +5,12 @@
 // Required to avoid stripping TF symbols
 extern "C" void dummy() { TF_Version(); }
 
+#ifndef TF_INPUT_SIZE_VAR
+#define TF_INPUT_SIZE_VAR
+// 768 board + 1 turn + 1 static_eval
+const int TF_INPUT_SIZE = 770; 
+#endif
+
 float predict(std::vector<float> input, const std::string modelLocation) {
     std::cout << "TensorFlow C API version: " << TF_Version() << std::endl;
 
@@ -25,9 +31,8 @@ float predict(std::vector<float> input, const std::string modelLocation) {
     std::cout << "Model loaded successfully." << std::endl;
 
     // ===== Prepare input tensor =====
-    // Example: input shape [1, 770], floats
-    std::vector<float> input_data(770, 0.0f);
-    if (input.size() == INPUT_SIZE){
+    std::vector<float> input_data(TF_INPUT_SIZE, 0.0f);
+    if (input.size() == TF_INPUT_SIZE){
         input_data = input;
     }
     else{
@@ -36,7 +41,7 @@ float predict(std::vector<float> input, const std::string modelLocation) {
         return 3.1415926536f;
     }
 
-    int64_t dims[2] = {1, 770};
+    int64_t dims[2] = {1, TF_INPUT_SIZE};
     TF_Tensor* input_tensor = TF_NewTensor(
         TF_FLOAT, dims, 2,
         input_data.data(), input_data.size() * sizeof(float),

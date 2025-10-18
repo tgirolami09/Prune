@@ -16,7 +16,7 @@ CPUSET=avx512f avx2
 all: prune
 
 prune: engine.cpp
-	$(CC) -m64 $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS
+	$(CC) -m64 $(CFLAGS) $(ARCHCOM) -o $@ $^ -DCOMMIT=\"$(COM)\" -DSTOP_POSS -I/usr/local/include -L/usr/local/lib -ltensorflow
 
 model.o: model.bin
 	objcopy --input-target=binary --output-target=elf64-x86-64 $^ $@

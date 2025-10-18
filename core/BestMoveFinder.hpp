@@ -97,7 +97,8 @@ private:
         int lastEval=QTT.get_eval(state, alpha, beta);
         if(lastEval != INVALID)
             return lastEval;
-        int staticEval = eval.getScore(state.friendlyColor());
+        // int staticEval = eval.getScore(state.friendlyColor());
+        int staticEval = eval.getScore(state.friendlyColor(), state);
         if(staticEval >= beta){
             QTT.push(state, staticEval, LOWERBOUND);
             return staticEval;
@@ -221,7 +222,8 @@ private:
             if constexpr (nodeType == PVNode)beginLine(rootDist);
             return 0;
         }
-        int static_eval = eval.getScore(state.friendlyColor());
+        // int static_eval = eval.getScore(state.friendlyColor());
+        int static_eval = eval.getScore(state.friendlyColor(), state);
         if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
             if constexpr(nodeType == PVNode)beginLine(rootDist);
             if(mateSearch)return static_eval;
@@ -471,7 +473,8 @@ public:
         nbCutoff = nbFirstCutoff = 0;
         clock_t start=clock();
         big lastNodes = 1;
-        int lastScore = eval.getScore(state.friendlyColor());
+        // int lastScore = eval.getScore(state.friendlyColor());
+        int lastScore = eval.getScore(state.friendlyColor(), state);
         order.init(state.friendlyColor(), history, state, generator);
         for(int depth=1; depth<depthMax && running; depth++){
             int deltaUp = 10;

@@ -5,6 +5,8 @@
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "NNUE.cpp"
+#include "../tf_nn/fen_to_input.hpp"
+#include "../tf_nn/get_model_prediction.hpp"
 #include <climits>
 #include <cstring>
 #include <cmath>
@@ -295,11 +297,16 @@ public:
         return !mgPhase;
     }
 
-    int getScore(bool c){
+    int getScore(bool c, const GameState& state){
         int clampPhase = min(mgPhase, 24);
         int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
         if(c == BLACK)score = -score;
-        return score;
+        vector<float> tf_nn_input = fenToInput(state.toFen(),(float)score);
+        printf("Got input\n");
+        printf("Predicting\n");
+        float tf_nn_score = predict(tf_nn_input,"test");
+        printf("Predicted %d\n",(int)tf_nn_score);
+        return (int)tf_nn_score;
     }
     template<int f=1>
     void playMove(Move move, bool c){

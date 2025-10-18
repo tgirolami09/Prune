@@ -4,11 +4,14 @@
 #include <sstream>
 #include <cctype>
 
+#ifndef TF_INPUT_SIZE_VAR
+#define TF_INPUT_SIZE_VAR
 // 768 board + 1 turn + 1 static_eval
-const int INPUT_SIZE = 770; 
+const int TF_INPUT_SIZE = 770; 
+#endif
 
 std::vector<float> fenToInput(const std::string& fen, float static_eval) {
-    std::vector<float> input(INPUT_SIZE, 0.0f);
+    std::vector<float> input(TF_INPUT_SIZE, 0.0f);
 
     std::unordered_map<char, int> PIECE_TO_PLANE = {
         {'P', 0}, {'N', 1}, {'B', 2}, {'R', 3}, {'Q', 4}, {'K', 5},
@@ -49,13 +52,13 @@ std::vector<float> fenToInput(const std::string& fen, float static_eval) {
     // static_eval
     input[769] = static_eval;
 
-    printf("Data as a 1D vector of floats\n");
-    for (float f : input){
-        printf("%:.1f ",f);
-    }
-    printf("\n");
+    // printf("Data as a 1D vector of floats\n");
+    // for (float f : input){
+    //     printf("%:.1f ",f);
+    // }
+    // printf("\n");
 
-    printf("This %f should be == to %f\n",input[769],static_eval);
+    // printf("This %f should be == to %f\n",input[769],static_eval);
 
     return input;
 }

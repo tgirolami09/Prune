@@ -231,7 +231,8 @@ string doUCI(string UCI_instruction, Chess& state){
         bestMoveFinder.eval.init(state.root);
         for(unsigned long i=0; i<state.movesFromRoot.size(); i++)
             state.root.undoLastMove();
-        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor()));
+        // printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor()));
+        printf("static evaluation: %d cp\n", bestMoveFinder.eval.getScore(state.root.friendlyColor(),state.root));
     }else if(command == "stop"){
         bestMoveFinder.stop();
     }else if(command == "ucinewgame"){

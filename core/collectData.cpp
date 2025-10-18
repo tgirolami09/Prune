@@ -84,7 +84,8 @@ int main(int argc, char** argv){
             if(get<1>(res) != INF){
                 scores[isWhite].push_back(get<1>(res));
                 player.eval.init(current);
-                statics[isWhite].push_back(player.eval.getScore(current.friendlyColor()));
+                // statics[isWhite].push_back(player.eval.getScore(current.friendlyColor()));
+                statics[isWhite].push_back(player.eval.getScore(current.friendlyColor(),current));
                 playedFens[isWhite].push_back(current.toFen());
                 movesPlayed[isWhite].push_back(get<0>(res).to_str());
             }
