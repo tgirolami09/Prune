@@ -34,13 +34,11 @@ jobs:
       - name: Build project
         working-directory: ./core
         run: |
-          make prune
+          make
       
       - name: Upload binaries
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-binaries
-          path: |
-            core/prune
-            core/prune.exe
+          path: core/prune*
