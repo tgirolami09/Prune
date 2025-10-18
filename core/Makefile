@@ -16,7 +16,7 @@ ifneq ($(CPUSET), unknow)
 endif
 TAG=$(shell git tag --contains=HEAD)
 ifeq ($(TAG), )
-	REC=$(shell git rev-parse --short HEAD) 
+	REC=$(strip $(shell git rev-parse --short HEAD) )
 else
 	REC=$(TAG)
 endif
