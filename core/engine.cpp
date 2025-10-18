@@ -381,7 +381,10 @@ void manageSearch(){
             }else if(command == "go"){
                 printf("bestmove %s\n", get<0>(goCommand(parsed, state)).to_str().c_str());
             }else if(command == "uci"){
-                printf("id name Prune\nid author tgirolami09 & jbienvenue\n");
+                string v=VERSION;
+                if(v[0] == 'v')
+                    v = v.substr(1, v.size()-1);
+                printf("id name Prune %s\nid author tgirolami09 & jbienvenue\n", v.c_str());
                 for(Option opt:Options)
                     opt.print();
                 printf("uciok\n");
