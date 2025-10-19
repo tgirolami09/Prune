@@ -152,6 +152,8 @@ int main(int argc, char** argv){
                 Move curMove = get<0>(res);
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
+                    if(current.friendlyColor() == BLACK)
+                        result = 2-result;
                     break;
                 }
                 if(current.playMove<false>(curMove) == 3){

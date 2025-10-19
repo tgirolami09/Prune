@@ -45,14 +45,15 @@ def boardToInput(board):
             index += 64
     return res
 
-def uciFromInfo(moveInfo):
-    start = (moveInfo >> 6) & 0x3f
-    end = moveInfo & 0x3f
+def moveFromInfo(moveInfo):
+    start = ((moveInfo >> 6) & 0x3f)^7
+    end = (moveInfo & 0x3f)^7
     promot = moveInfo >> 12
-    mv = to_uci(start)+to_uci(end)
-    if promot != -1:
-        mv += pieces[promot]
-    return mv
+    if promot == -1:
+        promot = None
+    else:
+        promot += 1
+    return Move(start, end, promot)
 
 def readGame(file, dataX, dataY):
     count = 0
@@ -68,11 +69,13 @@ def readGame(file, dataX, dataY):
     gameInfo = file.read(1)[0]
     board.turn = BLACK if gameInfo%2 else WHITE
     result = gameInfo//2/2
+    if board.turn == BLACK:
+        result = 1-result
     sizeGame = int.from_bytes(file.read(2), sys.byteorder, signed=True)
     for i in range(sizeGame):
         doStore = not bool(file.read(1)[0])
         moveInfo = int.from_bytes(file.read(2), sys.byteorder, signed=True)
-        nextMove = Move.from_uci(uciFromInfo(moveInfo))
+        nextMove = moveFromInfo(moveInfo)
         score = int.from_bytes(file.read(4), sys.byteorder, signed=True)
         staticScore = int.from_bytes(file.read(4), sys.byteorder, signed=True)
         if doStore:

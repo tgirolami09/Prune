@@ -36,7 +36,6 @@ endif
 NAME=prune-$(OS)-$(REC)
 SHORTNAME=prune$(REC)
 VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
-$(info $(VERSIONNING))
 ifeq ($(OS), Windows_NT)
 	NAME := $(NAME).exe
 	SHORTNAME := $(SHORTNAME).exe
