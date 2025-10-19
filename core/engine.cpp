@@ -12,6 +12,13 @@
 #include <cmath>
 #include <iostream>
 
+#ifdef _WIN32
+#include <conio.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+#endif
 // big* table[128]; // [bishop, rook]
 // info constants[128];
 
@@ -139,7 +146,7 @@ pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool
     return {softBound, hardBound};
 }
 
-auto goCommand(vector<pair<string, string>> args, Chess & state){
+auto goCommand(vector<pair<string, string>> args, Chess & state, bool verbose=true){
     if(!args.empty()){
         if(args[0].first == "perft"){
             printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, stoi(args[1].second)));
@@ -161,13 +168,13 @@ auto goCommand(vector<pair<string, string>> args, Chess & state){
             return bestMoveFinder.bestMove<0>(state.root, softBound, hardBound, state.movesFromRoot);
         }else if(args.size() && args[0].first == "movetime"){
             int movetime = stoi(args[0].second);
-            return bestMoveFinder.bestMove<0>(state.root, movetime, movetime, state.movesFromRoot);
+            return bestMoveFinder.bestMove<0>(state.root, movetime, movetime, state.movesFromRoot, verbose);
         }else if(args.size() && args[0].first == "nodes"){
             int nodes = stoi(args[0].second);
-            return bestMoveFinder.bestMove<1>(state.root, nodes, nodes, state.movesFromRoot);
+            return bestMoveFinder.bestMove<1>(state.root, nodes, nodes, state.movesFromRoot, verbose);
         }else if(args.size() && args[0].first == "depth"){
             int depth = stoi(args[0].second);
-            return bestMoveFinder.bestMove<2>(state.root, depth, depth, state.movesFromRoot);
+            return bestMoveFinder.bestMove<2>(state.root, depth, depth, state.movesFromRoot, verbose);
         }
     }
     return bestMoveFinder.bestMove<2>(state.root, 200, 200, state.movesFromRoot);
@@ -286,7 +293,7 @@ void manageSearch(){
                     testState.movesFromRoot = {};
                     testState.root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    vector<depthInfo> infos = get<2>(goCommand(parsed, testState));
+                    vector<depthInfo> infos = get<2>(goCommand(parsed, testState, false));
                     for(depthInfo info:infos){
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;
@@ -332,10 +339,10 @@ void manageSearch(){
                         scoreThird.second += locScore.second;
                     }
                 }
-                printf("search score: (%.0f %.0f) (%.0f %.0f)", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
+                printf("search score: (%.0f %.0f) (%.0f %.0f)\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
             }else if(command == "arch"){
 #ifdef __AVX512F__
-                printf("arch: AVX512");
+                printf("arch: AVX512\n");
 #elif defined(__AVX2__)
                 printf("arch: AVX2\n");
 #elif defined(__AVX__)
@@ -374,10 +381,29 @@ void manageSearch(){
             }else if(command == "go"){
                 printf("bestmove %s\n", get<0>(goCommand(parsed, state)).to_str().c_str());
             }else if(command == "uci"){
-                printf("id name Prune\nid author tgirolami09 & jbienvenue\n");
+                string v=VERSION;
+                if(v[0] == 'v')
+                    v = v.substr(1, v.size()-1);
+                printf("id name Prune %s\nid author tgirolami09 & jbienvenue\n", v.c_str());
                 for(Option opt:Options)
                     opt.print();
                 printf("uciok\n");
+            }else if(command == "setoption"){
+                for(int i=0; i<(int)parsed.size(); i++){
+                    if(parsed[i].first == "name"){
+                        bool incr=true;
+                        if(parsed[i].second == "Hash")
+                            bestMoveFinder.reinit(stoi(parsed[i+1].second));
+                        else if(parsed[i].second == "Move Overhead")
+                            moveOverhead = stoi(parsed[i+1].second);
+                        else if(parsed[i].second == "Clear Hash"){
+                            bestMoveFinder.clear();
+                            incr = false;
+                        }else if(parsed[i].second == "nnueFile")
+                            bestMoveFinder.eval.nnue = NNUE(parsed[i+1].second);
+                        i += incr;
+                    }
+                }
             }
             fflush(stdout);
         }

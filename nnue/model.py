@@ -78,6 +78,7 @@ class Trainer:
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
         self.loss_fn = nn.MSELoss(reduction="mean")
         self.device = device
+        self.lr = lr
         self.modelEval = Model(device)
     
     def trainStep(self, dataX, dataY, color):
@@ -93,7 +94,7 @@ class Trainer:
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
-    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, fullsave=False):
+    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, processes=1):
         startTime = time.time()
         dataset1 = TensorDataset(dataX[0], dataY[0])
         dataset2 = TensorDataset(dataX[1], dataY[1])
@@ -101,14 +102,13 @@ class Trainer:
         dataTrain2, dataTest2 = random_split(dataset2, [percentTrain, 1-percentTrain])
         totTrainData = len(dataTrain1)+len(dataTrain2)
         totTestData = sum(map(len, dataX))-totTrainData
-        dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True)
-        dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True)
-        testDataL1 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False)
-        testDataL2 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False)
+        dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True, num_workers=processes)
+        dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True, num_workers=processes)
+        testDataL1 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False, num_workers=processes)
+        testDataL2 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False, num_workers=processes)
         lastTestLoss = lastLoss = 0.0
         miniLoss = 1000
-        isMin = False
-        lastModel = Model(self.device)
+        current_lr = self.lr
         endTime = time.time()
         print(f"setup in {endTime-startTime:.5f}s")
         if testPos is not None:
@@ -156,31 +156,31 @@ class Trainer:
                 lastLoss = totLoss
             span = endTime-startTime
             span2 = endTimeTrain-startTime
-            print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {span:.3f}s ({span2/span*100:.2f}% for training)')
+            print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {span:.3f}s ({span2/span*100:.2f}% for training) lr {current_lr}')
             if testPos is not None:
                 with torch.no_grad():
                     print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
             sys.stdout.flush()
-            if lastTestLoss < totTestLoss and isMin:#if that goes up and if it's the minimum
-                self.save(fileBest, lastModel)#we save the model
-            if fullsave:
-                self.save("_model.bin", self.modelEval)
-            lastTestLoss = totTestLoss
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
-                isMin = True
-                lastModel.load_state_dict(self.modelEval.state_dict())
-            else:
-                isMin = False
+                self.save(fileBest, self.modelEval)
+            elif totTestLoss > lastTestLoss:
+                current_lr /= 10**.5
+                for g in self.optimizer.param_groups:
+                    g['lr'] = current_lr
+            lastTestLoss = totTestLoss
             lastLoss = totLoss
+        
+        for g in self.optimizer.param_groups:
+            g['lr'] = self.lr
 
     def get_int(self, tensor):
         tensor = float(tensor)
         self.maxi = max(self.maxi, abs(tensor))
-        return int(round(tensor)).to_bytes(1, "little", signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
+        return int(round(tensor)).to_bytes(1, sys.byteorder, signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
 
     def read_bytes(self, bytes):
-        return torch.tensor(int.from_bytes(bytes, "little", signed=True), dtype=torch.float)
+        return torch.tensor(int.from_bytes(bytes, sys.byteorder, signed=True), dtype=torch.float)
 
     def save(self, filename="model.txt", model=None):
         if model is None:

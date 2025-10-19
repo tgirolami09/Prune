@@ -1,7 +1,8 @@
 name: Build Project
 on:
   push:
-    branches: [ main ]
+    tags:
+      - '*'  # Pour tous les nouveaux tags 
   pull_request:
     branches: [ main ]
 
@@ -34,13 +35,11 @@ jobs:
       - name: Build project
         working-directory: ./core
         run: |
-          make prune
+          make
       
       - name: Upload binaries
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-binaries
-          path: |
-            core/prune
-            core/prune.exe
+          path: core/prune*
