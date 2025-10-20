@@ -205,7 +205,7 @@ int main(int argc, char** argv){
                     speed = gamesMade*1000*100/duration;
                     unit = "g/s";
                 }
-                string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(totGamesMade*1000)); // in seconds
+                string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(gamesMade*1000)); // in seconds
                 int percent = 1000*totGamesMade/sizeGame;
                 string printed = to_string(percent/10)+string(".")+to_string(percent%10);
                 printed += "% (";

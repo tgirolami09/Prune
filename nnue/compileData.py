@@ -137,7 +137,7 @@ with Pool(settings.processes) as p:
         dataY[0].extend(Y[0])
         dataY[1].extend(Y[1])
 
-print(f'{filtredPos*100/(filtredPos+count)}% of pos were not filtred')
+print(f'{filtredPos*100/(filtredPos+count)}% of pos were filtred')
 print('data collected:', len(dataX[0])+len(dataX[1]))
 dataX = [torch.from_numpy(np.array(i)) for i in dataX]
 dataY = [torch.from_numpy(np.array(i)) for i in dataY]
