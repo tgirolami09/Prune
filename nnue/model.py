@@ -43,7 +43,7 @@ class Model(nn.Module):
         return y
     
     def get_static_eval(self, x, color):
-        return (self.calc_score(x, color)*self.SCALE).to(torch.float)
+        return (self.calc_score(x, color)*self.SCALE).to(torch.int)
 
     def forward(self, x, color):
         return F.sigmoid(self.calc_score(x, color))
