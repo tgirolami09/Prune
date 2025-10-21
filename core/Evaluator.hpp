@@ -4,7 +4,11 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
-#include "NNUE.cpp"
+#ifdef __SSE2__
+    #include "NNUE.cpp"
+#else
+    #include "NNUEnoSIMD.cpp"
+#endif
 #include <climits>
 #include <cstring>
 #include <cmath>

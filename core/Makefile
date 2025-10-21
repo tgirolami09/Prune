@@ -12,7 +12,7 @@ else
 endif
 ARCHCOM=-march=$(ARCH)
 ifneq ($(CPUSET), unknow)
-	ARCHCOM=$(ARCHCOM) -m$(ARCH)
+	ARCHCOM := $(ARCHCOM) -m$(CPUSET)
 endif
 TAG=$(shell git tag --contains=HEAD)
 ifeq ($(TAG), )

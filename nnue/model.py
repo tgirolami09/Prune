@@ -39,7 +39,8 @@ class Model(nn.Module):
         secondIndex = (1-color)*self.HLSize
         hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.tohidden(x)
         hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.tohidden(x[:, self.transfo])
-        y = self.toout(self.activation(hiddenRes)).gather(1, ((x.count_nonzero(axis=1)-2)//self.DIVISOR).reshape(-1, 1))
+        idBucket = (x.count_nonzero(axis=1)-2)//self.DIVISOR
+        y = self.toout(self.activation(hiddenRes)).gather(1, idBucket.reshape(-1, 1))
         return y
     
     def get_static_eval(self, x, color):
@@ -122,9 +123,6 @@ class Trainer:
                     except StopIteration:
                         colors.pop(color)
                         continue
-                    except:
-                        print(colors, color)
-                        raise StopIteration()
                     xBatch = xBatch.float().to(self.device)
                     yBatch = yBatch.float().to(self.device)
                     totLoss += self.trainStep(xBatch, yBatch, color)*len(xBatch)
@@ -188,8 +186,8 @@ class Trainer:
                     f.write(self.get_int(model.tohidden.weight[j][i], model.QA))
             for i in range(model.HLSize):
                 f.write(self.get_int(model.tohidden.bias[i], model.QA))
-            for i in range(model.HLSize*2):
-                for j in range(model.BUCKET):
+            for j in range(model.BUCKET):
+                for i in range(model.HLSize*2):
                     f.write(self.get_int(model.toout.weight[j][i], model.QB))
             for i in range(model.BUCKET):
                 f.write(self.get_int(model.toout.bias[i], model.QB))
@@ -205,8 +203,8 @@ class Trainer:
                         self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))/self.model.QA
                 for i in range(self.model.HLSize):
                     self.model.tohidden.bias[i] = self.read_bytes(f.read(1))/self.model.QA
-                for i in range(self.model.HLSize*2):
-                    for j in range(self.model.BUCKET):
+                for j in range(self.model.BUCKET):
+                    for i in range(self.model.HLSize*2):
                         self.model.toout.weight[j][i] = self.read_bytes(f.read(1))/self.model.QB
                 for i in range(self.model.BUCKET):
                     self.model.toout.bias[i] = self.read_bytes(f.read(1))/self.model.QB
