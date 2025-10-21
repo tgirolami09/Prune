@@ -8,78 +8,70 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 from random import shuffle, seed, randrange
 from tqdm import trange
 
+def roundQ(tensor, Q):
+    return (tensor*Q).round()/Q
+
 class Model(nn.Module):
     inputSize = 64*12
     HLSize = 64
     SCALE = 400
     QA = 255
     QB = 64
-    normal = 200
+    BUCKET = 8
+    DIVISOR = (31+BUCKET)//BUCKET
     def activation(self, x):
-        return torch.clamp(x, min=0, max=self.QA)**2
+        return torch.clamp(x, min=0, max=1)**2
 
     def outAct(self, x):
-        return F.sigmoid(x/self.normal)
+        return F.sigmoid(x/self.SCALE)
 
     def __init__(self, device):
         super().__init__()
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
-        self.toout = nn.Linear(self.HLSize*2, 1, bias=False)
-        self.endBias = nn.Parameter(torch.randn(1))
+        self.toout = nn.Linear(self.HLSize*2, self.BUCKET)
         self.to(device)
         self.transfo = torch.arange(self.inputSize)^56^64
         self.device = device
 
     def calc_score(self, x, color, isInt=False):
-        hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
+        hiddenRes = torch.empty(x.shape[0], self.HLSize*2, device=self.device)
         firstIndex = color*self.HLSize
         secondIndex = (1-color)*self.HLSize
-        hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.activation(self.tohidden(x))
-        hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.activation(self.tohidden(x[:, self.transfo]))
-        x = self.toout(hiddenRes)
-        if isInt:
-            x //= self.QA
-        else:
-            x /= self.QA
-        x += self.endBias
-        if isInt:
-            return x*self.SCALE//(self.QA*self.QB)
-        else:
-            return x*self.SCALE/(self.QA*self.QB)
+        hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.tohidden(x)
+        hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.tohidden(x[:, self.transfo])
+        y = self.toout(self.activation(hiddenRes)).gather(1, ((x.count_nonzero(axis=1)-2)//self.DIVISOR).reshape(-1, 1))
+        return y
+    
+    def get_static_eval(self, x, color):
+        return (self.calc_score(x, color)*self.SCALE).to(torch.float)
 
     def forward(self, x, color):
-        return self.outAct(self.calc_score(x, color))
+        return F.sigmoid(self.calc_score(x, color))
     
     def _round(self):
-        self.toout.weight[:] = self.toout.weight.round()
-        self.endBias[:] = self.endBias.round()
-        self.tohidden.weight[:] = self.tohidden.weight.round()
-        self.tohidden.bias[:] = self.tohidden.bias.round()
+        self.toout.weight[:] = roundQ(self.toout.weight, self.QB)
+        self.toout.bias[:] = roundQ(self.toout.bias, self.QB)
+        self.tohidden.weight[:] = roundQ(self.tohidden.weight, self.QA)
+        self.tohidden.bias[:] = roundQ(self.tohidden.bias, self.QA)
 
 class Clipper:
-    clamp = 127
     def __call__(self, module):
-        if hasattr(module, 'weight'):
-            w = module.weight.data
-            w = w.clamp(-self.clamp, self.clamp)
-            module.weight.data = w
-        if hasattr(module, 'bias') and module.bias is not None:
-            b = module.bias.data
-            b = b.clamp(-self.clamp, self.clamp)
-            module.bias.data = b
-        elif hasattr(module, 'endBias'):
-            b = module.endBias.data
-            b = b.clamp(-self.clamp, self.clamp)
-            module.endBias.data = b
+        if hasattr(module, 'toout'):
+            clamp = 127/module.QB
+            module.toout.weight.data = module.toout.weight.data.clamp(-clamp, clamp)
+            module.toout.bias.data = module.toout.bias.data.clamp(-clamp, clamp)
+            clamp = 127/module.QA
+            module.tohidden.weight.data = module.tohidden.weight.data.clamp(-clamp, clamp)
+            module.tohidden.bias.data = module.tohidden.bias.data.clamp(-clamp, clamp)
 
 class Trainer:
     def __init__(self, lr, device):
-        self.model = Model(device)
+        self.model = torch.compile(Model(device))
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
         self.loss_fn = nn.MSELoss(reduction="mean")
         self.device = device
         self.lr = lr
-        self.modelEval = Model(device)
+        self.modelEval = torch.compile(Model(device))
     
     def trainStep(self, dataX, dataY, color):
         yhat = self.model(dataX, color)
@@ -116,7 +108,7 @@ class Trainer:
             self.modelEval.eval()
             with torch.no_grad():
                 self.modelEval._round()
-                print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
+                print("result of test eval before training:", self.modelEval.get_static_eval(testPos.float().to(self.device), 0)[:, 0].tolist())
         clipper = Clipper()
         for i in range(epoch):
             startTime = time.time()
@@ -159,7 +151,7 @@ class Trainer:
             print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {span:.3f}s ({span2/span*100:.2f}% for training) lr {current_lr}')
             if testPos is not None:
                 with torch.no_grad():
-                    print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
+                    print("test eval result:", self.modelEval.get_static_eval(testPos.float().to(self.device), 0)[:, 0].tolist())
             sys.stdout.flush()
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
@@ -174,10 +166,10 @@ class Trainer:
         for g in self.optimizer.param_groups:
             g['lr'] = self.lr
 
-    def get_int(self, tensor):
-        tensor = float(tensor)
+    def get_int(self, Stensor, Q):
+        tensor = int(round(float(Stensor)*Q))
         self.maxi = max(self.maxi, abs(tensor))
-        return int(round(tensor)).to_bytes(1, sys.byteorder, signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
+        return tensor.to_bytes(1, sys.byteorder, signed=True)
 
     def read_bytes(self, bytes):
         return torch.tensor(int.from_bytes(bytes, sys.byteorder, signed=True), dtype=torch.float)
@@ -193,12 +185,14 @@ class Trainer:
         with open(filename, "wb") as f:
             for i in range(model.inputSize):
                 for j in range(model.HLSize):
-                    f.write(self.get_int(model.tohidden.weight[j][i]))
+                    f.write(self.get_int(model.tohidden.weight[j][i], model.QA))
             for i in range(model.HLSize):
-                f.write(self.get_int(model.tohidden.bias[i]))
+                f.write(self.get_int(model.tohidden.bias[i], model.QA))
             for i in range(model.HLSize*2):
-                f.write(self.get_int(model.toout.weight[0][i]))
-            f.write(self.get_int(model.endBias[0]))
+                for j in range(model.BUCKET):
+                    f.write(self.get_int(model.toout.weight[j][i], model.QB))
+            for i in range(model.BUCKET):
+                f.write(self.get_int(model.toout.bias[i], model.QB))
         endTime = time.time()
         print(f'save model to {filename} (max |weight| {self.maxi}) in {endTime-startTime:.3f}s')
         sys.stdout.flush()
@@ -208,9 +202,11 @@ class Trainer:
             with torch.no_grad():
                 for i in range(self.model.inputSize):
                     for j in range(self.model.HLSize):
-                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))
+                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))/self.model.QA
                 for i in range(self.model.HLSize):
-                    self.model.tohidden.bias[i] = self.read_bytes(f.read(1))
+                    self.model.tohidden.bias[i] = self.read_bytes(f.read(1))/self.model.QA
                 for i in range(self.model.HLSize*2):
-                    self.model.toout.weight[0][i] = self.read_bytes(f.read(1))
-                self.model.endBias[0] = self.read_bytes(f.read(1))
+                    for j in range(self.model.BUCKET):
+                        self.model.toout.weight[j][i] = self.read_bytes(f.read(1))/self.model.QB
+                for i in range(self.model.BUCKET):
+                    self.model.toout.bias[i] = self.read_bytes(f.read(1))/self.model.QB
