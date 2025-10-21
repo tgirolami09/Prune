@@ -229,12 +229,12 @@ void manageSearch(){
                         int square = (r << 3) | c;
                         int piece = state.root.getfullPiece(square);
                         if(type(piece) != SPACE){
-                            bestMoveFinder.eval.nnue.change2<-1>(piece, square);
+                            bestMoveFinder.eval.changePiece<-1>(square, type(piece), color(piece));
                             char repr=id_to_piece[type(piece)];
                             int derived = overall_eval-bestMoveFinder.eval.getScore(state.root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
-                            bestMoveFinder.eval.nnue.change2<1>(piece, square);
+                            bestMoveFinder.eval.changePiece<1>(square, type(piece), color(piece));
                         }else evals[7-c] = {' ', 0};
                     }
                     for(int i=0; i<8; i++)

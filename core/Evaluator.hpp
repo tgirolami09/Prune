@@ -244,14 +244,16 @@ static const int tableSize=1<<10;//must be a power of two, for now it's pretty s
 
 class IncrementalEvaluator{
     int mgPhase;
+    int nbPieces;
     int presentPieces[2][6]; //keep trace of number of pieces by side
+public:
     template<int f>
     void changePiece(int pos, int piece, bool c){
         nnue.change2<f>(piece*2+c, pos);
         mgPhase += f*gamephaseInc[piece];
         presentPieces[c][piece] += f;
+        nbPieces += f;
     }
-public:
     NNUE nnue;
     void print(){
         printf("phase = %d\n", mgPhase);
@@ -270,6 +272,7 @@ public:
 
     void init(const GameState& state){//should be only call at the start of the search
         mgPhase = 0;
+        nbPieces = 0;
         nnue.clear();
         memset(presentPieces, 0, sizeof(presentPieces));
         for(int square=0; square<64; square++){
@@ -293,7 +296,7 @@ public:
     }
 
     int getScore(bool c){
-        return nnue.eval(c);
+        return nnue.eval(c, (nbPieces-2)/DIVISOR);
     }
     template<int f=1>
     void playMove(Move move, bool c){

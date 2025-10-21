@@ -11,6 +11,8 @@ using namespace std;
 
 const int INPUT_SIZE = 12*64;
 const int HL_SIZE = 64;
+const int BUCKET=8;
+const int DIVISOR=(31+BUCKET)/BUCKET;
 const int SCALE = 400;
 const int QA = 255;
 const int QB = 64;
@@ -167,8 +169,8 @@ class NNUE{
 public:
     simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
     simd16 hlBiases[HL_SIZE/nb16];
-    simdint outWeights[2*HL_SIZE/nb16];
-    dbyte outbias;
+    simdint outWeights[BUCKET][2*HL_SIZE/nb16];
+    dbyte outbias[BUCKET];
     simd16 accs[2][HL_SIZE/nb16];
     
     dbyte read_bytes(ifstream& file){
@@ -222,15 +224,17 @@ public:
             accs[WHITE][i] = hlBiases[i];
             accs[BLACK][i] = hlBiases[i];
         }
-        
-        for(int i=0; i<2*HL_SIZE/nbint; i++) {
-            outWeights[i] = simdint_zero();
-            for(int id16=0; id16<nbint; id16++) {
-                set_simdint_element(outWeights[i], id16, read_bytes(file));
+        for(int ob=0; ob<BUCKET; ob++){
+            for(int i=0; i<2*HL_SIZE/nbint; i++) {
+                outWeights[ob][i] = simdint_zero();
+                for(int id16=0; id16<nbint; id16++) {
+                    set_simdint_element(outWeights[ob][i], id16, read_bytes(file));
+                }
             }
         }
-        
-        outbias = read_bytes(file);
+        for(int ob=0; ob<BUCKET; ob++){
+            outbias[ob] = read_bytes(file);
+        }
     }
     
     NNUE(){
@@ -253,14 +257,17 @@ public:
             accs[BLACK][i] = hlBiases[i];
         }
         
-        for(int i=0; i<2*HL_SIZE/nb16; i++) {
-            outWeights[i] = simdint_zero();
-            for(int id16=0; id16<nbint; id16++) {
-                set_simdint_element(outWeights[i], id16, transform(baseModel[pointer++]));
+        for(int ob=0; ob<BUCKET; ob++){
+            for(int i=0; i<2*HL_SIZE/nb16; i++) {
+                outWeights[ob][i] = simdint_zero();
+                for(int id16=0; id16<nbint; id16++) {
+                    set_simdint_element(outWeights[ob][i], id16, transform(baseModel[pointer++]));
+                }
             }
         }
-        
-        outbias = transform(baseModel[pointer++]);
+        for(int ob=0; ob<BUCKET; ob++){
+            outbias[ob] = transform(baseModel[pointer++]);
+        }
     }
     
     void clear(){
@@ -270,12 +277,12 @@ public:
         }
     }
     
-    int get_index(int piece, int square){
+    int get_index(int piece, int square) const{
         return (piece<<6)|(square^56);
     }
     
     template<int f>
-    void change2(int piece, int square){
+    void change2(const int piece, const int square){
         int index = get_index(piece, square);
         int index2 = index ^ 56 ^ 64; // point of view change
         for(int i=0; i<HL_SIZE/nb16; i++){
@@ -292,15 +299,15 @@ public:
         }
     }
     
-    dbyte eval(bool side){
+    dbyte eval(const bool side, const int idBucket) const{
         simdint res = simdint_zero();
         for(int i=0; i<HL_SIZE/nb16; i++){
-            res = simdint_add(res, simdint_mullo(activation(accs[side][i]), outWeights[i]));
-            res = simdint_add(res, simdint_mullo(activation(accs[side^1][i]), outWeights[i+HL_SIZE/nb16]));
+            res = simdint_add(res, simdint_mullo(activation(accs[side][i]), outWeights[idBucket][i]));
+            res = simdint_add(res, simdint_mullo(activation(accs[side^1][i]), outWeights[idBucket][i+HL_SIZE/nb16]));
         }
         int finRes = mysum(res);
         finRes /= QA;
-        finRes += outbias;
+        finRes += outbias[idBucket];
         if(finRes >= 0)
             finRes = finRes*SCALE/(QA*QB);
         else 
