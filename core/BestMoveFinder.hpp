@@ -481,18 +481,25 @@ public:
             int startNodes = nodes;
             int idMove;
             int bestScore;
+            Move finalBestMove=bestMove;
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
-                if(abs(lastScore) > MAXIMUM-maxDepth)
-                    bestMove = bestMoveClipped<limitWay, true>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange);
+                if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
+                    bestMove = bestMoveClipped<limitWay, true>(depth, state, alpha, beta, bestScore, finalBestMove, idMove, order, actDepth, lastChange);
                 else
-                    bestMove = bestMoveClipped<limitWay, false>(depth, state, alpha, beta, bestScore, bestMove, idMove, order, actDepth, lastChange);
-
-                if(bestScore <= alpha)deltaDown = max(deltaDown*2, lastScore-bestScore+1);
-                else if(bestScore >= beta)deltaUp = max(deltaUp*2, bestScore-lastScore+1);
-                else break;
+                    bestMove = bestMoveClipped<limitWay, false>(depth, state, alpha, beta, bestScore, finalBestMove, idMove, order, actDepth, lastChange);
+                if(bestScore <= alpha){
+                    deltaDown = max(deltaDown*2, lastScore-bestScore+1);
+                }else if(bestScore >= beta){
+                    deltaUp = max(deltaUp*2, bestScore-lastScore+1);
+                    finalBestMove = bestMove;
+                }else{
+                    finalBestMove = bestMove;
+                    break;
+                }
             }while(running);
+            bestMove = finalBestMove;
             if(idMove)
                 lastScore = bestScore;
             transferLastPV();

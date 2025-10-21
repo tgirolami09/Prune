@@ -152,6 +152,8 @@ int main(int argc, char** argv){
                 Move curMove = get<0>(res);
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
+                    if(current.friendlyColor() == BLACK)
+                        result = 2-result;
                     break;
                 }
                 if(current.playMove<false>(curMove) == 3){
@@ -203,7 +205,7 @@ int main(int argc, char** argv){
                     speed = gamesMade*1000*100/duration;
                     unit = "g/s";
                 }
-                string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(totGamesMade*1000)); // in seconds
+                string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(gamesMade*1000)); // in seconds
                 int percent = 1000*totGamesMade/sizeGame;
                 string printed = to_string(percent/10)+string(".")+to_string(percent%10);
                 printed += "% (";
