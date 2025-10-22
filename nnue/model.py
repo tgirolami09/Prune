@@ -206,3 +206,10 @@ class Trainer:
                         self.model.toout.weight[j][i] = self.read_bytes(f.read(1))/self.model.QB
                 for i in range(self.model.BUCKET):
                     self.model.toout.bias[i] = self.read_bytes(f.read(2))/(self.model.QB*self.model.QA)
+
+if __name__ == '__name__':
+    #generating random net
+    import sys
+    assert len(sys.argv) >= 2
+    trainer = Trainer(0, 'cpu')
+    trainer.save(sys.argv[1])
