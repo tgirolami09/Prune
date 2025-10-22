@@ -183,7 +183,7 @@ int main(int argc, char** argv){
                     break;
                 }
                 moves.push_back(curMove);
-            }while(countMoves < 100);
+            }while(countMoves < 100 && !player.eval.isInsufficientMaterial());
             Game.result = result;
             ofstream datafile(nameDataFile, ios::app);
             Game.dump(datafile);
