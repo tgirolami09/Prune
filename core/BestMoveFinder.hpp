@@ -58,12 +58,11 @@ class BestMoveFinder{
 
     //Returns the best move given a position and time to use
     transpositionTable transposition;
-    QuiescenceTT QTT;
     HelpOrdering history;
 public:
     std::atomic<bool> running;
     IncrementalEvaluator eval;
-    BestMoveFinder(int memory, bool mute=false):transposition(memory*2/3), QTT(memory/3){
+    BestMoveFinder(int memory, bool mute=false):transposition(memory){
         book = load_book("book.bin", mute);
         history.init();
     }
@@ -94,12 +93,13 @@ private:
         if(eval.isInsufficientMaterial())return 0;
         nodes++;
         if(relDepth > seldepth)seldepth = relDepth;
-        int lastEval=QTT.get_eval(state, alpha, beta);
+        dbyte hint;
+        int lastEval=transposition.get_eval(state, alpha, beta, 0, hint);
         if(lastEval != INVALID)
             return lastEval;
         int staticEval = eval.getScore(state.friendlyColor());
         if(staticEval >= beta){
-            QTT.push(state, staticEval, LOWERBOUND);
+            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
             return staticEval;
         }
         int typeNode = UPPERBOUND;
@@ -120,6 +120,7 @@ private:
         generator.initDangers(state);
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
         order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, history, -1, state, generator, false);
+        Move bestCapture;
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove<false, false>(capture);//don't care about repetition
@@ -131,16 +132,19 @@ private:
             if(score >= beta){
                 nbCutoff++;
                 if(i == 0)nbFirstCutoff++;
-                QTT.push(state, score, LOWERBOUND);
+                transposition.push(state, score, LOWERBOUND, capture, 0);
                 return score;
             }
-            if(score > bestEval)bestEval = score;
-            if(score > alpha){
-                alpha = score;
-                typeNode = EXACT;
+            if(score > bestEval){
+                bestEval = score;
+                bestCapture = capture;
+                if(score > alpha){
+                    alpha = score;
+                    typeNode = EXACT;
+                }
             }
         }
-        QTT.push(state, bestEval, typeNode);
+        transposition.push(state, bestEval, typeNode, bestCapture, 0);
         return bestEval;
     }
 
@@ -238,9 +242,8 @@ private:
         int16_t lastBest = nullMove.moveInfo;
         if constexpr(nodeType != PVNode){
             int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
-            if(lastEval != INVALID){
+            if(lastEval != INVALID)
                 return fromTT(lastEval, rootDist);
-            }
         }else{
             lastBest = transposition.getMove(state);
         }
@@ -465,7 +468,6 @@ public:
         }
         if(verbose){
             printf("info string use a tt of %d entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
-            printf("info string use a quiescence tt of %d entries (%" PRId64 " MB)\n", QTT.modulo, QTT.modulo*sizeof(infoQ)/1000000);
         }
         Move bestMove=nullMove;
         nodes = 0;
@@ -543,13 +545,11 @@ public:
 
     void clear(){
         transposition.clear();
-        QTT.clear();
         history.init();
     }
 
     void reinit(size_t count){
-        transposition.reinit(count*2/3);
-        QTT.reinit(count/3);
+        transposition.reinit(count);
     }
 };
 
