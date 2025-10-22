@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <string>
+#include <endian.h>
 using namespace std;
 inline  int col(const int& square){
     return square&7;
@@ -102,6 +103,15 @@ inline char transform(ubyte n){
     if(n >= 128)
         return ((char)n) - 256;
     return n;
+}
+inline dbyte transform(ubyte first, ubyte second){
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    return (((dbyte)first) << 8) | second;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+    return (((dbyte)first) << 8) | second;
+#else
+    #error "the system don't specify if you are in big/little endian"
+#endif
 }
 inline int sign(int n){
     return n < 0 ? -1 : 1;

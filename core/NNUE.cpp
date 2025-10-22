@@ -173,12 +173,13 @@ public:
     dbyte outbias[BUCKET];
     simd16 accs[2][HL_SIZE/nb16];
     
+    template<typename T=char>
     dbyte read_bytes(ifstream& file){
-        char ret;
+        T ret;
         file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
         return ret;
     }
-    
+
     // Helper to set individual elements in SIMD vectors
     void set_simd16_element(simd16& vec, int index, dbyte value) {
         dbyte* ptr = reinterpret_cast<dbyte*>(&vec);
@@ -233,7 +234,7 @@ public:
             }
         }
         for(int ob=0; ob<BUCKET; ob++){
-            outbias[ob] = read_bytes(file);
+            outbias[ob] = read_bytes<dbyte>(file);
         }
     }
     
@@ -266,7 +267,8 @@ public:
             }
         }
         for(int ob=0; ob<BUCKET; ob++){
-            outbias[ob] = transform(baseModel[pointer++]);
+            outbias[ob] = transform(baseModel[pointer], baseModel[pointer+1]);
+            pointer += 2;
         }
     }
     

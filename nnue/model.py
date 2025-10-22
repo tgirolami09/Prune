@@ -59,8 +59,9 @@ class Clipper:
     def __call__(self, module):
         if hasattr(module, 'toout'):
             clamp = 127/module.QB
+            clamp2 = 32767/(module.QA*module.QB) #store out bias on two bytes
             module.toout.weight.data = module.toout.weight.data.clamp(-clamp, clamp)
-            module.toout.bias.data = module.toout.bias.data.clamp(-clamp, clamp)
+            module.toout.bias.data = module.toout.bias.data.clamp(-clamp2, clamp2)
             clamp = 127/module.QA
             module.tohidden.weight.data = module.tohidden.weight.data.clamp(-clamp, clamp)
             module.tohidden.bias.data = module.tohidden.bias.data.clamp(-clamp, clamp)
@@ -164,10 +165,9 @@ class Trainer:
         for g in self.optimizer.param_groups:
             g['lr'] = self.lr
 
-    def get_int(self, Stensor, Q):
+    def get_int(self, Stensor, Q, nbbytes=1):
         tensor = int(round(float(Stensor)*Q))
-        self.maxi = max(self.maxi, abs(tensor))
-        return tensor.to_bytes(1, sys.byteorder, signed=True)
+        return tensor.to_bytes(nbbytes, sys.byteorder, signed=True)
 
     def read_bytes(self, bytes):
         return torch.tensor(int.from_bytes(bytes, sys.byteorder, signed=True), dtype=torch.float)
@@ -176,8 +176,6 @@ class Trainer:
         if model is None:
             model = self.model
         startTime = time.time()
-        self.maxi = -1000
-        self.mini =  1000
         self.s = 0
         self.count = 0
         with open(filename, "wb") as f:
@@ -190,9 +188,9 @@ class Trainer:
                 for i in range(model.HLSize*2):
                     f.write(self.get_int(model.toout.weight[j][i], model.QB))
             for i in range(model.BUCKET):
-                f.write(self.get_int(model.toout.bias[i], model.QB))
+                f.write(self.get_int(model.toout.bias[i], model.QB*model.QA, 2))
         endTime = time.time()
-        print(f'save model to {filename} (max |weight| {self.maxi}) in {endTime-startTime:.3f}s')
+        print(f'save model to {filename} in {endTime-startTime:.3f}s')
         sys.stdout.flush()
     
     def load(self, filename):
@@ -207,4 +205,4 @@ class Trainer:
                     for i in range(self.model.HLSize*2):
                         self.model.toout.weight[j][i] = self.read_bytes(f.read(1))/self.model.QB
                 for i in range(self.model.BUCKET):
-                    self.model.toout.bias[i] = self.read_bytes(f.read(1))/self.model.QB
+                    self.model.toout.bias[i] = self.read_bytes(f.read(2))/(self.model.QB*self.model.QA)
