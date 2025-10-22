@@ -209,8 +209,16 @@ private:
     }
 
     enum{PVNode=0, CutNode=1, AllNode=-1};
+    template<int nodeType, int limitWay, bool mateSearch>
+    inline int Evaluate(GameState& state, int alpha, int beta, int relDepth){
+        if constexpr(mateSearch)return eval.getScore(state.friendlyColor());
+        int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
+        if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
+        return score;
+    }
+
     template <int nodeType, int limitWay, bool mateSearch>
-    int negamax(const int depth, GameState& state, int alpha, int beta, const int lastChange, const int relDepth){
+    int negamax(const int depth, GameState& state, int alpha, const int beta, const int lastChange, const int relDepth){
         const int rootDist = relDepth-startRelDepth;
         seldepth = max(seldepth, relDepth);
         if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
@@ -224,10 +232,7 @@ private:
         int static_eval = eval.getScore(state.friendlyColor());
         if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
             if constexpr(nodeType == PVNode)beginLine(rootDist);
-            if constexpr(mateSearch)return static_eval;
-            int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
-            if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
-            return score;
+            return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
         }
         nodes++;
         int16_t lastBest = nullMove.moveInfo;
@@ -246,11 +251,8 @@ private:
             if(!inCheck){
                 if(beta > MINIMUM+maxDepth){
                     int margin = 150*depth;
-                    if(static_eval >= beta+margin){
-                        int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
-                        if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
-                        return score;
-                    }
+                    if(static_eval >= beta+margin)
+                        return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
                 }
                 int r = 3;
                 if(depth >= r && !eval.isOnlyPawns() && static_eval >= beta){
