@@ -208,6 +208,10 @@ public:
     
     NNUE(string name){
         ifstream file(name);
+        if(!file.is_open()){
+            printf("info string file %s not found\n", name.c_str());
+            return;
+        }
         for(int i=0; i<INPUT_SIZE; i++) {
             for(int j=0; j<HL_SIZE/nb16; j++) {
                 hlWeights[i][j] = simd16_zero();

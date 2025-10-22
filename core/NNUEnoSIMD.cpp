@@ -49,6 +49,7 @@ public:
         ifstream file(name);
         if(!file.is_open()){
             printf("info string file %s not found\n", name.c_str());
+            return;
         }
         for(int i=0; i<INPUT_SIZE; i++)
             for(int j=0; j<HL_SIZE; j++)
@@ -62,11 +63,8 @@ public:
         for(int ob=0; ob<BUCKET; ob++)
             for(int i=0; i<2*HL_SIZE; i++)
                 outWeights[ob][i] = read_bytes(file);
-        for(int ob=0; ob<BUCKET; ob++){
-            outbias[ob] = read_bytes(file);
-            printf("%d ", outbias[ob]);
-        }
-        printf("\n");
+        for(int ob=0; ob<BUCKET; ob++)
+            outbias[ob] = read_bytes<dbyte>(file);
     }
     
     NNUE(){
@@ -84,10 +82,9 @@ public:
             for(int i=0; i<2*HL_SIZE; i++)
                 outWeights[ob][i] = transform(baseModel[pointer++]);
         for(int ob=0; ob<BUCKET; ob++){
-            outbias[ob] = transform(baseModel[pointer++]);
-            printf("%d ", outbias[ob]);
+            outbias[ob] = transform(baseModel[pointer], baseModel[pointer+1]);
+            pointer += 2;
         }
-        printf("\n");
     }
     
     void clear(){
