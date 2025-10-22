@@ -207,7 +207,7 @@ class Trainer:
                 for i in range(self.model.BUCKET):
                     self.model.toout.bias[i] = self.read_bytes(f.read(2))/(self.model.QB*self.model.QA)
 
-if __name__ == '__name__':
+if __name__ == '__main__':
     #generating random net
     import sys
     assert len(sys.argv) >= 2
