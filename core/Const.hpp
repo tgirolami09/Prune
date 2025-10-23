@@ -20,6 +20,7 @@ const int QUEEN=4;
 const int KING=5;
 const int SPACE=6;
 const int nbPieces=6;
+const size_t hashMul=1024*1024;
 const big colA=0x8080808080808080;
 const big colH=0x0101010101010101;
 const big row1 = 0xff;

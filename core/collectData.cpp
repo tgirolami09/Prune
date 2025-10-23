@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <chrono>
-const int alloted_space = 64*1000*1000;
+const int alloted_space = 64*hashMul;
 //int omp_get_thread_num(){return 0;}
 //#define DEBUG
 #define NUM_THREADS 70
