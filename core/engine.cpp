@@ -113,7 +113,7 @@ void manageInput(){
         fflush(stdout);
     }
 }
-const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete"};
+const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete"};
 class Option{
 public:
     string name;
@@ -177,7 +177,7 @@ auto goCommand(vector<pair<string, string>> args, Chess & state, bool verbose=tr
             return bestMoveFinder.bestMove<2>(state.root, depth, depth, state.movesFromRoot, verbose);
         }
     }
-    return bestMoveFinder.bestMove<2>(state.root, 200, 200, state.movesFromRoot);
+    return bestMoveFinder.bestMove<2>(state.root, 200, 200, state.movesFromRoot, verbose);
 }
 
 void manageSearch(){

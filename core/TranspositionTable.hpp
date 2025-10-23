@@ -92,51 +92,6 @@ public:
     }
 };
 
-class __attribute__((packed)) infoQ{
-public:
-    int score;
-    ubyte typeNode;
-    big hash;
-};
-class QuiescenceTT{
-public:
-    vector<infoQ> table;
-    int modulo;
-    QuiescenceTT(size_t count){
-        count /= sizeof(infoQ);
-        table = vector<infoQ>(count);
-        modulo=count;
-    }
-    int get_eval(const GameState& state, int alpha, int beta){
-        int index=state.zobristHash%modulo;
-        if(table[index].hash == state.zobristHash){
-            if(table[index].typeNode == EXACT)
-                return table[index].score;
-            if(table[index].score >= beta  && table[index].typeNode == LOWERBOUND)
-                return table[index].score;
-            if(table[index].score <= alpha && table[index].typeNode == UPPERBOUND)
-                return table[index].score;
-        }
-        return INVALID;
-    }
-    void push(GameState& state, int score, int typeNode){
-        infoQ info;
-        info.score = score;
-        info.hash = state.zobristHash;
-        info.typeNode = typeNode;
-        int index = info.hash%modulo;
-        table[index] = info;
-    }
-    void clear(){
-        table = vector<infoQ>(modulo);
-    }
-    void reinit(int count){
-        count /= sizeof(infoQ);
-        table.resize(count);
-        modulo = count;
-    }
-};
-
 class perftMem{
 public:
     big hash;

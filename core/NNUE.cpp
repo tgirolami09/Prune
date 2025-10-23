@@ -83,6 +83,14 @@ inline simd16 simd16_add(simd16 a, simd16 b) {
 #endif
 }
 
+inline simd16 simd16_sub(simd16 a, simd16 b) {
+#if defined(__AVX2__)
+    return _mm256_sub_epi16(a, b);
+#else
+    return _mm_sub_epi16(a, b);
+#endif
+}
+
 inline simdint simdint_add(simdint a, simdint b) {
 #if defined(__AVX2__)
     return simdint(_mm256_add_epi32(a.lo, b.lo), _mm256_add_epi32(a.hi, b.hi));
@@ -283,11 +291,8 @@ public:
                 accs[WHITE][i] = simd16_add(accs[WHITE][i], hlWeights[index][i]);
                 accs[BLACK][i] = simd16_add(accs[BLACK][i], hlWeights[index2][i]);
             } else {
-                // For subtraction, we need to negate and add
-                simd16 neg_weight1 = simd16_mullo(hlWeights[index][i], simd16_set1(-1));
-                simd16 neg_weight2 = simd16_mullo(hlWeights[index2][i], simd16_set1(-1));
-                accs[WHITE][i] = simd16_add(accs[WHITE][i], neg_weight1);
-                accs[BLACK][i] = simd16_add(accs[BLACK][i], neg_weight2);
+                accs[WHITE][i] = simd16_sub(accs[WHITE][i], hlWeights[index][i]);
+                accs[BLACK][i] = simd16_sub(accs[BLACK][i], hlWeights[index2][i]);
             }
         }
     }
