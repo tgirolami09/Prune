@@ -199,12 +199,12 @@ int SEE(int square, GameState& state, LegalMoveGenerator& generator){
     Move goodMove = generator.getLVA(square, state);
     int value = 0;
     if(goodMove.moveInfo != nullMove.moveInfo){
-        state.playMove<false, false>(goodMove);
+        state.playMove(goodMove);
         int SEErec = value_pieces[goodMove.capture < 0?0:goodMove.capture]-SEE(square, state, generator);
         if(goodMove.promotion() != -1)
             SEErec += value_pieces[goodMove.promotion()];
         value = max(0, SEErec);
-        state.undoLastMove<false>();
+        state.undoLastMove();
     }
     return value;
 }
@@ -214,11 +214,11 @@ inline int score_move(const Move& move, big& dangerPositions, int historyScore, 
     int SEEscore = 0;
     flag = 0;
     if(useSEE){
-        state.playMove<false, false>(move);
+        state.playMove(move);
         SEEscore = -SEE(move.to(), state, generator);
         if(move.capture != -2)
             SEEscore += value_pieces[move.capture == -1?0:move.capture];
-        state.undoLastMove<false>();
+        state.undoLastMove();
         if(SEEscore > 0)
             flag += 2;
     }else if(move.isTactical()){

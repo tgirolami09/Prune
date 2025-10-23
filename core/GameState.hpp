@@ -9,6 +9,7 @@
 #include <random>
 #include <vector>
 using namespace std;
+const int maxPly = 8848*2+2;
 const int zobrCastle=64*2*6;
 const int zobrPassant=zobrCastle+4;
 const int zobrTurn=zobrPassant+8;
@@ -17,7 +18,9 @@ const int sizeThreeFold=8192;
 //Represents a state in the game
 class GameState{
     // (not necessary if we create new states for exploration)
-    Move movesSinceBeginning[8848*2+2]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
+    Move movesSinceBeginning[maxPly]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
+    big repHist[maxPly];
+    int rule50[maxPly];
 
     //To determine whose turn it is to play AND rules that involve turn count
     int turnNumber;
@@ -27,7 +30,6 @@ class GameState{
     short nbMoves[2][3];
     short posRook[2][2];
     short deathRook[2][2];
-    vector<pair<big, int>> threefold[sizeThreeFold];
     int startEnPassant;
 public : 
     big zobristHash;
@@ -42,41 +44,6 @@ public :
         for(int idz=0; idz<nbZobrist; idz++){
             zobrist[idz] = dist(gen);
         }
-    }
-
-    int increaseThreeFold(big hash){
-        int index = hash%sizeThreeFold;
-        for(auto& p:threefold[index]){
-            if(p.first == hash){
-                p.second++;
-                return p.second;
-            }
-        }
-        threefold[index].push_back({hash, 1});
-        return false;
-    }
-
-    int decreaseThreeFold(big hash){
-        int index = hash%sizeThreeFold;
-        if(threefold[index].size() == 1){
-            int res=--threefold[index][0].second;
-            if(res == 0)threefold[index].clear();
-            return res;
-        }
-        for(auto i=threefold[index].begin(); i != threefold[index].end(); i++){
-            if(i->first == hash){
-                i->second--;
-                if(i->second == 2)return true;
-                if(i->second == 0){
-                    threefold[index].erase(i);
-                    return 0;
-                }
-                return i->second;
-            }
-        }
-        printf("oups\n");
-        assert(false);
-        return false;
     }
 
     void fromFen(string fen){
@@ -162,7 +129,8 @@ public :
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         id += 2;
-        increaseThreeFold(zobristHash);
+        repHist[turnNumber] = zobristHash;
+        rule50[turnNumber] = 0;
         startEnPassant = lastDoublePawnPush;
     }
 
@@ -302,7 +270,30 @@ public :
             sidePawn;
     }
 
-    template<bool back, bool noperft=true>
+    int rule50_count() const{
+        return rule50[turnNumber-1];
+    }
+    bool twofold(){
+        for(int i=turnNumber-4; i >= turnNumber-rule50_count(); i--){
+            if(repHist[i] == repHist[turnNumber])
+                return true;
+        }
+        return false;
+    }
+
+    bool threefold(){
+        bool alreadyRep=false;
+        for(int i=turnNumber-4; i >= turnNumber-rule50_count(); i--){
+            if(repHist[i] == repHist[turnNumber]){
+                if(alreadyRep)
+                    return true;
+                alreadyRep = true;
+            }
+        }
+        return false;
+    }
+
+    template<bool back=false>
     int playMove(Move move){
         if(lastDoublePawnPush != -1)
             zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
@@ -377,9 +368,11 @@ public :
         if(!back){
             turnNumber++;
             zobristHash ^= zobrist[zobrTurn];
-            if(noperft){
-                return increaseThreeFold(zobristHash);
-            }
+            repHist[turnNumber] = zobristHash;
+            if(move.isChanger())
+                rule50[turnNumber] = 1;
+            else
+                rule50[turnNumber] = rule50[turnNumber-1]+1;
         }
         return 0;
     }
@@ -392,6 +385,8 @@ public :
             zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
             lastDoublePawnPush = -1;
         }
+        repHist[turnNumber] = zobristHash;
+        rule50[turnNumber] = rule50[turnNumber-1]+1;
     }
     void undoNullMove(){
         turnNumber--;
@@ -414,12 +409,7 @@ public :
         return nullMove;
     }
 
-
-    template<bool noperft=true>
     void undoLastMove(){
-        if(noperft){
-            decreaseThreeFold(zobristHash);
-        }
         turnNumber--;
         zobristHash ^= zobrist[zobrTurn];
         Move move=movesSinceBeginning[turnNumber];
@@ -437,7 +427,6 @@ public :
         }
     }
 
-    template<bool noperft=true>
     Move playPartialMove(Move move){
         int piece=getPiece(move.to(), enemyColor());
         if(piece != SPACE){
@@ -448,7 +437,7 @@ public :
             move.capture = -1;
         }
         move.piece = mover;
-        playMove<false, noperft>(move);
+        playMove(move);
         return move;
     }
 

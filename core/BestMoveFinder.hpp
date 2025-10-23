@@ -85,7 +85,6 @@ private:
     int nbCutoff;
     int nbFirstCutoff;
     int seldepth;
-    big isInSearch[1000];
     template<int limitWay>
     int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth){
         if(!running)return 0;
@@ -123,11 +122,11 @@ private:
         Move bestCapture;
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
-            state.playMove<false, false>(capture);//don't care about repetition
+            state.playMove(capture);//don't care about repetition
             eval.playMove(capture, !state.friendlyColor());
             int score = -quiescenceSearch<limitWay>(state, -beta, -alpha, relDepth+1);
             eval.undoMove(capture, !state.friendlyColor());
-            state.undoLastMove<false>();
+            state.undoLastMove();
             if(!running)return 0;
             if(score >= beta){
                 nbCutoff++;
@@ -146,17 +145,6 @@ private:
         }
         transposition.push(state, bestEval, typeNode, bestCapture, 0);
         return bestEval;
-    }
-
-    ubyte isRepet(big hash, int lastChange, int pos){
-        for(int i=lastChange; i<pos-3; i++){
-            if(isInSearch[i] == hash)
-                return i;
-        }
-        return (ubyte)-1;
-    }
-    void setElement(big hash, int pos){
-        isInSearch[pos] = hash;
     }
 
     bool isOnlyPawns(const GameState& state){
@@ -229,7 +217,7 @@ private:
         if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
         if constexpr(limitWay == 0)if((nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
         if(!running)return 0;
-        if(relDepth-lastChange >= 100 || eval.isInsufficientMaterial()){
+        if(state.rule50_count() >= 100 || eval.isInsufficientMaterial()){
             if constexpr (nodeType == PVNode)beginLine(rootDist);
             return 0;
         }
@@ -278,12 +266,12 @@ private:
             return score;
         }
         if(order.nbMoves == 1){
-            state.playMove<false, false>(order.moves[0]);
+            state.playMove(order.moves[0]);
             eval.playMove(order.moves[0], !state.friendlyColor());
             generator.initDangers(state);
             int sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
             eval.undoMove(order.moves[0], !state.friendlyColor());
-            state.undoLastMove<false>();
+            state.undoLastMove();
             if constexpr(nodeType == PVNode)transfer(rootDist, order.moves[0]);
             return sc;
         }
@@ -293,13 +281,12 @@ private:
         for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
             Move curMove = order.pop_max();
             int score;
-            state.playMove<false, false>(curMove);
+            state.playMove(curMove);
             int newLastChange = lastChange;
             if(curMove.isChanger())
                 newLastChange = relDepth;
-            ubyte usableDepth = isRepet(state.zobristHash, newLastChange, relDepth);
             bool isDraw = false;
-            if(usableDepth != (ubyte)-1){
+            if(state.twofold()){
                 score = MIDDLE;
                 isDraw = true;
             }else{
@@ -309,7 +296,6 @@ private:
                 if(inCheckPos){
                     reductionDepth--;
                 }
-                setElement(state.zobristHash, relDepth);
                 if(rankMove > 0){
                     int addRedDepth = 0;
                     if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
@@ -332,7 +318,7 @@ private:
                     score = -negamax<-nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, newLastChange, relDepth+1);
                 eval.undoMove(curMove, !state.friendlyColor());
             }
-            state.undoLastMove<false>();
+            state.undoLastMove();
             if(!running)return 0;
             if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
                 transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth);
@@ -357,13 +343,16 @@ private:
         return bestScore;
     }
     template<int limitWay, bool mateSearch>
-    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, RootOrder& order, int actDepth, int lastChange){
+    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, RootOrder& order, int actDepth, int lastChange, bool verbose){
         bestScore = -INF;
         Move bestMove = nullMove;
         order.reinit(lastBest.moveInfo);
         startRelDepth = actDepth-1;
         for(idMove=0; idMove < order.nbMoves; idMove++){
             Move curMove = order.pop_max();
+            if(verbose && getElapsedTime() >= chrono::milliseconds{10000}){
+                printf("info depth %d currmove %s currmovenumber %d nodes %d\n", depth+1, curMove.to_str().c_str(), idMove+1, nodes);
+            }
             //printf("%s\n", curMove.to_str().c_str());
             int startNodes = nodes;
             int score;
@@ -371,12 +360,12 @@ private:
             bool isDraw = false;
             if(curMove.isChanger())
                 curLastChange = actDepth;
-            if(state.playMove<false>(curMove) > 1){
+            state.playMove(curMove);
+            if(state.twofold()){
                 score = MIDDLE;
                 isDraw = true;
             }else{
                 eval.playMove(curMove, !state.friendlyColor());
-                setElement(state.zobristHash, actDepth);
                 generator.initDangers(state);
                 score = -negamax<PVNode, limitWay, mateSearch>(depth, state, -beta, -alpha, curLastChange, actDepth+1);
                 eval.undoMove(curMove, !state.friendlyColor());
@@ -415,13 +404,11 @@ public:
         int actDepth=0;
         int lastChange = 0;
         for(Move move:movesFromRoot){
-            setElement(state.zobristHash, actDepth);
             move = state.playPartialMove(move);
             if(move.isChanger())
                 lastChange = actDepth;
             actDepth++;
         }
-        setElement(state.zobristHash, actDepth);
         bool moveInTable = false;
         Move bookMove = findPolyglot(state,moveInTable,book);
         bool inCheck;
@@ -490,17 +477,26 @@ public:
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
                 if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
-                    bestMove = bestMoveClipped<limitWay, true>(depth, state, alpha, beta, bestScore, finalBestMove, idMove, order, actDepth, lastChange);
+                    bestMove = bestMoveClipped<limitWay, true>(depth, state, alpha, beta, bestScore, finalBestMove, idMove, order, actDepth, lastChange, verbose);
                 else
-                    bestMove = bestMoveClipped<limitWay, false>(depth, state, alpha, beta, bestScore, finalBestMove, idMove, order, actDepth, lastChange);
+                    bestMove = bestMoveClipped<limitWay, false>(depth, state, alpha, beta, bestScore, finalBestMove, idMove, order, actDepth, lastChange, verbose);
+                string limit;
                 if(bestScore <= alpha){
                     deltaDown = max(deltaDown*2, lastScore-bestScore+1);
+                    limit = "upperbound";
                 }else if(bestScore >= beta){
                     deltaUp = max(deltaUp*2, bestScore-lastScore+1);
                     finalBestMove = bestMove;
+                    limit = "lowerbound";
                 }else{
                     finalBestMove = bestMove;
                     break;
+                }
+                if(verbose && getElapsedTime() >= chrono::milliseconds{10000}){
+                    big totNodes = nodes;
+                    clock_t end = clock();
+                    double tcpu = double(end-start)/CLOCKS_PER_SEC;
+                    printf("info depth %d seldepth %d score %s %s nodes %ld nps %d time %d pv %s\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
                 }
             }while(running);
             bestMove = finalBestMove;
@@ -574,9 +570,9 @@ public:
         if(depth == 1)return nbMoves;
         big count=0;
         for(int i=0; i<nbMoves; i++){
-            state.playMove<false, false>(moves[i]);
+            state.playMove(moves[i]);
             big nbNodes=_perft(state, depth-1);
-            state.undoLastMove<false>();
+            state.undoLastMove();
             count += nbNodes;
         }
         tt.push({state.zobristHash, count, depth});
@@ -596,9 +592,9 @@ public:
         for(int i=0; i<nbMoves; i++){
             clock_t startMove=clock();
             int startVisitedNodes = visitedNodes;
-            state.playMove<false, false>(moves[i]);
+            state.playMove(moves[i]);
             big nbNodes=_perft(state, depth-1);
-            state.undoLastMove<false>();
+            state.undoLastMove();
             clock_t end=clock();
             double tcpu = double(end-startMove)/CLOCKS_PER_SEC;
             printf("%s: %" PRId64 " (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
