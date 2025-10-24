@@ -117,6 +117,18 @@ public:
         }
     }
 
+    void reinit(int16_t priorityMove){
+        nbPriority = 0;
+        for(int i=0; i<nbMoves; i++){
+            if(moves[i].moveInfo == priorityMove){
+                this->swap(i, 0);
+                nbPriority = 1;
+                break;
+            }
+        }
+        pointer = 0;
+    }
+
     inline bool compareMove(int idMove1, int idMove2){
         if(flags[idMove1] != flags[idMove2])return flags[idMove2] > flags[idMove1];
         return scores[idMove2] > scores[idMove1];

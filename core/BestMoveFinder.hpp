@@ -349,7 +349,7 @@ private:
         return bestScore;
     }
     template<int limitWay, bool mateSearch>
-    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, RootOrder& order, int actDepth, int lastChange, bool verbose){
+    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, Order<maxMoves>& order, int actDepth, int lastChange, bool verbose){
         bestScore = -INF;
         Move bestMove = nullMove;
         order.reinit(lastBest.moveInfo);
@@ -359,8 +359,6 @@ private:
             if(verbose && getElapsedTime() >= chrono::milliseconds{10000}){
                 printf("info depth %d currmove %s currmovenumber %d nodes %d\n", depth+1, curMove.to_str().c_str(), idMove+1, nodes);
             }
-            //printf("%s\n", curMove.to_str().c_str());
-            int startNodes = nodes;
             int score;
             int curLastChange = lastChange;
             bool isDraw = false;
@@ -378,11 +376,8 @@ private:
             }
             state.undoLastMove();
             if(!running)return bestMove.from() == bestMove.to()?curMove:bestMove;
-            int nodeUsed = nodes-startNodes;
-            order.pushNodeUsed(nodeUsed);
             if(score >= beta){
                 bestScore = score;
-                order.cutoff();
                 nbCutoff++;
                 if(idMove == 0)nbFirstCutoff++;
                 return curMove;
@@ -418,7 +413,7 @@ public:
         bool moveInTable = false;
         Move bookMove = findPolyglot(state,moveInTable,book);
         bool inCheck;
-        RootOrder order;
+        Order<maxMoves> order;
         generator.initDangers(state);
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         //Return early because a move was found in a book
@@ -468,17 +463,13 @@ public:
         clock_t start=clock();
         big lastNodes = 1;
         int lastScore = eval.getScore(state.friendlyColor());
-        order.init(state.friendlyColor(), history, state, generator);
+        order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, history, 0, state, generator);
         int instability1side = 0;
         int instability2side = 1;
         Move ponderMove=nullMove;
         for(int depth=1; depth<depthMax && running; depth++){
             int deltaUp = 5<<(1+instability2side);
             int deltaDown = 5<<(1+instability2side);
-            /*if(instability1side > 0)
-                deltaUp += 10*instability1side;
-            else
-                deltaDown += 10*(-instability1side);*/
             seldepth = 0;
             if(abs(lastScore) > MAXIMUM-maxDepth)
                 deltaDown = 1;
