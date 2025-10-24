@@ -267,6 +267,11 @@ private:
         }
         if(order.nbMoves == 1){
             state.playMove(order.moves[0]);
+            if(state.twofold()){
+                state.undoLastMove();
+                if constexpr(nodeType == PVNode)beginLineMove(rootDist, order.moves[0]);
+                return MIDDLE;
+            }
             eval.playMove(order.moves[0], !state.friendlyColor());
             generator.initDangers(state);
             int sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
@@ -463,9 +468,15 @@ public:
         big lastNodes = 1;
         int lastScore = eval.getScore(state.friendlyColor());
         order.init(state.friendlyColor(), history, state, generator);
+        int instability1side = 0;
+        int instability2side = 1;
         for(int depth=1; depth<depthMax && running; depth++){
-            int deltaUp = 10;
-            int deltaDown = 10;
+            int deltaUp = 5<<(1+instability2side);
+            int deltaDown = 5<<(1+instability2side);
+            /*if(instability1side > 0)
+                deltaUp += 10*instability1side;
+            else
+                deltaDown += 10*(-instability1side);*/
             seldepth = 0;
             if(abs(lastScore) > MAXIMUM-maxDepth)
                 deltaDown = 1;
@@ -473,6 +484,7 @@ public:
             int idMove;
             int bestScore;
             Move finalBestMove=bestMove;
+            int countUp = 0, countDown=0;
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
@@ -484,10 +496,12 @@ public:
                 if(bestScore <= alpha){
                     deltaDown = max(deltaDown*2, lastScore-bestScore+1);
                     limit = "upperbound";
+                    countDown++;
                 }else if(bestScore >= beta){
                     deltaUp = max(deltaUp*2, bestScore-lastScore+1);
                     finalBestMove = bestMove;
                     limit = "lowerbound";
+                    countUp++;
                 }else{
                     finalBestMove = bestMove;
                     break;
@@ -499,6 +513,8 @@ public:
                     printf("info depth %d seldepth %d score %s %s nodes %ld nps %d time %d pv %s\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
                 }
             }while(running);
+            instability1side = (instability1side+(countDown-countUp)+1)/2;
+            instability2side = (instability2side+min(countDown, countUp)+1)/2;
             bestMove = finalBestMove;
             if(idMove)
                 lastScore = bestScore;
