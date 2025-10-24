@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #define MoveScore pair<int, Move>
+#define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;
@@ -401,7 +402,7 @@ private:
 
 public:
     template <int limitWay=0>
-    tuple<Move, int, vector<depthInfo>> bestMove(GameState& state, int softBound, int hardBound, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true){
+    bestMoveResponse bestMove(GameState& state, int softBound, int hardBound, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true){
         startSearch = timeMesure::now();
         hardBoundTime = chrono::milliseconds{hardBound};
         chrono::milliseconds softBoundTime{softBound};
@@ -432,16 +433,16 @@ public:
             if(moveInTable){
                 if(verbose)
                     printf("Found book move for fen : %s\n",state.toFen().c_str());
-                return make_tuple(bookMove, INF, vector<depthInfo>());
+                return make_tuple(bookMove, nullMove, INF, vector<depthInfo>());
             }else if(verbose){
                 printf("bad move find in table %s (in %s)\n", bookMove.to_str().c_str(), state.toFen().c_str());
             }
         }
         if(order.nbMoves == 0){
             if(inCheck){
-                return make_tuple(nullMove, MINIMUM, vector<depthInfo>());
+                return make_tuple(nullMove, nullMove, MINIMUM, vector<depthInfo>());
             }else{
-                return make_tuple(nullMove, 0, vector<depthInfo>());
+                return make_tuple(nullMove, nullMove, 0, vector<depthInfo>());
             }
         }
         eval.init(state);
@@ -456,7 +457,7 @@ public:
         }
         if(order.nbMoves == 1){
             running = false;
-            return make_tuple(order.moves[0], INF, vector<depthInfo>(0));
+            return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
         }
         if(verbose){
             printf("info string use a tt of %d entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
@@ -470,6 +471,7 @@ public:
         order.init(state.friendlyColor(), history, state, generator);
         int instability1side = 0;
         int instability2side = 1;
+        Move ponderMove=nullMove;
         for(int depth=1; depth<depthMax && running; depth++){
             int deltaUp = 5<<(1+instability2side);
             int deltaDown = 5<<(1+instability2side);
@@ -506,7 +508,7 @@ public:
                     finalBestMove = bestMove;
                     break;
                 }
-                if(verbose && getElapsedTime() >= chrono::milliseconds{10000}){
+                if(verbose && idMove && getElapsedTime() >= chrono::milliseconds{10000}){
                     big totNodes = nodes;
                     clock_t end = clock();
                     double tcpu = double(end-start)/CLOCKS_PER_SEC;
@@ -525,6 +527,8 @@ public:
             big usedNodes = totNodes-startNodes;
             string PV;
             PV = PVprint(PVlines[0]);
+            if(PVlines[0].cmove > 1)
+                ponderMove.moveInfo = PVlines[0].argMoves[1];
             if(verbose){
                 if(idMove == order.nbMoves)
                     printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
@@ -543,7 +547,7 @@ public:
         }
         for(unsigned long i=0; i<movesFromRoot.size(); i++)
             state.undoLastMove();
-        return make_tuple(bestMove, lastScore, allInfos);
+        return make_tuple(bestMove, ponderMove, lastScore, allInfos);
     }
     int testQuiescenceSearch(GameState& state){
         nodes = 0;

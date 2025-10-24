@@ -145,11 +145,11 @@ int main(int argc, char** argv){
             do{
                 bool isWhite = current.friendlyColor() == WHITE;
                 root.fromFen(fens[i]);
-                tuple<Move, int, vector<depthInfo>> res;
+                bestMoveResponseres;
                 if(isWhite)res = player.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
                 else res = opponent.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
-                int score = get<1>(res);
-                Move curMove = get<0>(res);
+                int score = get<2>(res);
+                Move curMove = get<1>(res);
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
                     if(current.friendlyColor() == BLACK)

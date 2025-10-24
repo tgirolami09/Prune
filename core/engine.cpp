@@ -146,11 +146,11 @@ pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool
     return {softBound, hardBound};
 }
 
-auto goCommand(vector<pair<string, string>> args, Chess & state, bool verbose=true){
+bestMoveResponse goCommand(vector<pair<string, string>> args, Chess & state, bool verbose=true){
     if(!args.empty()){
         if(args[0].first == "perft"){
             printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, stoi(args[1].second)));
-            return make_tuple(Move(), 0, vector<depthInfo>(0));
+            return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
         }else if(args.size() && (args[0].first == "btime" || args[0].first == "wtime")){
             int btime=0, wtime=0, winc=0, binc=0;
             for(pair<string, string> arg:args){
@@ -293,7 +293,7 @@ void manageSearch(){
                     testState.movesFromRoot = {};
                     testState.root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    vector<depthInfo> infos = get<2>(goCommand(parsed, testState, false));
+                    vector<depthInfo> infos = get<3>(goCommand(parsed, testState, false));
                     for(depthInfo info:infos){
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;
@@ -379,7 +379,11 @@ void manageSearch(){
                     }
                 }
             }else if(command == "go"){
-                printf("bestmove %s\n", get<0>(goCommand(parsed, state)).to_str().c_str());
+                bestMoveResponse res=goCommand(parsed, state);
+                if(get<1>(res).moveInfo == nullMove.moveInfo)
+                    printf("bestmove %s\n", get<0>(res).to_str().c_str());
+                else
+                    printf("bestmove %s ponder %s\n", get<0>(res).to_str().c_str(), get<1>(res).to_str().c_str());
             }else if(command == "uci"){
                 string v=VERSION;
                 if(v[0] == 'v')
