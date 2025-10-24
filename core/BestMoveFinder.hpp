@@ -342,6 +342,7 @@ private:
                 if(isRoot)rootBestMove = curMove;
                 alpha = score;
                 typeNode=EXACT;
+                bestMove = curMove;
                 if constexpr(nodeType == PVNode){
                     if(isDraw)beginLineMove(rootDist, curMove);
                     else transfer(rootDist, curMove);
@@ -351,8 +352,9 @@ private:
         }
         if constexpr(nodeType==CutNode)if(bestScore == alpha)
             return bestScore;
-        if(!isRoot || typeNode != UPPERBOUND)
+        if(!isRoot || typeNode != UPPERBOUND){
             transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth);
+        }
         return bestScore;
     }
 
