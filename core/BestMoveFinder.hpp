@@ -351,7 +351,8 @@ private:
         }
         if constexpr(nodeType==CutNode)if(bestScore == alpha)
             return bestScore;
-        transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth);
+        if(!isRoot || typeNode != UPPERBOUND)
+            transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth);
         return bestScore;
     }
 
