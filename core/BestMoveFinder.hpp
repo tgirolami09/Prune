@@ -209,8 +209,9 @@ private:
         if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
         return score;
     }
-
-    template <int nodeType, int limitWay, bool mateSearch>
+    Move rootBestMove;
+    bool verbose;
+    template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
     int negamax(const int depth, GameState& state, int alpha, const int beta, const int lastChange, const int relDepth){
         const int rootDist = relDepth-startRelDepth;
         seldepth = max(seldepth, relDepth);
@@ -223,7 +224,7 @@ private:
             return 0;
         }
         int static_eval = eval.getScore(state.friendlyColor());
-        if(depth == 0 || (depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
+        if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
             if constexpr(nodeType == PVNode)beginLine(rootDist);
             return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
         }
@@ -286,6 +287,9 @@ private:
         int bestScore = -INF;
         for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
             Move curMove = order.pop_max();
+            if(isRoot && verbose && getElapsedTime() >= chrono::milliseconds{10000}){
+                printf("info depth %d currmove %s currmovenumber %d nodes %d\n", depth+1, curMove.to_str().c_str(), rankMove+1, nodes);
+            }
             int score;
             state.playMove(curMove);
             int newLastChange = lastChange;
@@ -325,15 +329,17 @@ private:
                 eval.undoMove(curMove, !state.friendlyColor());
             }
             state.undoLastMove();
-            if(!running)return 0;
+            if(!running)return bestScore;
             if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
                 transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth);
                 nbCutoff++;
+                if(isRoot)rootBestMove=curMove;
                 if(rankMove == 0)nbFirstCutoff++;
                 history.addKiller(curMove, depth, relDepth, state.friendlyColor(), state.getLastMove());
                 return score;
             }
             if(score > alpha){
+                if(isRoot)rootBestMove = curMove;
                 alpha = score;
                 typeNode=EXACT;
                 if constexpr(nodeType == PVNode){
@@ -348,56 +354,11 @@ private:
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth);
         return bestScore;
     }
-    template<int limitWay, bool mateSearch>
-    Move bestMoveClipped(int depth, GameState& state, int alpha, int beta, int& bestScore, Move lastBest, int& idMove, Order<maxMoves>& order, int actDepth, int lastChange, bool verbose){
-        bestScore = -INF;
-        Move bestMove = nullMove;
-        order.reinit(lastBest.moveInfo);
-        startRelDepth = actDepth-1;
-        for(idMove=0; idMove < order.nbMoves; idMove++){
-            Move curMove = order.pop_max();
-            if(verbose && getElapsedTime() >= chrono::milliseconds{10000}){
-                printf("info depth %d currmove %s currmovenumber %d nodes %d\n", depth+1, curMove.to_str().c_str(), idMove+1, nodes);
-            }
-            int score;
-            int curLastChange = lastChange;
-            bool isDraw = false;
-            if(curMove.isChanger())
-                curLastChange = actDepth;
-            state.playMove(curMove);
-            if(state.twofold()){
-                score = MIDDLE;
-                isDraw = true;
-            }else{
-                eval.playMove(curMove, !state.friendlyColor());
-                generator.initDangers(state);
-                score = -negamax<PVNode, limitWay, mateSearch>(depth, state, -beta, -alpha, curLastChange, actDepth+1);
-                eval.undoMove(curMove, !state.friendlyColor());
-            }
-            state.undoLastMove();
-            if(!running)return bestMove.from() == bestMove.to()?curMove:bestMove;
-            if(score >= beta){
-                bestScore = score;
-                nbCutoff++;
-                if(idMove == 0)nbFirstCutoff++;
-                return curMove;
-            }if(score > alpha){
-                bestMove = curMove;
-                alpha = score;
-                bestScore = score;
-                if(isDraw)beginLineMove(1, curMove);
-                else transfer(1, curMove);
-            }else if(score > bestScore){
-                bestMove = curMove;
-                bestScore = score;
-            }
-        }
-        return bestMove;
-    }
 
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, int softBound, int hardBound, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true){
+        this->verbose = verbose;
         startSearch = timeMesure::now();
         hardBoundTime = chrono::milliseconds{hardBound};
         chrono::milliseconds softBoundTime{softBound};
@@ -467,6 +428,7 @@ public:
         int instability1side = 0;
         int instability2side = 1;
         Move ponderMove=nullMove;
+        startRelDepth = actDepth-1;
         for(int depth=1; depth<depthMax && running; depth++){
             int deltaUp = 5<<(1+instability2side);
             int deltaDown = 5<<(1+instability2side);
@@ -474,17 +436,19 @@ public:
             if(abs(lastScore) > MAXIMUM-maxDepth)
                 deltaDown = 1;
             int startNodes = nodes;
-            int idMove;
             int bestScore;
             Move finalBestMove=bestMove;
             int countUp = 0, countDown=0;
             do{
                 int alpha = lastScore-deltaDown;
                 int beta = lastScore+deltaUp;
+                rootBestMove = nullMove;
+                generator.initDangers(state);
                 if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
-                    bestMove = bestMoveClipped<limitWay, true>(depth, state, alpha, beta, bestScore, finalBestMove, idMove, order, actDepth, lastChange, verbose);
+                    bestScore = negamax<PVNode, limitWay, true , true>(depth, state, alpha, beta, lastChange, actDepth);
                 else
-                    bestMove = bestMoveClipped<limitWay, false>(depth, state, alpha, beta, bestScore, finalBestMove, idMove, order, actDepth, lastChange, verbose);
+                    bestScore = negamax<PVNode, limitWay, false, true>(depth, state, alpha, beta, lastChange, actDepth);
+                bestMove = bestScore != -INF ? rootBestMove : finalBestMove;
                 string limit;
                 if(bestScore <= alpha){
                     deltaDown = max(deltaDown*2, lastScore-bestScore+1);
@@ -499,7 +463,7 @@ public:
                     finalBestMove = bestMove;
                     break;
                 }
-                if(verbose && idMove && getElapsedTime() >= chrono::milliseconds{10000}){
+                if(verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
                     big totNodes = nodes;
                     clock_t end = clock();
                     double tcpu = double(end-start)/CLOCKS_PER_SEC;
@@ -509,7 +473,7 @@ public:
             instability1side = (instability1side+(countDown-countUp)+1)/2;
             instability2side = (instability2side+min(countDown, countUp)+1)/2;
             bestMove = finalBestMove;
-            if(idMove)
+            if(bestScore != -INF)
                 lastScore = bestScore;
             transferLastPV();
             clock_t end = clock();
@@ -520,13 +484,11 @@ public:
             PV = PVprint(PVlines[0]);
             if(PVlines[0].cmove > 1)
                 ponderMove.moveInfo = PVlines[0].argMoves[1];
-            if(verbose){
-                if(idMove == order.nbMoves)
-                    printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
-                else if(idMove)printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string %d/%d moves\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), idMove, order.nbMoves);
+            if(verbose && bestScore != -INF){
+                printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
                 fflush(stdout);
             }
-            if(idMove == order.nbMoves)
+            if(running)
                 allInfos.push_back({nodes, (int)(tcpu*1000), (int)(totNodes/tcpu), depth+1, seldepth-startRelDepth, bestScore});
             if(abs(bestScore) > MAXIMUM-maxDepth && mateHardBound){
                 softBound = hardBound;
