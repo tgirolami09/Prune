@@ -1,5 +1,6 @@
 CC=g++
-CFLAGS=-Wall -Wextra -std=gnu++17
+ADDOPTION?=
+CFLAGS=-Wall -Wextra -std=gnu++17 $(ADDOPTION)
 OPT=-O3
 COM=$(shell git rev-parse HEAD)
 ARCH?=native

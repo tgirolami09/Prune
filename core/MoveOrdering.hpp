@@ -117,6 +117,18 @@ public:
         }
     }
 
+    void reinit(int16_t priorityMove){
+        nbPriority = 0;
+        for(int i=0; i<nbMoves; i++){
+            if(moves[i].moveInfo == priorityMove){
+                this->swap(i, 0);
+                nbPriority = 1;
+                break;
+            }
+        }
+        pointer = 0;
+    }
+
     inline bool compareMove(int idMove1, int idMove2){
         if(flags[idMove1] != flags[idMove2])return flags[idMove2] > flags[idMove1];
         return scores[idMove2] > scores[idMove1];
@@ -135,83 +147,6 @@ public:
             this->swap(bPointer, pointer);
             pointer++;
             return moves[pointer-1];
-        }
-    }
-};
-
-class RootOrder{
-    int nodeUsed[maxMoves];
-    int scores[maxMoves];
-    ubyte flags[maxMoves];
-    int pointer;
-    bool isPriority;
-    bool compareScore(int idMove1, int idMove2) const{
-        if(flags[idMove1] != flags[idMove2])return flags[idMove2] > flags[idMove1];
-        return scores[idMove2] > scores[idMove1];
-    }
-
-    bool compareMoves(int idMove1, int idMove2) const{
-        if(nodeUsed[idMove1] != nodeUsed[idMove2])return nodeUsed[idMove2] > nodeUsed[idMove1];
-        return compareScore(idMove1, idMove2);
-    }
-public:
-    int nbMoves;
-    big dangerPositions;
-    Move moves[maxMoves];
-    RootOrder():dangerPositions(0){}
-
-    void init(bool c, const HelpOrdering& history, GameState& state, LegalMoveGenerator& generator){
-        isPriority = false;
-        pointer = 0;
-        for(int i=0; i<nbMoves; i++){
-            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, 0, state.getLastMove()), true, state, flags[i], generator);
-            nodeUsed[i] = 0;
-        }
-    }
-
-    void reinit(int16_t priorityMove){
-        isPriority = false;
-        for(int i=0; i<nbMoves; i++){
-            if(moves[i].moveInfo == priorityMove){
-                this->swap(i, 0);
-                isPriority = true;
-                break;
-            }
-        }
-        pointer = 0;
-    }
-
-    void pushNodeUsed(int usedNodes){
-        nodeUsed[pointer-1] = usedNodes;
-    }
-
-    void cutoff(){
-        for(int i=pointer; i<nbMoves; i++){
-            nodeUsed[pointer] = 0;
-        }
-    }
-
-    void swap(int idMove1, int idMove2){
-        if(idMove1 != idMove2){
-            std::swap(moves[idMove1], moves[idMove2]);
-            std::swap(scores[idMove1], scores[idMove2]);
-            std::swap(nodeUsed[idMove1], nodeUsed[idMove2]);
-        }
-    }
-
-    Move pop_max(){
-        if(isPriority){
-            isPriority = false;
-            pointer++;
-            return moves[0];
-        }else{
-            int bestPointer = pointer;
-            for(int i=pointer+1; i<nbMoves; i++){
-                if(compareMoves(bestPointer, i))
-                    bestPointer = i;
-            }
-            this->swap(bestPointer, pointer);
-            return moves[pointer++];
         }
     }
 };
