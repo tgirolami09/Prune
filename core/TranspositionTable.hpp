@@ -29,11 +29,9 @@ public:
 
     inline int storedScore(int alpha, int beta, int depth, const infoScore& entry){
         if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
-            if(entry.typeNode == EXACT)
-                return entry.score;
-            if(entry.score >= beta && entry.typeNode == LOWERBOUND)
-                return entry.score;
-            if(entry.score < alpha && entry.typeNode == UPPERBOUND)
+            if(  entry.typeNode == EXACT ||
+                (entry.typeNode == LOWERBOUND && entry.score >= beta) || 
+                (entry.typeNode == UPPERBOUND && entry.score <= alpha))
                 return entry.score;
         }
         return INVALID;
