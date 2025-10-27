@@ -248,39 +248,23 @@ private:
         ubyte typeNode = UPPERBOUND;
         Order<maxMoves> order;
         bool inCheck=generator.isCheck();
-        bool moveGenerated = false;
         if constexpr(nodeType != PVNode){
-            if(!inCheck){
-                if(beta > MINIMUM+maxDepth){
-                    int margin = 150*depth;
-                    if(static_eval >= beta+margin)
-                        return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
-                }
+            if(!inCheck && !isDecisive(beta)){
+                int margin = 150*depth;
+                if(static_eval >= beta+margin)
+                    return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
                 int r = 3;
                 if(depth >= r && !eval.isOnlyPawns() && static_eval >= beta){
-                    order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
-                    bool isOnlyBadMoves=true;
-                    for(int i=0; i<order.nbMoves; i++){
-                        if(order.moves[i].piece != KING || order.moves[i].piece != PAWN){
-                            isOnlyBadMoves = false;
-                            break;
-                        }
-                    }
-                    moveGenerated = true;
-                    if(!isOnlyBadMoves){
-                        state.playNullMove();
-                        generator.initDangers(state);
-                        int v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, lastChange, relDepth+1);
-                        state.undoNullMove();
-                        if(v >= beta)return beta;
-                        generator.initDangers(state);
-                        moveGenerated = false;
-                    }
+                    state.playNullMove();
+                    generator.initDangers(state);
+                    int v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, lastChange, relDepth+1);
+                    state.undoNullMove();
+                    if(v >= beta)return beta;
+                    generator.initDangers(state);
                 }
             }
         }
-        if(!moveGenerated)
-            order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+        order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
         if(order.nbMoves == 0){
             int score;
             if(inCheck)
