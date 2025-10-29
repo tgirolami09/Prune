@@ -115,6 +115,7 @@ def playGame(startFen, prog1, prog2):
         try:
             result = curProg.play(board, limit=getLimit(*remaindTimes), info=engine.INFO_ALL)
         except:
+            print()
             sys.stderr.write(board.fen())
             sys.stderr.write(f"\nposition fen {board.root().fen()} moves {' '.join(i.uci() for i in board.move_stack)}\n")
             raise Exception()
