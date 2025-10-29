@@ -253,7 +253,7 @@ private:
                     generator.initDangers(state);
                     int v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, lastChange, relDepth+1);
                     state.undoNullMove();
-                    if(v >= beta)return beta;
+                    if(v >= beta)return v;
                     generator.initDangers(state);
                 }
             }
