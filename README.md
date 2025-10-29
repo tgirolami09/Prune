@@ -41,4 +41,4 @@ to compile, just run
 make prune
 ```
 
-and you will have the executable prune, which contains the engine (so it is moveable)
+in the core/ directory, and you will have the executable prune, which contains the engine (so it is moveable)
