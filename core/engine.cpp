@@ -113,7 +113,7 @@ void manageInput(){
         fflush(stdout);
     }
 }
-const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete"};
+const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete", "perft"};
 class Option{
 public:
     string name;
@@ -149,7 +149,7 @@ pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool
 bestMoveResponse goCommand(vector<pair<string, string>> args, Chess & state, bool verbose=true){
     if(!args.empty()){
         if(args[0].first == "perft"){
-            printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, stoi(args[1].second)));
+            printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, stoi(args[0].second)));
             return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
         }else if(args.size() && (args[0].first == "btime" || args[0].first == "wtime")){
             int btime=0, wtime=0, winc=0, binc=0;
