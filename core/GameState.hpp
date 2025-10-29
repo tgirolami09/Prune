@@ -370,7 +370,7 @@ public :
             zobristHash ^= zobrist[zobrTurn];
             repHist[turnNumber] = zobristHash;
             if(move.isChanger())
-                rule50[turnNumber] = 1;
+                rule50[turnNumber] = 0;
             else
                 rule50[turnNumber] = rule50[turnNumber-1]+1;
         }
