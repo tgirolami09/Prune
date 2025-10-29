@@ -1,6 +1,5 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
-#include "Const.hpp"
 #include "TranspositionTable.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
@@ -37,10 +36,7 @@ int absoluteScore(int score, int rootDist){
     else if(score > MAXIMUM-maxDepth)
         return score + rootDist;
     return score;
-}
 
-static bool isDecisive(int score){
-    return score == 0 || score < MINIMUM+maxDepth || score > MAXIMUM-maxDepth;
 }
 
 class LINE{
@@ -90,7 +86,7 @@ private:
     int nbCutoff;
     int nbFirstCutoff;
     int seldepth;
-    template<int limitWay, bool isPV>
+    template<int limitWay>
     int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth){
         if(!running)return 0;
         if(limitWay == 0 && (nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
@@ -98,13 +94,9 @@ private:
         nodes++;
         if(relDepth > seldepth)seldepth = relDepth;
         dbyte hint;
-        if(isPV)
-            hint = transposition.getMove(state);
-        else{
-            int lastEval=transposition.get_eval(state, alpha, beta, 0, hint);
-            if(lastEval != INVALID && !isDecisive(lastEval))
-                return lastEval;
-        }
+        int lastEval=transposition.get_eval(state, alpha, beta, 0, hint);
+        if(lastEval != INVALID)
+            return lastEval;
         int staticEval = eval.getScore(state.friendlyColor());
         if(staticEval >= beta){
             transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
@@ -128,12 +120,12 @@ private:
         generator.initDangers(state);
         order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
         order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, history, -1, state, generator, false);
-        Move bestCapture = nullMove;
+        Move bestCapture;
         for(int i=0; i<order.nbMoves; i++){
             Move capture = order.pop_max();
             state.playMove(capture);//don't care about repetition
             eval.playMove(capture, !state.friendlyColor());
-            int score = -quiescenceSearch<limitWay, isPV>(state, -beta, -alpha, relDepth+1);
+            int score = -quiescenceSearch<limitWay>(state, -beta, -alpha, relDepth+1);
             eval.undoMove(capture, !state.friendlyColor());
             state.undoLastMove();
             if(!running)return 0;
@@ -145,8 +137,8 @@ private:
             }
             if(score > bestEval){
                 bestEval = score;
+                bestCapture = capture;
                 if(score > alpha){
-                    bestCapture = capture;
                     alpha = score;
                     typeNode = EXACT;
                 }
@@ -213,7 +205,7 @@ private:
     template<int nodeType, int limitWay, bool mateSearch>
     inline int Evaluate(GameState& state, int alpha, int beta, int relDepth){
         if constexpr(mateSearch)return eval.getScore(state.friendlyColor());
-        int score = quiescenceSearch<limitWay, nodeType == PVNode>(state, alpha, beta, relDepth);
+        int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
         if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
         return score;
     }
@@ -249,10 +241,12 @@ private:
         Order<maxMoves> order;
         bool inCheck=generator.isCheck();
         if constexpr(nodeType != PVNode){
-            if(!inCheck && !isDecisive(beta)){
-                int margin = 150*depth;
-                if(static_eval >= beta+margin)
-                    return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
+            if(!inCheck){
+                if(beta > MINIMUM+maxDepth){
+                    int margin = 150*depth;
+                    if(static_eval >= beta+margin)
+                        return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
+                }
                 int r = 3;
                 if(depth >= r && !eval.isOnlyPawns() && static_eval >= beta){
                     state.playNullMove();
@@ -289,7 +283,7 @@ private:
             return sc;
         }
         order.init(state.friendlyColor(), lastBest, getPVMove(rootDist), history, relDepth, state, generator, depth > 5);
-        Move bestMove = nullMove;
+        Move bestMove;
         int bestScore = -INF;
         for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
             Move curMove = order.pop_max();
@@ -514,7 +508,7 @@ public:
     int testQuiescenceSearch(GameState& state){
         nodes = 0;
         clock_t start=clock();
-        int score = quiescenceSearch<false, true>(state, -INF, INF, 0);
+        int score = quiescenceSearch<false>(state, -INF, INF, 0);
         clock_t end = clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
         printf("speed: %d; Qnodes:%d score %s\n\n", (int)(nodes/tcpu), nodes, scoreToStr(score).c_str());
