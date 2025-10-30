@@ -85,7 +85,7 @@ public :
     int winc=0;
 };
 int moveOverhead = 100;
-const int alloted_space=64*1000*1000;
+const int alloted_space=64*hashMul;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
 const int sizeQ=128;
@@ -397,7 +397,7 @@ void manageSearch(){
                     if(parsed[i].first == "name"){
                         bool incr=true;
                         if(parsed[i].second == "Hash")
-                            bestMoveFinder.reinit(stoi(parsed[i+1].second));
+                            bestMoveFinder.reinit(stoi(parsed[i+1].second)*hashMul);
                         else if(parsed[i].second == "Move Overhead")
                             moveOverhead = stoi(parsed[i+1].second);
                         else if(parsed[i].second == "Clear Hash"){
