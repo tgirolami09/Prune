@@ -134,7 +134,7 @@ const Option Options[] = {
     Option("Hash", "spin", "64", 1, 512),
     Option("Move Overhead", "spin", "10", 0, 5000),
     Option("Clear Hash", "button"),
-    Option("nnueFile", "string", "model.bin")
+    Option("nnueFile", "string", "embed")
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color){
@@ -403,8 +403,12 @@ void manageSearch(){
                         else if(parsed[i].second == "Clear Hash"){
                             bestMoveFinder.clear();
                             incr = false;
-                        }else if(parsed[i].second == "nnueFile")
-                            bestMoveFinder.eval.nnue = NNUE(parsed[i+1].second);
+                        }else if(parsed[i].second == "nnueFile"){
+                            if(parsed[i+1].second == "embed")
+                                bestMoveFinder.eval.nnue = NNUE();
+                            else
+                                bestMoveFinder.eval.nnue = NNUE(parsed[i+1].second);
+                        }
                         i += incr;
                     }
                 }
