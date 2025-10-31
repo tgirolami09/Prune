@@ -1,6 +1,5 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
-#include "Const.hpp"
 #include "TranspositionTable.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
@@ -87,7 +86,7 @@ private:
     int nbCutoff;
     int nbFirstCutoff;
     int seldepth;
-    template<int limitWay>
+    template<int limitWay, bool isPV>
     int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth){
         if(!running)return 0;
         if(limitWay == 0 && (nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
@@ -95,9 +94,13 @@ private:
         nodes++;
         if(relDepth > seldepth)seldepth = relDepth;
         dbyte hint;
-        int lastEval=transposition.get_eval(state, alpha, beta, 0, hint);
-        if(lastEval != INVALID)
-            return lastEval;
+        if(isPV)
+            hint = transposition.getMove(state);
+        else{
+            int lastEval=transposition.get_eval(state, alpha, beta, 0, hint);
+            if(lastEval != INVALID)
+                return lastEval;
+        }
         int staticEval = eval.getScore(state.friendlyColor());
         if(staticEval >= beta){
             transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
@@ -126,7 +129,7 @@ private:
             Move capture = order.pop_max();
             state.playMove(capture);//don't care about repetition
             eval.playMove(capture, !state.friendlyColor());
-            int score = -quiescenceSearch<limitWay>(state, -beta, -alpha, relDepth+1);
+            int score = -quiescenceSearch<limitWay, isPV>(state, -beta, -alpha, relDepth+1);
             eval.undoMove(capture, !state.friendlyColor());
             state.undoLastMove();
             if(!running)return 0;
@@ -206,7 +209,7 @@ private:
     template<int nodeType, int limitWay, bool mateSearch>
     inline int Evaluate(GameState& state, int alpha, int beta, int relDepth){
         if constexpr(mateSearch)return eval.getScore(state.friendlyColor());
-        int score = quiescenceSearch<limitWay>(state, alpha, beta, relDepth);
+        int score = quiescenceSearch<limitWay, nodeType==PVNode>(state, alpha, beta, relDepth);
         if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
         return score;
     }
@@ -254,7 +257,7 @@ private:
                     generator.initDangers(state);
                     int v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, lastChange, relDepth+1);
                     state.undoNullMove();
-                    if(v >= beta)return beta;
+                    if(v >= beta)return v;
                     generator.initDangers(state);
                 }
             }
@@ -509,7 +512,7 @@ public:
     int testQuiescenceSearch(GameState& state){
         nodes = 0;
         clock_t start=clock();
-        int score = quiescenceSearch<false>(state, -INF, INF, 0);
+        int score = quiescenceSearch<false, true>(state, -INF, INF, 0);
         clock_t end = clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
         printf("speed: %d; Qnodes:%d score %s\n\n", (int)(nodes/tcpu), nodes, scoreToStr(score).c_str());

@@ -33,7 +33,7 @@ public:
                 return entry.score;
             if(entry.score >= beta && entry.typeNode == LOWERBOUND)
                 return entry.score;
-            if(entry.score < alpha && entry.typeNode == UPPERBOUND)
+            if(entry.score <= alpha && entry.typeNode == UPPERBOUND)
                 return entry.score;
         }
         return INVALID;
