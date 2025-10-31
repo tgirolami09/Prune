@@ -239,7 +239,7 @@ inline bool GameState::isEnPassantPossibility(const Move& move){
 }
 
 int GameState::rule50_count() const{
-    return rule50[turnNumber-1];
+    return rule50[turnNumber];
 }
 bool GameState::twofold(){
     for(int i=turnNumber-4; i >= turnNumber-rule50_count(); i--){

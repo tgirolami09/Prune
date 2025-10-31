@@ -42,10 +42,12 @@ void init_tables(){
 big mask_forward[64];
 big mask_forward_inv[64];
 void init_forwards(){
-    for(int square=0; square<64; square++){
+    for(int square=0; square<56; square++){
         big triCol = (colH << col(square)) | (colH << max(0, col(square)-1)) | (colH << min(7, col(square)+1));
-        mask_forward[square] = (MAX_BIG << (row(square)+1)*8) & triCol;
-        mask_forward_inv[square] = (MAX_BIG >> (8-row(square))*8) & triCol;
+        if(row(square) != 7)mask_forward[square] = (MAX_BIG << (row(square)+1)*8) & triCol;
+        else mask_forward[square] = 0;
+        if(row(square) != 0)mask_forward_inv[square] = (MAX_BIG >> (8-row(square))*8) & triCol;
+        else mask_forward_inv[square] = 0;
     }
 }
 
