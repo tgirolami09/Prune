@@ -346,6 +346,8 @@ int GameState::playMove(Move move){
     }
     return 0;
 }
+template int GameState::playMove<true>(Move);
+template int GameState::playMove<false>(Move);
 
 void GameState::playNullMove(){
     movesSinceBeginning[turnNumber] = nullMove;
