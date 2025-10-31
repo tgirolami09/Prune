@@ -1,10 +1,9 @@
 #ifndef EVALUATOR_HPP
 #define EVALUATOR_HPP
 #include "Const.hpp"
-#include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
-#include "NNUE.cpp"
+#include "NNUE.hpp"
 #include <climits>
 #include <cstring>
 #include <cmath>
@@ -147,185 +146,80 @@ const int eg_king_table[64] = {
     -53, -34, -21, -11, -28, -14, -24, -43
 };
 
-const int* mg_pesto_table[6] =
-{
-    mg_pawn_table,
-    mg_knight_table,
-    mg_bishop_table,
-    mg_rook_table,
-    mg_queen_table,
-    mg_king_table
-};
-
-const int* eg_pesto_table[6] =
-{
-    eg_pawn_table,
-    eg_knight_table,
-    eg_bishop_table,
-    eg_rook_table,
-    eg_queen_table,
-    eg_king_table
-};
+extern const int* mg_pesto_table[6];
+extern const int* eg_pesto_table[6];
 
 const int gamephaseInc[6] = {0,1,1,2,4,0};
-static int mg_table[2][6][64];
-static int eg_table[2][6][64];
+extern int mg_table[2][6][64];
+extern int eg_table[2][6][64];
 
-void init_tables()
-{
-    int p, sq;
-    for (p = PAWN; p <= KING; p++) {
-        for (sq = 0; sq < 64; sq++) {
-            mg_table[WHITE][p][sq] = mg_value[p] + mg_pesto_table[p][sq^63];
-            eg_table[WHITE][p][sq] = eg_value[p] + eg_pesto_table[p][sq^63];
-            mg_table[BLACK][p][sq] = mg_value[p] + mg_pesto_table[p][sq^7];
-            eg_table[BLACK][p][sq] = eg_value[p] + eg_pesto_table[p][sq^7];
-        }
-    }
-}
+void init_tables();
 
 //Class to evaluate a position
-static big mask_forward[64];
-static big mask_forward_inv[64];
-void init_forwards(){
-    for(int square=0; square<64; square++){
-        big triCol = (colH << col(square)) | (colH << max(0, col(square)-1)) | (colH << min(7, col(square)+1));
-        mask_forward[square] = (MAX_BIG << (row(square)+1)*8) & triCol;
-        mask_forward_inv[square] = (MAX_BIG >> (8-row(square))*8) & triCol;
-    }
-}
+extern big mask_forward[64];
+extern big mask_forward_inv[64];
+void init_forwards();
 
-int SEE(int square, GameState& state, LegalMoveGenerator& generator){
-    Move goodMove = generator.getLVA(square, state);
-    int value = 0;
-    if(goodMove.moveInfo != nullMove.moveInfo){
-        state.playMove(goodMove);
-        int SEErec = value_pieces[goodMove.capture < 0?0:goodMove.capture]-SEE(square, state, generator);
-        if(goodMove.promotion() != -1)
-            SEErec += value_pieces[goodMove.promotion()];
-        value = max(0, SEErec);
-        state.undoLastMove();
-    }
-    return value;
-}
+int SEE(int square, GameState& state, LegalMoveGenerator& generator);
 
-inline int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator){
-    int score = 0;
-    int SEEscore = 0;
-    flag = 0;
-    if(useSEE){
-        state.playMove(move);
-        SEEscore = -SEE(move.to(), state, generator);
-        if(move.capture != -2)
-            SEEscore += value_pieces[move.capture == -1?0:move.capture];
-        state.undoLastMove();
-        if(SEEscore > 0)
-            flag += 2;
-    }else if(move.isTactical()){
-        int cap = move.capture;
-        if(cap == -1)cap = 0;
-        if(cap != -2)
-            SEEscore = value_pieces[cap]*10;
-        if((1ULL << move.to())&dangerPositions)
-            SEEscore -= value_pieces[move.piece];
-    }
-    if(!move.isTactical()){
-        score += historyScore;
-        score += SEEscore*maxHistory;
-    }else{
-        flag++;
-        score += SEEscore;
-        if(move.promotion() != -1)score += value_pieces[move.promotion()];
-    }
-    return score;
-}
+int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator);
 
-static const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
+const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
 
 class IncrementalEvaluator{
     int mgPhase;
     int presentPieces[2][6]; //keep trace of number of pieces by side
     template<int f>
-    void changePiece(int pos, int piece, bool c){
-        nnue.change2<f>(piece*2+c, pos);
-        mgPhase += f*gamephaseInc[piece];
-        presentPieces[c][piece] += f;
-    }
+    void changePiece(int pos, int piece, bool c);
 public:
     NNUE nnue;
-    void print(){
-        printf("phase = %d\n", mgPhase);
-        for(int i=0; i<2; i++){
-            for(int j=0; j<6; j++){
-                printf("piece = %d, color = %d, nbPieces = %d\n", j, i, presentPieces[i][j]);
-            }
-        }
-    }
-
-    IncrementalEvaluator():nnue(){
-        init_tables();
-        init_forwards();
-        memset(presentPieces, 0, sizeof(presentPieces));
-    }
-
-    void init(const GameState& state){//should be only call at the start of the search
-        mgPhase = 0;
-        nnue.clear();
-        memset(presentPieces, 0, sizeof(presentPieces));
-        for(int square=0; square<64; square++){
-            int piece=state.getfullPiece(square);
-            if(type(piece) != SPACE){
-                changePiece<1>(square, type(piece), color(piece));
-                //printf("intermediate eval : %d\n", getScore(state.friendlyColor()));
-            }
-        }
-    }
-
-    bool isInsufficientMaterial(){
-        if(mgPhase <= 1 && !presentPieces[WHITE][PAWN] && !presentPieces[BLACK][PAWN]){
-            return true;
-        }
-        return false;
-    }
-
-    inline bool isOnlyPawns() const{
-        return !mgPhase;
-    }
-
-    int getScore(bool c){
-        return nnue.eval(c);
-    }
+    void print();
+    IncrementalEvaluator();
+    void init(const GameState& state);
+    bool isInsufficientMaterial() const;
+    bool isOnlyPawns() const;
+    int getScore(bool c) const;
     template<int f=1>
-    void playMove(Move move, bool c){
-        if(move.capture != -2){
-            int posCapture = move.to();
-            int pieceCapture = move.capture;
-            if(move.capture == -1){ // for en passant
-                if(c == WHITE)posCapture -= 8;
-                else posCapture += 8;
-                pieceCapture = PAWN;
-            }
-            changePiece<-f>(posCapture, pieceCapture, !c);
-        }
-        int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
-        changePiece<-f>(move.from(), move.piece, c);
-        changePiece<f>(move.to(), toPiece, c);
-        if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
-            int rookStart = move.from();
-            int rookEnd = move.to();
-            if(move.from() > move.to()){//queen side
-                rookStart &= ~7;
-                rookEnd++;
-            }else{//king side
-                rookStart |= 7;
-                rookEnd--;
-            }
-            changePiece<-f>(rookStart, ROOK, c);
-            changePiece<f>(rookEnd, ROOK, c);
-        }
-    }
-    void undoMove(Move move, bool c){
-        playMove<-1>(move, c);
-    }
+    void playMove(Move move, bool c);
+    void undoMove(Move move, bool c);
 };
+
+
+template<int f>
+void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
+    nnue.change2<f>(piece*2+c, pos);
+    mgPhase += f*gamephaseInc[piece];
+    presentPieces[c][piece] += f;
+}
+
+template<int f>
+void IncrementalEvaluator::playMove(Move move, bool c){
+    if(move.capture != -2){
+        int posCapture = move.to();
+        int pieceCapture = move.capture;
+        if(move.capture == -1){ // for en passant
+            if(c == WHITE)posCapture -= 8;
+            else posCapture += 8;
+            pieceCapture = PAWN;
+        }
+        changePiece<-f>(posCapture, pieceCapture, !c);
+    }
+    int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
+    changePiece<-f>(move.from(), move.piece, c);
+    changePiece<f>(move.to(), toPiece, c);
+    if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
+        int rookStart = move.from();
+        int rookEnd = move.to();
+        if(move.from() > move.to()){//queen side
+            rookStart &= ~7;
+            rookEnd++;
+        }else{//king side
+            rookStart |= 7;
+            rookEnd--;
+        }
+        changePiece<-f>(rookStart, ROOK, c);
+        changePiece<f>(rookEnd, ROOK, c);
+    }
+}
+
 #endif

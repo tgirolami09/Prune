@@ -2,7 +2,8 @@
 #include <string>
 #include <cstring>
 #include <tuple>
-#include <chrono>
+#include <thread>
+#include <algorithm>
 // #include "util_magic.cpp"
 #include "Const.hpp"
 #include "Move.hpp"
@@ -11,16 +12,6 @@
 #include <set>
 #include <cmath>
 #include <iostream>
-
-#ifdef _WIN32
-#include <conio.h>
-#else
-#include <fcntl.h>
-#include <unistd.h>
-#include <termios.h>
-#endif
-// big* table[128]; // [bishop, rook]
-// info constants[128];
 
 using namespace std;
 //Main class for the game
