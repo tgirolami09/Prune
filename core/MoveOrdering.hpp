@@ -1,6 +1,7 @@
 #ifndef MOVEORDERING_HPP
 #define MOVEORDERING_HPP
-#include "Evaluator.hpp"
+#include "GameState.hpp"
+#include "LegalMoveGenerator.hpp"
 #include "Move.hpp"
 #include <cstring>
 //#define COUNTER

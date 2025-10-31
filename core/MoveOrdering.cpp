@@ -1,5 +1,6 @@
 #include <cstring>
 #include "MoveOrdering.hpp"
+#include "Evaluator.hpp"
 #include "Const.hpp"
 //#define COUNTER
 

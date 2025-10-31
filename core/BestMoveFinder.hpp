@@ -97,5 +97,4 @@ public:
     big perft(GameState& state, ubyte depth);
     void reinit(size_t count);
 };
-#include "BestMoveFinder.tpp"
 #endif
