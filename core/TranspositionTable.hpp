@@ -84,6 +84,7 @@ public:
     }
     void reinit(int count){
         count /= sizeof(infoScore);
+        count /= 2;
         byDepth.resize(count);
         always.resize(count);
         modulo = count;

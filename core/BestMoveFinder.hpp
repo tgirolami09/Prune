@@ -1,5 +1,6 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
+#include "Const.hpp"
 #include "TranspositionTable.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
@@ -419,7 +420,7 @@ public:
             return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
         }
         if(verbose){
-            printf("info string use a tt of %d entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/1000000, sizeof(infoScore));
+            printf("info string use a tt of %d entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/hashMul, sizeof(infoScore));
         }
         Move bestMove=nullMove;
         nodes = 0;

@@ -61,6 +61,7 @@ const int maxDepth=200;
 const int maxMoves=218;
 const int maxCaptures = 12*8+4*4;
 const int maxExtension = 16;
+const int hashMul = 1024*1024;
 
 const int MINIMUM=-100000;
 const int MAXIMUM=100000;
