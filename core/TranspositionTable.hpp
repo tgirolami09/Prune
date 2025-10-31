@@ -3,6 +3,7 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #include <climits>
+#include <vector>
 
 class __attribute__((packed)) infoScore{
 public:

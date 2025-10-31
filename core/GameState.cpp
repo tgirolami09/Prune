@@ -3,6 +3,8 @@
 #include <cctype>
 #include <cstdlib>
 #include "Const.hpp"
+#include "Functions.hpp"
+#include <random>
 using namespace std;
 
 

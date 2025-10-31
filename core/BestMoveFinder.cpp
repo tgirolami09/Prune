@@ -240,6 +240,7 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
         Move curMove = order.pop_max();
         if(isRoot && verbose && getElapsedTime() >= chrono::milliseconds{10000}){
             printf("info depth %d currmove %s currmovenumber %d nodes %d\n", depth+1, curMove.to_str().c_str(), rankMove+1, nodes);
+            fflush(stdout);
         }
         int score;
         state.playMove(curMove);
@@ -421,6 +422,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int h
                 clock_t end = clock();
                 double tcpu = double(end-start)/CLOCKS_PER_SEC;
                 printf("info depth %d seldepth %d score %s %s nodes %ld nps %d time %d pv %s\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
+                fflush(stdout);
             }
         }while(running);
         instability1side = (instability1side+(countDown-countUp)+1)/2;

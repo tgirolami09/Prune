@@ -8,6 +8,7 @@
 #include "Const.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
+#include <vector>
 #include "BestMoveFinder.hpp"
 #include <set>
 #include <cmath>

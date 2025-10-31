@@ -5,9 +5,6 @@
 #include <string>
 #include <cstdlib>
 #include "Const.hpp"
-#include "Functions.hpp"
-#include <random>
-#include <vector>
 using namespace std;
 const int maxPly = 8848*2+2;
 const int zobrCastle=64*2*6;
