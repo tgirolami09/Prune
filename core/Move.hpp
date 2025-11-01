@@ -13,77 +13,22 @@ public :
     int8_t piece;
     //-1 by capturing by en passant
     int8_t capture = -2;
-
     //Stores end_pos / start_pos / promoteTo
     int16_t moveInfo = -4096;
-
-    int from() const{
-        return (moveInfo >> 6) & 0x3f;
-    }
-
-    int to() const{
-        return (moveInfo) & 0x3f;
-    }
-
-    int8_t promotion() const{
-        //Interestingly there is no need for the '& 7' because we also need negative numbers
-        return (moveInfo >> 12) ;//& 0x7;
-    }
-
+    int from() const;
+    int to() const;
+    int8_t promotion() const;
     //Swaps from/to values
-    void swapMove(){
-        int from_square = from();
-        int to_square = to();
-        moveInfo &= ~(clearTo | clearFrom);
-
-        swap(from_square,to_square);
-        moveInfo |= (int16_t)( from_square << 6 );
-        moveInfo |= (int16_t)( to_square );
-    }
-
-    void updateFrom(int from_square){
-        moveInfo |= (int16_t)( from_square << 6 );
-    }
-
-    void updateTo(int to_square){
-        moveInfo |= (int16_t)( to_square );
-    }
-
-    void updatePromotion(int promotionPiece){
-        moveInfo &= ~clearPromot;
-        moveInfo |= (int16_t)( promotionPiece << 12 );    
-    }
-
-    void from_uci(string move){
-        moveInfo |= (int16_t)(from_str(move.substr(2, 2)));
-        moveInfo |= (int16_t)(from_str(move.substr(0, 2)) << 6);
-        if(move.size() == 5){
-            updatePromotion(piece_to_id.at(move[4]));
-        }
-    }
-
-    string to_str(){
-        string newRes = to_uci(from())+to_uci(to());
-        if (promotion() != -1){
-            newRes += id_to_piece[promotion()];
-        }
-        return newRes;
-    }
-    bool operator==(Move o){
-        //if capture is not the same, I think we can also considere that there are the same
-        return o.moveInfo == moveInfo && o.piece == piece;
-    }
-
-    bool isTactical() const{
-        return moveInfo > 0 || capture != -2; // moveInfo > 0 is an equivalent of promotion() != -1
-    }
-
-    bool isChanger() const{
-        return piece == PAWN || capture != -2;
-    }
-    int getMovePart() const{
-        return moveInfo&~(clearTo|clearFrom);
-    }
+    void swapMove();
+    void updateFrom(int from_square);
+    void updateTo(int to_square);
+    void updatePromotion(int promotionPiece);
+    void from_uci(string move);
+    string to_str();
+    bool operator==(Move o);
+    bool isTactical() const;
+    bool isChanger() const;
+    int getMovePart() const;
 };
 // const Move nullMove={0, 0, 0, -1, -2, -4096};
 const Move nullMove = {0, -2, -4096};
