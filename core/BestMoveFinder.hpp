@@ -1,5 +1,6 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
+#include "Const.hpp"
 #include "TranspositionTable.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
@@ -37,6 +38,7 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
     transpositionTable transposition;
     HelpOrdering history;
+    Order<maxMoves> orders[maxMoves];
 public:
     std::atomic<bool> running;
     IncrementalEvaluator eval;

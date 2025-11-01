@@ -189,7 +189,7 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
         lastBest = transposition.getMove(state);
     }
     ubyte typeNode = UPPERBOUND;
-    Order<maxMoves> order;
+    Order<maxMoves>& order = orders[rootDist];
     bool inCheck=generator.isCheck();
     if constexpr(nodeType != PVNode){
         if(!inCheck){
