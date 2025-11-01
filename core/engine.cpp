@@ -369,10 +369,12 @@ void manageSearch(){
                 }
             }else if(command == "go"){
                 bestMoveResponse res=goCommand(parsed, state);
-                if(get<1>(res).moveInfo == nullMove.moveInfo)
-                    printf("bestmove %s\n", get<0>(res).to_str().c_str());
+                Move bm = get<0>(res);
+                Move ponder=get<1>(res);
+                if(ponder.moveInfo == nullMove.moveInfo)
+                    printf("bestmove %s\n", bm.to_str().c_str());
                 else
-                    printf("bestmove %s ponder %s\n", get<0>(res).to_str().c_str(), get<1>(res).to_str().c_str());
+                    printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
             }else if(command == "uci"){
                 string v=VERSION;
                 if(v[0] == 'v')

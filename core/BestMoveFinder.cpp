@@ -439,12 +439,14 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int h
         PV = PVprint(PVlines[0]);
         if(PVlines[0].cmove > 1)
             ponderMove.moveInfo = PVlines[0].argMoves[1];
+        double speed=0;
+        if(tcpu != 0)speed = totNodes/tcpu;
         if(verbose && bestScore != -INF){
-            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
+            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)nbFirstCutoff/nbCutoff);
             fflush(stdout);
         }
         if(running)
-            allInfos.push_back({nodes, (int)(tcpu*1000), (int)(totNodes/tcpu), depth+1, seldepth-startRelDepth, bestScore});
+            allInfos.push_back({nodes, (int)(tcpu*1000), (int)(speed), depth+1, seldepth-startRelDepth, bestScore});
         if(abs(bestScore) > MAXIMUM-maxDepth && mateHardBound){
             softBound = hardBound;
             softBoundTime = hardBoundTime;
