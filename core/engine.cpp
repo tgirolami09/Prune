@@ -81,7 +81,7 @@ const int alloted_space=64*hashMul;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
 const int sizeQ=128;
-string queue[sizeQ];
+string inpQueue[sizeQ];
 atomic<int> startQ = 0;
 atomic<int> endQ = 0;
 atomic<bool> stop_all=false;
@@ -99,7 +99,7 @@ void manageInput(){
             bestMoveFinder.running = false;
             stop_all = true;
         }else{
-            queue[endQ%sizeQ] = com;
+            inpQueue[endQ%sizeQ] = com;
             endQ++;
         }
         fflush(stdout);
@@ -177,7 +177,7 @@ void manageSearch(){
     state.root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     while(!stop_all){
         if(startQ != endQ){
-            string com=queue[startQ%sizeQ];
+            string com=inpQueue[startQ%sizeQ];
             startQ++;
             istringstream stream(com);
             string command;
@@ -416,7 +416,7 @@ int main(int argc, char** argv){
     if(argc > 1){
         startQ = endQ = 0;
         for(int i=1; i<argc; i++){
-            queue[endQ%sizeQ] = argv[i];
+            inpQueue[endQ%sizeQ] = argv[i];
             endQ++;
         }
     }

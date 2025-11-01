@@ -421,7 +421,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int h
                 big totNodes = nodes;
                 clock_t end = clock();
                 double tcpu = double(end-start)/CLOCKS_PER_SEC;
-                printf("info depth %d seldepth %d score %s %s nodes %ld nps %d time %d pv %s\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
+                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
                 fflush(stdout);
             }
         }while(running);

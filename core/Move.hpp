@@ -6,7 +6,7 @@
 using namespace std;
 const int16_t clearTo = 0x3f;
 const int16_t clearFrom = 0x3f<<6;
-const int16_t clearPromot = 0xf << 12;
+const int16_t clearPromot = -4096; // 0xf << 12
 //Represents a move
 class Move{
 public :
