@@ -1,4 +1,5 @@
 #include "BestMoveFinder.hpp"
+#include "Const.hpp"
 #include "GameState.hpp"
 
 int compScoreMove(const void* a, const void*b){
@@ -120,8 +121,9 @@ int BestMoveFinder::quiescenceSearch(GameState& state, int alpha, int beta, int 
         if(staticEval+delta <= alpha)
             return alpha;
     }
+    const int rootDist = relDepth-startRelDepth;
     int bestEval = staticEval;
-    Order<maxCaptures> order;
+    Order<maxMoves>& order = orders[rootDist];
     bool inCheck;
     generator.initDangers(state);
     order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);

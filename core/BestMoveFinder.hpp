@@ -38,7 +38,7 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
     transpositionTable transposition;
     HelpOrdering history;
-    Order<maxMoves> orders[maxMoves];
+    Order<maxMoves> orders[maxDepth];
 public:
     std::atomic<bool> running;
     IncrementalEvaluator eval;
