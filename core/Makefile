@@ -1,6 +1,6 @@
 CC=g++
 ADDOPTION?=
-CFLAGS=-Wall -Wextra -std=gnu++17 -static $(ADDOPTION)
+CFLAGS=-Wall -Wextra -std=gnu++17 $(ADDOPTION)
 OPT=-O3
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
@@ -11,6 +11,7 @@ OBJECTS := $(SOURCES:%.cpp=%.o)
 DEPENDS := $(SOURCES:%.cpp=%.d)
 ifeq ($(OS), Windows_NT)
 	CC=clang++
+	CFLAGS := $(CFLAGS) -static
 else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
