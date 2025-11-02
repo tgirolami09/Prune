@@ -4,6 +4,7 @@
 *.out*
 *.exe
 *.o
+*.d
 *.txt
 build
 .vscode

@@ -1,26 +1,15 @@
 #include <sstream>
-#include <string>
-#include <cstring>
 #include <tuple>
-#include <chrono>
+#include <thread>
+#include <algorithm>
 // #include "util_magic.cpp"
 #include "Const.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
+#include <vector>
 #include "BestMoveFinder.hpp"
 #include <set>
-#include <cmath>
 #include <iostream>
-
-#ifdef _WIN32
-#include <conio.h>
-#else
-#include <fcntl.h>
-#include <unistd.h>
-#include <termios.h>
-#endif
-// big* table[128]; // [bishop, rook]
-// info constants[128];
 
 using namespace std;
 //Main class for the game
@@ -89,7 +78,7 @@ const int alloted_space=64*hashMul;
 BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
 const int sizeQ=128;
-string queue[sizeQ];
+string inpQueue[sizeQ];
 atomic<int> startQ = 0;
 atomic<int> endQ = 0;
 atomic<bool> stop_all=false;
@@ -107,7 +96,7 @@ void manageInput(){
             bestMoveFinder.running = false;
             stop_all = true;
         }else{
-            queue[endQ%sizeQ] = com;
+            inpQueue[endQ%sizeQ] = com;
             endQ++;
         }
         fflush(stdout);
@@ -185,7 +174,7 @@ void manageSearch(){
     state.root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     while(!stop_all){
         if(startQ != endQ){
-            string com=queue[startQ%sizeQ];
+            string com=inpQueue[startQ%sizeQ];
             startQ++;
             istringstream stream(com);
             string command;
@@ -269,9 +258,6 @@ void manageSearch(){
                 printf("version: %s\n", COMMIT);
 #else
                 printf("version: test\n");
-#endif
-#ifdef STOP_POSS
-                printf("stop possibility version\n");
 #endif
             }else if(command == "bench"){
                 int sumNodes[maxDepth+1];
@@ -380,10 +366,12 @@ void manageSearch(){
                 }
             }else if(command == "go"){
                 bestMoveResponse res=goCommand(parsed, state);
-                //if(get<1>(res).moveInfo == nullMove.moveInfo)
-                    printf("bestmove %s\n", get<0>(res).to_str().c_str());
-                //else
-                //    printf("bestmove %s ponder %s\n", get<0>(res).to_str().c_str(), get<1>(res).to_str().c_str());
+                Move bm = get<0>(res);
+                Move ponder=get<1>(res);
+                if(ponder.moveInfo == nullMove.moveInfo)
+                    printf("bestmove %s\n", bm.to_str().c_str());
+                else
+                    printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
             }else if(command == "uci"){
                 string v=VERSION;
                 if(v[0] == 'v')
@@ -427,7 +415,7 @@ int main(int argc, char** argv){
     if(argc > 1){
         startQ = endQ = 0;
         for(int i=1; i<argc; i++){
-            queue[endQ%sizeQ] = argv[i];
+            inpQueue[endQ%sizeQ] = argv[i];
             endQ++;
         }
     }

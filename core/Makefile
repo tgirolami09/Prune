@@ -5,8 +5,13 @@ OPT=-O3
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
+SOURCES := $(wildcard *.cpp)
+SOURCES := $(filter-out collectData.cpp,$(SOURCES))
+OBJECTS := $(SOURCES:%.cpp=%.o)
+DEPENDS := $(SOURCES:%.cpp=%.d)
 ifeq ($(OS), Windows_NT)
 	CC=clang++
+	CFLAGS := $(CFLAGS) -static
 else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
@@ -42,17 +47,24 @@ ifeq ($(OS), Windows_NT)
 	SHORTNAME := $(SHORTNAME).exe
 endif
 
-all:
-	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -o $(NAME) engine.cpp $(VERSIONNING)
+all: $(OBJECTS)
+	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^
 
-prune: engine.cpp
+prune: $(OBJECTS)
 	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)
 
 coreGen: collectData.cpp
 	$(CC) $(CFLAGS) $(OPT) $(ARCHCOM) $(OPT) -fopenmp -o $@ $^
 
-pruneDebug: engine.cpp
+$(OBJECTS) : %.o: %.cpp
+	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+
+pruneDebug: $(OBJECTS)
 	$(CC) -m64 $(ARCHCOM) $(CFLAGS) -g -o $@ $^ $(VERSIONNING)
 
 clean:
-	rm *.o
+	rm $(OBJECTS) $(DEPENDS)
+
+re:
+	$(MAKE) clean
+	$(MAKE) all
