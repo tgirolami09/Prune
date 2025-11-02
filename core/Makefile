@@ -1,7 +1,7 @@
 CC=g++
 ADDOPTION?=
 CFLAGS=-Wall -Wextra -std=gnu++17 -static $(ADDOPTION)
-OPT=-O3 -flto
+OPT=-O3
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
