@@ -1,6 +1,6 @@
 CC=g++
 ADDOPTION?=
-CFLAGS=-Wall -Wextra -std=gnu++17 $(ADDOPTION)
+CFLAGS=-Wall -Wextra -std=gnu++17 -static $(ADDOPTION)
 OPT=-O3 -flto
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
@@ -56,7 +56,7 @@ coreGen: collectData.cpp
 	$(CC) $(CFLAGS) $(OPT) $(ARCHCOM) $(OPT) -fopenmp -o $@ $^
 
 $(OBJECTS) : %.o: %.cpp
-	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -MMD -MP -c $(VERSIONNING) -o $@ $^
+	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
 pruneDebug: $(OBJECTS)
 	$(CC) -m64 $(ARCHCOM) $(CFLAGS) -g -o $@ $^ $(VERSIONNING)

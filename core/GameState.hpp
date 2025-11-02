@@ -1,9 +1,6 @@
 #ifndef GAMESATE_HPP
 #define GAMESATE_HPP
 #include "Move.hpp"
-#include <cctype>
-#include <string>
-#include <cstdlib>
 #include "Const.hpp"
 using namespace std;
 const int maxPly = 8848*2+2;

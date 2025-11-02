@@ -1,8 +1,5 @@
 #include "Functions.hpp"
 #include "Const.hpp"
-#include <cstdlib>
-#include <cstdio>
-#include <string>
 using namespace std;
 int col(const int& square){
     return square&7;

@@ -1,6 +1,5 @@
 #ifndef TRANSPOSITION_TABLE_HPP
 #define TRANSPOSITION_TABLE_HPP
-#include "Const.hpp"
 #include "GameState.hpp"
 #include <climits>
 #include <vector>

@@ -1,6 +1,5 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
-#include "Const.hpp"
 #include "TranspositionTable.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
@@ -8,10 +7,8 @@
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
 #include "loadpolyglot.hpp"
-#include <cmath>
 #include <chrono>
 #include <atomic>
-#include <ctime>
 #include <string>
 #include <vector>
 #define MoveScore pair<int, Move>

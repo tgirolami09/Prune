@@ -1,9 +1,7 @@
 #include <cstdint>
-#include <cstring>
 #include <unordered_map>
 #include "Move.hpp"
 #include "GameState.hpp"
-#include "polyglotHash.hpp"
 
 using namespace std;
 

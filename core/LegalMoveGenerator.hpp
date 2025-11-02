@@ -2,7 +2,6 @@
 #define LEGALMOVEGENERATOR_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
-#include <cstring>
 using namespace std;
 
 class constTable{

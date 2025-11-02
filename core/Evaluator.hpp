@@ -1,12 +1,8 @@
 #ifndef EVALUATOR_HPP
 #define EVALUATOR_HPP
-#include "Const.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "NNUE.hpp"
-#include <climits>
-#include <cstring>
-#include <cmath>
 //https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
 const int eg_value[6] = { 94, 281, 297, 512,  936,  0};

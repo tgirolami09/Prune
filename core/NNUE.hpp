@@ -1,10 +1,8 @@
 #ifndef NNUE_CPP
 #define NNUE_CPP
-#include <cstdint>
 #include "Const.hpp"
 #include <immintrin.h>  // For Intel intrinsics
 #include <fstream>
-#include <string>
 
 using namespace std;
 

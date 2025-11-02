@@ -3,9 +3,7 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
-#include <climits>
 #include <cstring>
-#include <cmath>
 
 const int* mg_pesto_table[6] =
 {

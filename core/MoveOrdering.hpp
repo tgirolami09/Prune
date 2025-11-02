@@ -3,7 +3,6 @@
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "Move.hpp"
-#include <cstring>
 //#define COUNTER
 
 class HelpOrdering{

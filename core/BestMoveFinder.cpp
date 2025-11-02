@@ -1,6 +1,8 @@
 #include "BestMoveFinder.hpp"
 #include "Const.hpp"
 #include "GameState.hpp"
+#include <cmath>
+#include <cstring>
 
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;

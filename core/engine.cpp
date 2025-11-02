@@ -1,6 +1,4 @@
 #include <sstream>
-#include <string>
-#include <cstring>
 #include <tuple>
 #include <thread>
 #include <algorithm>
@@ -11,7 +9,6 @@
 #include <vector>
 #include "BestMoveFinder.hpp"
 #include <set>
-#include <cmath>
 #include <iostream>
 
 using namespace std;

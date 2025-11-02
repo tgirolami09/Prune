@@ -1,8 +1,6 @@
 #ifndef FUNCTIONS_HPP
 #define FUNCTIONS_HPP
 #include "Const.hpp"
-#include <cstdlib>
-#include <cstdio>
 #include <string>
 using namespace std;
 int col(const int& square);

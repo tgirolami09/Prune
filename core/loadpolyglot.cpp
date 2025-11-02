@@ -1,9 +1,6 @@
 #include "loadpolyglot.hpp"
 #include <fstream>
 #include <vector>
-#include <cstdint>
-#include <iostream>
-#include <cstring>
 #include <algorithm>
 #include <unordered_map>
 #include "Move.hpp"
