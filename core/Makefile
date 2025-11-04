@@ -12,6 +12,7 @@ DEPENDS := $(SOURCES:%.cpp=%.d)
 ifeq ($(OS), Windows_NT)
 	CC=clang++
 	CFLAGS := $(CFLAGS) -static
+	OPT := $(OPT) -fuse-ld=lld
 else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
