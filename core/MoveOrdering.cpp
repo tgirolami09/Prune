@@ -67,17 +67,15 @@ int HelpOrdering::getMoveScore(Move move, bool c, int relDepth, Move lastMove) c
     return score+getHistoryScore(move, c);
 }
 
-template<int maxMoves>
-Order<maxMoves>::Order():dangerPositions(0){
+Order::Order():dangerPositions(0){
 }
-template<int maxMoves>
-void Order<maxMoves>::swap(int idMove1, int idMove2){
+void Order::swap(int idMove1, int idMove2){
     std::swap(moves[idMove1], moves[idMove2]);
     std::swap(scores[idMove1], scores[idMove2]);
     std::swap(flags[idMove1], flags[idMove2]);
 }
-template<int maxMoves>
-void Order<maxMoves>::init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE){
+
+void Order::init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE){
     nbPriority = 0;
     pointer = 0;
     for(int i=0; i<nbMoves; i++){
@@ -99,8 +97,8 @@ void Order<maxMoves>::init(bool c, int16_t moveInfoPriority, int16_t PVMove, con
         }
     }
 }
-template<int maxMoves>
-void Order<maxMoves>::reinit(int16_t priorityMove){
+
+void Order::reinit(int16_t priorityMove){
     nbPriority = 0;
     for(int i=0; i<nbMoves; i++){
         if(moves[i].moveInfo == priorityMove){
@@ -111,13 +109,12 @@ void Order<maxMoves>::reinit(int16_t priorityMove){
     }
     pointer = 0;
 }
-template<int maxMoves>
-inline bool Order<maxMoves>::compareMove(int idMove1, int idMove2){
+inline bool Order::compareMove(int idMove1, int idMove2){
     if(flags[idMove1] != flags[idMove2])return flags[idMove2] > flags[idMove1];
     return scores[idMove2] > scores[idMove1];
 }
-template<int maxMoves>
-Move Order<maxMoves>::pop_max(){
+
+Move Order::pop_max(){
     if(pointer < nbPriority){
         pointer++;
         return moves[pointer-1];
@@ -132,6 +129,3 @@ Move Order<maxMoves>::pop_max(){
         return moves[pointer-1];
     }
 }
-
-template class Order<maxMoves>;
-template class Order<maxCaptures>;

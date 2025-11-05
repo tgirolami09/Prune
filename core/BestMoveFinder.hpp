@@ -26,6 +26,11 @@ public:
     int16_t argMoves[maxDepth];
 };
 
+struct StackCase{
+    Order order;
+    int static_score;
+};
+
 string scoreToStr(int score);
 
 //Class to find the best in a situation
@@ -35,7 +40,7 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
     transpositionTable transposition;
     HelpOrdering history;
-    Order<maxMoves> orders[maxDepth];
+    StackCase stack[maxDepth];
 public:
     std::atomic<bool> running;
     IncrementalEvaluator eval;
