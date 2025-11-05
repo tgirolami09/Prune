@@ -1,7 +1,7 @@
 CC=g++
 ADDOPTION?=
 CFLAGS=-Wall -Wextra -std=gnu++17 $(ADDOPTION)
-OPT=-O3
+OPT=-O3 -flto
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
@@ -12,6 +12,7 @@ DEPENDS := $(SOURCES:%.cpp=%.d)
 ifeq ($(OS), Windows_NT)
 	CC=clang++
 	CFLAGS := $(CFLAGS) -static
+	OPT := $(OPT) -fuse-ld=lld
 else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
