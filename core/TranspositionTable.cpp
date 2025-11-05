@@ -1,11 +1,11 @@
 #include "TranspositionTable.hpp"
+#include "Const.hpp"
 
 transpositionTable::transpositionTable(size_t count){
-        count /= sizeof(infoScore);
-        byDepth = vector<infoScore>(count);
-        always  = vector<infoScore>(count);
-        modulo=count;
-    }
+    count /= sizeof(infoScore);
+    table = vector<infoScore>(count*2);
+    modulo=count;
+}
 
 inline int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry){
     if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
@@ -21,24 +21,18 @@ inline int transpositionTable::storedScore(int alpha, int beta, int depth, const
 
 int transpositionTable::get_eval(const GameState& state, int alpha, int beta, ubyte depth, int16_t& best){
     int index=state.zobristHash%modulo;
-    if(byDepth[index].hash == state.zobristHash){
-        int score = storedScore(alpha, beta, depth, byDepth[index]);
+    if(table[index].hash == state.zobristHash){
+        int score = storedScore(alpha, beta, depth, table[index]);
         if(score != INVALID)return score;
-        best = byDepth[index].bestMoveInfo; //probably a good move
-    }else if(always[index].hash == state.zobristHash){
-        int score = storedScore(alpha, beta, depth, always[index]);
-        if(score != INVALID)return score;
-        best = always[index].bestMoveInfo; //probably a good move
+        best = table[index].bestMoveInfo; //probably a good move
     }
     return INVALID;
 }
 
 int16_t transpositionTable::getMove(const GameState& state){
     int index=state.zobristHash%modulo;
-    if(byDepth[index].hash == state.zobristHash)
-        return byDepth[index].bestMoveInfo; //probably a good move
-    else if(always[index].hash == state.zobristHash)
-        return always[index].bestMoveInfo; //probably a good move
+    if(table[index].hash == state.zobristHash)
+        return table[index].bestMoveInfo; //probably a good move
     return nullMove.moveInfo;
 }
 
@@ -53,20 +47,15 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.typeNode = typeNode;
     int index = info.hash%modulo;
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
-    if(info.depth >= byDepth[index].depth)
-        byDepth[index] = info;
-    else
-        always[index] = info;
+    if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND)))
+        table[index] = info;
 }
 void transpositionTable::clear(){
-    byDepth = vector<infoScore>(modulo);
-    always = vector<infoScore>(modulo);
+    table = vector<infoScore>(modulo);
 }
 void transpositionTable::reinit(int count){
     count /= sizeof(infoScore);
-    count /= 2;
-    byDepth.resize(count);
-    always.resize(count);
+    table.resize(count);
     modulo = count;
     place = 0;
     rewrite = 0;
