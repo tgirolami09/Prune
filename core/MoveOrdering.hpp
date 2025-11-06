@@ -25,7 +25,6 @@ public:
     int getMoveScore(Move move, bool c, int relDepth, Move lastMove) const;
 };
 
-template<int maxMoves>
 class Order{
 public:
     Move moves[maxMoves];

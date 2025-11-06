@@ -106,7 +106,9 @@ int BestMoveFinder::quiescenceSearch(GameState& state, int alpha, int beta, int 
         if(lastEval != INVALID)
             return lastEval;
     }
-    int staticEval = eval.getScore(state.friendlyColor());
+    const int rootDist = relDepth-startRelDepth;
+    int& staticEval = stack[rootDist].static_score;
+    staticEval = eval.getScore(state.friendlyColor());
     if(staticEval >= beta){
         transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
         return staticEval;
@@ -123,9 +125,8 @@ int BestMoveFinder::quiescenceSearch(GameState& state, int alpha, int beta, int 
         if(staticEval+delta <= alpha)
             return alpha;
     }
-    const int rootDist = relDepth-startRelDepth;
     int bestEval = staticEval;
-    Order<maxMoves>& order = orders[rootDist];
+    Order& order = stack[rootDist].order;
     bool inCheck;
     generator.initDangers(state);
     order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
@@ -178,7 +179,8 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
         if constexpr (nodeType == PVNode)beginLine(rootDist);
         return 0;
     }
-    int static_eval = eval.getScore(state.friendlyColor());
+    int& static_eval = stack[rootDist].static_score;
+    static_eval = eval.getScore(state.friendlyColor());
     if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
         if constexpr(nodeType == PVNode)beginLine(rootDist);
         return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
@@ -193,12 +195,19 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
         lastBest = transposition.getMove(state);
     }
     ubyte typeNode = UPPERBOUND;
-    Order<maxMoves>& order = orders[rootDist];
+    Order& order = stack[rootDist].order;
     bool inCheck=generator.isCheck();
+    bool improving = false;
+    if(rootDist > 2)
+        improving = stack[rootDist-2].static_score < static_eval;
     if constexpr(nodeType != PVNode){
         if(!inCheck){
             if(beta > MINIMUM+maxDepth){
-                int margin = 150*depth;
+                int margin;
+                if(improving)
+                    margin = 120*depth;
+                else
+                    margin = 150*depth;
                 if(static_eval >= beta+margin)
                     return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
             }
@@ -332,7 +341,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int h
     bool moveInTable = false;
     Move bookMove = findPolyglot(state,moveInTable,book);
     bool inCheck;
-    Order<maxMoves> order;
+    Order order;
     generator.initDangers(state);
     order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
     //Return early because a move was found in a book
