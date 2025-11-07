@@ -126,16 +126,21 @@ const Option Options[] = {
     Option("nnueFile", "string", "embed")
 };
 
-pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color){
+pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
     int time = color == WHITE?wtime:btime;
     int inc = color == WHITE?winc:binc;
-    int hardBound = time/20+inc/2-moveOverhead;
+    int hardBound;
+    if(worthMoreTime)
+        hardBound = time/10+inc/2-moveOverhead;
+    else
+        hardBound = time/20+inc/2-moveOverhead;
+    hardBound = min(hardBound, time-moveOverhead);
     int softBound = hardBound/2;
     //maxTime = min(maxTime, time/10);
     return {softBound, hardBound};
 }
 
-bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool verbose=true){
+bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool verbose=true, bool worthMoreTime=false){
     if(!args.empty()){
         if(args[0].first == "perft"){
             printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state->root, stoi(args[0].second)));
@@ -153,7 +158,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
                     winc = stoi(arg.second);
             }
             bool color = state->root.friendlyColor()^(state->movesFromRoot.size()&1);
-            auto [softBound, hardBound] = computeAllotedTime(wtime, btime, binc, winc, color);
+            auto [softBound, hardBound] = computeAllotedTime(wtime, btime, binc, winc, color, worthMoreTime);
             return bestMoveFinder.bestMove<0>(state->root, softBound, hardBound, state->movesFromRoot);
         }else if(args.size() && args[0].first == "movetime"){
             int movetime = stoi(args[0].second);
@@ -172,6 +177,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
 void manageSearch(){
     Chess* state = new Chess;
     state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Move lastMove = nullMove;
     while(!stop_all){
         if(startQ != endQ){
             string com=inpQueue[startQ%sizeQ];
@@ -253,6 +259,7 @@ void manageSearch(){
                 printf("static evaluation: %d cp\n", overall_eval);
             }else if(command == "ucinewgame"){
                 bestMoveFinder.clear();
+                lastMove = nullMove;
             }else if(command == "version"){
 #ifdef COMMIT
                 printf("version: %s\n", COMMIT);
@@ -365,13 +372,17 @@ void manageSearch(){
                     }
                 }
             }else if(command == "go"){
-                bestMoveResponse res=goCommand(parsed, state);
+                bool worthMoreTime = false;
+                if(state->movesFromRoot.size() && !(lastMove == nullMove))
+                    worthMoreTime = !(lastMove == state->movesFromRoot.back());
+                bestMoveResponse res=goCommand(parsed, state, true, worthMoreTime);
                 Move bm = get<0>(res);
                 Move ponder=get<1>(res);
                 if(ponder.moveInfo == nullMove.moveInfo)
                     printf("bestmove %s\n", bm.to_str().c_str());
                 else
                     printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
+                lastMove = ponder;
             }else if(command == "uci"){
                 string v=VERSION;
                 if(v[0] == 'v')
