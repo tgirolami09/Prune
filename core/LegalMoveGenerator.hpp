@@ -64,15 +64,15 @@ class LegalMoveGenerator{
     big pseudoLegalRookMoves(int rookPosition, big allPieces);
     big pseudoLegalQueenMoves(int queenPositions, big allPieces);
     big pseudoLegalKnightMoves(int knightPosition);
-    big pseudoLegalPawnMoves(int pawnPosition, bool color, big& allPieces, int friendKingPos, big moveMask = -1, big captureMask = -1, big enemyPieces = -1, int enPassant = -1, big enemyRooks = 0);
-    big pseudoLegalKingMoves(int kingPosition,const big& allPieces, bool color, bool kingCastling, bool queenCastling, big& dangerSquares);
-    int dealWithEnemyPawns(big enemyPawnPositions, int friendKingPos, int enemyColor ,big& allDangerSquares);
-    int dealWithEnemyKnights(big enemyKnightPositions, int friendKingPos, big& allDangerSquares);
-    int dealWithEnemyBishops(big enemyBishopPositions, big& allPieces, int friendKingPos, big& allDangerSquares);
-    int dealWithEnemyRooks(big enemyRookPositions, big& allPieces, int friendKingPos, big& allDangerSquares);
-    void dealWithEnemyKing(int enemyKingPos, big& allDangerSquares);
-    void legalKingMoves(const GameState& state, Move* moves, int& nbMoves, big friendlyPieces, big allPieces, big dangerSquares, big captureMask = -1);
-    void legalPawnMoves(big pawnMask, bool friendlyColor, int lastDoublePawnPush, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves, big allPieces, big allEnemies, big enemyRooks, bool promotQueen=false);
+    big pseudoLegalPawnMoves(int pawnPosition, bool color, big allPieces, int friendKingPos, big moveMask = -1, big captureMask = -1, big enemyPieces = -1, int enPassant = -1, big enemyRooks = 0);
+    big pseudoLegalKingMoves(int kingPosition,const big Pieces, bool color, bool kingCastling, bool queenCastling);
+    int dealWithEnemyPawns(big enemyPawnPositions, int friendKingPos, int enemyColor);
+    int dealWithEnemyKnights(big enemyKnightPositions, int friendKingPos);
+    int dealWithEnemyBishops(big enemyBishopPositions, big Pieces, int friendKingPos);
+    int dealWithEnemyRooks(big enemyRookPositions, big allPieces, int friendKingPos);
+    void dealWithEnemyKing(int enemyKingPos);
+    void legalKingMoves(const GameState& state, Move* moves, int& nbMoves, big allPieces, big captureMask = -1);
+    void legalPawnMoves(big pawnMask, bool friendlyColor, int lastDoublePawnPush, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves, big allPieces, big enemyRooks, bool promotQueen=false);
     void legalKnightMoves(big knightMask, big moveMask, big captureMask, Move* knightMoves, int& nbMoves);
     void legalSlidingMoves(big moveMask, big captureMask, Move* slidingMoves, int& nbMoves, big allPieces);
 

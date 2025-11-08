@@ -47,7 +47,7 @@ public:
     IncrementalEvaluator eval;
     BestMoveFinder(int memory, bool mute=false);
 
-    int hardBound;
+    sbig hardBound;
     using timeMesure=chrono::high_resolution_clock;
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
@@ -57,7 +57,7 @@ private:
     chrono::nanoseconds getElapsedTime();
 
     LegalMoveGenerator generator;
-    int nodes;
+    sbig nodes;
     int nbCutoff;
     int nbFirstCutoff;
     int seldepth;

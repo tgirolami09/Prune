@@ -1,3 +1,5 @@
+#ifndef LOADPOLYGLOT_HPP
+#define LOADPOLYGLOT_HPP
 #include <cstdint>
 #include <unordered_map>
 #include "Move.hpp"
@@ -29,3 +31,4 @@ struct PolyglotEntry {
 
 unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mute);
 Move findPolyglot(const GameState& state, bool& inTable, unordered_map<uint64_t,PolyglotEntry>& book);
+#endif

@@ -7,6 +7,7 @@
 #define big uint64_t
 #define ubyte uint8_t
 #define dbyte int16_t
+#define sbig int64_t
 using namespace std;
 const big MAX_BIG=~0ULL;
 const int WHITE=0;

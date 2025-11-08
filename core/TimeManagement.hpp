@@ -4,11 +4,11 @@
 
 class TM{
 public:
-    int softBound, hardBound, originLowerBound;
+    sbig softBound, hardBound, originLowerBound;
     bool enableUpdate;
-    TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime);
+    TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color);
     TM(int softBound, int hardBound);
-    int updateSoft(big bestMoveNodes, big totalNodes);
+    sbig updateSoft(sbig bestMoveNodes, sbig totalNodes);
 };
 
 #endif

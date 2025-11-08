@@ -252,9 +252,9 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
     int bestScore = -INF;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         Move curMove = order.pop_max();
-        big startNodes = nodes;
+        sbig startNodes = nodes;
         if(isRoot && verbose && getElapsedTime() >= chrono::milliseconds{10000}){
-            printf("info depth %d currmove %s currmovenumber %d nodes %d\n", depth+1, curMove.to_str().c_str(), rankMove+1, nodes);
+            printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 "\n", depth+1, curMove.to_str().c_str(), rankMove+1, nodes);
             fflush(stdout);
         }
         int score;
@@ -329,8 +329,8 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
 }
 
 template <int limitWay>
-bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose, bool mateHardBound){
-    this->verbose = verbose;
+bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool _verbose, bool mateHardBound){
+    this->verbose = _verbose;
     startSearch = timeMesure::now();
     hardBoundTime = chrono::milliseconds{tm.hardBound};
     chrono::milliseconds softBoundTime{tm.softBound};
@@ -394,7 +394,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     nodes = 0;
     nbCutoff = nbFirstCutoff = 0;
     clock_t start=clock();
-    big lastNodes = 1;
+    sbig lastNodes = 1;
     int lastScore = eval.getScore(state.friendlyColor());
     order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, history, 0, state, generator);
     int instability1side = 0;
@@ -411,7 +411,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         int bestScore;
         Move finalBestMove=bestMove;
         int countUp = 0, countDown=0;
-        big lastUsedNodes = 0;
+        sbig lastUsedNodes = 0;
         do{
             int alpha = lastScore-deltaDown;
             int beta = lastScore+deltaUp;
@@ -439,7 +439,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
                 break;
             }
             if(verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
-                big totNodes = nodes;
+                sbig totNodes = nodes;
                 clock_t end = clock();
                 double tcpu = double(end-start)/CLOCKS_PER_SEC;
                 printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth+1, seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
@@ -454,8 +454,8 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         transferLastPV();
         clock_t end = clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
-        big totNodes = nodes;
-        big usedNodes = totNodes-startNodes;
+        sbig totNodes = nodes;
+        sbig usedNodes = totNodes-startNodes;
         string PV;
         PV = PVprint(PVlines[0]);
         if(PVlines[0].cmove > 1)
@@ -491,7 +491,7 @@ int BestMoveFinder::testQuiescenceSearch(GameState& state){
     int score = quiescenceSearch<false, true>(state, -INF, INF, 0);
     clock_t end = clock();
     double tcpu = double(end-start)/CLOCKS_PER_SEC;
-    printf("speed: %d; Qnodes:%d score %s\n\n", (int)(nodes/tcpu), nodes, scoreToStr(score).c_str());
+    printf("speed: %d; Qnodes:%" PRId64 " score %s\n\n", (int)(nodes/tcpu), nodes, scoreToStr(score).c_str());
     return 0;
 }
 

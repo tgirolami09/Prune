@@ -141,7 +141,7 @@ pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool
     return {softBound, hardBound};
 }
 
-bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool verbose=true, bool worthMoreTime=false){
+bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool verbose=true){
     if(!args.empty()){
         if(args[0].first == "perft"){
             printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state->root, stoi(args[0].second)));
@@ -159,7 +159,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
                     winc = stoi(arg.second);
             }
             bool color = state->root.friendlyColor()^(state->movesFromRoot.size()&1);
-            TM tm(moveOverhead, wtime, btime, binc, winc, color, worthMoreTime);
+            TM tm(moveOverhead, wtime, btime, binc, winc, color);
             return bestMoveFinder.bestMove<0>(state->root, tm, state->movesFromRoot);
         }else if(args.size() && args[0].first == "movetime"){
             int movetime = stoi(args[0].second);
@@ -373,10 +373,7 @@ void manageSearch(){
                     }
                 }
             }else if(command == "go"){
-                bool worthMoreTime = false;
-                if(state->movesFromRoot.size() && !(lastMove == nullMove))
-                    worthMoreTime = !(lastMove == state->movesFromRoot.back());
-                bestMoveResponse res=goCommand(parsed, state, true, worthMoreTime);
+                bestMoveResponse res=goCommand(parsed, state, true);
                 Move bm = get<0>(res);
                 Move ponder=get<1>(res);
                 if(ponder.moveInfo == nullMove.moveInfo)
@@ -385,7 +382,11 @@ void manageSearch(){
                     printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
                 lastMove = ponder;
             }else if(command == "uci"){
+#ifdef VERSION
                 string v=VERSION;
+#else
+                string v="test";
+#endif
                 if(v[0] == 'v')
                     v = v.substr(1, v.size()-1);
                 printf("id name Prune %s\nid author tgirolami09 & jbienvenue\n", v.c_str());
