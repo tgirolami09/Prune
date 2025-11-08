@@ -8,6 +8,7 @@
 #include "GameState.hpp"
 #include <vector>
 #include "BestMoveFinder.hpp"
+#include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
 
@@ -158,20 +159,20 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
                     winc = stoi(arg.second);
             }
             bool color = state->root.friendlyColor()^(state->movesFromRoot.size()&1);
-            auto [softBound, hardBound] = computeAllotedTime(wtime, btime, binc, winc, color, worthMoreTime);
-            return bestMoveFinder.bestMove<0>(state->root, softBound, hardBound, state->movesFromRoot);
+            TM tm(moveOverhead, wtime, btime, binc, winc, color, worthMoreTime);
+            return bestMoveFinder.bestMove<0>(state->root, tm, state->movesFromRoot);
         }else if(args.size() && args[0].first == "movetime"){
             int movetime = stoi(args[0].second);
-            return bestMoveFinder.bestMove<0>(state->root, movetime, movetime, state->movesFromRoot, verbose);
+            return bestMoveFinder.bestMove<0>(state->root, TM(movetime, movetime), state->movesFromRoot, verbose);
         }else if(args.size() && args[0].first == "nodes"){
             int nodes = stoi(args[0].second);
-            return bestMoveFinder.bestMove<1>(state->root, nodes, nodes, state->movesFromRoot, verbose);
+            return bestMoveFinder.bestMove<1>(state->root, TM(nodes, nodes), state->movesFromRoot, verbose);
         }else if(args.size() && args[0].first == "depth"){
             int depth = stoi(args[0].second);
-            return bestMoveFinder.bestMove<2>(state->root, depth, depth, state->movesFromRoot, verbose);
+            return bestMoveFinder.bestMove<2>(state->root, TM(depth, depth), state->movesFromRoot, verbose);
         }
     }
-    return bestMoveFinder.bestMove<2>(state->root, 200, 200, state->movesFromRoot, verbose);
+    return bestMoveFinder.bestMove<2>(state->root, TM(200, 200), state->movesFromRoot, verbose);
 }
 
 void manageSearch(){

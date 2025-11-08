@@ -1,6 +1,7 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
 #include "TranspositionTable.hpp"
+#include "TimeManagement.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include "Evaluator.hpp"
@@ -60,6 +61,7 @@ private:
     int nbCutoff;
     int nbFirstCutoff;
     int seldepth;
+    int bestMoveNodes;
     template<int limitWay, bool isPV>
     int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
@@ -84,7 +86,7 @@ private:
     int negamax(const int depth, GameState& state, int alpha, const int beta, const int lastChange, const int relDepth);
 public:
     template <int limitWay=0>
-    bestMoveResponse bestMove(GameState& state, int softBound, int hardBound, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
+    bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);

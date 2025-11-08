@@ -1,6 +1,7 @@
 #include "BestMoveFinder.hpp"
 #include "Const.hpp"
 #include "GameState.hpp"
+#include <chrono>
 #include <cmath>
 #include <cstring>
 
@@ -251,6 +252,7 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
     int bestScore = -INF;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         Move curMove = order.pop_max();
+        big startNodes = nodes;
         if(isRoot && verbose && getElapsedTime() >= chrono::milliseconds{10000}){
             printf("info depth %d currmove %s currmovenumber %d nodes %d\n", depth+1, curMove.to_str().c_str(), rankMove+1, nodes);
             fflush(stdout);
@@ -304,7 +306,10 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
             return score;
         }
         if(score > alpha){
-            if(isRoot)rootBestMove = curMove;
+            if(isRoot){
+                rootBestMove = curMove;
+                bestMoveNodes = nodes-startNodes;
+            }
             alpha = score;
             typeNode=EXACT;
             bestMove = curMove;
@@ -324,11 +329,11 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
 }
 
 template <int limitWay>
-bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int hardBound, vector<Move> movesFromRoot, bool verbose, bool mateHardBound){
+bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose, bool mateHardBound){
     this->verbose = verbose;
     startSearch = timeMesure::now();
-    hardBoundTime = chrono::milliseconds{hardBound};
-    chrono::milliseconds softBoundTime{softBound};
+    hardBoundTime = chrono::milliseconds{tm.hardBound};
+    chrono::milliseconds softBoundTime{tm.softBound};
     vector<depthInfo> allInfos;
     int actDepth=0;
     int lastChange = 0;
@@ -372,11 +377,11 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int h
     running = true;
     int depthMax = maxDepth;
     if(limitWay == 0){
-        this->hardBound = hardBound;
+        this->hardBound = tm.hardBound;
     }else if(limitWay == 1){
-        this->hardBound = hardBound; //hard bound
+        this->hardBound = tm.hardBound; //hard bound
     }else{
-        depthMax = hardBound;
+        depthMax = tm.hardBound;
     }
     if(order.nbMoves == 1){
         running = false;
@@ -406,15 +411,18 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int h
         int bestScore;
         Move finalBestMove=bestMove;
         int countUp = 0, countDown=0;
+        big lastUsedNodes = 0;
         do{
             int alpha = lastScore-deltaDown;
             int beta = lastScore+deltaUp;
             rootBestMove = nullMove;
             generator.initDangers(state);
+            lastUsedNodes = nodes;
             if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
                 bestScore = negamax<PVNode, limitWay, true , true>(depth, state, alpha, beta, lastChange, actDepth);
             else
                 bestScore = negamax<PVNode, limitWay, false, true>(depth, state, alpha, beta, lastChange, actDepth);
+            lastUsedNodes = nodes-lastUsedNodes;
             bestMove = bestScore != -INF ? rootBestMove : finalBestMove;
             string limit;
             if(bestScore <= alpha){
@@ -461,11 +469,12 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int h
         if(running)
             allInfos.push_back({nodes, (int)(tcpu*1000), (int)(speed), depth+1, seldepth-startRelDepth, bestScore});
         if(abs(bestScore) > MAXIMUM-maxDepth && mateHardBound){
-            softBound = hardBound;
+            tm.softBound = hardBound;
             softBoundTime = hardBoundTime;
         }
+        softBoundTime = chrono::milliseconds{tm.updateSoft(bestMoveNodes, lastUsedNodes)};
         lastNodes = usedNodes;
-        if(limitWay == 1 && nodes > softBound)break;
+        if(limitWay == 1 && nodes > tm.softBound)break;
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
     }
     for(unsigned long i=0; i<movesFromRoot.size(); i++)
@@ -473,9 +482,9 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, int softBound, int h
     return make_tuple(bestMove, ponderMove, lastScore, allInfos);
 }
 
-template bestMoveResponse BestMoveFinder::bestMove<0>(GameState&, int, int, vector<Move>, bool, bool);
-template bestMoveResponse BestMoveFinder::bestMove<1>(GameState&, int, int, vector<Move>, bool, bool);
-template bestMoveResponse BestMoveFinder::bestMove<2>(GameState&, int, int, vector<Move>, bool, bool);
+template bestMoveResponse BestMoveFinder::bestMove<0>(GameState&, TM, vector<Move>, bool, bool);
+template bestMoveResponse BestMoveFinder::bestMove<1>(GameState&, TM, vector<Move>, bool, bool);
+template bestMoveResponse BestMoveFinder::bestMove<2>(GameState&, TM, vector<Move>, bool, bool);
 int BestMoveFinder::testQuiescenceSearch(GameState& state){
     nodes = 0;
     clock_t start=clock();
