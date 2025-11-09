@@ -1,6 +1,7 @@
 #include "BestMoveFinder.hpp"
 #include "Const.hpp"
 #include "GameState.hpp"
+#include "Move.hpp"
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -412,6 +413,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         Move finalBestMove=bestMove;
         int countUp = 0, countDown=0;
         sbig lastUsedNodes = 0;
+        string PV;
         do{
             int alpha = lastScore-deltaDown;
             int beta = lastScore+deltaUp;
@@ -433,9 +435,13 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
                 deltaUp = max(deltaUp*2, bestScore-lastScore+1);
                 finalBestMove = bestMove;
                 limit = "lowerbound";
+                ponderMove = nullMove;
                 countUp++;
             }else{
                 finalBestMove = bestMove;
+                PV = PVprint(PVlines[0]);
+                if(PVlines[0].cmove > 1)ponderMove.moveInfo = PVlines[0].argMoves[1];
+                else ponderMove = nullMove;
                 break;
             }
             if(verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
@@ -456,10 +462,6 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
         sbig totNodes = nodes;
         sbig usedNodes = totNodes-startNodes;
-        string PV;
-        PV = PVprint(PVlines[0]);
-        if(PVlines[0].cmove > 1)
-            ponderMove.moveInfo = PVlines[0].argMoves[1];
         double speed=0;
         if(tcpu != 0)speed = totNodes/tcpu;
         if(verbose && bestScore != -INF){
