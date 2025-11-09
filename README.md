@@ -1,11 +1,12 @@
 # Prune, a chess engine made by joachim and thomas
+<center><img src="forest4.jpeg" alt="drawing" width="300"/></center>
 
 this is a hobby project made by two passionate about informatic.
 
 currently, the engine includes:
 - Evaluation:
-    1. nnue
-    2. trained on self-gen data
+    - nnue
+    - trained on self-gen data with own trainer
 - Search:
     - iterative Deepening
     - quiescence search
@@ -37,7 +38,7 @@ currently, the engine includes:
 
 to compile, just run 
 
-```
+```bash
 make prune
 ```
 
