@@ -91,10 +91,13 @@ int mysum(simdint x){
     return _mm_cvtsi128_si32(sum32);
 #else
     // Sum all 8 int32 values from two SSE registers
-    __m128i sum = x;  // Add the two halves
-    sum = _mm_hadd_epi32(sum, sum);
-    sum = _mm_hadd_epi32(sum, sum);
-    return _mm_extract_epi32(sum, 0);
+    const auto high64 = _mm_unpackhi_epi64(x, x);
+    const auto sum64 = _mm_add_epi32(x, high64);
+
+    const auto high32 = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));
+    const auto sum32 = _mm_add_epi32(sum64, high32);
+
+    return _mm_cvtsi128_si32(sum32);
 #endif
 }
 
