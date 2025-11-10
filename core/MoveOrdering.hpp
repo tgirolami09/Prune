@@ -1,5 +1,6 @@
 #ifndef MOVEORDERING_HPP
 #define MOVEORDERING_HPP
+#include "Const.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "Move.hpp"
@@ -18,6 +19,8 @@ public:
     void addKiller(Move move, int depth, int relDepth, bool c, Move lastMove);
     bool isKiller(Move move, int relDepth) const;
     int getHistoryScore(Move move, bool c) const;
+    void updateHistory(Move move, bool c, int bonus);
+    void negUpdate(Move[maxMoves], int upto, bool c, int depth);
 #ifdef COUNTER
     bool isCounter(Move move, Move lastMove) const;
 #endif

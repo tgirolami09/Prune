@@ -21,22 +21,25 @@ void HelpOrdering::init(){
         counterMove[f] = nullMove.moveInfo;
 #endif
 }
+void HelpOrdering::updateHistory(Move move, bool c, int bonus){
+    bonus = min(max(bonus, -maxHistory), maxHistory);
+    getIndex(move, c) += bonus - getIndex(move, c)*abs(bonus)/maxHistory;
+}
+
+void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth){
+    for(int i=0; i<upto; i++){
+        if(!moves[i].isTactical())
+            updateHistory(moves[i], c, -depth*3);
+    }
+}
+
 void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c, Move lastMove){
     if(move.capture == -2){
         if(!fastEq(move, killers[relDepth][0])){
             killers[relDepth][1] = killers[relDepth][0];
             killers[relDepth][0] = move;
         }
-        getIndex(move, c) += depth*depth;
-        if(getIndex(move, c) > maxHistory){
-            for(int a=0; a<2; a++){
-                for(int from=0; from<64; from++){
-                    for(int to=0; to<64; to++){
-                        history[a][from][to] /= 2;
-                    }
-                }
-            }
-        }
+        updateHistory(move, c, depth*depth);
 #ifdef COUNTER
         counterMove[lastMove.getMovePart()] = move.moveInfo;
 #endif
