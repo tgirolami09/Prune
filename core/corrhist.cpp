@@ -4,10 +4,12 @@
 #include <cstring>
 #include <cassert>
 
+#ifdef DEBUG
 int sum_diffs = 0;
 int nb_diffs = 0;
 int max_diff = 0;
 int min_diff = 0;
+#endif
 
 template<int size, int maxCorrHist>
 void corrhist<size, maxCorrHist>::reset(){
@@ -39,10 +41,12 @@ void corrhists::update(const GameState& state, int diff, int depth){
 
 int corrhists::probe(const GameState& state) const{
     int diff = pawns.probe(state.pawnZobrist, state.friendlyColor())/corrhistGrain;
-    /*if(diff > max_diff)max_diff = diff;
+#ifdef DEBUG
+    if(diff > max_diff)max_diff = diff;
     else if(diff < min_diff)min_diff = diff;
     sum_diffs += diff;
-    nb_diffs++;*/
+    nb_diffs++;
+#endif
     return diff;
 }
 

@@ -336,7 +336,9 @@ void manageSearch(){
                     }
                 }
                 printf("search score: (%.0f %.0f) (%.0f %.0f)\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
+#ifdef DEBUG
                 printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
+#endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
                 printf("arch: AVX512\n");

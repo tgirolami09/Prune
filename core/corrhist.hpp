@@ -2,10 +2,12 @@
 #define CORR_HIST_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
+#ifdef DEBUG
 extern int max_diff;
 extern int min_diff;
 extern int nb_diffs;
 extern int sum_diffs;
+#endif
 const int corrhistGrain=64;
 template<int size, int maxCorrHist>
 class corrhist{
