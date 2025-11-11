@@ -2,6 +2,7 @@
 #include "Const.hpp"
 #include "Functions.hpp"
 #include <random>
+#include <cassert>
 using namespace std;
 
 
@@ -18,6 +19,19 @@ inline void GameState::updateZobrists(int piece, bool color, int square){
     zobristHash ^= zobr;
     if(piece == PAWN)
         pawnZobrist ^= zobr;
+}
+
+void GameState::testPawnZobr(){
+    big _pawn = 0;
+    for(int c=0; c<2; c++){
+        for(int i=0; i<64; i++){
+            big mask = 1ULL << i;
+            if(boardRepresentation[c][PAWN]&mask){
+                _pawn ^= zobrist[(c*6+PAWN)*64+i];
+            }
+        }
+    }
+    assert(_pawn == pawnZobrist);
 }
 
 void GameState::fromFen(string fen){

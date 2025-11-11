@@ -305,8 +305,11 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
             if(isRoot)rootBestMove=curMove;
             if(rankMove == 0)nbFirstCutoff++;
             history.addKiller(curMove, depth, relDepth, state.friendlyColor(), state.getLastMove());
-            if(!curMove.isTactical())
+            if(!curMove.isTactical()){
                 history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
+                if(score > static_eval && !inCheck)
+                    correctionHistory.update(state, score-static_eval, depth);
+            }
             return score;
         }
         if(score > alpha){
@@ -329,7 +332,8 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
     if(!isRoot || typeNode != UPPERBOUND){
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth);
     }
-    if(!inCheck && (!bestMove.isTactical() && !(bestMove == nullMove)) && abs(bestScore) < MAXIMUM-maxDepth){
+    if(!inCheck && (!bestMove.isTactical()) && abs(bestScore) < MAXIMUM-maxDepth &&
+        (typeNode != UPPERBOUND || bestScore < static_eval)){
         correctionHistory.update(state, bestScore-static_eval, depth);
     }
     return bestScore;

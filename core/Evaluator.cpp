@@ -135,8 +135,7 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
     int raw_eval = nnue.eval(c);
-    raw_eval += ch.probe(state);
-    return raw_eval;
+    return raw_eval+ch.probe(state);
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
     playMove<-1>(move, c);

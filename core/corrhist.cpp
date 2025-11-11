@@ -1,4 +1,5 @@
 #include "corrhist.hpp"
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
@@ -24,22 +25,24 @@ corrhist<size, maxCorrHist>::corrhist(){
 }
 
 template<int size, int maxCorrHist>
-void corrhist<size, maxCorrHist>::update(big key, bool c, int diff){
-    diff = min(max(diff, -maxCorrHist), maxCorrHist);
-    table[c][key%size] += diff - table[c][key%size]*abs(diff)/maxCorrHist;
+void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int weight){
+    int& cur = table[c][key%size];
+    cur = ((256-weight)*cur+diff*weight)/256;
+    cur = clamp(cur, -maxCorrHist, maxCorrHist);
 }
 
 void corrhists::update(const GameState& state, int diff, int depth){
     int bonus = diff*corrhistGrain;
-    pawns.update(state.pawnZobrist, state.friendlyColor(), bonus);
+    int weight = max(depth+1, 16);
+    pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, weight);
 }
 
 int corrhists::probe(const GameState& state) const{
     int diff = pawns.probe(state.pawnZobrist, state.friendlyColor())/corrhistGrain;
-    if(diff > max_diff)max_diff = diff;
+    /*if(diff > max_diff)max_diff = diff;
     else if(diff < min_diff)min_diff = diff;
     sum_diffs += diff;
-    nb_diffs++;
+    nb_diffs++;*/
     return diff;
 }
 

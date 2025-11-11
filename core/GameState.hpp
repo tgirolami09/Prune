@@ -26,6 +26,7 @@ class GameState{
     short deathRook[2][2];
     int startEnPassant;
     void updateZobrists(int piece, bool color, int square);
+    void testPawnZobr();
 public : 
     big zobristHash;
     big pawnZobrist;

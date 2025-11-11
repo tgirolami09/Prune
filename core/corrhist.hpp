@@ -13,12 +13,12 @@ public:
     corrhist();
     int table[2][size];
     void reset();
-    void update(big, bool, int);
+    void update(big, bool, int, int);
     int probe(big, bool) const;
 };
 
 class corrhists{
-    corrhist<16384, 512*corrhistGrain> pawns;
+    corrhist<16384, 64*corrhistGrain> pawns;
 public:
     corrhists();
     void update(const GameState&, int, int);
