@@ -25,8 +25,10 @@ class GameState{
     short posRook[2][2];
     short deathRook[2][2];
     int startEnPassant;
+    void updateZobrists(int piece, bool color, int square);
 public : 
     big zobristHash;
+    big pawnZobrist;
     big boardRepresentation[2][6];
     //End of last double pawn push, (-1) if last move was not a double pawn push
     int lastDoublePawnPush;

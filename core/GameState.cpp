@@ -13,8 +13,16 @@ GameState::GameState(){
     }
 }
 
+inline void GameState::updateZobrists(int piece, bool color, int square){
+    big zobr = zobrist[(color*6+piece)*64+square];
+    zobristHash ^= zobr;
+    if(piece == PAWN)
+        pawnZobrist ^= zobr;
+}
+
 void GameState::fromFen(string fen){
     zobristHash=0;
+    pawnZobrist = 0;
     for(int c=0; c<2; c++)
         for(int p=0; p<6; p++)
             boardRepresentation[c][p] = 0;
@@ -30,7 +38,7 @@ void GameState::fromFen(string fen){
             else
                 color_p = BLACK;
             boardRepresentation[color_p][piece] |= 1ULL << dec;
-            zobristHash ^= zobrist[(color_p*6+piece)*64+dec];
+            updateZobrists(piece, color_p, dec);
             dec--;
         }else if(isdigit(c)){
             dec -= c-'0';
@@ -265,16 +273,15 @@ int GameState::playMove(Move move){
     if(lastDoublePawnPush != -1)
         zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
     const bool curColor=friendlyColor();
-    const int add=(curColor*6+(int)move.piece)*64;
     if(move.promotion() == -1){
-        zobristHash ^= zobrist[add+move.to()];
+        updateZobrists(move.piece, curColor, move.to());
         boardRepresentation[curColor][move.piece] ^= (1ULL << move.to());
     }else{
         boardRepresentation[curColor][move.promotion()] ^= (1ULL << move.to());
-        zobristHash ^= zobrist[(curColor*6+(int)move.promotion())*64|move.to()];
+        updateZobrists(move.promotion(), curColor, move.to());
     }
     boardRepresentation[curColor][move.piece] ^= (1ULL<<move.from());
-    zobristHash ^= zobrist[add|move.from()];
+    updateZobrists(move.piece, curColor, move.from());
     if(move.capture != -2){
         const bool enColor=enemyColor();
         if(move.capture == ROOK){
@@ -284,13 +291,12 @@ int GameState::playMove(Move move){
                 captureRook(move.to(), enColor);
         }
         int pieceCapture = move.capture>=0?move.capture:PAWN;
-        int indexCapture = (enColor*6+pieceCapture)*64;
         int posCapture = move.to();
         if(move.capture == -1){
             if(enColor == BLACK)posCapture -= 8;
             else posCapture += 8;
         }
-        zobristHash ^= zobrist[indexCapture|posCapture];//correction for en passant (not currently exact)
+        updateZobrists(pieceCapture, enColor, posCapture);
         boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
     }
     if(!back){
@@ -320,8 +326,8 @@ int GameState::playMove(Move move){
             }else if(startRook == posRook[curColor][1]){
                 updateCastlingRights<back, 1>(curColor, endRook);
             }
-            int indexZobr=(curColor*6+ROOK)*64;
-            zobristHash ^= zobrist[indexZobr|startRook]^zobrist[indexZobr|endRook];
+            updateZobrists(ROOK, curColor, startRook);
+            updateZobrists(ROOK, curColor, endRook);
             boardRepresentation[curColor][ROOK] ^= (1ULL << startRook)^(1ULL << endRook);
         }
     }else if(move.piece == ROOK){

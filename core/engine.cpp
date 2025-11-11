@@ -4,6 +4,7 @@
 #include <algorithm>
 // #include "util_magic.cpp"
 #include "Const.hpp"
+#include "corrhist.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include <vector>
@@ -218,7 +219,8 @@ void manageSearch(){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
                 bestMoveFinder.eval.init(state->root);
-                int overall_eval = bestMoveFinder.eval.getScore(state->root.friendlyColor());
+                corrhists ch;
+                int overall_eval = bestMoveFinder.eval.getScore(state->root.friendlyColor(), ch, state->root);
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
@@ -227,7 +229,7 @@ void manageSearch(){
                         if(type(piece) != SPACE){
                             bestMoveFinder.eval.nnue.change2<-1>(piece, square);
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-bestMoveFinder.eval.getScore(state->root.friendlyColor());
+                            int derived = overall_eval-bestMoveFinder.eval.getScore(state->root.friendlyColor(), ch, state->root);
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
                             bestMoveFinder.eval.nnue.change2<1>(piece, square);
@@ -334,6 +336,7 @@ void manageSearch(){
                     }
                 }
                 printf("search score: (%.0f %.0f) (%.0f %.0f)\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
+                printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
             }else if(command == "arch"){
 #ifdef __AVX512F__
                 printf("arch: AVX512\n");

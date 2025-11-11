@@ -1,5 +1,6 @@
 #include "BestMoveFinder.hpp"
 #include "Const.hpp"
+#include "Evaluator.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
 #include <chrono>
@@ -110,7 +111,7 @@ int BestMoveFinder::quiescenceSearch(GameState& state, int alpha, int beta, int 
     }
     const int rootDist = relDepth-startRelDepth;
     int& staticEval = stack[rootDist].static_score;
-    staticEval = eval.getScore(state.friendlyColor());
+    staticEval = eval.getScore(state.friendlyColor(), correctionHistory, state);
     if(staticEval >= beta){
         transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
         return staticEval;
@@ -163,7 +164,7 @@ int BestMoveFinder::quiescenceSearch(GameState& state, int alpha, int beta, int 
 
 template<int nodeType, int limitWay, bool mateSearch>
 inline int BestMoveFinder::Evaluate(GameState& state, int alpha, int beta, int relDepth){
-    if constexpr(mateSearch)return eval.getScore(state.friendlyColor());
+    if constexpr(mateSearch)return eval.getScore(state.friendlyColor(), correctionHistory, state);
     int score = quiescenceSearch<limitWay, nodeType==PVNode>(state, alpha, beta, relDepth);
     if constexpr(limitWay == 1)if(nodes > hardBound)running=false;
     return score;
@@ -182,7 +183,7 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
         return 0;
     }
     int& static_eval = stack[rootDist].static_score;
-    static_eval = eval.getScore(state.friendlyColor());
+    static_eval = eval.getScore(state.friendlyColor(), correctionHistory, state);
     if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
         if constexpr(nodeType == PVNode)beginLine(rootDist);
         return Evaluate<nodeType, limitWay, mateSearch>(state, alpha, beta, relDepth);
@@ -249,7 +250,7 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
         return sc;
     }
     order.init(state.friendlyColor(), lastBest, getPVMove(rootDist), history, relDepth, state, generator, depth > 5);
-    Move bestMove;
+    Move bestMove = nullMove;
     int bestScore = -INF;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         Move curMove = order.pop_max();
@@ -328,6 +329,9 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
     if(!isRoot || typeNode != UPPERBOUND){
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth);
     }
+    if(!inCheck && (!bestMove.isTactical() && !(bestMove == nullMove)) && abs(bestScore) < MAXIMUM-maxDepth){
+        correctionHistory.update(state, bestScore-static_eval, depth);
+    }
     return bestScore;
 }
 
@@ -398,7 +402,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     nbCutoff = nbFirstCutoff = 0;
     clock_t start=clock();
     sbig lastNodes = 1;
-    int lastScore = eval.getScore(state.friendlyColor());
+    int lastScore = eval.getScore(state.friendlyColor(), correctionHistory, state);
     order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, history, 0, state, generator);
     int instability1side = 0;
     int instability2side = 1;
@@ -502,6 +506,7 @@ int BestMoveFinder::testQuiescenceSearch(GameState& state){
 void BestMoveFinder::clear(){
     transposition.clear();
     history.init();
+    correctionHistory.reset();
 }
 
 void BestMoveFinder::reinit(size_t count){
