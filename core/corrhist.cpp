@@ -11,6 +11,8 @@ int max_diff = 0;
 int min_diff = 0;
 #endif
 
+//used 256 / max(depth+1, 16) from https://github.com/mcthouacbb/Sirius
+
 template<int size, int maxCorrHist>
 void corrhist<size, maxCorrHist>::reset(){
     memset(table, 0, sizeof(table));
@@ -37,13 +39,15 @@ void corrhists::update(const GameState& state, int diff, int depth){
     int bonus = diff*corrhistGrain;
     int weight = max(depth+1, 16);
     pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, weight);
-    cont.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
+    prevMove.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
+    cont.update(state.getContMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
 }
 
 int corrhists::probe(const GameState& state) const{
     int diff = (
         pawns.probe(state.pawnZobrist, state.friendlyColor()) +
-        cont.probe(state.getLastMove().moveInfo+(1<<15), state.friendlyColor())
+        cont.probe(state.getContMove().moveInfo+(1<<15), state.friendlyColor()) +
+        prevMove.probe(state.getLastMove().moveInfo+(1<<15), state.friendlyColor())
     )/corrhistGrain;
 #ifdef DEBUG
     if(diff > max_diff)max_diff = diff;
@@ -61,4 +65,5 @@ corrhists::corrhists(){
 void corrhists::reset(){
     pawns.reset();
     cont.reset();
+    prevMove.reset();
 }

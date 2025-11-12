@@ -398,6 +398,12 @@ Move GameState::getLastMove() const{
     return nullMove;
 }
 
+Move GameState::getContMove() const{
+    if(turnNumber > 1 && (movesSinceBeginning[0].moveInfo != nullMove.moveInfo || turnNumber > 2))
+        return movesSinceBeginning[turnNumber-2];
+    return nullMove;
+}
+
 void GameState::undoLastMove(){
     turnNumber--;
     zobristHash ^= zobrist[zobrTurn];

@@ -62,6 +62,7 @@ public :
     void playNullMove();
     void undoNullMove();
     Move getLastMove() const;
+    Move getContMove() const;
     void undoLastMove();
     Move playPartialMove(Move move);
     int getPiece(int square, int c);

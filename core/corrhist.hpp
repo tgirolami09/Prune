@@ -21,6 +21,7 @@ public:
 
 class corrhists{
     corrhist<16384, 64*corrhistGrain> pawns;
+    corrhist<16384, 64*corrhistGrain> prevMove;
     corrhist<16384, 64*corrhistGrain> cont;
 public:
     corrhists();

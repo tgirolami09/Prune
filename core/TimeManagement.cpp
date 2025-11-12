@@ -1,5 +1,7 @@
 #include "TimeManagement.hpp"
 #include <cstdio>
+//thank to heimdall for the scale discovering
+//I took some starting TM constants from his repo : https://github.com/nocturn9x/heimdall/blob/master/src/heimdall/util/limits.nim#L84-L98
 
 TM::TM(int _hardBound, int _softBound):softBound(_softBound), hardBound(_hardBound), enableUpdate(false){}
 TM::TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color):enableUpdate(true){
