@@ -37,10 +37,14 @@ void corrhists::update(const GameState& state, int diff, int depth){
     int bonus = diff*corrhistGrain;
     int weight = max(depth+1, 16);
     pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, weight);
+    cont.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
 }
 
 int corrhists::probe(const GameState& state) const{
-    int diff = pawns.probe(state.pawnZobrist, state.friendlyColor())/corrhistGrain;
+    int diff = (
+        pawns.probe(state.pawnZobrist, state.friendlyColor()) +
+        cont.probe(state.getLastMove().moveInfo+(1<<15), state.friendlyColor())
+    )/corrhistGrain;
 #ifdef DEBUG
     if(diff > max_diff)max_diff = diff;
     else if(diff < min_diff)min_diff = diff;
@@ -56,4 +60,5 @@ corrhists::corrhists(){
 
 void corrhists::reset(){
     pawns.reset();
+    cont.reset();
 }
