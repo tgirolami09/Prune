@@ -1,5 +1,7 @@
-# Prune, a chess engine made by joachim and thomas
-<center><img src="forest4.jpeg" alt="drawing" width="300"/></center>
+<div align="center">
+    <h1>Prune</h1>
+    <img src="forest4.jpeg" alt="drawing" width="300"/>
+</div>
 
 this is a hobby project made by two passionate about informatic.
 
