@@ -176,6 +176,7 @@ public:
     bool isInsufficientMaterial() const;
     bool isOnlyPawns() const;
     int getScore(bool c, const corrhists& ch, const GameState& state) const;
+    int getRaw(bool c) const;
     template<int f=1>
     void playMove(Move move, bool c);
     void undoMove(Move move, bool c);

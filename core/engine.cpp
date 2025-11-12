@@ -147,7 +147,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
         if(args[0].first == "perft"){
             printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state->root, stoi(args[0].second)));
             return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
-        }else if(args.size() && (args[0].first == "btime" || args[0].first == "wtime")){
+        }else if((args[0].first == "btime" || args[0].first == "wtime")){
             int btime=0, wtime=0, winc=0, binc=0;
             for(pair<string, string> arg:args){
                 if(arg.first == "btime")
@@ -162,13 +162,13 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
             bool color = state->root.friendlyColor()^(state->movesFromRoot.size()&1);
             TM tm(moveOverhead, wtime, btime, binc, winc, color);
             return bestMoveFinder.bestMove<0>(state->root, tm, state->movesFromRoot);
-        }else if(args.size() && args[0].first == "movetime"){
+        }else if(args[0].first == "movetime"){
             int movetime = stoi(args[0].second);
             return bestMoveFinder.bestMove<0>(state->root, TM(movetime, movetime), state->movesFromRoot, verbose);
-        }else if(args.size() && args[0].first == "nodes"){
+        }else if(args[0].first == "nodes"){
             int nodes = stoi(args[0].second);
             return bestMoveFinder.bestMove<1>(state->root, TM(nodes, nodes), state->movesFromRoot, verbose);
-        }else if(args.size() && args[0].first == "depth"){
+        }else if(args[0].first == "depth"){
             int depth = stoi(args[0].second);
             return bestMoveFinder.bestMove<2>(state->root, TM(depth, depth), state->movesFromRoot, verbose);
         }
@@ -219,8 +219,7 @@ void manageSearch(){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
                 bestMoveFinder.eval.init(state->root);
-                corrhists ch;
-                int overall_eval = bestMoveFinder.eval.getScore(state->root.friendlyColor(), ch, state->root);
+                int overall_eval = bestMoveFinder.eval.getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
@@ -229,7 +228,7 @@ void manageSearch(){
                         if(type(piece) != SPACE){
                             bestMoveFinder.eval.nnue.change2<-1>(piece, square);
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-bestMoveFinder.eval.getScore(state->root.friendlyColor(), ch, state->root);
+                            int derived = overall_eval-bestMoveFinder.eval.getRaw(state->root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
                             bestMoveFinder.eval.nnue.change2<1>(piece, square);
@@ -355,7 +354,8 @@ void manageSearch(){
                 stop_all = true;
             }else if(command == "position"){
                 state->movesFromRoot.clear();
-                for(auto arg:parsed){
+                for(int iarg = 0; iarg < parsed.size(); iarg++){
+                    auto arg = parsed[iarg];
                     if(arg.first == "fen"){
                         state->root.fromFen(arg.second);
                     }if(arg.first == "startpos"){
@@ -373,8 +373,6 @@ void manageSearch(){
                             move.from_uci(curMove);
                             state->movesFromRoot.push_back(move);
                         }
-                    }else{
-                        //printf("%s : %s\n", arg.first.c_str(), arg.second.c_str());
                     }
                 }
             }else if(command == "go"){
@@ -423,6 +421,7 @@ void manageSearch(){
         }
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
+    delete state;
 }
 
 int main(int argc, char** argv){
