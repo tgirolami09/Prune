@@ -45,3 +45,10 @@ make prune
 ```
 
 in the core/ directory, and you will have the executable prune, which contains the engine (so it is moveable)
+
+## thanks
+- stockfish discord :
+    1. TM improvement (took some constant from heimdall for init)
+    2. corrhist help  (took some constant from sirius for update)
+    3. speedup of the nnue (lizard updates)
+- chessprogramming wiki
