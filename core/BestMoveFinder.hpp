@@ -83,7 +83,7 @@ private:
     Move rootBestMove;
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(const int depth, GameState& state, int alpha, const int beta, const int lastChange, const int relDepth);
+    int negamax(const int depth, GameState& state, int alpha, const int beta, const int relDepth);
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);

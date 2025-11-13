@@ -171,7 +171,7 @@ inline int BestMoveFinder::Evaluate(GameState& state, int alpha, int beta, int r
 }
 
 template <int nodeType, int limitWay, bool mateSearch, bool isRoot>
-int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const int beta, const int lastChange, const int relDepth){
+int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const int beta, const int relDepth){
     const int rootDist = relDepth-startRelDepth;
     seldepth = max(seldepth, relDepth);
     if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
@@ -218,7 +218,7 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
             if(depth >= r && !eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
                 generator.initDangers(state);
-                int v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, lastChange, relDepth+1);
+                int v = -negamax<CutNode, limitWay, mateSearch>(depth-r, state, -beta, -beta+1, relDepth+1);
                 state.undoNullMove();
                 if(v >= beta)return v;
                 generator.initDangers(state);
@@ -243,7 +243,7 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
         }
         eval.playMove(order.moves[0], !state.friendlyColor());
         generator.initDangers(state);
-        int sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, lastChange, relDepth+1);
+        int sc = -negamax<-nodeType, limitWay, mateSearch>(depth, state, -beta, -alpha, relDepth+1);
         eval.undoMove(order.moves[0], !state.friendlyColor());
         state.undoLastMove();
         if constexpr(nodeType == PVNode)transfer(rootDist, order.moves[0]);
@@ -261,9 +261,6 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
         }
         int score;
         state.playMove(curMove);
-        int newLastChange = lastChange;
-        if(curMove.isChanger())
-            newLastChange = relDepth;
         bool isDraw = false;
         if(state.twofold()){
             score = MIDDLE;
@@ -282,7 +279,7 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
                     if(mateSearch && inCheckPos)
                         addRedDepth--;
                 }
-                score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, newLastChange, relDepth+1);
+                score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1);
                 bool fullSearch = false;
                 if((score > alpha && score < beta) || (nodeType == PVNode && score == beta && beta == alpha+1)){
                     fullSearch = true;
@@ -291,10 +288,10 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
                     fullSearch = true;
                 if(fullSearch){
                     generator.initDangers(state);
-                    score = -negamax<nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, newLastChange, relDepth+1);
+                    score = -negamax<nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, relDepth+1);
                 }
             }else
-                score = -negamax<-nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, newLastChange, relDepth+1);
+                score = -negamax<-nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, relDepth+1);
             eval.undoMove(curMove, !state.friendlyColor());
         }
         state.undoLastMove();
@@ -347,11 +344,8 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     chrono::milliseconds softBoundTime{tm.softBound};
     vector<depthInfo> allInfos;
     int actDepth=0;
-    int lastChange = 0;
     for(Move move:movesFromRoot){
         move = state.playPartialMove(move);
-        if(move.isChanger())
-            lastChange = actDepth;
         actDepth++;
     }
     bool moveInTable = false;
@@ -431,9 +425,9 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
             generator.initDangers(state);
             lastUsedNodes = nodes;
             if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
-                bestScore = negamax<PVNode, limitWay, true , true>(depth, state, alpha, beta, lastChange, actDepth);
+                bestScore = negamax<PVNode, limitWay, true , true>(depth, state, alpha, beta, actDepth);
             else
-                bestScore = negamax<PVNode, limitWay, false, true>(depth, state, alpha, beta, lastChange, actDepth);
+                bestScore = negamax<PVNode, limitWay, false, true>(depth, state, alpha, beta, actDepth);
             lastUsedNodes = nodes-lastUsedNodes;
             bestMove = bestScore != -INF ? rootBestMove : finalBestMove;
             string limit;
