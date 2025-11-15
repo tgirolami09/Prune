@@ -145,70 +145,24 @@ big usefull_bishop(big mask, int square){
 big get_usefull(bool is_rook, big mask, int square){
     return (is_rook?usefull_rook:usefull_bishop)(mask, square);
 }
-int dump_table(ofstream& file, info magic, int square, bool is_rook){
+void dump_table(ofstream& file, info magic, int square, bool is_rook){
     vector<big> table(1<<magic.minimum);
     vector<big> last_mask(1<<magic.minimum);
     int col = square & 7;
     int row = square >> 3;
-    int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
-    for(big id=0; id<(1<<nbBits); id++){
-        big mask = get_mask(is_rook, id, square);
-        big res = mask*magic.magic;
-        big res_mask = get_usefull(is_rook, mask, square);
-        big key;
-        if(magic.minimum == 0)
-            key = 0;
-        else
-            key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR-magic.minimum);
-        if(key >= table.size()){
-            print_mask(mask);
-            printf("%llu\n", res_mask);
-            printf("%llu\n", (res&(MAX_BIG>>magic.decR)));
-            printf("%d\n", (64-magic.decR-magic.minimum));
-            printf("%llu\n", key);
-            assert(false);
-        }
-        if(table[key] != res_mask && table[key] != 0){
-            printf("magic:%llu\n", magic.magic);
-            printf("id:%llu\n", id);
-            printf("res:%llu\nmask:\n", res);
-            print_mask(mask);
-            printf("\nlast_mask:\n");
-            print_mask(last_mask[key]);
-            printf("key:%llu\nlast usefull:\n", key);
-            print_mask(table[key]);
-            printf("\nusefull\n");
-            print_mask(res_mask);
-            printf("\n");
-            printf("square:%d\n", square);
-            printf("decr:%d minimum:%d\n", magic.decR, magic.minimum);
-            assert(false);
-        }
-        table[key] = res_mask;
-        last_mask[key] = mask;
-    }
     write_bytes(magic.magic, file);
     write_bytes(magic.decR, file);
     write_bytes(magic.minimum, file);
-    write_bytes<int>(table.size(), file);
-    int res=0;
-    for(big i:table){
-        write_bytes(i, file);
-        if(i == 0)res++;
-    }
-    return res;
 }
 
-int dump_entire(vector<vector<info>> table, char* name){
+void dump_entire(vector<vector<info>> table, char* name){
     ofstream file(name);
-    int place_lost=0;
     for(int is_rook=0; is_rook<2; is_rook++){
         for(int square=0; square < 64; square++){
-            place_lost += dump_table(file, table[is_rook][square], square, is_rook);
+            dump_table(file, table[is_rook][square], square, is_rook);
         }
     }
     file.close();
-    return place_lost;
 }
 
 vector<vector<info>> load_info(const char* name){

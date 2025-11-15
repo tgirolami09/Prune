@@ -150,8 +150,8 @@ int main(int argc, char* argv[]){
             }
         }
         if(change && ok==128){
-            int place_lost=dump_entire(best, argv[1]);
-            printf("%d %d/%d->%.2f\n", nb_magics, place_lost, totLength, place_lost*100.0/totLength);
+            dump_entire(best, argv[1]);
+            printf("%d %d\n", nb_magics, totLength);
             for(int is_rook=0; is_rook < 2; is_rook++){
                 int maxi=0;
                 int mini=20;

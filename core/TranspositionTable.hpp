@@ -6,11 +6,11 @@
 
 class __attribute__((packed)) infoScore{
 public:
-    int score;
+    int16_t score;
     ubyte typeNode;
     int16_t bestMoveInfo;
     ubyte depth;
-    big hash;
+    uint hash;
 };
 const int INVALID = INT_MAX;
 class transpositionTable{

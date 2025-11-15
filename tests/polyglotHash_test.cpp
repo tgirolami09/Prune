@@ -14,6 +14,7 @@
 #include "../core/loadpolyglot.cpp"
 #include "../core/polyglotHash.cpp"
 #include "../core/NNUE.cpp"
+#include "../core/corrhist.cpp"
 
 TEST(PolyGlot, startpos) { 
     GameState game;

@@ -42,9 +42,9 @@ const int maxCaptures = 12*8+4*4;
 const int maxExtension = 16;
 const int hashMul = 1024*1024;
 
-const int MINIMUM=-100000;
-const int MAXIMUM=100000;
-const int INF=MAXIMUM+200;
+const int MINIMUM=-32767;
+const int MAXIMUM=-MINIMUM;
+const int INF=MAXIMUM;
 const int MIDDLE=0;
 
 const ubyte EXACT = 0;

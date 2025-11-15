@@ -4,7 +4,6 @@
 #include <algorithm>
 // #include "util_magic.cpp"
 #include "Const.hpp"
-#include "corrhist.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include <vector>
@@ -77,8 +76,8 @@ public :
 };
 int moveOverhead = 100;
 const int alloted_space=64*hashMul;
-BestMoveFinder bestMoveFinder(alloted_space);
 Perft doPerft(alloted_space);
+BestMoveFinder bestMoveFinder(alloted_space);
 const int sizeQ=128;
 string inpQueue[sizeQ];
 atomic<int> startQ = 0;

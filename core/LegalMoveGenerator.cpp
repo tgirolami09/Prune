@@ -4,24 +4,10 @@
 #include "GameState.hpp"
 #include <cstring>
 #include <sstream>
+#include <cassert>
 using namespace std;
 
 BINARY_ASM_INCLUDE("magics.out", magicsData);
-
-big parseInt(int& pointer){
-    big current = 0;
-    if(pointer >= magicsData_size)return 0;
-    while(transform(magicsData[pointer]) > '9' || transform(magicsData[pointer]) < '0'){
-        pointer++; //remove useless char
-        if(pointer >= magicsData_size)return 0;
-    }
-    while(transform(magicsData[pointer]) <= '9' && transform(magicsData[pointer]) >= '0'){
-        current = current*10+(transform(magicsData[pointer])-'0');
-        pointer++;
-        if(pointer == magicsData_size)return 0;
-    }
-    return current;
-}
 
 void LegalMoveGenerator::PrecomputeKnightMoveData(){
     const pair<int, int> moves[8] = {
@@ -151,30 +137,115 @@ void LegalMoveGenerator::precomputeDirections(){
     }
 }
 
+inline big go_dir(big mask, int square, int dir, big clipped){
+    int cur_square = square;
+    big cur_mask=0;
+    big p;
+    do{
+        cur_square += dir;
+        if(cur_square < 0 || cur_square >= 64)break;
+        p = 1ULL << cur_square;
+        cur_mask |= p;
+    }while((clipped&p) && (p&mask) == 0);
+    return cur_mask;
+}
+
+static big usefull_rook(big mask, int square){
+    int col = square&7;
+    int row = square >> 3;
+    big cur_mask = 0;
+    if(col != 7)
+        cur_mask |= go_dir(mask, square, 1, clipped_bcol);
+    if(col != 0)
+        cur_mask |= go_dir(mask, square, -1, clipped_bcol);
+    if(row != 7)
+        cur_mask |= go_dir(mask, square, 8, clipped_brow);
+    if(row != 0)
+        cur_mask |= go_dir(mask, square, -8, clipped_brow);
+    return cur_mask;
+}
+
+static big usefull_bishop(big mask, int square){
+    big cur_mask=0;
+    int col=square&7;
+    int row=square >> 3;
+    if(col != 0){
+        if(row != 7)
+            cur_mask |= go_dir(mask, square, +7, clipped_mask);
+        if(row != 0)
+            cur_mask |= go_dir(mask, square, -9, clipped_mask);
+    }if(col != 7){
+        if(row != 7)
+            cur_mask |= go_dir(mask, square, +9, clipped_mask);
+        if(row != 0)
+            cur_mask |= go_dir(mask, square, -7, clipped_mask);
+    }
+    return cur_mask&(~(1ULL << square));
+}
+
+static big get_usefull(bool is_rook, big mask, int square){
+    return (is_rook?usefull_rook:usefull_bishop)(mask, square);
+}
+
+static big apply_id(big id, big mask){
+    big new_mask=0;
+    while(mask){
+        int bit=__builtin_ctzll(mask);
+        big m=1ULL << bit;
+        if((id&1) == 1)
+            new_mask |= m;
+        id >>= 1;
+        mask ^= m;
+    }
+    return new_mask;
+}
+
+static big rook_mask(big id, big square){
+    big mask = (clipped_row[square>>3]|clipped_col[square&7])&(~(1ULL<<square));
+    return apply_id(id, mask);
+}
+
+static big bishop_mask(big id, big square){
+    int col = square&7;
+    int row = square>>3;
+    big mask = (clipped_diag[col+row]|clipped_idiag[row-col+7])&(~(1ULL<<square));
+    return apply_id(id, mask);
+}
+
+static big get_mask(bool is_rook, big id, big square){
+    return (is_rook?rook_mask:bishop_mask)(id, square);
+}
+
 void LegalMoveGenerator::load_table(){
     big magic;
     int decR, minimum, size;
     int current = 0;
     int pointer = 0;
-    //printf("%d\n", magicsData_size);
-    stringstream ss;
-    ss.write(reinterpret_cast<const char*>(magicsData), magicsData_size);
-    while(ss.read(reinterpret_cast<char*>(&magic), sizeof(magic))){
-        ss.read(reinterpret_cast<char*>(&decR), sizeof(decR));
-        ss.read(reinterpret_cast<char*>(&minimum), sizeof(minimum));
-        ss.read(reinterpret_cast<char*>(&size), sizeof(size));
+    while(pointer < magicsData_size){
+        memcpy(&magic  , &magicsData[pointer], 8);pointer += 8;
+        memcpy(&decR   , &magicsData[pointer], 4);pointer += 4;
+        memcpy(&minimum, &magicsData[pointer], 4);pointer += 4;
+        size = 1ul << minimum;
         constantsMagic[current] = {minimum, decR, magic};
         tableMagic[current] = (big*)calloc(size, sizeof(big));
-        for(int i=0; i<size; i++){
-            ss.read(reinterpret_cast<char*>(&tableMagic[current][i]), sizeof(tableMagic[current][i]));
+        bool is_rook = current >= 64;
+        int square = current%64;
+        int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
+        big nbIds = 1ul << nbBits;
+        for(big id=0; id<nbIds; id++){
+            big mask = get_mask(is_rook, id, square);
+            big res = mask*magic;
+            big res_mask = get_usefull(is_rook, mask, square);
+            big key = (res&(MAX_BIG>>decR)) >> (64-decR-minimum);
+            tableMagic[current][key] = res_mask;
         }
         current++;
     }
 }
 LegalMoveGenerator::LegalMoveGenerator(){
     PrecomputeKnightMoveData();
-    load_table();
     init_lines();
+    load_table();
     precomputePawnsAttack();
     precomputeCastlingMasks();
     precomputeNormlaKingMoves();
