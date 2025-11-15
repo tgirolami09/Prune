@@ -1,5 +1,6 @@
 #include "TranspositionTable.hpp"
 #include "Const.hpp"
+#include "GameState.hpp"
 
 transpositionTable::transpositionTable(size_t count){
     count /= sizeof(infoScore);
@@ -36,6 +37,16 @@ int16_t transpositionTable::getMove(const GameState& state){
     if(table[index].hash == resHash)
         return table[index].bestMoveInfo; //probably a good move
     return nullMove.moveInfo;
+}
+
+infoScore transpositionTable::getEntry(const GameState& state, bool& ttHit){
+    ttHit = false;
+    int index=state.zobristHash%modulo;
+    uint resHash = state.zobristHash/modulo;
+    if(table[index].hash == resHash)
+        ttHit = true;
+    return table[index];
+
 }
 
 void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth){

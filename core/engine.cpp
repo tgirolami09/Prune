@@ -76,7 +76,7 @@ public :
 };
 int moveOverhead = 100;
 const int alloted_space=64*hashMul;
-Perft doPerft(alloted_space);
+Perft doPerft;
 BestMoveFinder bestMoveFinder(alloted_space);
 const int sizeQ=128;
 string inpQueue[sizeQ];

@@ -3,6 +3,7 @@
 #include "Evaluator.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
+#include "TranspositionTable.hpp"
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -171,7 +172,7 @@ inline int BestMoveFinder::Evaluate(GameState& state, int alpha, int beta, int r
 }
 
 template <int nodeType, int limitWay, bool mateSearch, bool isRoot>
-int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const int beta, const int relDepth){
+int BestMoveFinder::negamax(int depth, GameState& state, int alpha, const int beta, const int relDepth){
     const int rootDist = relDepth-startRelDepth;
     seldepth = max(seldepth, relDepth);
     if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
@@ -197,10 +198,13 @@ int BestMoveFinder::negamax(const int depth, GameState& state, int alpha, const 
     }else{
         lastBest = transposition.getMove(state);
     }
+    bool ttHit;
+    infoScore ttEntry = transposition.getEntry(state, ttHit);
     ubyte typeNode = UPPERBOUND;
     Order& order = stack[rootDist].order;
     bool inCheck=generator.isCheck();
     bool improving = false;
+    if((!ttHit || ttEntry.depth+3 < depth) && depth >= 3 && nodeType != AllNode)depth--;
     if(rootDist > 2)
         improving = stack[rootDist-2].static_score < static_eval;
     if constexpr(nodeType != PVNode){
@@ -511,30 +515,28 @@ void BestMoveFinder::reinit(size_t count){
     transposition.reinit(count);
 }
 
-Perft::Perft(size_t _space):tt(0), space(_space){}
+Perft::Perft(){}
 big Perft::_perft(GameState& state, ubyte depth){
     visitedNodes++;
     if(depth == 0)return 1;
-    big lastCall=tt.get_eval(state.zobristHash, depth);
-    if(lastCall != MAX_BIG)return lastCall;
+    //big lastCall=tt.get_eval(state.zobristHash, depth);
+    //if(lastCall != MAX_BIG)return lastCall;
     bool inCheck;
-    Move moves[maxMoves];
     big dangerPositions = 0;
     generator.initDangers(state);
-    int nbMoves=generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
+    int nbMoves=generator.generateLegalMoves(state, inCheck, stack[depth], dangerPositions);
     if(depth == 1)return nbMoves;
     big count=0;
     for(int i=0; i<nbMoves; i++){
-        state.playMove(moves[i]);
+        state.playMove(stack[depth][i]);
         big nbNodes=_perft(state, depth-1);
         state.undoLastMove();
         count += nbNodes;
     }
-    tt.push({state.zobristHash, count, depth});
+    //tt.push({state.zobristHash, count, depth});
     return count;
 }
 big Perft::perft(GameState& state, ubyte depth){
-    tt.reinit(space);
     visitedNodes = 0;
     if(depth == 0)return 1;
     clock_t start=clock();
@@ -556,14 +558,9 @@ big Perft::perft(GameState& state, ubyte depth){
         fflush(stdout);
         count += nbNodes;
     }
-    tt.push({state.zobristHash, count, depth});
     clock_t end=clock();
     double tcpu = double(end-start)/CLOCKS_PER_SEC;
     printf("%.3f : %.3f nps %" PRId64 " visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
     fflush(stdout);
-    tt.clearMem();
     return count;
-}
-void Perft::reinit(size_t count){
-    space = count;
 }

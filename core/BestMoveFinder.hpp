@@ -1,5 +1,6 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
+#include "Const.hpp"
 #include "TranspositionTable.hpp"
 #include "TimeManagement.hpp"
 #include "Move.hpp"
@@ -95,10 +96,9 @@ public:
 
 class Perft{
 public:
-    TTperft tt;
+    Move stack[100][maxMoves];
     LegalMoveGenerator generator;
-    size_t space;
-    Perft(size_t _space);
+    Perft();
     big visitedNodes;
     big _perft(GameState& state, ubyte depth);
     big perft(GameState& state, ubyte depth);

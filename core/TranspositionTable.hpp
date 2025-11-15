@@ -24,6 +24,7 @@ public:
     inline int storedScore(int alpha, int beta, int depth, const infoScore& entry);
 
     int get_eval(const GameState& state, int alpha, int beta, ubyte depth, int16_t& best);
+    infoScore getEntry(const GameState& state, bool& ttHit);
 
     int16_t getMove(const GameState& state);
 
