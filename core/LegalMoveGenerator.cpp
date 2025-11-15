@@ -3,6 +3,7 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include <cstring>
+#include <sstream>
 using namespace std;
 
 BINARY_ASM_INCLUDE("magics.out", magicsData);
@@ -156,17 +157,16 @@ void LegalMoveGenerator::load_table(){
     int current = 0;
     int pointer = 0;
     //printf("%d\n", magicsData_size);
-    while(pointer != magicsData_size){
-        magic = parseInt(pointer);
-        if(!magic)break;
-        decR = parseInt(pointer);
-        minimum = parseInt(pointer);
-        size = parseInt(pointer);
-        //printf("%d\n", size);
+    stringstream ss;
+    ss.write(reinterpret_cast<const char*>(magicsData), magicsData_size);
+    while(ss.read(reinterpret_cast<char*>(&magic), sizeof(magic))){
+        ss.read(reinterpret_cast<char*>(&decR), sizeof(decR));
+        ss.read(reinterpret_cast<char*>(&minimum), sizeof(minimum));
+        ss.read(reinterpret_cast<char*>(&size), sizeof(size));
         constantsMagic[current] = {minimum, decR, magic};
         tableMagic[current] = (big*)calloc(size, sizeof(big));
         for(int i=0; i<size; i++){
-            tableMagic[current][i] = parseInt(pointer);
+            ss.read(reinterpret_cast<char*>(&tableMagic[current][i]), sizeof(tableMagic[current][i]));
         }
         current++;
     }

@@ -8,6 +8,11 @@ using namespace std;
 #define born __uint128_t
 const big MAX_BIG = ~((big)0);
 
+template<typename T>
+void write_bytes(T a, ofstream& file){
+    file.write(reinterpret_cast<char*>(&a), sizeof(a));
+}
+
 void print_mask(big mask){
     int col=0;
     for(int row=8; row<=64; row+=8){
@@ -182,13 +187,13 @@ int dump_table(ofstream& file, info magic, int square, bool is_rook){
         table[key] = res_mask;
         last_mask[key] = mask;
     }
-    file << magic.magic << " ";
-    file << magic.decR << " ";
-    file << magic.minimum << " ";
-    file << table.size() << " ";
+    write_bytes(magic.magic, file);
+    write_bytes(magic.decR, file);
+    write_bytes(magic.minimum, file);
+    write_bytes<int>(table.size(), file);
     int res=0;
     for(big i:table){
-        file << i << " ";
+        write_bytes(i, file);
         if(i == 0)res++;
     }
     return res;
@@ -212,14 +217,15 @@ vector<vector<info>> load_info(const char* name){
         vector<info> bests;
         big magic;
         int decR, minimum;
-        while(file >> magic){
-            file >> decR >> minimum;
-            bests.push_back({minimum, decR, magic});
+        while(file.read(reinterpret_cast<char*>(&magic), sizeof(magic))){
             int size;
-            file >> size;
+            file.read(reinterpret_cast<char*>(&decR), sizeof(decR));
+            file.read(reinterpret_cast<char*>(&minimum), sizeof(minimum));
+            file.read(reinterpret_cast<char*>(&size), sizeof(size));
+            bests.push_back({minimum, decR, magic});
             for(int i=0; i<size; i++){
                 big mask;
-                file >> mask;//read the table, is not needed
+                file.read(reinterpret_cast<char*>(&mask), sizeof(mask));
             }
         }
         if(bests.size() == 64)
@@ -243,12 +249,14 @@ void load_whole(info* constants, big** table, char* name){
     int decR, minimum, size;
     big mask;
     int current = 0;
-    while(file >> magic){
-        file >> decR >> minimum >> size;
+    while(file.read(reinterpret_cast<char*>(&magic), sizeof(magic))){
+        file.read(reinterpret_cast<char*>(&decR), sizeof(decR));
+        file.read(reinterpret_cast<char*>(&minimum), sizeof(minimum));
+        file.read(reinterpret_cast<char*>(&size), sizeof(size));
         constants[current] = {minimum, decR, magic};
         table[current] = (big*)calloc(size, sizeof(big));
         for(int i=0; i<size; i++){
-            file >> mask;
+            file.read(reinterpret_cast<char*>(&mask), sizeof(mask));
             table[current][i] = mask;
         }
         current++;

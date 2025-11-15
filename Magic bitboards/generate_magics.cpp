@@ -113,6 +113,7 @@ int main(int argc, char* argv[]){
     }else{
         print_table(best);
         ok=best[0][0].minimum != 20?128:64;
+        dump_entire(best, argv[1]);
     }
     int totLength=0;
     for(vector<info> board:best)
@@ -127,7 +128,7 @@ int main(int argc, char* argv[]){
         bool change=false;
         for(int is_rook=0; is_rook < 2; is_rook++){
             bool is_rook_printed=false;
-            #pragma omp parallel for num_threads(8)
+            #pragma omp parallel for num_threads(70)
             for(int square=0; square<64; square++){
                 info r=test_magic(magic, square, is_rook, best[is_rook][square].minimum);
                 if(r.minimum < best[is_rook][square].minimum){
