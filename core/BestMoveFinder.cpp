@@ -231,11 +231,12 @@ int BestMoveFinder::negamax(int depth, GameState& state, int alpha, const int be
             }
         }
     }
+    int firstMoveExtension = 0;
     if(!isRoot && ttHit && ttEntry.depth + 3 >= depth && ttEntry.typeNode != UPPERBOUND && depth >= 6 && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - depth;
         int score = negamax<CutNode, limitWay, mateSearch>((depth-1)/2, state, goal-1, goal, relDepth, ttEntry.bestMoveInfo);
         if(score < goal)
-            depth++;
+            firstMoveExtension++;
         generator.initDangers(state);
     }
     order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
@@ -305,7 +306,7 @@ int BestMoveFinder::negamax(int depth, GameState& state, int alpha, const int be
                     score = -negamax<nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, relDepth+1);
                 }
             }else
-                score = -negamax<-nodeType, limitWay, mateSearch>(depth-reductionDepth, state, -beta, -alpha, relDepth+1);
+                score = -negamax<-nodeType, limitWay, mateSearch>(depth-reductionDepth+firstMoveExtension, state, -beta, -alpha, relDepth+1);
             eval.undoMove(curMove, !state.friendlyColor());
         }
         state.undoLastMove();
