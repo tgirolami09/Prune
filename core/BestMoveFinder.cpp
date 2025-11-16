@@ -231,9 +231,10 @@ int BestMoveFinder::negamax(int depth, GameState& state, int alpha, const int be
             }
         }
     }
-    if(!isRoot && ttHit && ttEntry.depth + 3 >= depth && ttEntry.typeNode != UPPERBOUND && depth >= 6 && excludedMove == nullMove.moveInfo){
-        int goal = ttEntry.score - depth*10;
-        if(negamax<CutNode, limitWay, mateSearch>(depth/2, state, goal, goal+1, relDepth, ttEntry.bestMoveInfo) <= goal)
+    if(!isRoot && ttHit && ttEntry.depth + 3 >= depth && ttEntry.typeNode != UPPERBOUND && depth >= 6 && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
+        int goal = ttEntry.score - depth;
+        int score = negamax<CutNode, limitWay, mateSearch>((depth-1)/2, state, goal-1, goal, relDepth, ttEntry.bestMoveInfo);
+        if(score < goal)
             depth++;
         generator.initDangers(state);
     }
