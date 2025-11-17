@@ -195,10 +195,7 @@ dbyte NNUE::eval(bool side) const{
     int finRes = mysum(res);
     finRes /= QA;
     finRes += outbias;
-    if(finRes >= 0)
-        finRes = finRes*SCALE/(QA*QB);
-    else 
-        finRes = (finRes*SCALE-(QA*QB-1))/(QA*QB);
+    finRes = finRes*SCALE/(QA*QB);
     return finRes;
 }
 
