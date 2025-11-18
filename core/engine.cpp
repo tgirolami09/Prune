@@ -353,7 +353,7 @@ void manageSearch(){
                 stop_all = true;
             }else if(command == "position"){
                 state->movesFromRoot.clear();
-                for(int iarg = 0; iarg < parsed.size(); iarg++){
+                for(unsigned long iarg = 0; iarg < parsed.size(); iarg++){
                     auto arg = parsed[iarg];
                     if(arg.first == "fen"){
                         state->root.fromFen(arg.second);
