@@ -4,7 +4,7 @@
 
 transpositionTable::transpositionTable(size_t count){
     count /= sizeof(infoScore);
-    table = vector<infoScore>(count*2);
+    table = vector<infoScore>(count);
     modulo=count;
 }
 
