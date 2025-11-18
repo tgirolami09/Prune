@@ -7,6 +7,7 @@ ARCH?=native
 CPUSET?=unknow
 SOURCES := $(wildcard *.cpp)
 SOURCES := $(filter-out collectData.cpp,$(SOURCES))
+SOURCES := $(filter-out engine.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o)
 DEPENDS := $(SOURCES:%.cpp=%.d)
 ifeq ($(OS), Windows_NT)
@@ -48,19 +49,19 @@ ifeq ($(OS), Windows_NT)
 	SHORTNAME := $(SHORTNAME).exe
 endif
 
-all: $(OBJECTS)
+all: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^
 
-prune: $(OBJECTS)
+prune: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)
 
-coreGen: collectData.cpp
+coreGen: collectData.cpp $(OBJECTS)
 	$(CC) $(CFLAGS) $(OPT) $(ARCHCOM) $(OPT) -fopenmp -o $@ $^
 
 $(OBJECTS) : %.o: %.cpp
 	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
-pruneDebug: $(OBJECTS)
+pruneDebug: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(ARCHCOM) $(CFLAGS) -g -o $@ $^ $(VERSIONNING)
 
 clean:

@@ -53,6 +53,7 @@ public:
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
     void stop();
+    corrhists correctionHistory;
 
 private:
     chrono::nanoseconds getElapsedTime();
@@ -66,7 +67,6 @@ private:
     template<int limitWay, bool isPV>
     int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    corrhists correctionHistory;
     //PV making
     LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
 
