@@ -10,7 +10,7 @@ public:
     ubyte typeNode;
     int16_t bestMoveInfo;
     ubyte depth;
-    uint hash;
+    uint32_t hash;
 };
 const int INVALID = INT_MAX;
 class transpositionTable{
