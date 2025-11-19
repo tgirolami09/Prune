@@ -65,7 +65,7 @@ if settings.limit != -1:
     dataY[1] = dataY[1][:per[1]]
     print("remaining:", len(dataX[0])+len(dataX[1]))
 print('launch training')
-dataY = [trainer.model.outAct(Y[:, 0])*(1-settings.wdl)+settings.wdl*Y[:, 1] for Y in dataY]
+dataY = [trainer.model.outAct(Y[:, 0])*(1-settings.wdl)+settings.wdl*(1-Y[:, 1]) for Y in dataY]
 dataY = [Y.reshape(Y.shape[0], 1) for Y in dataY]
 testPos = torch.from_numpy(np.array([boardToInput(Board(fen)) for fen in [
     'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',           # starting position

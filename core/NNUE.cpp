@@ -125,15 +125,16 @@ NNUE::NNUE(string name){
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
     }
-    
-    for(int i=0; i<2*HL_SIZE/nb16; i++) {
-        outWeights[i] = simd16_zero();
-        for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(outWeights[i], id16, read_bytes(file));
+    for(int idBucket=0; idBucket<BUCKET; idBucket++){
+        for(int i=0; i<2*HL_SIZE/nb16; i++) {
+            outWeights[idBucket][i] = simd16_zero();
+            for(int id16=0; id16<nb16; id16++) {
+                set_simd16_element(outWeights[idBucket][i], id16, read_bytes(file));
+            }
         }
     }
-    
-    outbias = read_bytes(file);
+    for(int idBucket=0; idBucket<BUCKET; idBucket++)
+        outbias[idBucket] = read_bytes(file);
 }
 
 NNUE::NNUE(){
@@ -155,15 +156,16 @@ NNUE::NNUE(){
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
     }
-    
-    for(int i=0; i<2*HL_SIZE/nb16; i++) {
-        outWeights[i] = simd16_zero();
-        for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(outWeights[i], id16, transform(baseModel[pointer++]));
+    for(int idBucket=0; idBucket<BUCKET; idBucket++){
+        for(int i=0; i<2*HL_SIZE/nb16; i++) {
+            outWeights[idBucket][i] = simd16_zero();
+            for(int id16=0; id16<nb16; id16++) {
+                set_simd16_element(outWeights[idBucket][i], id16, transform(baseModel[pointer++]));
+            }
         }
     }
-    
-    outbias = transform(baseModel[pointer++]);
+    for(int idBucket=0; idBucket<BUCKET; idBucket++)
+        outbias[idBucket] = transform(baseModel[pointer++]);
 }
 
 void NNUE::clear(){
@@ -186,15 +188,15 @@ simdint doOut(simd16 a, simd16 w){
     return overall;
 } 
 
-dbyte NNUE::eval(bool side) const{
+dbyte NNUE::eval(bool side, int idBucket) const{
     simdint res = simdint_zero();
     for(int i=0; i<HL_SIZE/nb16; i++){
-        res = simdint_add(res, doOut(accs[side^1][i], outWeights[i+HL_SIZE/nb16]));
-        res = simdint_add(res, doOut(accs[side][i], outWeights[i]));
+        res = simdint_add(res, doOut(accs[side^1][i], outWeights[idBucket][i+HL_SIZE/nb16]));
+        res = simdint_add(res, doOut(accs[side][i], outWeights[idBucket][i]));
     }
     int finRes = mysum(res);
     finRes /= QA;
-    finRes += outbias;
+    finRes += outbias[idBucket];
     finRes = finRes*SCALE/(QA*QB);
     return finRes;
 }

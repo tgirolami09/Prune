@@ -11,6 +11,8 @@ const int HL_SIZE = 64;
 const int SCALE = 400;
 const int QA = 255;
 const int QB = 64;
+const int BUCKET = 8;
+const int DIVISOR = (31+BUCKET)/BUCKET;
 
 #define dbyte int16_t
 BINARY_INCLUDE(baseModel)
@@ -53,8 +55,8 @@ class NNUE{
 public:
     simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
     simd16 hlBiases[HL_SIZE/nb16];
-    simd16 outWeights[2*HL_SIZE/nb16];
-    dbyte outbias;
+    simd16 outWeights[BUCKET][2*HL_SIZE/nb16];
+    dbyte outbias[BUCKET];
     simd16 accs[2][HL_SIZE/nb16];
     
     dbyte read_bytes(ifstream& file);
@@ -67,7 +69,7 @@ public:
     int get_index(int piece, int square) const;
     template<int f>
     void change2(int piece, int square);
-    dbyte eval(bool side) const;
+    dbyte eval(bool side, int idBucket) const;
 };
 
 
