@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <chrono>
 #include <cassert>
+#include <string>
 const int alloted_space = 64*1000*1000;
 //int omp_get_thread_num(){return 0;}
 //#define DEBUG
