@@ -1,7 +1,20 @@
 #include <gtest/gtest.h>
 // #include "../core/BestMoveFinder.hpp"
 // #include "../core/GameState.hpp"
-#include "../core/polyglotHash.hpp"
+#include "../core/BestMoveFinder.cpp"
+#include "../core/GameState.cpp"
+#include "../core/LegalMoveGenerator.cpp"
+#include "../core/TranspositionTable.cpp"
+#include "../core/MoveOrdering.cpp"
+#include "../core/Evaluator.cpp"
+#include "../core/Move.cpp"
+#include "../core/Functions.cpp"
+#include "../core/Const.cpp"
+#include "../core/TimeManagement.cpp"
+#include "../core/loadpolyglot.cpp"
+#include "../core/polyglotHash.cpp"
+#include "../core/NNUE.cpp"
+#include "../core/corrhist.cpp"
 
 TEST(PolyGlot, startpos) { 
     GameState game;

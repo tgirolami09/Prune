@@ -8,7 +8,7 @@ int& HelpOrdering::getIndex(Move move, bool c){
     return history[c][move.from()][move.to()];
 }
 bool HelpOrdering::fastEq(Move a, Move b) const{
-    return (a.from() == b.from()) && (a.to() == b.to()) && (a.promotion() == b.promotion());
+    return a.moveInfo == b.moveInfo;
 }
 void HelpOrdering::init(){
     for(int i=0; i<maxDepth; i++){
@@ -21,25 +21,25 @@ void HelpOrdering::init(){
         counterMove[f] = nullMove.moveInfo;
 #endif
 }
-void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c, Move lastMove){
+void HelpOrdering::updateHistory(Move move, bool c, int bonus){
+    bonus = min(max(bonus, -maxHistory), maxHistory);
+    getIndex(move, c) += bonus - getIndex(move, c)*abs(bonus)/maxHistory;
+}
+
+void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth){
+    for(int i=0; i<upto; i++){
+        if(!moves[i].isTactical())
+            updateHistory(moves[i], c, -depth*3);
+    }
+}
+
+void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c){
     if(move.capture == -2){
         if(!fastEq(move, killers[relDepth][0])){
             killers[relDepth][1] = killers[relDepth][0];
             killers[relDepth][0] = move;
         }
-        getIndex(move, c) += depth*depth;
-        if(getIndex(move, c) > maxHistory){
-            for(int a=0; a<2; a++){
-                for(int from=0; from<64; from++){
-                    for(int to=0; to<64; to++){
-                        history[a][from][to] /= 2;
-                    }
-                }
-            }
-        }
-#ifdef COUNTER
-        counterMove[lastMove.getMovePart()] = move.moveInfo;
-#endif
+        updateHistory(move, c, depth*depth);
     }
 }
 
@@ -56,7 +56,7 @@ bool HelpOrdering::isCounter(Move move, Move lastMove) const{
 }
 #endif
 
-int HelpOrdering::getMoveScore(Move move, bool c, int relDepth, Move lastMove) const{
+int HelpOrdering::getMoveScore(Move move, bool c, int relDepth) const{
     int score = 0;
     if(isKiller(move, relDepth))
         score = KILLER_ADVANTAGE;
@@ -91,7 +91,7 @@ void Order::init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrd
                 this->swap(i, 0);
             nbPriority++;
         }else{
-            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth, state.getLastMove()), useSEE, state, flags[i], generator);
+            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth), useSEE, state, flags[i], generator);
             if(moves[i].isTactical())
                 flags[i]++;
         }

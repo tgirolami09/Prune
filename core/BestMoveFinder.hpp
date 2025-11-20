@@ -1,6 +1,8 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
+#include "Const.hpp"
 #include "TranspositionTable.hpp"
+#include "TimeManagement.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include "Evaluator.hpp"
@@ -46,24 +48,25 @@ public:
     IncrementalEvaluator eval;
     BestMoveFinder(int memory, bool mute=false);
 
-    int hardBound;
+    sbig hardBound;
     using timeMesure=chrono::high_resolution_clock;
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
     void stop();
+    corrhists correctionHistory;
 
 private:
     chrono::nanoseconds getElapsedTime();
 
     LegalMoveGenerator generator;
-    int nodes;
+    sbig nodes;
     int nbCutoff;
     int nbFirstCutoff;
     int seldepth;
+    int bestMoveNodes;
     template<int limitWay, bool isPV>
     int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-
     //PV making
     LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
 
@@ -81,10 +84,10 @@ private:
     Move rootBestMove;
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(const int depth, GameState& state, int alpha, const int beta, const int lastChange, const int relDepth);
+    int negamax(const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
 public:
     template <int limitWay=0>
-    bestMoveResponse bestMove(GameState& state, int softBound, int hardBound, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
+    bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);
@@ -93,10 +96,9 @@ public:
 
 class Perft{
 public:
-    TTperft tt;
+    Move stack[100][maxMoves];
     LegalMoveGenerator generator;
-    size_t space;
-    Perft(size_t _space);
+    Perft();
     big visitedNodes;
     big _perft(GameState& state, ubyte depth);
     big perft(GameState& state, ubyte depth);

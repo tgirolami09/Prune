@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <chrono>
+#include <cassert>
 const int alloted_space = 64*1000*1000;
 //int omp_get_thread_num(){return 0;}
 //#define DEBUG
@@ -145,9 +146,10 @@ int main(int argc, char** argv){
             do{
                 bool isWhite = current.friendlyColor() == WHITE;
                 root.fromFen(fens[i]);
-                bestMoveResponseres;
-                if(isWhite)res = player.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
-                else res = opponent.bestMove<1>(root, limitNodes, limitNodes*1000, moves, false, false);
+                bestMoveResponse res;
+                TM tm(limitNodes, limitNodes*1000);
+                if(isWhite)res = player.bestMove<1>(root, tm, moves, false, false);
+                else res = opponent.bestMove<1>(root, tm, moves, false, false);
                 int score = get<2>(res);
                 Move curMove = get<1>(res);
                 if(abs(score) > MAXIMUM-maxDepth){
@@ -165,7 +167,7 @@ int main(int argc, char** argv){
                 if(score != INF){
                     curProc.score = score;
                     player.eval.init(current);
-                    curProc.staticScore = player.eval.getScore(current.friendlyColor());
+                    curProc.staticScore = player.eval.getScore(current.friendlyColor(), player.correctionHistory, current);
                     curProc.isVoid = false;
                 }else{
                     curProc.isVoid = true;

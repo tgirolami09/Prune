@@ -8,6 +8,7 @@
 #include "GameState.hpp"
 #include <vector>
 #include "BestMoveFinder.hpp"
+#include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
 
@@ -75,8 +76,8 @@ public :
 };
 int moveOverhead = 100;
 const int alloted_space=64*hashMul;
+Perft doPerft;
 BestMoveFinder bestMoveFinder(alloted_space);
-Perft doPerft(alloted_space);
 const int sizeQ=128;
 string inpQueue[sizeQ];
 atomic<int> startQ = 0;
@@ -126,10 +127,15 @@ const Option Options[] = {
     Option("nnueFile", "string", "embed")
 };
 
-pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color){
+pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
     int time = color == WHITE?wtime:btime;
     int inc = color == WHITE?winc:binc;
-    int hardBound = time/20+inc/2-moveOverhead;
+    int hardBound;
+    if(worthMoreTime)
+        hardBound = time/10+inc/2-moveOverhead;
+    else
+        hardBound = time/20+inc/2-moveOverhead;
+    hardBound = min(hardBound, time-moveOverhead);
     int softBound = hardBound/2;
     //maxTime = min(maxTime, time/10);
     return {softBound, hardBound};
@@ -140,7 +146,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
         if(args[0].first == "perft"){
             printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state->root, stoi(args[0].second)));
             return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
-        }else if(args.size() && (args[0].first == "btime" || args[0].first == "wtime")){
+        }else if((args[0].first == "btime" || args[0].first == "wtime")){
             int btime=0, wtime=0, winc=0, binc=0;
             for(pair<string, string> arg:args){
                 if(arg.first == "btime")
@@ -153,25 +159,26 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
                     winc = stoi(arg.second);
             }
             bool color = state->root.friendlyColor()^(state->movesFromRoot.size()&1);
-            auto [softBound, hardBound] = computeAllotedTime(wtime, btime, binc, winc, color);
-            return bestMoveFinder.bestMove<0>(state->root, softBound, hardBound, state->movesFromRoot);
-        }else if(args.size() && args[0].first == "movetime"){
+            TM tm(moveOverhead, wtime, btime, binc, winc, color);
+            return bestMoveFinder.bestMove<0>(state->root, tm, state->movesFromRoot);
+        }else if(args[0].first == "movetime"){
             int movetime = stoi(args[0].second);
-            return bestMoveFinder.bestMove<0>(state->root, movetime, movetime, state->movesFromRoot, verbose);
-        }else if(args.size() && args[0].first == "nodes"){
+            return bestMoveFinder.bestMove<0>(state->root, TM(movetime, movetime), state->movesFromRoot, verbose);
+        }else if(args[0].first == "nodes"){
             int nodes = stoi(args[0].second);
-            return bestMoveFinder.bestMove<1>(state->root, nodes, nodes, state->movesFromRoot, verbose);
-        }else if(args.size() && args[0].first == "depth"){
+            return bestMoveFinder.bestMove<1>(state->root, TM(nodes, nodes), state->movesFromRoot, verbose);
+        }else if(args[0].first == "depth"){
             int depth = stoi(args[0].second);
-            return bestMoveFinder.bestMove<2>(state->root, depth, depth, state->movesFromRoot, verbose);
+            return bestMoveFinder.bestMove<2>(state->root, TM(depth, depth), state->movesFromRoot, verbose);
         }
     }
-    return bestMoveFinder.bestMove<2>(state->root, 200, 200, state->movesFromRoot, verbose);
+    return bestMoveFinder.bestMove<2>(state->root, TM(200, 200), state->movesFromRoot, verbose);
 }
 
 void manageSearch(){
     Chess* state = new Chess;
     state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Move lastMove = nullMove;
     while(!stop_all){
         if(startQ != endQ){
             string com=inpQueue[startQ%sizeQ];
@@ -211,7 +218,7 @@ void manageSearch(){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
                 bestMoveFinder.eval.init(state->root);
-                int overall_eval = bestMoveFinder.eval.getScore(state->root.friendlyColor());
+                int overall_eval = bestMoveFinder.eval.getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
@@ -220,7 +227,7 @@ void manageSearch(){
                         if(type(piece) != SPACE){
                             bestMoveFinder.eval.nnue.change2<-1>(piece, square);
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-bestMoveFinder.eval.getScore(state->root.friendlyColor());
+                            int derived = overall_eval-bestMoveFinder.eval.getRaw(state->root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
                             bestMoveFinder.eval.nnue.change2<1>(piece, square);
@@ -253,6 +260,7 @@ void manageSearch(){
                 printf("static evaluation: %d cp\n", overall_eval);
             }else if(command == "ucinewgame"){
                 bestMoveFinder.clear();
+                lastMove = nullMove;
             }else if(command == "version"){
 #ifdef COMMIT
                 printf("version: %s\n", COMMIT);
@@ -326,6 +334,9 @@ void manageSearch(){
                     }
                 }
                 printf("search score: (%.0f %.0f) (%.0f %.0f)\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
+#ifdef DEBUG
+                printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
+#endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
                 printf("arch: AVX512\n");
@@ -342,7 +353,8 @@ void manageSearch(){
                 stop_all = true;
             }else if(command == "position"){
                 state->movesFromRoot.clear();
-                for(auto arg:parsed){
+                for(unsigned long iarg = 0; iarg < parsed.size(); iarg++){
+                    auto arg = parsed[iarg];
                     if(arg.first == "fen"){
                         state->root.fromFen(arg.second);
                     }if(arg.first == "startpos"){
@@ -360,20 +372,23 @@ void manageSearch(){
                             move.from_uci(curMove);
                             state->movesFromRoot.push_back(move);
                         }
-                    }else{
-                        //printf("%s : %s\n", arg.first.c_str(), arg.second.c_str());
                     }
                 }
             }else if(command == "go"){
-                bestMoveResponse res=goCommand(parsed, state);
+                bestMoveResponse res=goCommand(parsed, state, true);
                 Move bm = get<0>(res);
                 Move ponder=get<1>(res);
                 if(ponder.moveInfo == nullMove.moveInfo)
                     printf("bestmove %s\n", bm.to_str().c_str());
                 else
                     printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
+                lastMove = ponder;
             }else if(command == "uci"){
+#ifdef VERSION
                 string v=VERSION;
+#else
+                string v="test";
+#endif
                 if(v[0] == 'v')
                     v = v.substr(1, v.size()-1);
                 printf("id name Prune %s\nid author tgirolami09 & jbienvenue\n", v.c_str());
@@ -405,6 +420,7 @@ void manageSearch(){
         }
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
+    delete state;
 }
 
 int main(int argc, char** argv){

@@ -6,11 +6,11 @@
 
 class __attribute__((packed)) infoScore{
 public:
-    int score;
+    int16_t score;
     ubyte typeNode;
     int16_t bestMoveInfo;
     ubyte depth;
-    big hash;
+    uint32_t hash;
 };
 const int INVALID = INT_MAX;
 class transpositionTable{
@@ -24,6 +24,7 @@ public:
     inline int storedScore(int alpha, int beta, int depth, const infoScore& entry);
 
     int get_eval(const GameState& state, int alpha, int beta, ubyte depth, int16_t& best);
+    infoScore getEntry(const GameState& state, bool& ttHit);
 
     int16_t getMove(const GameState& state);
 

@@ -1,9 +1,10 @@
 #include "TranspositionTable.hpp"
 #include "Const.hpp"
+#include "GameState.hpp"
 
 transpositionTable::transpositionTable(size_t count){
     count /= sizeof(infoScore);
-    table = vector<infoScore>(count*2);
+    table = vector<infoScore>(count);
     modulo=count;
 }
 
@@ -21,7 +22,8 @@ inline int transpositionTable::storedScore(int alpha, int beta, int depth, const
 
 int transpositionTable::get_eval(const GameState& state, int alpha, int beta, ubyte depth, int16_t& best){
     int index=state.zobristHash%modulo;
-    if(table[index].hash == state.zobristHash){
+    uint32_t resHash = state.zobristHash/modulo;
+    if(table[index].hash == resHash){
         int score = storedScore(alpha, beta, depth, table[index]);
         if(score != INVALID)return score;
         best = table[index].bestMoveInfo; //probably a good move
@@ -31,21 +33,31 @@ int transpositionTable::get_eval(const GameState& state, int alpha, int beta, ub
 
 int16_t transpositionTable::getMove(const GameState& state){
     int index=state.zobristHash%modulo;
-    if(table[index].hash == state.zobristHash)
+    uint32_t resHash = state.zobristHash/modulo;
+    if(table[index].hash == resHash)
         return table[index].bestMoveInfo; //probably a good move
     return nullMove.moveInfo;
 }
 
+infoScore transpositionTable::getEntry(const GameState& state, bool& ttHit){
+    ttHit = false;
+    int index=state.zobristHash%modulo;
+    uint32_t resHash = state.zobristHash/modulo;
+    if(table[index].hash == resHash)
+        ttHit = true;
+    return table[index];
+
+}
+
 void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth){
     //if(score == 0)return; //because of the repetition
-    if(score <= -INF || score >= INF)return;
     infoScore info;
     info.score = score;
-    info.hash = state.zobristHash;
+    info.hash = state.zobristHash/modulo;
     info.bestMoveInfo = move.moveInfo;
     info.depth = depth;
     info.typeNode = typeNode;
-    int index = info.hash%modulo;
+    int index = state.zobristHash%modulo;
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
     if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND)))
         table[index] = info;

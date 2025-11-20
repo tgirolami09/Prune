@@ -133,8 +133,13 @@ bool IncrementalEvaluator::isOnlyPawns() const{
     return !mgPhase;
 }
 
-int IncrementalEvaluator::getScore(bool c) const{
+int IncrementalEvaluator::getRaw(bool c) const{
     return nnue.eval(c);
+}
+
+int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
+    int raw_eval = nnue.eval(c);
+    return raw_eval+ch.probe(state);
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
     playMove<-1>(move, c);

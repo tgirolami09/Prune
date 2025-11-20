@@ -25,7 +25,8 @@ char transform(ubyte n);
 int sign(int n);
 class depthInfo{
 public:
-    int node, time, nps, depth, seldepth, score;
+    sbig node;
+    int time, nps, depth, seldepth, score;
 };
 
 #endif

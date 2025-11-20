@@ -8,6 +8,11 @@ using namespace std;
 #define born __uint128_t
 const big MAX_BIG = ~((big)0);
 
+template<typename T>
+void write_bytes(T a, ofstream& file){
+    file.write(reinterpret_cast<char*>(&a), sizeof(a));
+}
+
 void print_mask(big mask){
     int col=0;
     for(int row=8; row<=64; row+=8){
@@ -140,70 +145,24 @@ big usefull_bishop(big mask, int square){
 big get_usefull(bool is_rook, big mask, int square){
     return (is_rook?usefull_rook:usefull_bishop)(mask, square);
 }
-int dump_table(ofstream& file, info magic, int square, bool is_rook){
+void dump_table(ofstream& file, info magic, int square, bool is_rook){
     vector<big> table(1<<magic.minimum);
     vector<big> last_mask(1<<magic.minimum);
     int col = square & 7;
     int row = square >> 3;
-    int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
-    for(big id=0; id<(1<<nbBits); id++){
-        big mask = get_mask(is_rook, id, square);
-        big res = mask*magic.magic;
-        big res_mask = get_usefull(is_rook, mask, square);
-        big key;
-        if(magic.minimum == 0)
-            key = 0;
-        else
-            key = (res&(MAX_BIG>>magic.decR)) >> (64-magic.decR-magic.minimum);
-        if(key >= table.size()){
-            print_mask(mask);
-            printf("%llu\n", res_mask);
-            printf("%llu\n", (res&(MAX_BIG>>magic.decR)));
-            printf("%d\n", (64-magic.decR-magic.minimum));
-            printf("%llu\n", key);
-            assert(false);
-        }
-        if(table[key] != res_mask && table[key] != 0){
-            printf("magic:%llu\n", magic.magic);
-            printf("id:%llu\n", id);
-            printf("res:%llu\nmask:\n", res);
-            print_mask(mask);
-            printf("\nlast_mask:\n");
-            print_mask(last_mask[key]);
-            printf("key:%llu\nlast usefull:\n", key);
-            print_mask(table[key]);
-            printf("\nusefull\n");
-            print_mask(res_mask);
-            printf("\n");
-            printf("square:%d\n", square);
-            printf("decr:%d minimum:%d\n", magic.decR, magic.minimum);
-            assert(false);
-        }
-        table[key] = res_mask;
-        last_mask[key] = mask;
-    }
-    file << magic.magic << " ";
-    file << magic.decR << " ";
-    file << magic.minimum << " ";
-    file << table.size() << " ";
-    int res=0;
-    for(big i:table){
-        file << i << " ";
-        if(i == 0)res++;
-    }
-    return res;
+    write_bytes(magic.magic, file);
+    write_bytes(magic.decR, file);
+    write_bytes(magic.minimum, file);
 }
 
-int dump_entire(vector<vector<info>> table, char* name){
+void dump_entire(vector<vector<info>> table, char* name){
     ofstream file(name);
-    int place_lost=0;
     for(int is_rook=0; is_rook<2; is_rook++){
         for(int square=0; square < 64; square++){
-            place_lost += dump_table(file, table[is_rook][square], square, is_rook);
+            dump_table(file, table[is_rook][square], square, is_rook);
         }
     }
     file.close();
-    return place_lost;
 }
 
 vector<vector<info>> load_info(const char* name){
@@ -212,14 +171,15 @@ vector<vector<info>> load_info(const char* name){
         vector<info> bests;
         big magic;
         int decR, minimum;
-        while(file >> magic){
-            file >> decR >> minimum;
-            bests.push_back({minimum, decR, magic});
+        while(file.read(reinterpret_cast<char*>(&magic), sizeof(magic))){
             int size;
-            file >> size;
+            file.read(reinterpret_cast<char*>(&decR), sizeof(decR));
+            file.read(reinterpret_cast<char*>(&minimum), sizeof(minimum));
+            file.read(reinterpret_cast<char*>(&size), sizeof(size));
+            bests.push_back({minimum, decR, magic});
             for(int i=0; i<size; i++){
                 big mask;
-                file >> mask;//read the table, is not needed
+                file.read(reinterpret_cast<char*>(&mask), sizeof(mask));
             }
         }
         if(bests.size() == 64)
@@ -243,12 +203,14 @@ void load_whole(info* constants, big** table, char* name){
     int decR, minimum, size;
     big mask;
     int current = 0;
-    while(file >> magic){
-        file >> decR >> minimum >> size;
+    while(file.read(reinterpret_cast<char*>(&magic), sizeof(magic))){
+        file.read(reinterpret_cast<char*>(&decR), sizeof(decR));
+        file.read(reinterpret_cast<char*>(&minimum), sizeof(minimum));
+        file.read(reinterpret_cast<char*>(&size), sizeof(size));
         constants[current] = {minimum, decR, magic};
         table[current] = (big*)calloc(size, sizeof(big));
         for(int i=0; i<size; i++){
-            file >> mask;
+            file.read(reinterpret_cast<char*>(&mask), sizeof(mask));
             table[current][i] = mask;
         }
         current++;
