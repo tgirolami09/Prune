@@ -1,16 +1,17 @@
 #include "GameState.hpp"
 #include "Const.hpp"
 #include "Functions.hpp"
-#include <random>
 #include <cassert>
 using namespace std;
 
 
 GameState::GameState(){
-    mt19937_64 gen(42);
-    uniform_int_distribution<big> dist(0, MAX_BIG);
+    big state(42);
     for(int idz=0; idz<nbZobrist; idz++){
-        zobrist[idz] = dist(gen);
+        big z = (state += 0x9E3779B97F4A7C15ULL);
+        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+        z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+        zobrist[idz] = z ^ (z >> 31);
     }
 }
 
