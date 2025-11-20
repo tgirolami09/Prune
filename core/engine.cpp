@@ -4,10 +4,12 @@
 #include <algorithm>
 // #include "util_magic.cpp"
 #include "Const.hpp"
+#include "Functions.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include <vector>
 #include "BestMoveFinder.hpp"
+#include "NNUE.hpp"
 #include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
@@ -225,12 +227,12 @@ void manageSearch(){
                         int square = (r << 3) | c;
                         int piece = state->root.getfullPiece(square);
                         if(type(piece) != SPACE){
-                            bestMoveFinder.eval.nnue.change2<-1>(piece, square);
+                            bestMoveFinder.eval.changePiece2<-1, true>(square, type(piece), color(piece));
                             char repr=id_to_piece[type(piece)];
                             int derived = overall_eval-bestMoveFinder.eval.getRaw(state->root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
-                            bestMoveFinder.eval.nnue.change2<1>(piece, square);
+                            bestMoveFinder.eval.backStack();
                         }else evals[7-c] = {' ', 0};
                     }
                     for(int i=0; i<8; i++)

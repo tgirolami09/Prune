@@ -122,8 +122,6 @@ NNUE::NNUE(string name){
         for(int id16=0; id16<nb16; id16++) {
             set_simd16_element(hlBiases[i], id16, read_bytes(file));
         }
-        accs[WHITE][i] = hlBiases[i];
-        accs[BLACK][i] = hlBiases[i];
     }
     
     for(int i=0; i<2*HL_SIZE/nb16; i++) {
@@ -152,8 +150,6 @@ NNUE::NNUE(){
         for(int id16=0; id16<nb16; id16++) {
             set_simd16_element(hlBiases[i], id16, transform(baseModel[pointer++]));
         }
-        accs[WHITE][i] = hlBiases[i];
-        accs[BLACK][i] = hlBiases[i];
     }
     
     for(int i=0; i<2*HL_SIZE/nb16; i++) {
@@ -166,7 +162,7 @@ NNUE::NNUE(){
     outbias = transform(baseModel[pointer++]);
 }
 
-void NNUE::clear(){
+void NNUE::initAcc(Accumulator& accs){
     for(int i=0; i<HL_SIZE/nb16; i++){
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
@@ -186,7 +182,7 @@ simdint doOut(simd16 a, simd16 w){
     return overall;
 } 
 
-dbyte NNUE::eval(bool side) const{
+dbyte NNUE::eval(const Accumulator& accs, bool side) const{
     simdint res = simdint_zero();
     for(int i=0; i<HL_SIZE/nb16; i++){
         res = simdint_add(res, doOut(accs[side^1][i], outWeights[i+HL_SIZE/nb16]));
@@ -201,7 +197,7 @@ dbyte NNUE::eval(bool side) const{
 
 
 template<int f>
-void NNUE::change2(int piece, int square){
+void NNUE::change2(Accumulator& accs, int piece, int square){
     int index = get_index(piece, square);
     int index2 = index ^ 56 ^ 64; // point of view change
     for(int i=0; i<HL_SIZE/nb16; i++){
@@ -214,8 +210,25 @@ void NNUE::change2(int piece, int square){
         }
     }
 }
-template void NNUE::change2<-1>(int, int);
-template void NNUE::change2<1>(int, int);
+template<int f>
+void NNUE::change2(Accumulator& accIn, Accumulator& accOut, int piece, int square){
+    int index = get_index(piece, square);
+    int index2 = index ^ 56 ^ 64; // point of view change
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        if constexpr (f == 1) {
+            accOut[WHITE][i] = simd16_add(accIn[WHITE][i], hlWeights[index][i]);
+            accOut[BLACK][i] = simd16_add(accIn[BLACK][i], hlWeights[index2][i]);
+        } else {
+            accOut[WHITE][i] = simd16_sub(accIn[WHITE][i], hlWeights[index][i]);
+            accOut[BLACK][i] = simd16_sub(accIn[BLACK][i], hlWeights[index2][i]);
+        }
+    }
+}
+template void NNUE::change2<-1>(Accumulator&, int, int);
+template void NNUE::change2<1>(Accumulator&, int, int);
+template void NNUE::change2<-1>(Accumulator&, Accumulator&, int, int);
+template void NNUE::change2<1>(Accumulator&, Accumulator&, int, int);
+
 inline simd16 simd16_add(simd16 a, simd16 b) {
 #if defined(__AVX2__)
     return _mm256_add_epi16(a, b);

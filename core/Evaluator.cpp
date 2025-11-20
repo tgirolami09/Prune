@@ -111,12 +111,13 @@ IncrementalEvaluator::IncrementalEvaluator():nnue(){
 
 void IncrementalEvaluator::init(const GameState& state){//should be only call at the start of the search
     mgPhase = 0;
-    nnue.clear();
+    stackIndex = 0;
+    nnue.initAcc(stackAcc[stackIndex]);
     memset(presentPieces, 0, sizeof(presentPieces));
     for(int square=0; square<64; square++){
         int piece=state.getfullPiece(square);
         if(type(piece) != SPACE){
-            changePiece<1>(square, type(piece), color(piece));
+            changePiece<1, true>(square, type(piece), color(piece));
             //printf("intermediate eval : %d\n", getScore(state.friendlyColor()));
         }
     }
@@ -134,13 +135,76 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 }
 
 int IncrementalEvaluator::getRaw(bool c) const{
-    return nnue.eval(c);
+    return nnue.eval(stackAcc[stackIndex], c);
 }
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
-    int raw_eval = nnue.eval(c);
+    int raw_eval = nnue.eval(stackAcc[stackIndex], c);
     return raw_eval+ch.probe(state);
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
     playMove<-1>(move, c);
 }
+
+template<int f, bool updateNNUE>
+void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
+    if(updateNNUE)
+        nnue.change2<f>(stackAcc[stackIndex], piece*2+c, pos);
+    mgPhase += f*gamephaseInc[piece];
+    presentPieces[c][piece] += f;
+}
+
+
+template<int f, bool updateNNUE>
+void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
+    if(updateNNUE){
+        nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], piece*2+c, pos);
+        stackIndex++;
+    }else{
+        stackIndex--;
+    }
+    mgPhase += f*gamephaseInc[piece];
+    presentPieces[c][piece] += f;
+}
+
+
+template<int f>
+void IncrementalEvaluator::playMove(Move move, bool c){
+    int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
+    changePiece2<-f, f == 1>(move.from(), move.piece, c);
+    changePiece<f, f == 1>(move.to(), toPiece, c);
+    if(move.capture != -2){
+        int posCapture = move.to();
+        int pieceCapture = move.capture;
+        if(move.capture == -1){ // for en passant
+            if(c == WHITE)posCapture -= 8;
+            else posCapture += 8;
+            pieceCapture = PAWN;
+        }
+        changePiece<-f, f == 1>(posCapture, pieceCapture, !c);
+    }
+    if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
+        int rookStart = move.from();
+        int rookEnd = move.to();
+        if(move.from() > move.to()){//queen side
+            rookStart &= ~7;
+            rookEnd++;
+        }else{//king side
+            rookStart |= 7;
+            rookEnd--;
+        }
+        changePiece<-f, f == 1>(rookStart, ROOK, c);
+        changePiece<f, f == 1>(rookEnd, ROOK, c);
+    }
+}
+
+void IncrementalEvaluator::backStack(){
+    stackIndex--;
+}
+
+template void IncrementalEvaluator::playMove<-1>(Move, bool);
+template void IncrementalEvaluator::playMove<1>(Move, bool);
+template void IncrementalEvaluator::changePiece2<-1, true>(int, int, bool);
+template void IncrementalEvaluator::changePiece2<1, true>(int, int, bool);
+template void IncrementalEvaluator::changePiece2<-1, false>(int, int, bool);
+template void IncrementalEvaluator::changePiece2<1, false>(int, int, bool);

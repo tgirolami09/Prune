@@ -48,6 +48,7 @@ template<int min, int max>
 simd16 SCReLU(simd16 value);
 simd16 activation(simd16 value);
 int mysum(simdint x);
+using Accumulator=simd16[2][HL_SIZE/nb16];
 
 class NNUE{
 public:
@@ -55,7 +56,6 @@ public:
     simd16 hlBiases[HL_SIZE/nb16];
     simd16 outWeights[2*HL_SIZE/nb16];
     dbyte outbias;
-    simd16 accs[2][HL_SIZE/nb16];
     
     dbyte read_bytes(ifstream& file);
     // Helper to set individual elements in SIMD vectors
@@ -63,11 +63,13 @@ public:
     void set_simdint_element(simdint& vec, int index, int value);
     NNUE(string name);
     NNUE();
-    void clear();
+    void initAcc(Accumulator& accs);
     int get_index(int piece, int square) const;
     template<int f>
-    void change2(int piece, int square);
-    dbyte eval(bool side) const;
+    void change2(Accumulator& accIn, int piece, int square);
+    template<int f>
+    void change2(Accumulator& accIn, Accumulator& accOut, int piece, int square);
+    dbyte eval(const Accumulator& accs, bool side) const;
 };
 
 
