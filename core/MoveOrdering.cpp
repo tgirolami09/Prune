@@ -8,7 +8,7 @@ int& HelpOrdering::getIndex(Move move, bool c){
     return history[c][move.from()][move.to()];
 }
 bool HelpOrdering::fastEq(Move a, Move b) const{
-    return (a.from() == b.from()) && (a.to() == b.to()) && (a.promotion() == b.promotion());
+    return a.moveInfo == b.moveInfo;
 }
 void HelpOrdering::init(){
     for(int i=0; i<maxDepth; i++){
