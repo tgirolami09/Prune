@@ -4,28 +4,21 @@
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "Move.hpp"
-//#define COUNTER
 
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
-#ifdef COUNTER
-    int16_t counterMove[64*64];
-#endif
     int& getIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;
 public:
     void init();
-    void addKiller(Move move, int depth, int relDepth, bool c, Move lastMove);
+    void addKiller(Move move, int depth, int relDepth, bool c);
     bool isKiller(Move move, int relDepth) const;
     int getHistoryScore(Move move, bool c) const;
     void updateHistory(Move move, bool c, int bonus);
     void negUpdate(Move[maxMoves], int upto, bool c, int depth);
-#ifdef COUNTER
-    bool isCounter(Move move, Move lastMove) const;
-#endif
 
-    int getMoveScore(Move move, bool c, int relDepth, Move lastMove) const;
+    int getMoveScore(Move move, bool c, int relDepths) const;
 };
 
 class Order{

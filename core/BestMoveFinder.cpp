@@ -316,7 +316,7 @@ int BestMoveFinder::negamax(int depth, GameState& state, int alpha, const int be
             nbCutoff++;
             if(isRoot)rootBestMove=curMove;
             if(rankMove == 0)nbFirstCutoff++;
-            history.addKiller(curMove, depth, relDepth, state.friendlyColor(), state.getLastMove());
+            history.addKiller(curMove, depth, relDepth, state.friendlyColor());
             if(!curMove.isTactical()){
                 history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
                 if(score > static_eval && !inCheck)

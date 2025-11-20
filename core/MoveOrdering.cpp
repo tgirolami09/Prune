@@ -33,16 +33,13 @@ void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth){
     }
 }
 
-void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c, Move lastMove){
+void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c){
     if(move.capture == -2){
         if(!fastEq(move, killers[relDepth][0])){
             killers[relDepth][1] = killers[relDepth][0];
             killers[relDepth][0] = move;
         }
         updateHistory(move, c, depth*depth);
-#ifdef COUNTER
-        counterMove[lastMove.getMovePart()] = move.moveInfo;
-#endif
     }
 }
 
@@ -59,7 +56,7 @@ bool HelpOrdering::isCounter(Move move, Move lastMove) const{
 }
 #endif
 
-int HelpOrdering::getMoveScore(Move move, bool c, int relDepth, Move lastMove) const{
+int HelpOrdering::getMoveScore(Move move, bool c, int relDepth) const{
     int score = 0;
     if(isKiller(move, relDepth))
         score = KILLER_ADVANTAGE;
@@ -94,7 +91,7 @@ void Order::init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrd
                 this->swap(i, 0);
             nbPriority++;
         }else{
-            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth, state.getLastMove()), useSEE, state, flags[i], generator);
+            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth), useSEE, state, flags[i], generator);
             if(moves[i].isTactical())
                 flags[i]++;
         }
