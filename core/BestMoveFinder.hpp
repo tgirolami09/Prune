@@ -13,6 +13,7 @@
 #include <atomic>
 #include <string>
 #include <vector>
+#include <future>
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
@@ -31,6 +32,7 @@ public:
 struct StackCase{
     Order order;
     int static_score;
+    Move bestMove;
 };
 
 string scoreToStr(int score);
@@ -42,7 +44,6 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
     transpositionTable transposition;
     HelpOrdering history;
-    StackCase stack[maxDepth];
 public:
     std::atomic<bool> running;
     IncrementalEvaluator eval;
@@ -65,7 +66,7 @@ private:
     int seldepth;
     int bestMoveNodes;
     template<int limitWay, bool isPV>
-    int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth);
+    int quiescenceSearch(StackCase* stack, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
     //PV making
     LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
@@ -80,14 +81,17 @@ private:
     int16_t getPVMove(int relDepth);
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template<int nodeType, int limitWay, bool mateSearch>
-    inline int Evaluate(GameState& state, int alpha, int beta, int relDepth);
-    Move rootBestMove;
+    inline int Evaluate(StackCase* stack, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    int negamax(StackCase* stack, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    template <int nodeType, int limitWay, bool mateSearch>
+    pair<Move, int> launchNormal(const int depth, GameState& state, int alpha, const int beta, const int relDepth);
+    template <int nodeType, int limitWay, bool mateSearch>
+    void launchSMP(promise<pair<Move, int>>&& p, int depth, GameState& state, int alpha, const int beta, const int relDepth);
 public:
     template <int limitWay=0>
-    bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
+    bestMoveResponse bestMove(const GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);

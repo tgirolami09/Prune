@@ -85,6 +85,7 @@ string inpQueue[sizeQ];
 atomic<int> startQ = 0;
 atomic<int> endQ = 0;
 atomic<bool> stop_all=false;
+int nbThreads = 1;
 
 void manageInput(){
     while(!stop_all){
@@ -126,7 +127,8 @@ const Option Options[] = {
     Option("Hash", "spin", "64", 1, 512),
     Option("Move Overhead", "spin", "10", 0, 5000),
     Option("Clear Hash", "button"),
-    Option("nnueFile", "string", "embed")
+    Option("nnueFile", "string", "embed"),
+    Option("Threads", "spin", "1", 1, 100)
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -413,6 +415,8 @@ void manageSearch(){
                                 bestMoveFinder.eval.nnue = NNUE();
                             else
                                 bestMoveFinder.eval.nnue = NNUE(parsed[i+1].second);
+                        }else if(parsed[i].second == "Threads"){
+                            nbThreads = stoi(parsed[i+1].second);
                         }
                         i += incr;
                     }

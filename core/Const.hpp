@@ -9,6 +9,7 @@
 #define dbyte int16_t
 #define sbig int64_t
 using namespace std;
+extern int nbThreads;
 const big MAX_BIG=~0ULL;
 const int WHITE=0;
 const int BLACK=1; // odd = black
