@@ -3,6 +3,14 @@
 #include "Evaluator.hpp"
 #include "Const.hpp"
 //#define COUNTER
+static big state(42);
+int randomizedint(int n){
+    big z = (state += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    z = z ^ (z >> 31);
+    return n-n*((double)z/MAX_BIG-0.5)/2;
+}
 
 int& HelpOrdering::getIndex(Move move, bool c){
     return history[c][move.from()][move.to()];
@@ -75,16 +83,17 @@ void Order::swap(int idMove1, int idMove2){
     std::swap(flags[idMove1], flags[idMove2]);
 }
 
-void Order::init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE){
+void Order::init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE, bool randomized){
     nbPriority = 0;
     pointer = 0;
+    isRandom = randomized;
     for(int i=0; i<nbMoves; i++){
-        if(moveInfoPriority == moves[i].moveInfo){
+        if(!randomized && moveInfoPriority == moves[i].moveInfo){
             this->swap(i, 0);
             if(nbPriority)
                 this->swap(i, 1);
             nbPriority++;
-        }else if(PVMove == moves[i].moveInfo){
+        }else if(!randomized && PVMove == moves[i].moveInfo){
             if(nbPriority)
                 this->swap(i, 1);
             else 
@@ -111,6 +120,8 @@ void Order::reinit(int16_t priorityMove){
 }
 inline bool Order::compareMove(int idMove1, int idMove2){
     if(flags[idMove1] != flags[idMove2])return flags[idMove2] > flags[idMove1];
+    if(isRandom)
+        return randomizedint(1000) > 1000;
     return scores[idMove2] > scores[idMove1];
 }
 

@@ -16,9 +16,8 @@ const int INVALID = INT_MAX;
 class transpositionTable{
 public:
     vector<infoScore> table;
+    sbig usedCase;
     int modulo;
-    int rewrite=0;
-    int place=0;
     transpositionTable(size_t count);
 
     inline int storedScore(int alpha, int beta, int depth, const infoScore& entry);
@@ -31,6 +30,7 @@ public:
     void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth);
     void clear();
     void reinit(int count);
+    int hashFull();
 };
 
 class perftMem{

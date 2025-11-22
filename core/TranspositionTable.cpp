@@ -4,6 +4,7 @@
 
 transpositionTable::transpositionTable(size_t count){
     count /= sizeof(infoScore);
+    usedCase = 0;
     table = vector<infoScore>(count);
     modulo=count;
 }
@@ -59,18 +60,25 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.typeNode = typeNode;
     int index = state.zobristHash%modulo;
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
-    if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND)))
+    if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND))){
+        if(table[index].hash == 0)usedCase++;
         table[index] = info;
+    }
 }
 void transpositionTable::clear(){
     table = vector<infoScore>(modulo);
+    usedCase = 0;
 }
+
+int transpositionTable::hashFull(){
+    return usedCase*1000/modulo;
+}
+
 void transpositionTable::reinit(int count){
     count /= sizeof(infoScore);
     table.resize(count);
+    usedCase = 0;
     modulo = count;
-    place = 0;
-    rewrite = 0;
 }
 TTperft::TTperft(int alloted_mem):mem(alloted_mem/sizeof(perftMem)), modulo(alloted_mem/sizeof(perftMem)){}
 void TTperft::push(perftMem eval){

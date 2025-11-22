@@ -306,13 +306,15 @@ void manageSearch(){
                 int maxDepthAttain = 0;
                 vector<pair<int, int>> Scores;
                 for(unsigned idFen=0; idFen<benches.size(); idFen++){
-                    printf("\rposition %d/%d", idFen, (int)benches.size());
+                    printf("position %d/%d\n", idFen, (int)benches.size());
                     fflush(stdout);
                     Chess* testState = new Chess;
                     testState->movesFromRoot = {};
                     testState->root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    vector<depthInfo> infos = get<3>(goCommand(parsed, testState, false));
+                    bestMoveResponse res = goCommand(parsed, testState, true);
+                    vector<depthInfo> infos = get<3>(res);
+                    printf("bestmove %s\n", get<0>(res).to_str().c_str());
                     for(depthInfo info:infos){
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;
@@ -421,10 +423,7 @@ void manageSearch(){
                     opt.print();
                 printf("uciok\n");
             }else if(command == "setoption"){
-                printf("begin setoption\n");
-                printf("%d\n", parsed.empty());
                 for(int i=0; i<nbParams; i++){
-                    printf("%s : %s\n", parsed[i].first.c_str(), parsed[i].second.c_str());
                     if(parsed[i].first == "name"){
                         bool incr=true;
                         if(parsed[i].second == "Hash")
