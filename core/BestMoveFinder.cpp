@@ -348,17 +348,14 @@ threadResponse BestMoveFinder::launchNormal(usefull* ss, int depth, GameState& s
 }
 
 template <int limitWay, bool mateSearch>
-void BestMoveFinder::launchSMP(promise<threadResponse>&& p, int idThread, int depth, GameState& state, int alpha, const int beta, const int relDepth){
+void BestMoveFinder::launchSMP(promise<threadResponse>&& p, int depth, GameState& state, int alpha, const int beta, const int relDepth){
     usefull* ss = new usefull;
     ss->mainThread = false;
     ss->generator.initDangers(state);
     ss->eval.init(state);
     ss->seldepth = 0;
     ss->nodes = 0;
-    int d = beta-alpha;
-    int nalpha = alpha+idThread*d/nbThreads;
-    int nbeta = beta-(nbThreads-idThread+1)*d/nbThreads;
-    int bestScore = negamax<CutNode, limitWay, mateSearch, true>(ss, depth, state, nalpha, nbeta, relDepth);
+    int bestScore = negamax<CutNode, limitWay, mateSearch, true>(ss, depth, state, alpha, beta, relDepth);
     Move bestMove = ss->stack[1].bestMove;
     string PV = PVprint(ss->PVlines[0]);
     p.set_value({bestScore, bestMove, PV, ss->bestMoveNodes, ss->nodes, ss->seldepth});
@@ -467,7 +464,7 @@ bestMoveResponse BestMoveFinder::bestMove(const GameState& state, TM tm, vector<
             for(int i=0; i<nbThreads-1; i++){
                 promise<threadResponse> p;
                 futures[i] = p.get_future();
-                threads[i] = thread(&BestMoveFinder::launchSMP<limitWay, false>, this, std::move(p), i, depth, ref(threadStates[i]), alpha, beta, actDepth);
+                threads[i] = thread(&BestMoveFinder::launchSMP<limitWay, false>, this, std::move(p), depth, ref(threadStates[i]), alpha, beta, actDepth);
             }
             threadResponse tres = launchNormal<limitWay, false>(ss, depth, threadStates[nbThreads-1], alpha, beta, actDepth);
             seldepth = max(seldepth, tres.seldepth);

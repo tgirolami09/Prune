@@ -96,7 +96,7 @@ private:
     template <int limitWay, bool mateSearch>
     threadResponse launchNormal(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth);
     template <int limitWay, bool mateSearch>
-    void launchSMP(promise<threadResponse>&& p, int idThread, int depth, GameState& state, int alpha, const int beta, const int relDepth);
+    void launchSMP(promise<threadResponse>&& p, int depth, GameState& state, int alpha, const int beta, const int relDepth);
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(const GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
