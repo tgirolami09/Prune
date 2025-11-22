@@ -17,6 +17,16 @@
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
+class threadResponse{
+public:
+    int bs;
+    Move bm;
+    string PV;
+    int bestMoveNodes;
+    sbig nodes;
+    int seldepth;
+};
+
 int compScoreMove(const void* a, const void*b);
 
 int fromTT(int score, int rootDist);
@@ -35,12 +45,22 @@ struct StackCase{
     Move bestMove;
 };
 
-struct usefull{
+class usefull{
+public:
     LegalMoveGenerator generator;
     StackCase stack[maxDepth];
     IncrementalEvaluator eval;
+    LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
+    sbig nodes;
+    int seldepth;
+    int bestMoveNodes;
+    void transfer(int relDepth, Move move);
+    void beginLine(int relDepth);
+    void beginLineMove(int relDepth, Move move);
+    void resetLines();
 };
 
+string PVprint(LINE pvLine);
 string scoreToStr(int score);
 
 //Class to find the best in a situation
@@ -63,25 +83,9 @@ public:
 
 private:
     chrono::nanoseconds getElapsedTime();
-    sbig nodes;
-    int nbCutoff;
-    int nbFirstCutoff;
-    int seldepth;
-    int bestMoveNodes;
     template<int limitWay, bool isPV>
     int quiescenceSearch(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    //PV making
-    LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
-
-    string PVprint(LINE pvLine);
-    LINE lastPV;
-    void transferLastPV();
-    void transfer(int relDepth, Move move);
-    void beginLine(int relDepth);
-    void beginLineMove(int relDepth, Move move);
-    void resetLines();
-    int16_t getPVMove(int relDepth);
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template<int nodeType, int limitWay, bool mateSearch>
     inline int Evaluate(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
@@ -89,9 +93,9 @@ private:
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
     int negamax(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
     template <int nodeType, int limitWay, bool mateSearch>
-    pair<Move, int> launchNormal(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth);
+    threadResponse launchNormal(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth);
     template <int nodeType, int limitWay, bool mateSearch>
-    void launchSMP(promise<pair<Move, int>>&& p, int depth, GameState& state, int alpha, const int beta, const int relDepth);
+    void launchSMP(promise<threadResponse>&& p, int depth, GameState& state, int alpha, const int beta, const int relDepth);
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(const GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
