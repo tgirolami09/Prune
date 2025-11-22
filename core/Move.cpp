@@ -68,3 +68,7 @@ bool Move::isChanger() const{
 int Move::getMovePart() const{
     return moveInfo&~(clearTo|clearFrom);
 }
+
+uint16_t Move::uMoveInfo() const{
+    return moveInfo+(1<<15);
+}

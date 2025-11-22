@@ -15,6 +15,20 @@
 #include <iostream>
 
 using namespace std;
+
+class Initialisation{
+public:
+    Initialisation(){
+        load_table();
+        precomputePawnsAttack();
+        precomputeCastlingMasks();
+        precomputeNormalKingMoves();
+        precomputeDirections();
+        PrecomputeKnightMoveData();
+        init_lines();
+    }
+};
+Initialisation initAll;
 //Main class for the game
 const vector<string> benches = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -152,7 +166,8 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
             return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
         }else if((args[0].first == "btime" || args[0].first == "wtime")){
             int btime=0, wtime=0, winc=0, binc=0;
-            for(pair<string, string> arg:args){
+            for(int iarg=0; iarg < args.size(); iarg++){
+                auto arg = args[iarg];
                 if(arg.first == "btime")
                     btime = stoi(arg.second);
                 else if(arg.first == "wtime")
@@ -183,6 +198,7 @@ void manageSearch(){
     Chess* state = new Chess;
     state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     Move lastMove = nullMove;
+    usefull* ss = new usefull;
     while(!stop_all){
         if(startQ != endQ){
             string com=inpQueue[startQ%sizeQ];
@@ -195,15 +211,19 @@ void manageSearch(){
             string value="";
             vector<pair<string, string>> parsed;
             bool isarg=false;
+            int nbParams = 0;
             while(stream >> word){
                 isarg = true;
                 if(keywords.count(word)){
                     if(value.empty()){
-                        if(!keyword.empty())
+                        if(!keyword.empty()){
                             parsed.push_back({keyword, ""});
+                            nbParams++;
+                        }
                     }else{
                         value.pop_back();
                         parsed.push_back({keyword, value});
+                        nbParams++;
                     }
                     value = "";
                     keyword = word;
@@ -215,26 +235,27 @@ void manageSearch(){
                 if(!value.empty())
                     value.pop_back();
                 parsed.push_back({keyword, value});
+                nbParams++;
             }
             if(command == "runQ"){
                 bestMoveFinder.testQuiescenceSearch(state->root);
             }else if(command == "eval"){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
-                bestMoveFinder.eval.init(state->root);
-                int overall_eval = bestMoveFinder.eval.getRaw(state->root.friendlyColor());
+                ss->eval.init(state->root);
+                int overall_eval = ss->eval.getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
                         int square = (r << 3) | c;
                         int piece = state->root.getfullPiece(square);
                         if(type(piece) != SPACE){
-                            bestMoveFinder.eval.changePiece2<-1, true>(square, type(piece), color(piece));
+                            ss->eval.changePiece2<-1, true>(square, type(piece), color(piece));
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-bestMoveFinder.eval.getRaw(state->root.friendlyColor());
+                            int derived = overall_eval-ss->eval.getRaw(state->root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
-                            bestMoveFinder.eval.backStack();
+                            ss->eval.backStack();
                         }else evals[7-c] = {' ', 0};
                     }
                     for(int i=0; i<8; i++)
@@ -357,7 +378,7 @@ void manageSearch(){
                 stop_all = true;
             }else if(command == "position"){
                 state->movesFromRoot.clear();
-                for(unsigned long iarg = 0; iarg < parsed.size(); iarg++){
+                for(int iarg = 0; iarg < nbParams; iarg++){
                     auto arg = parsed[iarg];
                     if(arg.first == "fen"){
                         state->root.fromFen(arg.second);
@@ -400,7 +421,10 @@ void manageSearch(){
                     opt.print();
                 printf("uciok\n");
             }else if(command == "setoption"){
-                for(int i=0; i<(int)parsed.size(); i++){
+                printf("begin setoption\n");
+                printf("%d\n", parsed.empty());
+                for(unsigned long i=0; i<nbParams; i++){
+                    printf("%s : %s\n", parsed[i].first.c_str(), parsed[i].second.c_str());
                     if(parsed[i].first == "name"){
                         bool incr=true;
                         if(parsed[i].second == "Hash")
@@ -412,9 +436,9 @@ void manageSearch(){
                             incr = false;
                         }else if(parsed[i].second == "nnueFile"){
                             if(parsed[i+1].second == "embed")
-                                bestMoveFinder.eval.nnue = NNUE();
+                                ss->eval.nnue = NNUE();
                             else
-                                bestMoveFinder.eval.nnue = NNUE(parsed[i+1].second);
+                                ss->eval.nnue = NNUE(parsed[i+1].second);
                         }else if(parsed[i].second == "Threads"){
                             nbThreads = stoi(parsed[i+1].second);
                         }
@@ -427,6 +451,7 @@ void manageSearch(){
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     delete state;
+    delete ss;
 }
 
 int main(int argc, char** argv){

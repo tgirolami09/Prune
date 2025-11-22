@@ -3,13 +3,22 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include <cstring>
-#include <sstream>
 #include <cassert>
 using namespace std;
 
 BINARY_ASM_INCLUDE("magics.out", magicsData);
+big parseInt(int& pointer);
 
-void LegalMoveGenerator::PrecomputeKnightMoveData(){
+big KnightMoves[64]; //Knight moves for each position of the board
+big pieceCastlingMasks[2][2];
+big attackCastlingMasks[2][2];
+big normalKingMoves[64];
+big attackPawns[128];
+big directions[64][64];
+big* tableMagic[128];
+constTable constantsMagic[128];
+
+void PrecomputeKnightMoveData(){
     const pair<int, int> moves[8] = {
         {-2,  1},
         {-2, -1},
@@ -39,7 +48,7 @@ void LegalMoveGenerator::PrecomputeKnightMoveData(){
         }
     }  
 }
-void LegalMoveGenerator::precomputeCastlingMasks(){
+void precomputeCastlingMasks(){
     pieceCastlingMasks[0][1] = 0b00000110;
     pieceCastlingMasks[0][0] = 0b01110000;
     pieceCastlingMasks[1][1] = pieceCastlingMasks[0][1] << 56;
@@ -51,7 +60,7 @@ void LegalMoveGenerator::precomputeCastlingMasks(){
     attackCastlingMasks[1][0] = attackCastlingMasks[0][0] << 56;
 }
 
-void LegalMoveGenerator::precomputeNormlaKingMoves(){
+void precomputeNormalKingMoves(){
     for (int kingPosition = 0; kingPosition < 64 ; ++ kingPosition){
         big kingEndMask = 0;
 
@@ -93,7 +102,7 @@ void LegalMoveGenerator::precomputeNormlaKingMoves(){
     }
 }
 
-void LegalMoveGenerator::precomputePawnsAttack(){
+void precomputePawnsAttack(){
     for(int c=0; c<2; c++){
         int leftLimit = c ?  7 : 0;
         int rightLimit = leftLimit^7;
@@ -110,13 +119,9 @@ void LegalMoveGenerator::precomputePawnsAttack(){
         }
     }
 }
-void LegalMoveGenerator::precomputeDirections(){
+void precomputeDirections(){
     //Set everything to 0 first just to be sure
-    for (int i = 0; i < 64; ++i){
-        for (int j = 0; j < 64; ++j){
-            directions[i][j] = 0;
-        }    
-    }
+    memset(directions, 0, sizeof(directions));
     for(int row=0; row<8; row++){
         for(int col=0; col<8; col++){
             int square = row*8+col;
@@ -216,7 +221,7 @@ static big get_mask(bool is_rook, big id, big square){
     return (is_rook?rook_mask:bishop_mask)(id, square);
 }
 
-void LegalMoveGenerator::load_table(){
+void load_table(){
     big magic;
     int decR, minimum, size;
     int current = 0;
@@ -240,20 +245,6 @@ void LegalMoveGenerator::load_table(){
             tableMagic[current][key] = res_mask;
         }
         current++;
-    }
-}
-LegalMoveGenerator::LegalMoveGenerator(){
-    PrecomputeKnightMoveData();
-    init_lines();
-    load_table();
-    precomputePawnsAttack();
-    precomputeCastlingMasks();
-    precomputeNormlaKingMoves();
-    precomputeDirections();
-}
-LegalMoveGenerator::~LegalMoveGenerator(){
-    for(int i=0; i<128; i++){
-        free(tableMagic[i]);
     }
 }
 template<bool isPawn>
@@ -685,8 +676,8 @@ bool LegalMoveGenerator::initDangers(const GameState& state){
 }
 
 int LegalMoveGenerator::generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves, big& dangerPositions, bool onlyCapture){
-    //Set all pinned masks to -1 (= no pinning)
-
+    friendlyPieces = state.friendlyPieces();
+    enemyPieces = state.enemyPieces();
     //All allowed spots for a piece to move (not allowed if king is in check)
     big moveMask = -1; //Totaly true
     //All allowed spots for a piece to capture another one (not allowed if there is a checker)

@@ -35,6 +35,12 @@ struct StackCase{
     Move bestMove;
 };
 
+struct usefull{
+    LegalMoveGenerator generator;
+    StackCase stack[maxDepth];
+    IncrementalEvaluator eval;
+};
+
 string scoreToStr(int score);
 
 //Class to find the best in a situation
@@ -46,7 +52,6 @@ class BestMoveFinder{
     HelpOrdering history;
 public:
     std::atomic<bool> running;
-    IncrementalEvaluator eval;
     BestMoveFinder(int memory, bool mute=false);
 
     sbig hardBound;
@@ -58,15 +63,13 @@ public:
 
 private:
     chrono::nanoseconds getElapsedTime();
-
-    LegalMoveGenerator generator;
     sbig nodes;
     int nbCutoff;
     int nbFirstCutoff;
     int seldepth;
     int bestMoveNodes;
     template<int limitWay, bool isPV>
-    int quiescenceSearch(StackCase* stack, GameState& state, int alpha, int beta, int relDepth);
+    int quiescenceSearch(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
     //PV making
     LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
@@ -81,12 +84,12 @@ private:
     int16_t getPVMove(int relDepth);
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template<int nodeType, int limitWay, bool mateSearch>
-    inline int Evaluate(StackCase* stack, GameState& state, int alpha, int beta, int relDepth);
+    inline int Evaluate(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(StackCase* stack, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    int negamax(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
     template <int nodeType, int limitWay, bool mateSearch>
-    pair<Move, int> launchNormal(const int depth, GameState& state, int alpha, const int beta, const int relDepth);
+    pair<Move, int> launchNormal(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth);
     template <int nodeType, int limitWay, bool mateSearch>
     void launchSMP(promise<pair<Move, int>>&& p, int depth, GameState& state, int alpha, const int beta, const int relDepth);
 public:
