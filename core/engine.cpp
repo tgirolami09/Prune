@@ -166,7 +166,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess* state, bool
             return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
         }else if((args[0].first == "btime" || args[0].first == "wtime")){
             int btime=0, wtime=0, winc=0, binc=0;
-            for(int iarg=0; iarg < args.size(); iarg++){
+            for(unsigned long iarg=0; iarg < args.size(); iarg++){
                 auto arg = args[iarg];
                 if(arg.first == "btime")
                     btime = stoi(arg.second);
@@ -423,7 +423,7 @@ void manageSearch(){
             }else if(command == "setoption"){
                 printf("begin setoption\n");
                 printf("%d\n", parsed.empty());
-                for(unsigned long i=0; i<nbParams; i++){
+                for(int i=0; i<nbParams; i++){
                     printf("%s : %s\n", parsed[i].first.c_str(), parsed[i].second.c_str());
                     if(parsed[i].first == "name"){
                         bool incr=true;

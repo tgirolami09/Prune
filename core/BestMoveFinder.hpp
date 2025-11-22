@@ -54,6 +54,7 @@ public:
     sbig nodes;
     int seldepth;
     int bestMoveNodes;
+    bool mainThread;
     void transfer(int relDepth, Move move);
     void beginLine(int relDepth);
     void beginLineMove(int relDepth, Move move);
@@ -92,9 +93,9 @@ private:
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
     int negamax(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
-    template <int nodeType, int limitWay, bool mateSearch>
+    template <int limitWay, bool mateSearch>
     threadResponse launchNormal(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth);
-    template <int nodeType, int limitWay, bool mateSearch>
+    template <int limitWay, bool mateSearch>
     void launchSMP(promise<threadResponse>&& p, int depth, GameState& state, int alpha, const int beta, const int relDepth);
 public:
     template <int limitWay=0>
