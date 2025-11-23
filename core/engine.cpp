@@ -4,6 +4,7 @@
 #include <algorithm>
 // #include "util_magic.cpp"
 #include "Const.hpp"
+#include "Evaluator.hpp"
 #include "Functions.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
@@ -181,6 +182,7 @@ void manageSearch(){
     Chess* state = new Chess;
     state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     Move lastMove = nullMove;
+    IncrementalEvaluator* ieval = new IncrementalEvaluator;
     while(!stop_all){
         if(startQ != endQ){
             string com=inpQueue[startQ%sizeQ];
@@ -219,20 +221,20 @@ void manageSearch(){
             }else if(command == "eval"){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
-                bestMoveFinder.eval.init(state->root);
-                int overall_eval = bestMoveFinder.eval.getRaw(state->root.friendlyColor());
+                ieval->init(state->root);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
                         int square = (r << 3) | c;
                         int piece = state->root.getfullPiece(square);
                         if(type(piece) != SPACE){
-                            bestMoveFinder.eval.changePiece2<-1, true>(square, type(piece), color(piece));
+                            ieval->changePiece2<-1, true>(square, type(piece), color(piece));
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-bestMoveFinder.eval.getRaw(state->root.friendlyColor());
+                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
-                            bestMoveFinder.eval.backStack();
+                            ieval->backStack();
                         }else evals[7-c] = {' ', 0};
                     }
                     for(int i=0; i<8; i++)
@@ -410,9 +412,9 @@ void manageSearch(){
                             incr = false;
                         }else if(parsed[i].second == "nnueFile"){
                             if(parsed[i+1].second == "embed")
-                                bestMoveFinder.eval.nnue = NNUE();
+                                ieval->nnue = NNUE();
                             else
-                                bestMoveFinder.eval.nnue = NNUE(parsed[i+1].second);
+                                ieval->nnue = NNUE(parsed[i+1].second);
                         }
                         i += incr;
                     }

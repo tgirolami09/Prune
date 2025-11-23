@@ -33,6 +33,32 @@ struct StackCase{
     int static_score;
 };
 
+class usefull{
+public:
+    LegalMoveGenerator generator;
+    StackCase stack[maxDepth];
+    LINE PVlines[maxDepth];
+    IncrementalEvaluator eval;
+    sbig nodes;
+    sbig bestMoveNodes;
+    int seldepth;
+    int nbCutoff, nbFirstCutoff;
+    Move rootBest;
+    usefull(const GameState& state):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove){
+        eval.init(state);
+        generator.initDangers(state);
+    }
+
+    string PVprint(LINE pvLine);
+    LINE lastPV;
+    void transferLastPV();
+    void transfer(int relDepth, Move move);
+    void beginLine(int relDepth);
+    void beginLineMove(int relDepth, Move move);
+    void resetLines();
+    int16_t getPVMove(int relDepth);
+};
+
 string scoreToStr(int score);
 
 //Class to find the best in a situation
@@ -42,10 +68,8 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
     transpositionTable transposition;
     HelpOrdering history;
-    StackCase stack[maxDepth];
 public:
     std::atomic<bool> running;
-    IncrementalEvaluator eval;
     BestMoveFinder(int memory, bool mute=false);
 
     sbig hardBound;
@@ -57,34 +81,15 @@ public:
 
 private:
     chrono::nanoseconds getElapsedTime();
-
-    LegalMoveGenerator generator;
-    sbig nodes;
-    int nbCutoff;
-    int nbFirstCutoff;
-    int seldepth;
-    int bestMoveNodes;
     template<int limitWay, bool isPV>
-    int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth);
+    int quiescenceSearch(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    //PV making
-    LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
-
-    string PVprint(LINE pvLine);
-    LINE lastPV;
-    void transferLastPV();
-    void transfer(int relDepth, Move move);
-    void beginLine(int relDepth);
-    void beginLineMove(int relDepth, Move move);
-    void resetLines();
-    int16_t getPVMove(int relDepth);
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template<int nodeType, int limitWay, bool mateSearch>
-    inline int Evaluate(GameState& state, int alpha, int beta, int relDepth);
-    Move rootBestMove;
+    inline int Evaluate(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    int negamax(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
