@@ -45,6 +45,7 @@ public:
     int nbCutoff, nbFirstCutoff;
     Move rootBest;
     usefull(const GameState& state);
+    usefull();
     void reinit(const GameState& state);
     string PVprint(LINE pvLine);
     LINE lastPV;
@@ -75,7 +76,8 @@ public:
     chrono::milliseconds hardBoundTime;
     void stop();
     corrhists correctionHistory;
-
+    usefull* localSS;
+    usefull* threadsSS;
 private:
     chrono::nanoseconds getElapsedTime();
     template<int limitWay, bool isPV>
@@ -93,6 +95,7 @@ public:
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);
+    void setThreads();
 };
 
 

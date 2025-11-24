@@ -14,7 +14,7 @@
 #include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
-
+int nbThreads = 1;
 using namespace std;
 //Main class for the game
 const vector<string> benches = {
