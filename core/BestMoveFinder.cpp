@@ -8,6 +8,21 @@
 #include <cmath>
 #include <cstring>
 
+usefull::usefull(const GameState& state):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove){
+    eval.init(state);
+    generator.initDangers(state);
+}
+void usefull::reinit(const GameState& state){
+    nodes = 0;
+    bestMoveNodes = 0;
+    seldepth = 0;
+    nbCutoff = 0;
+    nbFirstCutoff = 0;
+    rootBest = nullMove;
+    eval.init(state);
+    generator.initDangers(state);
+}
+
 int compScoreMove(const void* a, const void*b){
     int first = ((MoveScore*)a)->first;
     int second = ((MoveScore*)b)->first;
@@ -260,7 +275,7 @@ int BestMoveFinder::negamax(usefull* ss, int depth, GameState& state, int alpha,
         int sc = -negamax<-nodeType, limitWay, mateSearch>(ss, depth, state, -beta, -alpha, relDepth+1);
         ss->eval.undoMove(order.moves[0], !state.friendlyColor());
         state.undoLastMove();
-        if constexpr(nodeType == PVNode)ss->transfer(rootDist, order.moves[0]);
+        if (sc > alpha && sc < beta && nodeType == PVNode)ss->transfer(rootDist, order.moves[0]);
         return sc;
     }
     order.init(state.friendlyColor(), lastBest, ss->getPVMove(rootDist), history, relDepth, state, ss->generator, depth > 5);
@@ -368,6 +383,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     bool inCheck;
     Order order;
     usefull* localSS = new usefull(state);
+    usefull* threadSS = new usefull(state);
     localSS->generator.initDangers(state);
     order.nbMoves = localSS->generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
     //Return early because a move was found in a book
@@ -434,7 +450,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         do{
             int alpha = lastScore-deltaDown;
             int beta = lastScore+deltaUp;
-            usefull* threadSS = new usefull(state);
+            threadSS->reinit(state);
             if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
                 bestScore = negamax<PVNode, limitWay, true , true>(threadSS, depth, state, alpha, beta, actDepth);
             else
@@ -443,8 +459,8 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
             localSS->nodes += threadSS->nodes;
             localSS->bestMoveNodes = threadSS->bestMoveNodes;
             localSS->seldepth = max(localSS->seldepth, threadSS->seldepth);
-            localSS->nbCutoff = threadSS->nbCutoff;
-            localSS->nbFirstCutoff = threadSS->nbFirstCutoff;
+            localSS->nbCutoff += threadSS->nbCutoff;
+            localSS->nbFirstCutoff += threadSS->nbFirstCutoff;
             bestMove = bestScore != -INF ? threadSS->rootBest : finalBestMove;
             string limit;
             if(bestScore <= alpha){
@@ -463,7 +479,6 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
                 memcpy(localSS->PVlines, threadSS->PVlines, sizeof(threadSS->PVlines));
                 if(threadSS->PVlines[0].cmove > 1)ponderMove.moveInfo = threadSS->PVlines[0].argMoves[1];
                 else ponderMove = nullMove;
-                delete threadSS;
                 break;
             }
             if(verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
@@ -473,7 +488,6 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
                 printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth+1, threadSS->seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
                 fflush(stdout);
             }
-            delete threadSS;
         }while(running);
         instability1side = (instability1side+(countDown-countUp)+1)/2;
         instability2side = (instability2side+min(countDown, countUp)+1)/2;
@@ -504,6 +518,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     }
     for(unsigned long i=0; i<movesFromRoot.size(); i++)
         state.undoLastMove();
+    delete threadSS;
     return make_tuple(bestMove, ponderMove, lastScore, allInfos);
 }
 

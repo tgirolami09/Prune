@@ -44,11 +44,8 @@ public:
     int seldepth;
     int nbCutoff, nbFirstCutoff;
     Move rootBest;
-    usefull(const GameState& state):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove){
-        eval.init(state);
-        generator.initDangers(state);
-    }
-
+    usefull(const GameState& state);
+    void reinit(const GameState& state);
     string PVprint(LINE pvLine);
     LINE lastPV;
     void transferLastPV();
