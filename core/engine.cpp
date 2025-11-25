@@ -16,6 +16,21 @@
 #include <iostream>
 int nbThreads = 1;
 using namespace std;
+
+class Init{
+public:
+    Init(){
+        PrecomputeKnightMoveData();
+        init_lines();
+        load_table();
+        precomputePawnsAttack();
+        precomputeCastlingMasks();
+        precomputeNormlaKingMoves();
+        precomputeDirections();
+    }
+};
+Init _init_everything;
+
 //Main class for the game
 const vector<string> benches = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -127,7 +142,8 @@ const Option Options[] = {
     Option("Hash", "spin", "64", 1, 512),
     Option("Move Overhead", "spin", "10", 0, 5000),
     Option("Clear Hash", "button"),
-    Option("nnueFile", "string", "embed")
+    Option("nnueFile", "string", "embed"),
+    Option("Threads", "spin", "1", 1, 512)
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -415,6 +431,9 @@ void manageSearch(){
                                 ieval->nnue = NNUE();
                             else
                                 ieval->nnue = NNUE(parsed[i+1].second);
+                        }else if(parsed[i].second == "Threads"){
+                            nbThreads = stoi(parsed[i+1].second);
+                            bestMoveFinder.setThreads(nbThreads);
                         }
                         i += incr;
                     }

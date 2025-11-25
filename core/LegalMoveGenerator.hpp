@@ -14,43 +14,25 @@ public:
 BINARY_INCLUDE(magicsData);
 
 big parseInt(int& pointer);
+static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+extern big KnightMoves[64]; //Knight moves for each position of the board
+extern big pieceCastlingMasks[2][2];
+extern big attackCastlingMasks[2][2];
+extern big normalKingMoves[64];
+extern big attackPawns[128];
+extern big directions[64][64];
+extern big* tableMagic[129];
+extern constTable constantsMagic[128];
+
+void PrecomputeKnightMoveData();
+void precomputeDirections();
+void load_table();
+void precomputeCastlingMasks();
+void precomputeNormlaKingMoves();
+void precomputePawnsAttack();
 
 class LegalMoveGenerator{
-    big KnightMoves[64]; //Knight moves for each position of the board
-
-    void PrecomputeKnightMoveData();
-
-    big pieceCastlingMasks[2][2];
-
-    big attackCastlingMasks[2][2];
-
-    void precomputeCastlingMasks();
-
-    big normalKingMoves[64];
-
-    void precomputeNormlaKingMoves();
-
-    big attackPawns[128];
-
-    void precomputePawnsAttack();
-
-    big directions[64][64];
-    // big fullDir[64][8];
-    static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
-    void precomputeDirections();
-
-    big* tableMagic[129];
-
-    constTable constantsMagic[128];
-
-    void load_table();
-    
-    public :
-
-    LegalMoveGenerator();
-    ~LegalMoveGenerator();
-
-    private:
+private:
 
     const int doubleCheckFromSameType = -100;
 

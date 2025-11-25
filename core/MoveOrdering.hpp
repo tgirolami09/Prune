@@ -33,7 +33,7 @@ public:
     bool sorted = false;
     Order();
     void swap(int idMove1, int idMove2);
-    void init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE=true);
+    void init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE=true, big isRandom=0);
     void reinit(int16_t priorityMove);
     bool compareMove(int idMove1, int idMove2);
     Move pop_max();

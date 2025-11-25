@@ -44,6 +44,7 @@ public:
     int seldepth;
     int nbCutoff, nbFirstCutoff;
     Move rootBest;
+    bool mainThread;
     usefull(const GameState& state);
     usefull();
     void reinit(const GameState& state);
@@ -76,7 +77,7 @@ public:
     chrono::milliseconds hardBoundTime;
     void stop();
     corrhists correctionHistory;
-    usefull* threadsSS;
+    vector<usefull> threadsSS;
 private:
     chrono::nanoseconds getElapsedTime();
     template<int limitWay, bool isPV>
@@ -88,13 +89,15 @@ private:
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
     int negamax(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    template<int limitWay, bool mateSearch>
+    void launchSMP(usefull* ss, const int idThread, int depth, GameState& state, const int alpha, const int beta, const int relDepth);
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);
-    void setThreads();
+    void setThreads(int nbThreads);
 };
 
 
