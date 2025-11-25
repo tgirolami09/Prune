@@ -76,7 +76,6 @@ public:
     chrono::milliseconds hardBoundTime;
     void stop();
     corrhists correctionHistory;
-    usefull* localSS;
     usefull* threadsSS;
 private:
     chrono::nanoseconds getElapsedTime();

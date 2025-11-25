@@ -60,7 +60,6 @@ string scoreToStr(int score){
 BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory){
     book = load_book("book.bin", mute);
     history.init();
-    localSS = new usefull;
     threadsSS = new usefull[nbThreads];
 }
 
@@ -391,8 +390,8 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     Move bookMove = findPolyglot(state,moveInTable,book);
     bool inCheck;
     Order order;
-    localSS->reinit(state);
-    order.nbMoves = localSS->generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+    threadsSS->reinit(state);
+    order.nbMoves = threadsSS->generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
     //Return early because a move was found in a book
     if (moveInTable){
         moveInTable = false;
@@ -436,8 +435,8 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     Move bestMove=nullMove;
     clock_t start=clock();
     sbig lastNodes = 1;
-    int lastScore = localSS->eval.getScore(state.friendlyColor(), correctionHistory, state);
-    order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, history, 0, state, localSS->generator);
+    int lastScore = threadsSS->eval.getScore(state.friendlyColor(), correctionHistory, state);
+    order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, history, 0, state, threadsSS->generator);
     int instability1side = 0;
     int instability2side = 1;
     Move ponderMove=nullMove;
@@ -445,10 +444,10 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     for(int depth=1; depth<depthMax && running; depth++){
         int deltaUp = 5<<(1+instability2side);
         int deltaDown = 5<<(1+instability2side);
-        localSS->seldepth = 0;
+        threadsSS->seldepth = 0;
         if(abs(lastScore) > MAXIMUM-maxDepth)
             deltaDown = 1;
-        int startNodes = localSS->nodes;
+        int startNodes = threadsSS->nodes;
         int bestScore;
         Move finalBestMove=bestMove;
         int countUp = 0, countDown=0;
@@ -457,17 +456,13 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         do{
             int alpha = lastScore-deltaDown;
             int beta = lastScore+deltaUp;
-            threadsSS->reinit(state);
+            threadsSS->generator.initDangers(state);
+            lastUsedNodes = threadsSS->nodes;
             if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
                 bestScore = negamax<PVNode, limitWay, true , true>(threadsSS, depth, state, alpha, beta, actDepth);
             else
                 bestScore = negamax<PVNode, limitWay, false, true>(threadsSS, depth, state, alpha, beta, actDepth);
-            lastUsedNodes = threadsSS->nodes;
-            localSS->nodes += threadsSS->nodes;
-            localSS->bestMoveNodes = threadsSS->bestMoveNodes;
-            localSS->seldepth = max(localSS->seldepth, threadsSS->seldepth);
-            localSS->nbCutoff += threadsSS->nbCutoff;
-            localSS->nbFirstCutoff += threadsSS->nbFirstCutoff;
+            lastUsedNodes = threadsSS->nodes-lastUsedNodes;
             bestMove = bestScore != -INF ? threadsSS->rootBest : finalBestMove;
             string limit;
             if(bestScore <= alpha){
@@ -483,13 +478,12 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
             }else{
                 finalBestMove = bestMove;
                 PV = threadsSS->PVprint(threadsSS->PVlines[0]);
-                memcpy(localSS->PVlines, threadsSS->PVlines, sizeof(threadsSS->PVlines));
                 if(threadsSS->PVlines[0].cmove > 1)ponderMove.moveInfo = threadsSS->PVlines[0].argMoves[1];
                 else ponderMove = nullMove;
                 break;
             }
             if(verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
-                sbig totNodes = localSS->nodes;
+                sbig totNodes = threadsSS->nodes;
                 clock_t end = clock();
                 double tcpu = double(end-start)/CLOCKS_PER_SEC;
                 printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth+1, threadsSS->seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
@@ -501,27 +495,26 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         bestMove = finalBestMove;
         if(bestScore != -INF)
             lastScore = bestScore;
-        localSS->transferLastPV();
         threadsSS->transferLastPV();
         clock_t end = clock();
         double tcpu = double(end-start)/CLOCKS_PER_SEC;
-        sbig totNodes = localSS->nodes;
+        sbig totNodes = threadsSS->nodes;
         sbig usedNodes = totNodes-startNodes;
         double speed=0;
         if(tcpu != 0)speed = totNodes/tcpu;
         if(verbose && bestScore != -INF){
-            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, localSS->seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)localSS->nbFirstCutoff/localSS->nbCutoff);
+            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, threadsSS->seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)threadsSS->nbFirstCutoff/threadsSS->nbCutoff);
             fflush(stdout);
         }
         if(running)
-            allInfos.push_back({localSS->nodes, (int)(tcpu*1000), (int)(speed), depth+1, localSS->seldepth-startRelDepth, bestScore});
+            allInfos.push_back({threadsSS->nodes, (int)(tcpu*1000), (int)(speed), depth+1, threadsSS->seldepth-startRelDepth, bestScore});
         if(abs(bestScore) > MAXIMUM-maxDepth && mateHardBound){
             tm.softBound = hardBound;
             softBoundTime = hardBoundTime;
         }
-        softBoundTime = chrono::milliseconds{tm.updateSoft(localSS->bestMoveNodes, lastUsedNodes)};
+        softBoundTime = chrono::milliseconds{tm.updateSoft(threadsSS->bestMoveNodes, lastUsedNodes)};
         lastNodes = usedNodes;
-        if(limitWay == 1 && localSS->nodes > tm.softBound)break;
+        if(limitWay == 1 && threadsSS->nodes > tm.softBound)break;
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
     }
     for(unsigned long i=0; i<movesFromRoot.size(); i++)
