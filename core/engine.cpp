@@ -323,6 +323,7 @@ void manageSearch(){
                         sumTime += lastInfo.time;
                         Scores.push_back({lastInfo.depth, lastInfo.node});
                     }
+                    delete testState;
                 }
                 printf("\rposition %" PRId64 "/%" PRId64 "\n", benches.size(), benches.size());
                 printf("depth\t");
@@ -444,6 +445,7 @@ void manageSearch(){
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     delete state;
+    delete ieval;
 }
 
 int main(int argc, char** argv){

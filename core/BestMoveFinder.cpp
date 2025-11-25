@@ -379,9 +379,8 @@ int BestMoveFinder::negamax(usefull* ss, int depth, GameState& state, int alpha,
 template<int limitWay, bool mateSearch>
 void BestMoveFinder::launchSMP(usefull* ss, const int idThread, int depth, GameState& state, const int alpha, const int beta, const int relDepth){
     ss->reinit(state);
-    if(idThread%2 == 0)depth++;
     ss->mainThread = false;
-    negamax<PVNode, limitWay, mateSearch>(ss, depth, state, alpha, beta, relDepth);
+    negamax<PVNode, limitWay, mateSearch, true>(ss, depth, state, alpha, beta, relDepth);
 }
 
 template <int limitWay>
@@ -392,7 +391,9 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     chrono::milliseconds softBoundTime{tm.softBound};
     vector<depthInfo> allInfos;
     int actDepth=0;
-    GameState* parallelState = new GameState[nbThreads];
+    GameState parallelState[nbThreads];
+    for(int i=0; i<nbThreads-1; i++)
+        parallelState[i].fromFen(state.toFen());
     for(Move move:movesFromRoot){
         state.playPartialMove(move);
         for(int i=0; i<nbThreads-1; i++)parallelState[i].playPartialMove(move);
