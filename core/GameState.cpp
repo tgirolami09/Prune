@@ -4,8 +4,9 @@
 #include <cassert>
 using namespace std;
 
+big zobrist[nbZobrist];
 
-GameState::GameState(){
+void init_zobrs(){
     big state(42);
     for(int idz=0; idz<nbZobrist; idz++){
         big z = (state += 0x9E3779B97F4A7C15ULL);
@@ -13,6 +14,9 @@ GameState::GameState(){
         z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
         zobrist[idz] = z ^ (z >> 31);
     }
+}
+
+GameState::GameState(){
 }
 
 inline void GameState::updateZobrists(int piece, bool color, int square){

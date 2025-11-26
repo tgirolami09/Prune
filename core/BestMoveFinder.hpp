@@ -77,8 +77,9 @@ public:
     chrono::milliseconds hardBoundTime;
     void stop();
     corrhists correctionHistory;
-    vector<usefull> threadsSS;
+    usefull* threadsSS;
 private:
+    bool smp_abort;
     chrono::nanoseconds getElapsedTime();
     template<int limitWay, bool isPV>
     int quiescenceSearch(usefull* ss, GameState& state, int alpha, int beta, int relDepth);

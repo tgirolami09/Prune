@@ -27,6 +27,7 @@ public:
         precomputeCastlingMasks();
         precomputeNormlaKingMoves();
         precomputeDirections();
+        init_zobrs();
     }
 };
 Init _init_everything;
