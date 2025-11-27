@@ -13,6 +13,8 @@
 usefull::usefull(const GameState& state):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
+    history.init();
+    correctionHistory.reset();
 }
 usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){}
 void usefull::reinit(const GameState& state){
@@ -62,7 +64,6 @@ string scoreToStr(int score){
 
 BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory){
     book = load_book("book.bin", mute);
-    history.init();
     threadsSS = new usefull[1];
 }
 
@@ -138,7 +139,7 @@ int BestMoveFinder::quiescenceSearch(usefull* ss, GameState& state, int alpha, i
     }
     const int rootDist = relDepth-startRelDepth;
     int& staticEval = ss->stack[rootDist].static_score;
-    staticEval = ss->eval.getScore(state.friendlyColor(), correctionHistory, state);
+    staticEval = ss->eval.getScore(state.friendlyColor(), ss->correctionHistory, state);
     if(staticEval >= beta){
         transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
         return staticEval;
@@ -160,7 +161,7 @@ int BestMoveFinder::quiescenceSearch(usefull* ss, GameState& state, int alpha, i
     bool inCheck;
     ss->generator.initDangers(state);
     order.nbMoves = ss->generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-    order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, history, -1, state, ss->generator, false);
+    order.init(state.friendlyColor(), nullMove.moveInfo, nullMove.moveInfo, ss->history, -1, state, ss->generator, false);
     Move bestCapture;
     for(int i=0; i<order.nbMoves; i++){
         Move capture = order.pop_max();
@@ -191,7 +192,7 @@ int BestMoveFinder::quiescenceSearch(usefull* ss, GameState& state, int alpha, i
 
 template<int nodeType, int limitWay, bool mateSearch>
 inline int BestMoveFinder::Evaluate(usefull* ss, GameState& state, int alpha, int beta, int relDepth){
-    if constexpr(mateSearch)return ss->eval.getScore(state.friendlyColor(), correctionHistory, state);
+    if constexpr(mateSearch)return ss->eval.getScore(state.friendlyColor(), ss->correctionHistory, state);
     int score = quiescenceSearch<limitWay, nodeType==PVNode>(ss, state, alpha, beta, relDepth);
     if constexpr(limitWay == 1)if(ss->nodes > hardBound)running=false;
     return score;
@@ -210,7 +211,7 @@ int BestMoveFinder::negamax(usefull* ss, int depth, GameState& state, int alpha,
         return 0;
     }
     int& static_eval = ss->stack[rootDist].static_score;
-    static_eval = ss->eval.getScore(state.friendlyColor(), correctionHistory, state);
+    static_eval = ss->eval.getScore(state.friendlyColor(), ss->correctionHistory, state);
     if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
         if constexpr(nodeType == PVNode)ss->beginLine(rootDist);
         return Evaluate<nodeType, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
@@ -289,7 +290,7 @@ int BestMoveFinder::negamax(usefull* ss, int depth, GameState& state, int alpha,
         if (sc > alpha && sc < beta && nodeType == PVNode)ss->transfer(rootDist, order.moves[0]);
         return sc;
     }
-    order.init(state.friendlyColor(), lastBest, ss->getPVMove(rootDist), history, relDepth, state, ss->generator, depth > 5, (isRoot && !ss->mainThread)*ss->nodes);
+    order.init(state.friendlyColor(), lastBest, ss->getPVMove(rootDist), ss->history, relDepth, state, ss->generator, depth > 5, (isRoot && !ss->mainThread)*ss->nodes);
     Move bestMove = nullMove;
     int bestScore = -INF;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
@@ -342,11 +343,11 @@ int BestMoveFinder::negamax(usefull* ss, int depth, GameState& state, int alpha,
             ss->nbCutoff++;
             if(isRoot)ss->rootBest=curMove;
             if(rankMove == 0)ss->nbFirstCutoff++;
-            history.addKiller(curMove, depth, relDepth, state.friendlyColor());
+            ss->history.addKiller(curMove, depth, relDepth, state.friendlyColor());
             if(!curMove.isTactical()){
-                history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
+                ss->history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
                 if(score > static_eval && !inCheck)
-                    correctionHistory.update(state, score-static_eval, depth);
+                    ss->correctionHistory.update(state, score-static_eval, depth);
             }
             return score;
         }
@@ -372,7 +373,7 @@ int BestMoveFinder::negamax(usefull* ss, int depth, GameState& state, int alpha,
     }
     if(!inCheck && (!bestMove.isTactical()) && abs(bestScore) < MAXIMUM-maxDepth &&
         (typeNode != UPPERBOUND || bestScore < static_eval)){
-        correctionHistory.update(state, bestScore-static_eval, depth);
+        ss->correctionHistory.update(state, bestScore-static_eval, depth);
     }
     return bestScore;
 }
@@ -453,7 +454,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     }
     Move bestMove=nullMove;
     sbig lastNodes = 1;
-    int lastScore = threadsSS[0].eval.getScore(state.friendlyColor(), correctionHistory, state);
+    int lastScore = threadsSS[0].eval.getScore(state.friendlyColor(), threadsSS->correctionHistory, state);
     int instability1side = 0;
     int instability2side = 1;
     Move ponderMove=nullMove;
@@ -566,8 +567,10 @@ int BestMoveFinder::testQuiescenceSearch(GameState& state){
 
 void BestMoveFinder::clear(){
     transposition.clear();
-    history.init();
-    correctionHistory.reset();
+    for(int i=0; i<nbThreads; i++){
+        threadsSS[i].history.init();
+        threadsSS[i].correctionHistory.reset();
+    }
 }
 
 void BestMoveFinder::reinit(size_t count){

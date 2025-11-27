@@ -45,6 +45,8 @@ public:
     int nbCutoff, nbFirstCutoff;
     Move rootBest;
     bool mainThread;
+    HelpOrdering history;
+    corrhists correctionHistory;
     usefull(const GameState& state);
     usefull();
     void reinit(const GameState& state);
@@ -66,7 +68,6 @@ class BestMoveFinder{
 
     //Returns the best move given a position and time to use
     transpositionTable transposition;
-    HelpOrdering history;
 public:
     std::atomic<bool> running;
     BestMoveFinder(int memory, bool mute=false);
@@ -76,7 +77,6 @@ public:
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
     void stop();
-    corrhists correctionHistory;
     usefull* threadsSS;
 private:
     bool smp_abort;
