@@ -244,3 +244,4 @@ inline simd16 simd16_sub(simd16 a, simd16 b) {
     return _mm_sub_epi16(a, b);
 #endif
 }
+NNUE globnnue = NNUE();

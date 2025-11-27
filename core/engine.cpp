@@ -430,9 +430,9 @@ void manageSearch(){
                             incr = false;
                         }else if(parsed[i].second == "nnueFile"){
                             if(parsed[i+1].second == "embed")
-                                ieval->nnue = NNUE();
+                                globnnue = NNUE();
                             else
-                                ieval->nnue = NNUE(parsed[i+1].second);
+                                globnnue = NNUE(parsed[i+1].second);
                         }else if(parsed[i].second == "Threads"){
                             nbThreads = stoi(parsed[i+1].second);
                             bestMoveFinder.setThreads(nbThreads);

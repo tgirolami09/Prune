@@ -72,5 +72,5 @@ public:
     dbyte eval(const Accumulator& accs, bool side) const;
 };
 
-
+extern NNUE globnnue;
 #endif

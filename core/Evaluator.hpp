@@ -175,7 +175,6 @@ public:
     template<int f, bool updateNNUE>
     void changePiece2(int pos, int piece, bool c);
     void backStack();
-    NNUE nnue;
     void print();
     IncrementalEvaluator();
     void init(const GameState& state);

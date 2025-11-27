@@ -103,7 +103,7 @@ void IncrementalEvaluator::print(){
     }
 }
 
-IncrementalEvaluator::IncrementalEvaluator():nnue(){
+IncrementalEvaluator::IncrementalEvaluator(){
     init_tables();
     init_forwards();
     memset(presentPieces, 0, sizeof(presentPieces));
@@ -112,7 +112,7 @@ IncrementalEvaluator::IncrementalEvaluator():nnue(){
 void IncrementalEvaluator::init(const GameState& state){//should be only call at the start of the search
     mgPhase = 0;
     stackIndex = 0;
-    nnue.initAcc(stackAcc[stackIndex]);
+    globnnue.initAcc(stackAcc[stackIndex]);
     memset(presentPieces, 0, sizeof(presentPieces));
     for(int square=0; square<64; square++){
         int piece=state.getfullPiece(square);
@@ -135,11 +135,11 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 }
 
 int IncrementalEvaluator::getRaw(bool c) const{
-    return nnue.eval(stackAcc[stackIndex], c);
+    return globnnue.eval(stackAcc[stackIndex], c);
 }
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
-    int raw_eval = nnue.eval(stackAcc[stackIndex], c);
+    int raw_eval = globnnue.eval(stackAcc[stackIndex], c);
     return raw_eval+ch.probe(state);
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
@@ -149,7 +149,7 @@ void IncrementalEvaluator::undoMove(Move move, bool c){
 template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
     if(updateNNUE)
-        nnue.change2<f>(stackAcc[stackIndex], piece*2+c, pos);
+        globnnue.change2<f>(stackAcc[stackIndex], piece*2+c, pos);
     mgPhase += f*gamephaseInc[piece];
     presentPieces[c][piece] += f;
 }
@@ -158,7 +158,7 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
 template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
     if(updateNNUE){
-        nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], piece*2+c, pos);
+        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], piece*2+c, pos);
         stackIndex++;
     }else{
         stackIndex--;
