@@ -81,24 +81,21 @@ void Order::swap(int idMove1, int idMove2){
     std::swap(flags[idMove1], flags[idMove2]);
 }
 
-void Order::init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE, big isR){
+void Order::init(bool c, int16_t moveInfoPriority, int16_t PVMove, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE){
     nbPriority = 0;
     pointer = 0;
-    bool isRandom = isR != 0;
     for(int i=0; i<nbMoves; i++){
-        if(!isRandom && moveInfoPriority == moves[i].moveInfo){
+        if(moveInfoPriority == moves[i].moveInfo){
             this->swap(i, 0);
             if(nbPriority)
                 this->swap(i, 1);
             nbPriority++;
-        }else if(!isRandom && PVMove == moves[i].moveInfo){
+        }else if(PVMove == moves[i].moveInfo){
             if(nbPriority)
                 this->swap(i, 1);
             else 
                 this->swap(i, 0);
             nbPriority++;
-        }else if(isRandom){
-            scores[i] = getrand(isR);
         }else{
             scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth), useSEE, state, flags[i], generator);
             if(moves[i].isTactical())
