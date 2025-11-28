@@ -1,4 +1,6 @@
 #include "BestMoveFinder.hpp"
+#include "Evaluator.hpp"
+#include "GameState.hpp"
 #include <fstream>
 #include <vector>
 #include <filesystem>
@@ -8,10 +10,11 @@
 #include <unistd.h>
 #include <chrono>
 #include <cassert>
+int nbThreads = 1;
 const int alloted_space = 64*1000*1000;
 //int omp_get_thread_num(){return 0;}
 //#define DEBUG
-#define NUM_THREADS 70
+#define NUM_THREADS 5
 string secondsToStr(big s){
     string res="";
     if(s >= 60){
@@ -126,16 +129,17 @@ int main(int argc, char** argv){
             lastGamesMade += nbGames;
         }
         int endReg = sizeGame*(idThread+1)/realThread;
+        IncrementalEvaluator* eval = new IncrementalEvaluator;
         for(int i=startReg; i<endReg; i++){
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
-            BestMoveFinder player(alloted_space, true);
-            BestMoveFinder opponent(alloted_space, true);
-            player.eval.nnue = NNUE(argv[2]);
-            opponent.eval.nnue = NNUE(argv[2]);
-            GameState root;
-            root.fromFen(fens[i]);
-            GameState current;
-            current.fromFen(fens[i]);
+            BestMoveFinder* player = new BestMoveFinder(alloted_space, true);
+            BestMoveFinder* opponent = new BestMoveFinder(alloted_space, true);
+            globnnue = NNUE(argv[2]);
+            globnnue = NNUE(argv[2]);
+            GameState* root = new GameState;
+            root->fromFen(fens[i]);
+            GameState* current = new GameState;
+            current->fromFen(fens[i]);
             vector<Move> moves;
             int result = 1; //0 black win 1 draw 2 white win
             Move LegalMoves[maxMoves];
@@ -144,21 +148,21 @@ int main(int argc, char** argv){
             GamePlayed Game;
             Game.startPos.fromFen(fens[i]);
             do{
-                bool isWhite = current.friendlyColor() == WHITE;
-                root.fromFen(fens[i]);
+                bool isWhite = current->friendlyColor() == WHITE;
+                root->fromFen(fens[i]);
                 bestMoveResponse res;
                 TM tm(limitNodes, limitNodes*1000);
-                if(isWhite)res = player.bestMove<1>(root, tm, moves, false, false);
-                else res = opponent.bestMove<1>(root, tm, moves, false, false);
+                if(isWhite)res = player->bestMove<1>(*root, tm, moves, false, false);
+                else res = opponent->bestMove<1>(*root, tm, moves, false, false);
                 int score = get<2>(res);
                 Move curMove = get<1>(res);
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
-                    if(current.friendlyColor() == BLACK)
+                    if(current->friendlyColor() == BLACK)
                         result = 2-result;
                     break;
                 }
-                if(current.playMove<false>(curMove) == 3){
+                if(current->playMove<false>(curMove) == 3){
                     result = 1;
                     break;
                 }
@@ -166,8 +170,8 @@ int main(int argc, char** argv){
                 curProc.moveInfo = curMove.moveInfo;
                 if(score != INF){
                     curProc.score = score;
-                    player.eval.init(current);
-                    curProc.staticScore = player.eval.getScore(current.friendlyColor(), player.correctionHistory, current);
+                    eval->init(*current);
+                    curProc.staticScore = eval->getRaw(current->friendlyColor());
                     curProc.isVoid = false;
                 }else{
                     curProc.isVoid = true;
@@ -177,10 +181,10 @@ int main(int argc, char** argv){
                 if(curMove.isTactical())
                     countMoves = 0;
                 bool inCheck;
-                generator.initDangers(current);
-                int nbMoves = generator.generateLegalMoves(current, inCheck, LegalMoves, dngpos, false);
+                generator.initDangers(*current);
+                int nbMoves = generator.generateLegalMoves(*current, inCheck, LegalMoves, dngpos, false);
                 if(nbMoves == 0){
-                    if(inCheck) result = (current.enemyColor() == WHITE)*2;
+                    if(inCheck) result = (current->enemyColor() == WHITE)*2;
                     else result = 1;
                     break;
                 }
