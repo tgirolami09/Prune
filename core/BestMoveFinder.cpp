@@ -385,9 +385,7 @@ void BestMoveFinder::launchSMP(const int idThread, int depth, GameState& state, 
     usefull& ss = threadsSS[idThread];
     ss.reinit(state);
     ss.mainThread = false;
-    ss.nodes = idThread;
     negamax<PVNode, limitWay, mateSearch, true>(idThread, depth, state, alpha, beta, relDepth);
-    ss.nodes -= idThread;
 }
 
 template <int limitWay>
