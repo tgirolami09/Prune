@@ -13,7 +13,7 @@ int nbThreads = 1;
 #include <cassert>
 #include <omp.h>
 using namespace std;
-const int alloted_space = 64*1000*1000;
+const int alloted_space = 2*1000*1000;
 
 string secondsToStr(big s){
     string res="";
@@ -110,10 +110,8 @@ int main(int argc, char** argv){
     int lastGamesMade=0;
     int realThread;
     #pragma omp parallel
-    {
+    #pragma omp single
     realThread = min(omp_get_num_threads(), sizeGame);
-    printf("launched on %d threads (%d %d)\n", realThread, omp_get_num_threads(), sizeGame);   
-    }
     globnnue = NNUE(argv[2]);
     #pragma omp parallel for shared(gamesMade, lastGamesMade) private(generator)
     for(int idThread=0; idThread<realThread; idThread++){
