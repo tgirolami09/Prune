@@ -16,7 +16,7 @@ const int alloted_space = 64*1000*1000;
 
 //int omp_get_thread_num(){return 0;}
 //#define DEBUG
-#define NUM_THREADS 1
+#define NUM_THREADS 70
 string secondsToStr(big s){
     string res="";
     if(s >= 60){
@@ -203,6 +203,7 @@ int main(int argc, char** argv){
             Game.result = result;
             ofstream datafile(nameDataFile, ios::app);
             Game.dump(datafile);
+            datafile.close();
             #pragma omp critical
             {
                 #pragma omp atomic update
