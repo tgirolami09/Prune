@@ -202,6 +202,36 @@ void IncrementalEvaluator::backStack(){
     stackIndex--;
 }
 
+void IncrementalEvaluator::playNoBack(Move move, bool c){
+    int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
+    changePiece<-1, true>(move.from(), move.piece, c);
+    changePiece<1, true>(move.to(), toPiece, c);
+    if(move.capture != -2){
+        int posCapture = move.to();
+        int pieceCapture = move.capture;
+        if(move.capture == -1){ // for en passant
+            if(c == WHITE)posCapture -= 8;
+            else posCapture += 8;
+            pieceCapture = PAWN;
+        }
+        changePiece<-1, true>(posCapture, pieceCapture, !c);
+    }
+    if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
+        int rookStart = move.from();
+        int rookEnd = move.to();
+        if(move.from() > move.to()){//queen side
+            rookStart &= ~7;
+            rookEnd++;
+        }else{//king side
+            rookStart |= 7;
+            rookEnd--;
+        }
+        changePiece<-1, true>(rookStart, ROOK, c);
+        changePiece<1, true>(rookEnd, ROOK, c);
+    }
+
+}
+
 template void IncrementalEvaluator::playMove<-1>(Move, bool);
 template void IncrementalEvaluator::playMove<1>(Move, bool);
 template void IncrementalEvaluator::changePiece2<-1, true>(int, int, bool);

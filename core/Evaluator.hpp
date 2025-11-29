@@ -184,6 +184,7 @@ public:
     int getRaw(bool c) const;
     template<int f=1>
     void playMove(Move move, bool c);
+    void playNoBack(Move move, bool c);
     void undoMove(Move move, bool c);
 };
 

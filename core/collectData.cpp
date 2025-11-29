@@ -147,7 +147,7 @@ int main(int argc, char** argv){
         BestMoveFinder* players[2];
         players[0] = new BestMoveFinder(alloted_space, true);
         players[1] = new BestMoveFinder(alloted_space, true);
-        GamePlayed* Game = new GamePlayed;
+        GamePlayed Game;
         GameState* current = new GameState;
         Move LegalMoves[maxMoves];
         for(int i=startReg; i<endReg; i++){
@@ -155,18 +155,18 @@ int main(int argc, char** argv){
             players[0]->clear();
             players[1]->clear();
             current->fromFen(fens[i]);
-            vector<Move> moves;
             int result = 1; //0 black win 1 draw 2 white win
             big dngpos;
             int countMoves = 0;
-            Game->startPos.fromFen(fens[i]);
-            Game->clear();
+            Game.startPos.fromFen(fens[i]);
+            Game.clear();
             big localNodes = 0;
+            eval->init(*current);
             do{
                 bool isWhite = current->friendlyColor() == WHITE;
                 bestMoveResponse res;
                 TM tm(limitNodes, limitNodes*1000);
-                res = players[!isWhite]->goState<1>(*current, tm, false, false, moves.size());
+                res = players[!isWhite]->goState<1>(*current, tm, false, false, Game.game.size());
                 vector<depthInfo> infos = get<3>(res);
                 if(!infos.empty())
                     localNodes += infos.back().node;
@@ -178,6 +178,7 @@ int main(int argc, char** argv){
                         result = 2-result;
                     break;
                 }
+                eval->playNoBack(curMove, current->friendlyColor());
                 if(current->playMove(curMove) == 3){
                     result = 1;
                     break;
@@ -186,13 +187,12 @@ int main(int argc, char** argv){
                 curProc.moveInfo = curMove.moveInfo;
                 if(score != INF){
                     curProc.score = score;
-                    eval->init(*current);
                     curProc.staticScore = eval->getRaw(current->friendlyColor());
                     curProc.isVoid = false;
                 }else{
                     curProc.isVoid = true;
                 }
-                Game->game.push_back(curProc);
+                Game.game.push_back(curProc);
                 countMoves++;
                 if(curMove.isTactical())
                     countMoves = 0;
@@ -204,11 +204,11 @@ int main(int argc, char** argv){
                     else result = 1;
                     break;
                 }
-                moves.push_back(curMove);
+                if(eval->isInsufficientMaterial())break;
             }while(countMoves < 100);
-            Game->result = result;
+            Game.result = result;
             ofstream datafile(nameDataFile, ios::app);
-            Game->dump(datafile);
+            Game.dump(datafile);
             datafile.close();
             #pragma omp critical
             {
