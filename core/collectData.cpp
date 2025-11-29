@@ -11,12 +11,10 @@ int nbThreads = 1;
 #include <unistd.h>
 #include <chrono>
 #include <cassert>
+#include <omp.h>
 using namespace std;
 const int alloted_space = 64*1000*1000;
 
-//int omp_get_thread_num(){return 0;}
-//#define DEBUG
-#define NUM_THREADS 70
 string secondsToStr(big s){
     string res="";
     if(s >= 60){
@@ -110,11 +108,14 @@ int main(int argc, char** argv){
     auto start=chrono::high_resolution_clock::now();
     LegalMoveGenerator generator;
     int lastGamesMade=0;
-    int realThread = min(NUM_THREADS, sizeGame);
+    int realThread;
+    #pragma omp parallel
+    {
+    realThread = min(omp_get_num_threads(), sizeGame);
+    printf("launched on %d threads (%d %d)\n", realThread, omp_get_num_threads(), sizeGame);   
+    }
     globnnue = NNUE(argv[2]);
-#ifndef DEBUG
-    #pragma omp parallel for shared(gamesMade, lastGamesMade) private(generator) num_threads(NUM_THREADS)
-#endif
+    #pragma omp parallel for shared(gamesMade, lastGamesMade) private(generator)
     for(int idThread=0; idThread<realThread; idThread++){
         int startReg=sizeGame*idThread/realThread;
         string nameDataFile = string("data")+to_string(idThread)+string(".out");
