@@ -58,7 +58,7 @@ prune: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)
 
 coreGen: collectData.cpp $(OBJECTS)
-	$(CC) $(CFLAGSALL) -O3 $(ARCHCOM) -fopenmp -o $@ $^
+	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
 
 $(OBJECTS) : %.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
