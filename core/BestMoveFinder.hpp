@@ -73,14 +73,14 @@ private:
     bool smp_abort;
     chrono::nanoseconds getElapsedTime();
     template<int limitWay, bool isPV>
-    int quiescenceSearch(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
+    int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template<int nodeType, int limitWay, bool mateSearch>
-    inline int Evaluate(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
+    inline int Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
     template<int limitWay, bool mateSearch>
     void launchSMP(const int idThread, int depth, GameState& state, const int alpha, const int beta, const int relDepth);
 public:
