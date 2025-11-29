@@ -2,7 +2,7 @@ CC=g++
 ADDOPTION?=
 DEBUGOPT?=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 $(ADDOPTION)
-OPT=-O3
+OPT=-O3 -flto
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
@@ -52,13 +52,13 @@ ifeq ($(OS), Windows_NT)
 endif
 
 all: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -flto -o $(NAME) $(VERSIONNING) $^
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^
 
 prune: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -flto -o $(SHORTNAME) $^ $(VERSIONNING)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)
 
 coreGen: collectData.cpp $(OBJECTS)
-	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
+	$(CC) $(CFLAGSALL) -O3 $(ARCHCOM) -fopenmp -o $@ $^
 
 $(OBJECTS) : %.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
