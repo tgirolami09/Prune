@@ -80,6 +80,9 @@ public:
             moves.dump(datafile);
         }
     }
+    void clear(){
+        game.clear();
+    }
 };
 
 int main(int argc, char** argv){
@@ -141,26 +144,29 @@ int main(int argc, char** argv){
         }
         int endReg = sizeGame*(idThread+1)/realThread;
         IncrementalEvaluator* eval = new IncrementalEvaluator;
-        BestMoveFinder* players = new BestMoveFinder[2]{BestMoveFinder(alloted_space, true), BestMoveFinder(alloted_space, true)};
+        BestMoveFinder* players[2];
+        players[0] = new BestMoveFinder(alloted_space, true);
+        players[1] = new BestMoveFinder(alloted_space, true);
+        GamePlayed* Game = new GamePlayed;
         GameState* current = new GameState;
         Move LegalMoves[maxMoves];
         for(int i=startReg; i<endReg; i++){
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
-            players[0].clear();
-            players[1].clear();
+            players[0]->clear();
+            players[1]->clear();
             current->fromFen(fens[i]);
             vector<Move> moves;
             int result = 1; //0 black win 1 draw 2 white win
             big dngpos;
             int countMoves = 0;
-            GamePlayed Game;
-            Game.startPos.fromFen(fens[i]);
+            Game->startPos.fromFen(fens[i]);
+            Game->clear();
             big localNodes = 0;
             do{
                 bool isWhite = current->friendlyColor() == WHITE;
                 bestMoveResponse res;
                 TM tm(limitNodes, limitNodes*1000);
-                res = players[!isWhite].goState<1>(*current, tm, false, false, moves.size());
+                res = players[!isWhite]->goState<1>(*current, tm, false, false, moves.size());
                 vector<depthInfo> infos = get<3>(res);
                 if(!infos.empty())
                     localNodes += infos.back().node;
@@ -186,7 +192,7 @@ int main(int argc, char** argv){
                 }else{
                     curProc.isVoid = true;
                 }
-                Game.game.push_back(curProc);
+                Game->game.push_back(curProc);
                 countMoves++;
                 if(curMove.isTactical())
                     countMoves = 0;
@@ -200,9 +206,9 @@ int main(int argc, char** argv){
                 }
                 moves.push_back(curMove);
             }while(countMoves < 100);
-            Game.result = result;
+            Game->result = result;
             ofstream datafile(nameDataFile, ios::app);
-            Game.dump(datafile);
+            Game->dump(datafile);
             datafile.close();
             #pragma omp critical
             {
@@ -249,7 +255,8 @@ int main(int argc, char** argv){
             }
         }
         delete current;
-        delete[] players;
+        delete players[0];
+        delete players[1];
         delete eval;
     }
     printf("\n");
