@@ -16,54 +16,44 @@
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
-int compScoreMove(const void* a, const void*b);
-
-int fromTT(int score, int rootDist);
-
-int absoluteScore(int score, int rootDist);
-
-class LINE{
-public:
-    int cmove;
-    int16_t argMoves[maxDepth];
-};
-
-struct StackCase{
-    Order order;
-    int static_score;
-};
-
-class usefull{
-public:
-    LegalMoveGenerator generator;
-    StackCase stack[maxDepth];
-    LINE PVlines[maxDepth];
-    IncrementalEvaluator eval;
-    sbig nodes;
-    sbig bestMoveNodes;
-    int seldepth;
-    int nbCutoff, nbFirstCutoff;
-    Move rootBest;
-    bool mainThread;
-    HelpOrdering history;
-    corrhists correctionHistory;
-    usefull(const GameState& state);
-    usefull();
-    void reinit(const GameState& state);
-    string PVprint(LINE pvLine);
-    LINE lastPV;
-    void transferLastPV();
-    void transfer(int relDepth, Move move);
-    void beginLine(int relDepth);
-    void beginLineMove(int relDepth, Move move);
-    void resetLines();
-    int16_t getPVMove(int relDepth);
-};
-
-string scoreToStr(int score);
-
 //Class to find the best in a situation
 class BestMoveFinder{
+    class usefull{
+    private:
+        class LINE{
+        public:
+            int cmove;
+            int16_t argMoves[maxDepth];
+        };
+        struct StackCase{
+            Order order;
+            int static_score;
+        };
+    public:
+        LegalMoveGenerator generator;
+        StackCase stack[maxDepth];
+        LINE PVlines[maxDepth];
+        IncrementalEvaluator eval;
+        sbig nodes;
+        sbig bestMoveNodes;
+        int seldepth;
+        int nbCutoff, nbFirstCutoff;
+        Move rootBest;
+        bool mainThread;
+        HelpOrdering history;
+        corrhists correctionHistory;
+        usefull(const GameState& state);
+        usefull();
+        void reinit(const GameState& state);
+        string PVprint(LINE pvLine);
+        LINE lastPV;
+        void transferLastPV();
+        void transfer(int relDepth, Move move);
+        void beginLine(int relDepth);
+        void beginLineMove(int relDepth, Move move);
+        void resetLines();
+        int16_t getPVMove(int relDepth);
+    };
     unordered_map<uint64_t,PolyglotEntry> book;
 
     //Returns the best move given a position and time to use
@@ -77,20 +67,20 @@ public:
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
     void stop();
+private:
     usefull* threadsSS;
     GameState* parallelState;
-private:
     bool smp_abort;
     chrono::nanoseconds getElapsedTime();
     template<int limitWay, bool isPV>
-    int quiescenceSearch(int idThread, GameState& state, int alpha, int beta, int relDepth);
+    int quiescenceSearch(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template<int nodeType, int limitWay, bool mateSearch>
-    inline int Evaluate(const int idThread, GameState& state, int alpha, int beta, int relDepth);
+    inline int Evaluate(usefull* ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(const int idThread, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    int negamax(usefull* ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
     template<int limitWay, bool mateSearch>
     void launchSMP(const int idThread, int depth, GameState& state, const int alpha, const int beta, const int relDepth);
 public:
