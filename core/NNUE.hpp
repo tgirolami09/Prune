@@ -13,7 +13,6 @@ const int QA = 255;
 const int QB = 64;
 
 #define dbyte int16_t
-BINARY_INCLUDE(baseModel)
 // Manual SIMD wrapper for cross-platform compatibility
 #if defined(__AVX2__)
     using simd16 = __m256i;  // 16 int16_t values

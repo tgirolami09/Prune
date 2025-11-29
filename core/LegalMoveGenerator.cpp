@@ -7,7 +7,6 @@
 #include <cassert>
 using namespace std;
 
-BINARY_ASM_INCLUDE("magics.out", magicsData);
 big KnightMoves[64]; //Knight moves for each position of the board
 big pieceCastlingMasks[2][2];
 big attackCastlingMasks[2][2];
@@ -145,20 +144,21 @@ void precomputeDirections(){
     }
 }
 
-inline big go_dir(big mask, int square, int dir, big clipped){
+big go_dir(big mask, int square, int dir, big clipped){
     int cur_square = square;
     big cur_mask=0;
-    big p;
     do{
         cur_square += dir;
         if(cur_square < 0 || cur_square >= 64)break;
-        p = 1ULL << cur_square;
+        big p = 1ULL << cur_square;
         cur_mask |= p;
-    }while((clipped&p) && (p&mask) == 0);
+        if((clipped&p) == 0 || (p&mask) != 0)
+            break;
+    }while(1);
     return cur_mask;
 }
 
-static big usefull_rook(big mask, int square){
+big usefull_rook(big mask, int square){
     int col = square&7;
     int row = square >> 3;
     big cur_mask = 0;
@@ -173,7 +173,7 @@ static big usefull_rook(big mask, int square){
     return cur_mask;
 }
 
-static big usefull_bishop(big mask, int square){
+big usefull_bishop(big mask, int square){
     big cur_mask=0;
     int col=square&7;
     int row=square >> 3;
@@ -225,8 +225,8 @@ static big get_mask(bool is_rook, big id, big square){
 }
 
 void load_table(){
-    big magic;
-    int decR, minimum, size;
+    big magic=0;
+    int decR=0, minimum=0, size=0;
     int current = 0;
     int pointer = 0;
     while(pointer < magicsData_size){
@@ -236,15 +236,16 @@ void load_table(){
         size = 1ul << minimum;
         constantsMagic[current] = {minimum, decR, magic};
         tableMagic[current] = (big*)calloc(size, sizeof(big));
-        bool is_rook = current >= 64;
-        int square = current%64;
+        const bool is_rook = current >= 64;
+        const int square = current%64;
         int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
-        big nbIds = 1ul << nbBits;
+        const big nbIds = 1ul << nbBits;
         for(big id=0; id<nbIds; id++){
-            big mask = get_mask(is_rook, id, square);
-            big res = mask*magic;
-            big res_mask = get_usefull(is_rook, mask, square);
-            big key = (res&(MAX_BIG>>decR)) >> (64-decR-minimum);
+            const big mask = get_mask(is_rook, id, square);
+            const big res = mask*magic;
+            const big res_mask = get_usefull(is_rook, mask, square);
+            const big key = (res&(MAX_BIG>>decR)) >> (64-decR-minimum);
+            assert(key < (big)size);
             tableMagic[current][key] = res_mask;
         }
         current++;

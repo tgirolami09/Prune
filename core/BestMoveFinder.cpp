@@ -459,7 +459,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     int instability1side = 0;
     int instability2side = 1;
     Move ponderMove=nullMove;
-    thread threads[nbThreads-1];
+    thread threads[nbThreads];
     startRelDepth = actDepth-1;
     for(int depth=1; depth<depthMax && running; depth++){
         int deltaUp = 5<<(1+instability2side);

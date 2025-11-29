@@ -1,20 +1,22 @@
+int nbThreads = 1;
 #include "BestMoveFinder.hpp"
 #include "Evaluator.hpp"
 #include "GameState.hpp"
+#include "LegalMoveGenerator.hpp"
 #include <fstream>
 #include <vector>
 #include <filesystem>
-#include <omp.h>
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <chrono>
 #include <cassert>
-int nbThreads = 1;
+using namespace std;
 const int alloted_space = 64*1000*1000;
+
 //int omp_get_thread_num(){return 0;}
 //#define DEBUG
-#define NUM_THREADS 5
+#define NUM_THREADS 1
 string secondsToStr(big s){
     string res="";
     if(s >= 60){
@@ -83,6 +85,14 @@ public:
 };
 
 int main(int argc, char** argv){
+    PrecomputeKnightMoveData();
+    init_lines();
+    precomputePawnsAttack();
+    precomputeCastlingMasks();
+    precomputeNormlaKingMoves();
+    precomputeDirections();
+    init_zobrs();
+    load_table();
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;
@@ -101,6 +111,7 @@ int main(int argc, char** argv){
     LegalMoveGenerator generator;
     int lastGamesMade=0;
     int realThread = min(NUM_THREADS, sizeGame);
+    globnnue = NNUE(argv[2]);
 #ifndef DEBUG
     #pragma omp parallel for shared(gamesMade, lastGamesMade) private(generator) num_threads(NUM_THREADS)
 #endif
@@ -130,39 +141,38 @@ int main(int argc, char** argv){
         }
         int endReg = sizeGame*(idThread+1)/realThread;
         IncrementalEvaluator* eval = new IncrementalEvaluator;
+        BestMoveFinder* player = new BestMoveFinder(alloted_space, true);
+        BestMoveFinder* opponent = new BestMoveFinder(alloted_space, true);
+        GameState* root = new GameState;
+        GameState* current = new GameState;
+        Move LegalMoves[maxMoves];
         for(int i=startReg; i<endReg; i++){
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
-            BestMoveFinder* player = new BestMoveFinder(alloted_space, true);
-            BestMoveFinder* opponent = new BestMoveFinder(alloted_space, true);
-            globnnue = NNUE(argv[2]);
-            globnnue = NNUE(argv[2]);
-            GameState* root = new GameState;
+            player->clear();
+            opponent->clear();
             root->fromFen(fens[i]);
-            GameState* current = new GameState;
             current->fromFen(fens[i]);
             vector<Move> moves;
             int result = 1; //0 black win 1 draw 2 white win
-            Move LegalMoves[maxMoves];
             big dngpos;
             int countMoves = 0;
             GamePlayed Game;
             Game.startPos.fromFen(fens[i]);
             do{
                 bool isWhite = current->friendlyColor() == WHITE;
-                root->fromFen(fens[i]);
                 bestMoveResponse res;
                 TM tm(limitNodes, limitNodes*1000);
                 if(isWhite)res = player->bestMove<1>(*root, tm, moves, false, false);
                 else res = opponent->bestMove<1>(*root, tm, moves, false, false);
                 int score = get<2>(res);
-                Move curMove = get<1>(res);
+                Move curMove = get<0>(res);
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
                     if(current->friendlyColor() == BLACK)
                         result = 2-result;
                     break;
                 }
-                if(current->playMove<false>(curMove) == 3){
+                if(current->playMove(curMove) == 3){
                     result = 1;
                     break;
                 }
@@ -234,6 +244,11 @@ int main(int argc, char** argv){
                 fflush(stdout);
             }
         }
+        delete root;
+        delete current;
+        delete player;
+        delete opponent;
+        delete eval;
     }
     printf("\n");
 }

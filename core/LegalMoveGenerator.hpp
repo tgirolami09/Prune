@@ -2,6 +2,7 @@
 #define LEGALMOVEGENERATOR_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
+#include "embeder.hpp"
 using namespace std;
 
 class constTable{
@@ -10,8 +11,6 @@ public:
     int decR;
     big magic;
 };
-
-BINARY_INCLUDE(magicsData);
 
 big parseInt(int& pointer);
 static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};

@@ -2,6 +2,7 @@
 #include "Const.hpp"
 #include <immintrin.h>  // For Intel intrinsics
 #include "Functions.hpp"
+#include "embeder.hpp"
 
 using namespace std;
 
@@ -91,8 +92,6 @@ int mysum(simdint x){
     return _mm_cvtsi128_si32(sum32);
 #endif
 }
-
-BINARY_ASM_INCLUDE("model.bin", baseModel);
 
 dbyte NNUE::read_bytes(ifstream& file){
     char ret;
