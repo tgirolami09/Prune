@@ -65,11 +65,14 @@ string scoreToStr(int score){
 BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory){
     book = load_book("book.bin", mute);
     threadsSS = new usefull[1];
+    parallelState = NULL;
 }
 
 void BestMoveFinder::setThreads(int nT){
     delete threadsSS;
+    delete parallelState;
     threadsSS = new usefull[nT];
+    parallelState = new GameState[nT-1];
 }
 
 void BestMoveFinder::stop(){
@@ -392,11 +395,7 @@ template <int limitWay>
 bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool _verbose, bool mateHardBound){
     this->verbose = _verbose;
     startSearch = timeMesure::now();
-    hardBoundTime = chrono::milliseconds{tm.hardBound};
-    chrono::milliseconds softBoundTime{tm.softBound};
-    vector<depthInfo> allInfos;
     int actDepth=0;
-    GameState* parallelState = new GameState[nbThreads-1];
     for(int i=0; i<nbThreads-1; i++)
         parallelState[i].fromFen(state.toFen());
     for(Move move:movesFromRoot){
@@ -404,6 +403,18 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         for(int i=0; i<nbThreads-1; i++)parallelState[i].playPartialMove(move);
         actDepth++;
     }
+    bestMoveResponse res=goState<limitWay>(state, tm, verbose, mateHardBound, actDepth);
+    for(unsigned long i=0; i<movesFromRoot.size(); i++)
+        state.undoLastMove();
+    return res;
+}
+
+template<int limitWay>
+bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, bool mateHardBound, int actDepth){
+    verbose = _verbose;
+    hardBoundTime = chrono::milliseconds{tm.hardBound};
+    chrono::milliseconds softBoundTime{tm.softBound};
+    vector<depthInfo> allInfos;
     bool moveInTable = false;
     Move bookMove = findPolyglot(state,moveInTable,book);
     bool inCheck;
@@ -422,14 +433,12 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         if(moveInTable){
             if(verbose)
                 printf("Found book move for fen : %s\n",state.toFen().c_str());
-            delete[] parallelState;
             return make_tuple(bookMove, nullMove, INF, vector<depthInfo>());
         }else if(verbose){
             printf("bad move find in table %s (in %s)\n", bookMove.to_str().c_str(), state.toFen().c_str());
         }
     }
     if(order.nbMoves == 0){
-        delete[] parallelState;
         if(inCheck){
             return make_tuple(nullMove, nullMove, MINIMUM, vector<depthInfo>());
         }else{
@@ -447,7 +456,6 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     }
     if(order.nbMoves == 1){
         running = false;
-        delete[] parallelState;
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
     if(verbose){
@@ -546,15 +554,15 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         if(limitWay == 1 && threadsSS[0].nodes > tm.softBound)break;
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
     }
-    for(unsigned long i=0; i<movesFromRoot.size(); i++)
-        state.undoLastMove();
-    delete[] parallelState;
     return make_tuple(bestMove, ponderMove, lastScore, allInfos);
 }
 
 template bestMoveResponse BestMoveFinder::bestMove<0>(GameState&, TM, vector<Move>, bool, bool);
 template bestMoveResponse BestMoveFinder::bestMove<1>(GameState&, TM, vector<Move>, bool, bool);
 template bestMoveResponse BestMoveFinder::bestMove<2>(GameState&, TM, vector<Move>, bool, bool);
+template bestMoveResponse BestMoveFinder::goState<0>(GameState&, TM, bool, bool, int);
+template bestMoveResponse BestMoveFinder::goState<1>(GameState&, TM, bool, bool, int);
+template bestMoveResponse BestMoveFinder::goState<2>(GameState&, TM, bool, bool, int);
 int BestMoveFinder::testQuiescenceSearch(GameState& state){
     threadsSS->reinit(state);
     clock_t start=clock();

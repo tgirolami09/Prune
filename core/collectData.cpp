@@ -161,8 +161,8 @@ int main(int argc, char** argv){
                 bool isWhite = current->friendlyColor() == WHITE;
                 bestMoveResponse res;
                 TM tm(limitNodes, limitNodes*1000);
-                if(isWhite)res = player->bestMove<1>(*root, tm, moves, false, false);
-                else res = opponent->bestMove<1>(*root, tm, moves, false, false);
+                if(isWhite)res = player->goState<1>(*current, tm, false, false, moves.size());
+                else res = opponent->goState<1>(*current, tm, false, false, moves.size());
                 int score = get<2>(res);
                 Move curMove = get<0>(res);
                 if(abs(score) > MAXIMUM-maxDepth){

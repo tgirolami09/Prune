@@ -78,6 +78,7 @@ public:
     chrono::milliseconds hardBoundTime;
     void stop();
     usefull* threadsSS;
+    GameState* parallelState;
 private:
     bool smp_abort;
     chrono::nanoseconds getElapsedTime();
@@ -95,6 +96,8 @@ private:
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
+    template <int limitWay=0>
+    bestMoveResponse goState(GameState& state, TM tm, bool verbose, bool mateHardBound, int actDepth);
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);

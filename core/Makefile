@@ -64,7 +64,7 @@ $(OBJECTS) : %.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
 embeder.o: embeder.cpp
-	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
 pruneDebug: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(ARCHCOM) $(CFLAGSALL) -g -o $@ $^ $(VERSIONNING)
