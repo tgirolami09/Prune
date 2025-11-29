@@ -113,6 +113,7 @@ int main(int argc, char** argv){
     #pragma omp single
     realThread = min(omp_get_num_threads(), sizeGame);
     globnnue = NNUE(argv[2]);
+    big nodesSearched = 0;
     #pragma omp parallel for shared(gamesMade, lastGamesMade) private(generator)
     for(int idThread=0; idThread<realThread; idThread++){
         int startReg=sizeGame*idThread/realThread;
@@ -140,16 +141,13 @@ int main(int argc, char** argv){
         }
         int endReg = sizeGame*(idThread+1)/realThread;
         IncrementalEvaluator* eval = new IncrementalEvaluator;
-        BestMoveFinder* player = new BestMoveFinder(alloted_space, true);
-        BestMoveFinder* opponent = new BestMoveFinder(alloted_space, true);
-        GameState* root = new GameState;
+        BestMoveFinder* players = new BestMoveFinder[2]{BestMoveFinder(alloted_space, true), BestMoveFinder(alloted_space, true)};
         GameState* current = new GameState;
         Move LegalMoves[maxMoves];
         for(int i=startReg; i<endReg; i++){
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
-            player->clear();
-            opponent->clear();
-            root->fromFen(fens[i]);
+            players[0].clear();
+            players[1].clear();
             current->fromFen(fens[i]);
             vector<Move> moves;
             int result = 1; //0 black win 1 draw 2 white win
@@ -157,12 +155,15 @@ int main(int argc, char** argv){
             int countMoves = 0;
             GamePlayed Game;
             Game.startPos.fromFen(fens[i]);
+            big localNodes = 0;
             do{
                 bool isWhite = current->friendlyColor() == WHITE;
                 bestMoveResponse res;
                 TM tm(limitNodes, limitNodes*1000);
-                if(isWhite)res = player->goState<1>(*current, tm, false, false, moves.size());
-                else res = opponent->goState<1>(*current, tm, false, false, moves.size());
+                res = players[!isWhite].goState<1>(*current, tm, false, false, moves.size());
+                vector<depthInfo> infos = get<3>(res);
+                if(!infos.empty())
+                    localNodes += infos.back().node;
                 int score = get<2>(res);
                 Move curMove = get<0>(res);
                 if(abs(score) > MAXIMUM-maxDepth){
@@ -207,6 +208,8 @@ int main(int argc, char** argv){
             {
                 #pragma omp atomic update
                 gamesMade++;
+                #pragma omp atomic update
+                nodesSearched += localNodes;
                 int totGamesMade = lastGamesMade+gamesMade;
                 struct winsize w;
                 ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
@@ -214,6 +217,7 @@ int main(int argc, char** argv){
                 big duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
                 string unit;
                 int speed;
+                big nps = nodesSearched*1000/duration;
                 if(duration > gamesMade*1000){
                     unit = "s/g";
                     speed = duration*100/(gamesMade*1000);
@@ -232,7 +236,7 @@ int main(int argc, char** argv){
                     printed += string(".")+to_string(speed%100);
                 else 
                     printed += string(".0")+to_string(speed%100);
-                printed += unit+" [";
+                printed += unit + " " + to_string(nps)+"nps [";
                 int percentWind = (w.ws_col-printed.size()-1)*totGamesMade*10/sizeGame;
                 printed += string(percentWind/10, '#');
                 if(totGamesMade != sizeGame){
@@ -244,10 +248,8 @@ int main(int argc, char** argv){
                 fflush(stdout);
             }
         }
-        delete root;
         delete current;
-        delete player;
-        delete opponent;
+        delete[] players;
         delete eval;
     }
     printf("\n");
