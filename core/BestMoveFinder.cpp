@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <thread>
 #include <cassert>
@@ -455,11 +456,8 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     }
     running = true;
     int depthMax = maxDepth;
-    if(limitWay == 0){
-        this->hardBound = tm.hardBound;
-    }else if(limitWay == 1){
-        this->hardBound = tm.hardBound; //hard bound
-    }else{
+    this->hardBound = INT64_MAX;
+    if(limitWay == 2){
         depthMax = tm.hardBound;
     }
     if(order.nbMoves == 1){
@@ -559,6 +557,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         }
         softBoundTime = chrono::milliseconds{tm.updateSoft(threadsSS[0].bestMoveNodes, lastUsedNodes)};
         lastNodes = usedNodes;
+        this->hardBound = tm.hardBound;
         if(limitWay == 1 && threadsSS[0].nodes > tm.softBound)break;
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
     }

@@ -172,6 +172,7 @@ int main(int argc, char** argv){
                     localNodes += infos.back().node;
                 int score = get<2>(res);
                 Move curMove = get<0>(res);
+                assert(curMove.moveInfo != nullMove.moveInfo);
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
                     if(current->friendlyColor() == BLACK)
