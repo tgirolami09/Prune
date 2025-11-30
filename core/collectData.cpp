@@ -212,49 +212,46 @@ int main(int argc, char** argv){
             fptr = fopen(nameDataFile.c_str(), "ab");
             Game.dump(fptr);
             fclose(fptr);
-            #pragma omp critical
-            {
-                #pragma omp atomic update
-                gamesMade++;
-                #pragma omp atomic update
-                nodesSearched += localNodes;
-                int totGamesMade = lastGamesMade+gamesMade;
-                struct winsize w;
-                ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-                auto end=chrono::high_resolution_clock::now();
-                big duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
-                string unit;
-                int speed;
-                big nps = nodesSearched*1000/duration;
-                if(duration > gamesMade*1000){
-                    unit = "s/g";
-                    speed = duration*100/(gamesMade*1000);
-                }else{
-                    speed = gamesMade*1000*100/duration;
-                    unit = "g/s";
-                }
-                string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(gamesMade*1000)); // in seconds
-                int percent = 1000*totGamesMade/sizeGame;
-                string printed = to_string(percent/10)+string(".")+to_string(percent%10);
-                printed += "% (";
-                printed += to_string(totGamesMade)+string("/")+to_string(sizeGame)+" in ";
-                printed += to_string(duration/1000.0)+"s) "+remaindTime+" ";
-                printed += to_string(speed/100);
-                if(speed%100 >= 10)
-                    printed += string(".")+to_string(speed%100);
-                else 
-                    printed += string(".0")+to_string(speed%100);
-                printed += unit + " " + to_string(nps)+"nps [";
-                int percentWind = (w.ws_col-printed.size()-1)*totGamesMade*10/sizeGame;
-                printed += string(percentWind/10, '#');
-                if(totGamesMade != sizeGame){
-                    printed += to_string(percentWind%10);
-                    printed += string((w.ws_col-printed.size()-1), ' ');
-                }
-                printed += "]";
-                printf("%s\r", printed.c_str());
-                fflush(stdout);
+            #pragma omp atomic update
+            gamesMade++;
+            #pragma omp atomic update
+            nodesSearched += localNodes;
+            int totGamesMade = lastGamesMade+gamesMade;
+            struct winsize w;
+            ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+            auto end=chrono::high_resolution_clock::now();
+            big duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
+            string unit;
+            int speed;
+            big nps = nodesSearched*1000/duration;
+            if(duration > gamesMade*1000){
+                unit = "s/g";
+                speed = duration*100/(gamesMade*1000);
+            }else{
+                speed = gamesMade*1000*100/duration;
+                unit = "g/s";
             }
+            string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(gamesMade*1000)); // in seconds
+            int percent = 1000*totGamesMade/sizeGame;
+            string printed = to_string(percent/10)+string(".")+to_string(percent%10);
+            printed += "% (";
+            printed += to_string(totGamesMade)+string("/")+to_string(sizeGame)+" in ";
+            printed += to_string(duration/1000.0)+"s) "+remaindTime+" ";
+            printed += to_string(speed/100);
+            if(speed%100 >= 10)
+                printed += string(".")+to_string(speed%100);
+            else 
+                printed += string(".0")+to_string(speed%100);
+            printed += unit + " " + to_string(nps)+"nps [";
+            int percentWind = (w.ws_col-printed.size()-1)*totGamesMade*10/sizeGame;
+            printed += string(percentWind/10, '#');
+            if(totGamesMade != sizeGame){
+                printed += to_string(percentWind%10);
+                printed += string((w.ws_col-printed.size()-1), ' ');
+            }
+            printed += "]";
+            printf("%s\r", printed.c_str());
+            fflush(stdout);
         }
         delete current;
         delete players[0];
