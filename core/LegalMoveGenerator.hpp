@@ -26,6 +26,7 @@ extern constTable constantsMagic[128];
 void PrecomputeKnightMoveData();
 void precomputeDirections();
 void load_table();
+void clear_table();
 void precomputeCastlingMasks();
 void precomputeNormlaKingMoves();
 void precomputePawnsAttack();

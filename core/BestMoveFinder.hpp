@@ -66,6 +66,7 @@ public:
     using timeMesure=chrono::high_resolution_clock;
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
+    ~BestMoveFinder();
     void stop();
 private:
     usefull* threadsSS;

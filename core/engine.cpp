@@ -462,4 +462,5 @@ int main(int argc, char** argv){
     t = thread(&manageInput);
     manageSearch();
     t.join();
+    clear_table();   
 }

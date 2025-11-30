@@ -6,6 +6,7 @@
 #include "TranspositionTable.hpp"
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <thread>
 #include <cassert>
@@ -68,11 +69,20 @@ BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory){
     parallelState = NULL;
 }
 
+BestMoveFinder::~BestMoveFinder(){
+    delete[] threadsSS;
+    if(parallelState != NULL)
+        delete[] parallelState;
+}
+
 void BestMoveFinder::setThreads(int nT){
     delete threadsSS;
     delete parallelState;
     threadsSS = new usefull[nT];
-    parallelState = new GameState[nT-1];
+    if(nT == 1)
+        parallelState = NULL;
+    else
+        parallelState = new GameState[nT-1];
 }
 
 void BestMoveFinder::stop(){

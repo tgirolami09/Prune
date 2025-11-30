@@ -37,8 +37,8 @@ string secondsToStr(big s){
 }
 
 template<typename T> 
-void fastWrite(T& data, ofstream& file){
-    file.write(reinterpret_cast<const char*>(&data), sizeof(data));
+void fastWrite(T& data, FILE* file){
+    fwrite(reinterpret_cast<const char*>(&data), sizeof(data), 1, file);
 }
 
 class MoveInfo{
@@ -53,7 +53,7 @@ public:
         staticScore = 0;
         isVoid = false;
     }
-    void dump(ofstream& datafile){
+    void dump(FILE* datafile){
         fastWrite(isVoid, datafile);
         fastWrite(moveInfo, datafile);
         fastWrite(score, datafile);
@@ -68,7 +68,7 @@ public:
     ubyte result;
     static const int headerSize = sizeof(GameState::boardRepresentation)+sizeof(ubyte)+sizeof(dbyte);
 
-    void dump(ofstream& datafile){
+    void dump(FILE* datafile){
         for(int i=0; i<6; i++)
             for(int j=0; j<2; j++)
                 fastWrite(startPos.boardRepresentation[j][i], datafile);
@@ -109,7 +109,6 @@ int main(int argc, char** argv){
         sizeGame = atoi(argv[4]);
     big gamesMade = 0;
     auto start=chrono::high_resolution_clock::now();
-    LegalMoveGenerator generator;
     int lastGamesMade=0;
     int realThread;
     #pragma omp parallel
@@ -117,7 +116,7 @@ int main(int argc, char** argv){
     realThread = min(omp_get_num_threads(), sizeGame);
     globnnue = NNUE(argv[2]);
     big nodesSearched = 0;
-    #pragma omp parallel for shared(gamesMade, lastGamesMade) private(generator)
+    #pragma omp parallel for shared(gamesMade, lastGamesMade)
     for(int idThread=0; idThread<realThread; idThread++){
         int startReg=sizeGame*idThread/realThread;
         string nameDataFile = string("data")+to_string(idThread)+string(".out");
@@ -147,6 +146,7 @@ int main(int argc, char** argv){
         BestMoveFinder* players[2];
         players[0] = new BestMoveFinder(alloted_space, true);
         players[1] = new BestMoveFinder(alloted_space, true);
+        LegalMoveGenerator* generator = new LegalMoveGenerator;
         GamePlayed Game;
         GameState* current = new GameState;
         Move LegalMoves[maxMoves];
@@ -197,8 +197,8 @@ int main(int argc, char** argv){
                 if(curMove.isTactical())
                     countMoves = 0;
                 bool inCheck;
-                generator.initDangers(*current);
-                int nbMoves = generator.generateLegalMoves(*current, inCheck, LegalMoves, dngpos, false);
+                generator->initDangers(*current);
+                int nbMoves = generator->generateLegalMoves(*current, inCheck, LegalMoves, dngpos, false);
                 if(nbMoves == 0){
                     if(inCheck) result = (current->enemyColor() == WHITE)*2;
                     else result = 1;
@@ -207,9 +207,10 @@ int main(int argc, char** argv){
                 if(eval->isInsufficientMaterial())break;
             }while(countMoves < 100);
             Game.result = result;
-            ofstream datafile(nameDataFile, ios::app);
-            Game.dump(datafile);
-            datafile.close();
+            FILE* fptr;
+            fptr = fopen(nameDataFile.c_str(), "ab");
+            Game.dump(fptr);
+            fclose(fptr);
             #pragma omp critical
             {
                 #pragma omp atomic update
@@ -258,6 +259,7 @@ int main(int argc, char** argv){
         delete players[0];
         delete players[1];
         delete eval;
+        delete generator;
     }
     printf("\n");
 }

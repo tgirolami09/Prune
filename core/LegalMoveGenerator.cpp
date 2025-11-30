@@ -252,6 +252,12 @@ void load_table(){
     }
 }
 
+void clear_table(){
+    for(int i=0; i < 128; i++){
+        free(tableMagic[i]);
+    }
+}
+
 template<bool isPawn>
 void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMoves, int8_t piece, bool promotQueen){
     while(mask){
