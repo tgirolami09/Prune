@@ -262,4 +262,5 @@ int main(int argc, char** argv){
         delete generator;
     }
     printf("\n");
+    clear_table();
 }
