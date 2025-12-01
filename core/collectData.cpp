@@ -179,7 +179,6 @@ int main(int argc, char** argv){
                         result = 2-result;
                     break;
                 }
-                eval->playNoBack(curMove, current->friendlyColor());
                 if(current->playMove(curMove) == 3){
                     result = 1;
                     break;
@@ -193,17 +192,20 @@ int main(int argc, char** argv){
                 }else{
                     curProc.isVoid = true;
                 }
+                eval->playNoBack(curMove, current->friendlyColor());
                 Game.game.push_back(curProc);
                 countMoves++;
                 if(curMove.isTactical())
                     countMoves = 0;
-                bool inCheck;
-                generator->initDangers(*current);
-                int nbMoves = generator->generateLegalMoves(*current, inCheck, LegalMoves, dngpos, false);
-                if(nbMoves == 0){
-                    if(inCheck) result = (current->enemyColor() == WHITE)*2;
-                    else result = 1;
-                    break;
+                if(score == 0){
+                    bool inCheck;
+                    generator->initDangers(*current);
+                    int nbMoves = generator->generateLegalMoves(*current, inCheck, LegalMoves, dngpos, false);
+                    if(nbMoves == 0){
+                        assert(!inCheck);
+                        result = 1;
+                        break;
+                    }
                 }
                 if(eval->isInsufficientMaterial())break;
             }while(countMoves < 100);
