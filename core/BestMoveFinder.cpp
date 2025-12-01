@@ -103,12 +103,6 @@ string BestMoveFinder::usefull::PVprint(LINE pvLine){
     }
     return resLine;
 }
-void BestMoveFinder::usefull::transferLastPV(){
-    lastPV.cmove = PVlines[0].cmove;
-    for(int i=0; i<PVlines[0].cmove; i++)
-        lastPV.argMoves[i] = PVlines[0].argMoves[i];
-}
-
 
 void BestMoveFinder::usefull::transfer(int relDepth, Move move){
     PVlines[relDepth-1].argMoves[0] = move.moveInfo;
@@ -128,12 +122,6 @@ void BestMoveFinder::usefull::resetLines(){
     for(int i=0; i<maxDepth; i++){
         PVlines[i].cmove = 0;
     }
-}
-
-int16_t BestMoveFinder::usefull::getPVMove(int relDepth){
-    if(lastPV.cmove < relDepth)
-        return lastPV.argMoves[relDepth];
-    return nullMove.moveInfo;
 }
 
 template<int limitWay, bool isPV>
@@ -539,7 +527,6 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         bestMove = finalBestMove;
         if(bestScore != -INF)
             lastScore = bestScore;
-        threadsSS[0].transferLastPV();
         double tcpu = getElapsedTime().count()/1'000'000'000.0;
         sbig totNodes = threadsSS[0].nodes;
         sbig usedNodes = totNodes-startNodes;

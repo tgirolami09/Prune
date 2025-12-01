@@ -46,13 +46,10 @@ class BestMoveFinder{
         usefull();
         void reinit(const GameState& state);
         string PVprint(LINE pvLine);
-        LINE lastPV;
-        void transferLastPV();
         void transfer(int relDepth, Move move);
         void beginLine(int relDepth);
         void beginLineMove(int relDepth, Move move);
         void resetLines();
-        int16_t getPVMove(int relDepth);
     };
     unordered_map<uint64_t,PolyglotEntry> book;
 
