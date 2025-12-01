@@ -179,6 +179,7 @@ int main(int argc, char** argv){
                         result = 2-result;
                     break;
                 }
+                eval->playNoBack(curMove, current->friendlyColor());
                 if(current->playMove(curMove) == 3){
                     result = 1;
                     break;
@@ -192,7 +193,6 @@ int main(int argc, char** argv){
                 }else{
                     curProc.isVoid = true;
                 }
-                eval->playNoBack(curMove, current->friendlyColor());
                 Game.game.push_back(curProc);
                 countMoves++;
                 if(curMove.isTactical())
