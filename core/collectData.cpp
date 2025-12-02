@@ -85,6 +85,31 @@ public:
     }
 };
 
+class threadHelper{
+public:
+    BestMoveFinder player0;
+    BestMoveFinder player1;
+    IncrementalEvaluator eval;
+    LegalMoveGenerator generator;
+    GameState state;
+    GamePlayed game;
+    Move legalMoves[maxMoves];
+    threadHelper():player0(alloted_space, true), player1(alloted_space, true){}
+    void init(string fen){
+        player0.clear();
+        player1.clear();
+        game.startPos.fromFen(fen);
+        state.fromFen(fen);
+        eval.init(state);
+        game.clear();
+    }
+    BestMoveFinder& getPlayer(){
+        if(state.friendlyColor() == WHITE)
+            return player0;
+        else return player1;
+    }
+};
+
 int main(int argc, char** argv){
     PrecomputeKnightMoveData();
     init_lines();
@@ -117,7 +142,7 @@ int main(int argc, char** argv){
     if(argc > 5)realThread = atoi(argv[5]);
     globnnue = NNUE(argv[2]);
     big nodesSearched = 0;
-    #pragma omp parallel for shared(gamesMade, lastGamesMade)
+    #pragma omp parallel for shared(gamesMade, lastGamesMade, nodesSearched)
     for(int idThread=0; idThread<realThread; idThread++){
         int startReg=sizeGame*idThread/realThread;
         string nameDataFile = string("data")+to_string(idThread)+string(".out");
@@ -143,31 +168,20 @@ int main(int argc, char** argv){
             lastGamesMade += nbGames;
         }
         int endReg = sizeGame*(idThread+1)/realThread;
-        IncrementalEvaluator* eval = new IncrementalEvaluator;
-        BestMoveFinder* players[2];
-        players[0] = new BestMoveFinder(alloted_space, true);
-        players[1] = new BestMoveFinder(alloted_space, true);
-        LegalMoveGenerator* generator = new LegalMoveGenerator;
-        GamePlayed Game;
-        GameState* current = new GameState;
-        Move LegalMoves[maxMoves];
+        threadHelper* state = new threadHelper;
+        FILE* fptr;
+        fptr = fopen(nameDataFile.c_str(), "ab");
         for(int i=startReg; i<endReg; i++){
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
-            players[0]->clear();
-            players[1]->clear();
-            current->fromFen(fens[i]);
+            state->init(fens[i]);
             int result = 1; //0 black win 1 draw 2 white win
             big dngpos;
             int countMoves = 0;
-            Game.startPos.fromFen(fens[i]);
-            Game.clear();
             big localNodes = 0;
-            eval->init(*current);
             do{
-                bool isWhite = current->friendlyColor() == WHITE;
                 bestMoveResponse res;
                 TM tm(limitNodes, limitNodes*1000);
-                res = players[!isWhite]->goState<1>(*current, tm, false, false, Game.game.size());
+                res = state->getPlayer().goState<1>(state->state, tm, false, false, state->game.game.size());
                 vector<depthInfo> infos = get<3>(res);
                 if(!infos.empty())
                     localNodes += infos.back().node;
@@ -176,97 +190,91 @@ int main(int argc, char** argv){
                 assert(curMove.moveInfo != nullMove.moveInfo);
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
-                    if(current->friendlyColor() == BLACK)
+                    if(state->state.friendlyColor() == BLACK)
                         result = 2-result;
-                    break;
-                }
-                eval->playNoBack(curMove, current->friendlyColor());
-                if(current->playMove(curMove) == 3){
-                    result = 1;
                     break;
                 }
                 MoveInfo curProc;
                 curProc.moveInfo = curMove.moveInfo;
                 if(score != INF){
                     curProc.score = score;
-                    curProc.staticScore = eval->getRaw(current->friendlyColor());
+                    curProc.staticScore = state->eval.getRaw(state->state.friendlyColor());
                     curProc.isVoid = false;
                 }else{
                     curProc.isVoid = true;
                 }
-                Game.game.push_back(curProc);
+                state->eval.playNoBack(curMove, state->state.friendlyColor());
+                if(state->state.playMove(curMove) == 3){
+                    result = 1;
+                    break;
+                }
+                state->game.game.push_back(curProc);
                 countMoves++;
                 if(curMove.isTactical())
                     countMoves = 0;
                 if(score == 0){
                     bool inCheck;
-                    generator->initDangers(*current);
-                    int nbMoves = generator->generateLegalMoves(*current, inCheck, LegalMoves, dngpos, false);
+                    state->generator.initDangers(state->state);
+                    int nbMoves = state->generator.generateLegalMoves(state->state, inCheck, state->legalMoves, dngpos, false);
                     if(nbMoves == 0){
                         if(inCheck){
-                            printf("\n%s\n", current->toFen().c_str());
-                            result = (current->enemyColor() == WHITE)*2;
+                            printf("\n%s\n", state->state.toFen().c_str());
+                            result = (state->state.enemyColor() == WHITE)*2;
                         }else
                             result = 1;
                         break;
                     }
                 }
-                if(eval->isInsufficientMaterial())break;
+                if(state->eval.isInsufficientMaterial())break;
             }while(countMoves < 100);
-            Game.result = result;
-            FILE* fptr;
-            fptr = fopen(nameDataFile.c_str(), "ab");
-            Game.dump(fptr);
-            fclose(fptr);
+            state->game.result = result;
+            state->game.dump(fptr);
+            #pragma omp atomic update
+            gamesMade++;
+            #pragma omp atomic update
+            nodesSearched += localNodes;
+            int totGamesMade = lastGamesMade+gamesMade;
+            struct winsize w;
+            ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+            auto end=chrono::high_resolution_clock::now();
+            big duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
+            string unit;
+            int speed;
+            big nps = nodesSearched*1000/duration/realThread;
+            if(duration > gamesMade*1000){
+                unit = "s/g";
+                speed = duration*100/(gamesMade*1000);
+            }else{
+                speed = gamesMade*1000*100/duration;
+                unit = "g/s";
+            }
+            string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(gamesMade*1000)); // in seconds
+            int percent = 1000*totGamesMade/sizeGame;
+            string printed = to_string(percent/10)+string(".")+to_string(percent%10);
+            printed += "% (";
+            printed += to_string(totGamesMade)+string("/")+to_string(sizeGame)+" in ";
+            printed += to_string(duration/1000.0)+"s) "+remaindTime+" ";
+            printed += to_string(speed/100);
+            if(speed%100 >= 10)
+                printed += string(".")+to_string(speed%100);
+            else 
+                printed += string(".0")+to_string(speed%100);
+            printed += unit + " " + to_string(nps)+"npst [";
+            int percentWind = (w.ws_col-printed.size()-1)*totGamesMade*10/sizeGame;
+            printed += string(percentWind/10, '#');
+            if(totGamesMade != sizeGame){
+                printed += to_string(percentWind%10);
+                printed += string((w.ws_col-printed.size()-1), ' ');
+            }
+            printed += "]";
             #pragma omp critical
             {
-                #pragma omp atomic update
-                gamesMade++;
-                #pragma omp atomic update
-                nodesSearched += localNodes;
-                int totGamesMade = lastGamesMade+gamesMade;
-                struct winsize w;
-                ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-                auto end=chrono::high_resolution_clock::now();
-                big duration = chrono::duration_cast<chrono::milliseconds>(end-start).count();
-                string unit;
-                int speed;
-                big nps = nodesSearched*1000/duration;
-                if(duration > gamesMade*1000){
-                    unit = "s/g";
-                    speed = duration*100/(gamesMade*1000);
-                }else{
-                    speed = gamesMade*1000*100/duration;
-                    unit = "g/s";
-                }
-                string remaindTime = secondsToStr(duration*(sizeGame-totGamesMade)/(gamesMade*1000)); // in seconds
-                int percent = 1000*totGamesMade/sizeGame;
-                string printed = to_string(percent/10)+string(".")+to_string(percent%10);
-                printed += "% (";
-                printed += to_string(totGamesMade)+string("/")+to_string(sizeGame)+" in ";
-                printed += to_string(duration/1000.0)+"s) "+remaindTime+" ";
-                printed += to_string(speed/100);
-                if(speed%100 >= 10)
-                    printed += string(".")+to_string(speed%100);
-                else 
-                    printed += string(".0")+to_string(speed%100);
-                printed += unit + " " + to_string(nps)+"nps [";
-                int percentWind = (w.ws_col-printed.size()-1)*totGamesMade*10/sizeGame;
-                printed += string(percentWind/10, '#');
-                if(totGamesMade != sizeGame){
-                    printed += to_string(percentWind%10);
-                    printed += string((w.ws_col-printed.size()-1), ' ');
-                }
-                printed += "]";
                 printf("%s\r", printed.c_str());
                 fflush(stdout);
             }
         }
-        delete current;
-        delete players[0];
-        delete players[1];
-        delete eval;
-        delete generator;
+        fclose(fptr);
+        delete state;
     }
     printf("\n");
     clear_table();
