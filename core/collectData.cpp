@@ -114,6 +114,7 @@ int main(int argc, char** argv){
     #pragma omp parallel
     #pragma omp single
     realThread = min(omp_get_num_threads(), sizeGame);
+    if(argc > 5)realThread = atoi(argv[5]);
     globnnue = NNUE(argv[2]);
     big nodesSearched = 0;
     #pragma omp parallel for shared(gamesMade, lastGamesMade)
@@ -202,8 +203,11 @@ int main(int argc, char** argv){
                     generator->initDangers(*current);
                     int nbMoves = generator->generateLegalMoves(*current, inCheck, LegalMoves, dngpos, false);
                     if(nbMoves == 0){
-                        assert(!inCheck);
-                        result = 1;
+                        if(inCheck){
+                            printf("\n%s\n", current->toFen().c_str());
+                            result = (current->enemyColor() == WHITE)*2;
+                        }else
+                            result = 1;
                         break;
                     }
                 }
