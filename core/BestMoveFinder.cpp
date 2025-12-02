@@ -292,7 +292,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (sc > alpha && sc < beta && nodeType == PVNode)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
-    order.init(state.friendlyColor(), lastBest, ss.history, relDepth, state, ss.generator, depth > 5);
+    order.init(state.friendlyColor(), lastBest, ss.history, relDepth, state, ss.generator, false);
     Move bestMove = nullMove;
     int bestScore = -INF;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
