@@ -176,7 +176,6 @@ int main(int argc, char** argv){
             state->init(fens[i]);
             int result = 1; //0 black win 1 draw 2 white win
             big dngpos;
-            int countMoves = 0;
             big localNodes = 0;
             do{
                 bestMoveResponse res;
@@ -209,9 +208,6 @@ int main(int argc, char** argv){
                     break;
                 }
                 state->game.game.push_back(curProc);
-                countMoves++;
-                if(curMove.isTactical())
-                    countMoves = 0;
                 if(score == 0){
                     bool inCheck;
                     state->generator.initDangers(state->state);
@@ -226,7 +222,7 @@ int main(int argc, char** argv){
                     }
                 }
                 if(state->eval.isInsufficientMaterial())break;
-            }while(countMoves < 100);
+            }while(state->state.rule50_count() < 100);
             state->game.result = result;
             state->game.dump(fptr);
             #pragma omp atomic update
