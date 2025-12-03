@@ -225,6 +225,7 @@ int main(int argc, char** argv){
             }while(state->state.rule50_count() < 100);
             state->game.result = result;
             state->game.dump(fptr);
+            fflush(fptr);
             #pragma omp atomic update
             gamesMade++;
             #pragma omp atomic update
