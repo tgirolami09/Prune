@@ -3,7 +3,6 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include <cstring>
-#include <sstream>
 #include <cassert>
 using namespace std;
 
@@ -14,7 +13,7 @@ big normalKingMoves[64];
 big attackPawns[128];
 big directions[64][64];
 big* tableMagic[129];
-constTable constantsMagic[128];
+const constTable* constantsMagic = (const constTable*)magicsData;
 
 void PrecomputeKnightMoveData(){
     const pair<int, int> moves[8] = {
@@ -227,14 +226,11 @@ static big get_mask(bool is_rook, big id, big square){
 void load_table(){
     big magic=0;
     int decR=0, minimum=0, size=0;
-    int current = 0;
-    int pointer = 0;
-    while(pointer < magicsData_size){
-        memcpy(&magic  , &magicsData[pointer], 8);pointer += 8;
-        memcpy(&decR   , &magicsData[pointer], 4);pointer += 4;
-        memcpy(&minimum, &magicsData[pointer], 4);pointer += 4;
+    for(int current = 0; current<128; current++){
+        magic = constantsMagic[current].magic;
+        decR = constantsMagic[current].decR;
+        minimum = constantsMagic[current].bits;
         size = 1ul << minimum;
-        constantsMagic[current] = {minimum, decR, magic};
         tableMagic[current] = (big*)calloc(size, sizeof(big));
         const bool is_rook = current >= 64;
         const int square = current%64;
@@ -248,7 +244,6 @@ void load_table(){
             assert(key < (big)size);
             tableMagic[current][key] = res_mask;
         }
-        current++;
     }
 }
 

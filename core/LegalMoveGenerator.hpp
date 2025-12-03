@@ -5,11 +5,11 @@
 #include "embeder.hpp"
 using namespace std;
 
-class constTable{
+class  __attribute__((packed)) constTable{
 public:
-    int bits;
-    int decR;
     big magic;
+    int decR;
+    int bits;
 };
 
 big parseInt(int& pointer);
@@ -21,7 +21,7 @@ extern big normalKingMoves[64];
 extern big attackPawns[128];
 extern big directions[64][64];
 extern big* tableMagic[129];
-extern constTable constantsMagic[128];
+extern const constTable* constantsMagic;
 
 void PrecomputeKnightMoveData();
 void precomputeDirections();
