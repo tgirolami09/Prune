@@ -11,8 +11,10 @@
 #include "loadpolyglot.hpp"
 #include <chrono>
 #include <atomic>
+#include <condition_variable>
 #include <string>
 #include <vector>
+#include <thread>
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
@@ -51,6 +53,20 @@ class BestMoveFinder{
         void beginLineMove(int relDepth, Move move);
         void resetLines();
     };
+
+    class HelperThread{
+    public:
+        usefull local;
+        GameState localState;
+        thread t;
+        bool running;
+        mutex mtx;
+        condition_variable cv;
+        int ans;
+        int depth, alpha, beta, relDepth, limitWay;
+        void launch(int depth, int alpha, int beta, int relDepth, int limitWay);
+        void wait_thread();
+    };
     unordered_map<uint64_t,PolyglotEntry> book;
 
     //Returns the best move given a position and time to use
@@ -66,9 +82,10 @@ public:
     ~BestMoveFinder();
     void stop();
 private:
-    usefull* threadsSS;
-    GameState* parallelState;
-    bool smp_abort;
+    usefull localSS;
+    HelperThread* helperThreads;
+    atomic<bool> smp_abort, smp_end;
+    void clear_helpers();
     chrono::nanoseconds getElapsedTime();
     template<int limitWay, bool isPV>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
@@ -79,8 +96,9 @@ private:
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
     int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
-    template<int limitWay, bool mateSearch>
-    void launchSMP(const int idThread, int depth, GameState& state, const int alpha, const int beta, const int relDepth);
+    template<bool mateSearch>
+    int launchSearch(int limitWay, HelperThread& ss);
+    void launchSMP(int idThread);
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);

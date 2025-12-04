@@ -434,8 +434,9 @@ void manageSearch(){
                             else
                                 globnnue = NNUE(parsed[i+1].second);
                         }else if(parsed[i].second == "Threads"){
-                            nbThreads = stoi(parsed[i+1].second);
-                            bestMoveFinder.setThreads(nbThreads);
+                            int newT = stoi(parsed[i+1].second);
+                            bestMoveFinder.setThreads(newT);
+                            nbThreads = newT;
                         }
                         i += incr;
                     }
