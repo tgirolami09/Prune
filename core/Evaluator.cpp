@@ -171,9 +171,12 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 
 template<int f>
 void IncrementalEvaluator::playMove(Move move, bool c){
-    int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
-    changePiece<-f, false>(move.from(), move.piece, c);
-    changePiece<f, false>(move.to(), toPiece, c);
+    int toPiece = move.piece;
+    if(move.promotion() != -1){
+        toPiece = move.promotion();
+        changePiece<-f, false>(move.from(), move.piece, c);
+        changePiece<f, false>(move.to(), toPiece, c);
+    }
     if(move.capture != -2){
         int posCapture = move.to();
         int pieceCapture = move.capture;
