@@ -326,7 +326,7 @@ void manageSearch(){
                     }
                     delete testState;
                 }
-                printf("\rposition %" PRId64 "/%" PRId64 "\n", benches.size(), benches.size());
+                printf("\rposition %d/%d\n", (int)benches.size(), (int)benches.size());
                 printf("depth\t");
                 for(int i=0; i<=maxDepthAttain; i++)
                     printf("\t%d", i);
