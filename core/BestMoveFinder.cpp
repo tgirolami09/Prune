@@ -158,7 +158,7 @@ void BestMoveFinder::HelperThread::wait_thread(){
     cv.wait(lock, [this]{return !running;});
 }
 
-template<int limitWay, bool isPV>
+template<int limitWay, bool isPV, bool isCalc>
 int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth){
     if(!running || smp_abort)return 0;
     if(limitWay == 0 && (ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
@@ -175,7 +175,8 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     }
     const int rootDist = relDepth-startRelDepth;
     int& staticEval = ss.stack[rootDist].static_score;
-    staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
+    if(!isCalc)
+        staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     if(staticEval >= beta){
         transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
         return staticEval;
@@ -203,7 +204,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         Move capture = order.pop_max();
         state.playMove(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor());
-        int score = -quiescenceSearch<limitWay, isPV>(ss, state, -beta, -alpha, relDepth+1);
+        int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(capture, !state.friendlyColor());
         state.undoLastMove();
         if(!running || smp_abort)return 0;
@@ -229,7 +230,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
 template<int nodeType, int limitWay, bool mateSearch>
 inline int BestMoveFinder::Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth){
     if constexpr(mateSearch)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
-    int score = quiescenceSearch<limitWay, nodeType==PVNode>(ss, state, alpha, beta, relDepth);
+    int score = quiescenceSearch<limitWay, nodeType==PVNode, true>(ss, state, alpha, beta, relDepth);
     if constexpr(limitWay == 1)if(ss.nodes > hardBound)running=false;
     return score;
 }
@@ -621,7 +622,7 @@ template bestMoveResponse BestMoveFinder::goState<2>(GameState&, TM, bool, bool,
 int BestMoveFinder::testQuiescenceSearch(GameState& state){
     localSS.reinit(state);
     clock_t start=clock();
-    int score = quiescenceSearch<false, true>(localSS, state, -INF, INF, 0);
+    int score = quiescenceSearch<false, true, false>(localSS, state, -INF, INF, 0);
     clock_t end = clock();
     double tcpu = double(end-start)/CLOCKS_PER_SEC;
     printf("speed: %d; Qnodes:%" PRId64 " score %s\n\n", (int)(localSS.nodes/tcpu), localSS.nodes, scoreToStr(score).c_str());

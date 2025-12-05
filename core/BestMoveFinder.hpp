@@ -87,7 +87,7 @@ private:
     atomic<bool> smp_abort, smp_end;
     void clear_helpers();
     chrono::nanoseconds getElapsedTime();
-    template<int limitWay, bool isPV>
+    template<int limitWay, bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
     enum{PVNode=0, CutNode=1, AllNode=-1};
