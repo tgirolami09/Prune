@@ -11,7 +11,7 @@ const int HL_SIZE = 64;
 const int SCALE = 400;
 const int QA = 255;
 const int QB = 64;
-
+const int turn=56^64;
 #define dbyte int16_t
 // Manual SIMD wrapper for cross-platform compatibility
 #if defined(__AVX2__)
@@ -68,6 +68,9 @@ public:
     void change2(Accumulator& accIn, int piece, int square);
     template<int f>
     void change2(Accumulator& accIn, Accumulator& accOut, int piece, int square);
+    void move3(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
+    void move2(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
+    void move4(Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);
     dbyte eval(const Accumulator& accs, bool side) const;
 };
 

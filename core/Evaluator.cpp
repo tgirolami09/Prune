@@ -3,6 +3,7 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
+#include "NNUE.hpp"
 #include <cstring>
 
 const int* mg_pesto_table[6] =
@@ -171,8 +172,8 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 template<int f>
 void IncrementalEvaluator::playMove(Move move, bool c){
     int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
-    changePiece2<-f, f == 1>(move.from(), move.piece, c);
-    changePiece<f, f == 1>(move.to(), toPiece, c);
+    changePiece<-f, false>(move.from(), move.piece, c);
+    changePiece<f, false>(move.to(), toPiece, c);
     if(move.capture != -2){
         int posCapture = move.to();
         int pieceCapture = move.capture;
@@ -181,9 +182,14 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             else posCapture += 8;
             pieceCapture = PAWN;
         }
-        changePiece<-f, f == 1>(posCapture, pieceCapture, !c);
-    }
-    if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
+        changePiece<-f, false>(posCapture, pieceCapture, !c);
+        if(f == 1)
+            globnnue.move3(stackAcc[stackIndex], stackAcc[stackIndex+1],
+                globnnue.get_index(move.piece*2+c, move.from()),
+                globnnue.get_index(toPiece*2+c, move.to()),
+                globnnue.get_index(pieceCapture*2+!c, posCapture)
+            );
+    }else if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
         int rookStart = move.from();
         int rookEnd = move.to();
         if(move.from() > move.to()){//queen side
@@ -193,9 +199,23 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             rookStart |= 7;
             rookEnd--;
         }
-        changePiece<-f, f == 1>(rookStart, ROOK, c);
-        changePiece<f, f == 1>(rookEnd, ROOK, c);
+        if(f == 1)
+            globnnue.move4(stackAcc[stackIndex], stackAcc[stackIndex+1],
+                globnnue.get_index(move.piece*2+c, move.from()),
+                globnnue.get_index(toPiece*2+c, move.to()),
+                globnnue.get_index(ROOK*2+c, rookStart), 
+                globnnue.get_index(ROOK*2+c, rookEnd)
+            );
+    }else if(f == 1){
+        globnnue.move2(stackAcc[stackIndex], stackAcc[stackIndex+1],
+            globnnue.get_index(move.piece*2+c, move.from()),
+            globnnue.get_index(toPiece*2+c, move.to())
+        );
     }
+    if(f == 1)
+        stackIndex++;
+    else
+        stackIndex--;
 }
 
 void IncrementalEvaluator::backStack(){

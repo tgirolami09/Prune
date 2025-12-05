@@ -198,7 +198,7 @@ dbyte NNUE::eval(const Accumulator& accs, bool side) const{
 template<int f>
 void NNUE::change2(Accumulator& accs, int piece, int square){
     int index = get_index(piece, square);
-    int index2 = index ^ 56 ^ 64; // point of view change
+    int index2 = index ^ turn; // point of view change
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
             accs[WHITE][i] = simd16_add(accs[WHITE][i], hlWeights[index][i]);
@@ -212,7 +212,7 @@ void NNUE::change2(Accumulator& accs, int piece, int square){
 template<int f>
 void NNUE::change2(Accumulator& accIn, Accumulator& accOut, int piece, int square){
     int index = get_index(piece, square);
-    int index2 = index ^ 56 ^ 64; // point of view change
+    int index2 = index ^ turn; // point of view change
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
             accOut[WHITE][i] = simd16_add(accIn[WHITE][i], hlWeights[index][i]);
@@ -222,6 +222,31 @@ void NNUE::change2(Accumulator& accIn, Accumulator& accOut, int piece, int squar
             accOut[BLACK][i] = simd16_sub(accIn[BLACK][i], hlWeights[index2][i]);
         }
     }
+}
+void NNUE::move3(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap){
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        simd16 white = simd16_sub(hlWeights[indexto     ][i], simd16_add(hlWeights[indexfrom     ][i], hlWeights[indexcap     ][i]));
+        simd16 black = simd16_sub(hlWeights[indexto^turn][i], simd16_add(hlWeights[indexfrom^turn][i], hlWeights[indexcap^turn][i]));
+        accOut[WHITE][i] = simd16_add(accIn[WHITE][i], white);
+        accOut[BLACK][i] = simd16_add(accIn[BLACK][i], black);
+    }
+}
+void NNUE::move2(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto){
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        simd16 white = simd16_sub(hlWeights[indexto     ][i], hlWeights[indexfrom     ][i]);
+        simd16 black = simd16_sub(hlWeights[indexto^turn][i], hlWeights[indexfrom^turn][i]);
+        accOut[WHITE][i] = simd16_add(accIn[WHITE][i], white);
+        accOut[BLACK][i] = simd16_add(accIn[BLACK][i], black);
+    }
+}
+void NNUE::move4(Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2){
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        simd16 white = simd16_sub(simd16_add(hlWeights[indexto1     ][i], hlWeights[indexto2     ][i]), simd16_add(hlWeights[indexfrom1     ][i], hlWeights[indexfrom2     ][i]));
+        simd16 black = simd16_sub(simd16_add(hlWeights[indexto1^turn][i], hlWeights[indexto2^turn][i]), simd16_add(hlWeights[indexfrom1^turn][i], hlWeights[indexfrom2^turn][i]));
+        accOut[WHITE][i] = simd16_add(accIn[WHITE][i], white);
+        accOut[BLACK][i] = simd16_add(accIn[BLACK][i], black);
+    }
+
 }
 template void NNUE::change2<-1>(Accumulator&, int, int);
 template void NNUE::change2<1>(Accumulator&, int, int);
