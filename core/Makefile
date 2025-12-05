@@ -60,7 +60,7 @@ prune: engine.cpp $(OBJECTS)
 coreGen: collectData.cpp $(OBJECTS)
 	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
 
-$(OBJECTS) : %.o: %.cpp
+%.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
 embeder.o: embeder.cpp

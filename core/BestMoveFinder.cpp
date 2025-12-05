@@ -516,7 +516,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
     if(verbose){
-        printf("info string use a tt of %d entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, transposition.modulo*sizeof(infoScore)*2/hashMul, sizeof(infoScore));
+        printf("info string use a tt of %d entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, sizeof(infoScore));
     }
     Move bestMove=nullMove;
     sbig lastNodes = 1;
