@@ -16,6 +16,7 @@ build
 *.bin
 *.so
 */__pycache__*
+*/*/*
 !model.bin
 !Makefile
 !magics.out
