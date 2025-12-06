@@ -133,13 +133,13 @@ def readFile(arg):
     filename = settings.pickledData+"/data"+str(id)+".zip"
     idMove = 0
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    open_zip(filename.encode(), id)
     with open(name, "rb") as f:
         for i in range(nbGame):
+            open_zip(filename.encode(), id)
             a, b, idMove = readGame(f, id, idMove)
             count += a
             filtredPos += b
-    clear_zip(id)
+            clear_zip(id)
     return count, filtredPos
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
