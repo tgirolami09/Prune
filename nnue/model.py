@@ -3,10 +3,48 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import sys
-import time
-from torch.utils.data import DataLoader, TensorDataset, random_split
+import time, os
+import pickle
+import numpy as np
+import io
+from torch.utils.data import DataLoader, TensorDataset, random_split, Dataset
 from random import shuffle, seed, randrange
-from tqdm import trange
+from tqdm import trange, tqdm
+from pyzipmanager import *
+
+class PickledTensorDataset(Dataset):
+    def __init__(self, directory, wdl, act):
+        self.wdl = wdl
+        self.act = act
+        self.directory = directory
+        self.file_names = os.listdir(directory)
+        self.cum = [0]*(len(self.file_names)+1)
+        allocate(len(self.file_names))
+        for i, file in enumerate(tqdm(self.file_names)):
+            open_zip((self.directory+"/"+file).encode(), i)
+            nbdata = get_entries(i)
+            self.cum[i+1] = self.cum[i]+nbdata
+        self.num_samples = self.cum[-1]
+        print(self.num_samples)
+
+    def read_file(self, id, idx):
+        c = bytes([0]*(12*64*2+2*4))
+        read_data(id, c, idx)
+        x, y = np.frombuffer(c[:-8], dtype=np.int8), np.frombuffer(c[-8:], dtype=np.float32)
+        return x, y
+
+    def __len__(self):
+        return self.num_samples
+
+    def __getitem__(self, idx):
+        fileId = -1
+        for i in range(len(self.cum)):
+            if self.cum[i] > idx:
+                fileId = i-1
+                break
+        x, y = self.read_file(fileId, idx-self.cum[fileId])
+        y = self.act(torch.tensor(y[0]))*(1-self.wdl)+self.wdl*y[1]
+        return torch.from_numpy(x), y
 
 class Model(nn.Module):
     inputSize = 64*12
@@ -27,15 +65,12 @@ class Model(nn.Module):
         self.toout = nn.Linear(self.HLSize*2, 1, bias=False)
         self.endBias = nn.Parameter(torch.randn(1))
         self.to(device)
-        self.transfo = torch.arange(self.inputSize)^56^64
         self.device = device
 
-    def calc_score(self, x, color, isInt=False):
+    def calc_score(self, x, isInt=False):
         hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
-        firstIndex = color*self.HLSize
-        secondIndex = (1-color)*self.HLSize
-        hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.activation(self.tohidden(x))
-        hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.activation(self.tohidden(x[:, self.transfo]))
+        hiddenRes[:, :self.HLSize] = self.activation(self.tohidden(x[:, :self.inputSize]))
+        hiddenRes[:, self.HLSize:] = self.activation(self.tohidden(x[:, self.inputSize:]))
         x = self.toout(hiddenRes)
         if isInt:
             x //= self.QA
@@ -47,8 +82,8 @@ class Model(nn.Module):
         else:
             return x*self.SCALE/(self.QA*self.QB)
 
-    def forward(self, x, color):
-        return self.outAct(self.calc_score(x, color))
+    def forward(self, x):
+        return self.outAct(self.calc_score(x))
     
     def _round(self):
         self.toout.weight[:] = self.toout.weight.round()
@@ -81,31 +116,27 @@ class Trainer:
         self.lr = lr
         self.modelEval = Model(device)
     
-    def trainStep(self, dataX, dataY, color):
-        yhat = self.model(dataX, color)
+    def trainStep(self, dataX, dataY):
+        yhat = self.model(dataX)
         loss = self.loss_fn(dataY, yhat)
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()
         return loss.item()
 
-    def testLoss(self, dataX, dataY, color):
-        yhat = self.modelEval(dataX, color)
+    def testLoss(self, dataX, dataY):
+        yhat = self.modelEval(dataX)
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
-    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, processes=1):
+    def train(self, epoch, directory, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, processes=1, wdl=0.0):
         startTime = time.time()
-        dataset1 = TensorDataset(dataX[0], dataY[0])
-        dataset2 = TensorDataset(dataX[1], dataY[1])
-        dataTrain1, dataTest1 = random_split(dataset1, [percentTrain, 1-percentTrain])
-        dataTrain2, dataTest2 = random_split(dataset2, [percentTrain, 1-percentTrain])
-        totTrainData = len(dataTrain1)+len(dataTrain2)
-        totTestData = sum(map(len, dataX))-totTrainData
-        dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True, num_workers=processes)
-        dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True, num_workers=processes)
-        testDataL1 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False, num_workers=processes)
-        testDataL2 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False, num_workers=processes)
+        dataset = PickledTensorDataset(directory, wdl, self.model.outAct)
+        dataTrain, dataTest = random_split(dataset, [percentTrain, 1-percentTrain])
+        totTrainData = len(dataTrain)
+        totTestData = len(dataset)-totTrainData
+        dataL = DataLoader(dataset=dataTrain, batch_size=batchSize, shuffle=True, num_workers=processes)
+        testDataL = DataLoader(dataset=dataTest, batch_size=batchSize, shuffle=False, num_workers=processes)
         lastTestLoss = lastLoss = 0.0
         miniLoss = 1000
         current_lr = self.lr
@@ -116,26 +147,16 @@ class Trainer:
             self.modelEval.eval()
             with torch.no_grad():
                 self.modelEval._round()
-                print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
+                print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), True)[:, 0].tolist())
         clipper = Clipper()
         for i in range(epoch):
             startTime = time.time()
             totLoss = 0
             self.model.train()
-            colors = {0:iter(dataL1), 1:iter(dataL2)}
-            while colors:
-                for color in list(colors.keys()):
-                    try:
-                        xBatch, yBatch = next(colors[color])
-                    except StopIteration:
-                        colors.pop(color)
-                        continue
-                    except:
-                        print(colors, color)
-                        raise StopIteration()
-                    xBatch = xBatch.float().to(self.device)
-                    yBatch = yBatch.float().to(self.device)
-                    totLoss += self.trainStep(xBatch, yBatch, color)*len(xBatch)
+            for xBatch, yBatch in dataL:
+                xBatch = xBatch.float().to(self.device)
+                yBatch = yBatch.float().to(self.device)
+                totLoss += self.trainStep(xBatch, yBatch)*len(xBatch)
             totTestLoss = 0
             endTimeTrain = time.time()
             self.model.apply(clipper)
@@ -143,11 +164,10 @@ class Trainer:
                 self.modelEval.load_state_dict(self.model.state_dict())
                 self.modelEval._round()
                 self.modelEval.eval()
-                for c, testDataL in enumerate((testDataL1, testDataL2)):
-                    for xBatch, yBatch in testDataL:
-                        xBatch = xBatch.float().to(self.device)
-                        yBatch = yBatch.float().to(self.device)
-                        totTestLoss += self.testLoss(xBatch, yBatch, c)*len(xBatch)
+                for xBatch, yBatch in testDataL:
+                    xBatch = xBatch.float().to(self.device)
+                    yBatch = yBatch.float().to(self.device)
+                    totTestLoss += self.testLoss(xBatch, yBatch)*len(xBatch)
             totLoss /= totTrainData
             totTestLoss /= totTestData
             endTime = time.time()
@@ -159,11 +179,12 @@ class Trainer:
             print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {span:.3f}s ({span2/span*100:.2f}% for training) lr {current_lr}')
             if testPos is not None:
                 with torch.no_grad():
-                    print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
+                    print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), True)[:, 0].tolist())
             sys.stdout.flush()
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
-                self.save(fileBest, self.modelEval)
+                with torch.no_grad():
+                    self.save(fileBest, self.modelEval)
             elif totTestLoss > lastTestLoss:
                 current_lr /= 10**.5
                 for g in self.optimizer.param_groups:
