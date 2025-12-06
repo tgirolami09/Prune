@@ -1,3 +1,4 @@
+CC = g++
 all: zipmanager.so
 
 zipmanager.so: zipmanager.cpp
