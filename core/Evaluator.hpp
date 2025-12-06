@@ -1,5 +1,6 @@
 #ifndef EVALUATOR_HPP
 #define EVALUATOR_HPP
+#include "Const.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "NNUE.hpp"
@@ -166,10 +167,14 @@ const int tableSize=1<<10;//must be a power of two, for now it's pretty small be
 class IncrementalEvaluator{
     int mgPhase;
     int presentPieces[2][6]; //keep trace of number of pieces by side
-    template<int f>
-    void changePiece(int pos, int piece, bool c);
+    Accumulator stackAcc[maxDepth];
+    int stackIndex;
 public:
-    NNUE nnue;
+    template<int f, bool updateNNUE>
+    void changePiece(int pos, int piece, bool c);
+    template<int f, bool updateNNUE>
+    void changePiece2(int pos, int piece, bool c);
+    void backStack();
     void print();
     IncrementalEvaluator();
     void init(const GameState& state);
@@ -179,45 +184,8 @@ public:
     int getRaw(bool c) const;
     template<int f=1>
     void playMove(Move move, bool c);
+    void playNoBack(Move move, bool c);
     void undoMove(Move move, bool c);
 };
-
-
-template<int f>
-void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
-    nnue.change2<f>(piece*2+c, pos);
-    mgPhase += f*gamephaseInc[piece];
-    presentPieces[c][piece] += f;
-}
-
-template<int f>
-void IncrementalEvaluator::playMove(Move move, bool c){
-    if(move.capture != -2){
-        int posCapture = move.to();
-        int pieceCapture = move.capture;
-        if(move.capture == -1){ // for en passant
-            if(c == WHITE)posCapture -= 8;
-            else posCapture += 8;
-            pieceCapture = PAWN;
-        }
-        changePiece<-f>(posCapture, pieceCapture, !c);
-    }
-    int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
-    changePiece<-f>(move.from(), move.piece, c);
-    changePiece<f>(move.to(), toPiece, c);
-    if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
-        int rookStart = move.from();
-        int rookEnd = move.to();
-        if(move.from() > move.to()){//queen side
-            rookStart &= ~7;
-            rookEnd++;
-        }else{//king side
-            rookStart |= 7;
-            rookEnd--;
-        }
-        changePiece<-f>(rookStart, ROOK, c);
-        changePiece<f>(rookEnd, ROOK, c);
-    }
-}
 
 #endif

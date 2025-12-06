@@ -9,6 +9,8 @@ const int zobrPassant=zobrCastle+4;
 const int zobrTurn=zobrPassant+8;
 const int nbZobrist=zobrTurn+1;
 const int sizeThreeFold=8192;
+extern big zobrist[nbZobrist];
+void init_zobrs();
 //Represents a state in the game
 class GameState{
     // (not necessary if we create new states for exploration)
@@ -20,7 +22,6 @@ class GameState{
     int turnNumber;
 
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
-    big zobrist[nbZobrist];
     short nbMoves[2][3];
     short posRook[2][2];
     short deathRook[2][2];

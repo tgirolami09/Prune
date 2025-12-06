@@ -1,6 +1,7 @@
 CC=g++
 ADDOPTION?=
-CFLAGS=-Wall -Wextra -std=gnu++17 $(ADDOPTION)
+DEBUGOPT?=
+CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 $(ADDOPTION)
 OPT=-O3 -flto
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
@@ -18,6 +19,7 @@ else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
 endif
+CFLAGSALL=$(CFLAGS) $(DEBUGOPT)
 ARCHCOM=-march=$(ARCH)
 ifneq ($(CPUSET), unknow)
 	ARCHCOM=$(ARCHCOM) -m$(ARCH)
@@ -50,19 +52,22 @@ ifeq ($(OS), Windows_NT)
 endif
 
 all: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^
 
 prune: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)
 
 coreGen: collectData.cpp $(OBJECTS)
-	$(CC) $(CFLAGS) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
+	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
 
-$(OBJECTS) : %.o: %.cpp
-	$(CC) -m64 $(CFLAGS) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+%.o: %.cpp
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+
+embeder.o: embeder.cpp
+	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
 pruneDebug: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(ARCHCOM) $(CFLAGS) -g -o $@ $^ $(VERSIONNING)
+	$(CC) -m64 $(ARCHCOM) $(CFLAGSALL) -g -o $@ $^ $(VERSIONNING)
 
 clean:
 	rm $(OBJECTS) $(DEPENDS)

@@ -142,7 +142,7 @@ unordered_map<uint64_t,PolyglotEntry> load_book(const string& filename, bool mut
         }
     }
     if(!mute){
-        printf("info string From %" PRId64 " entries to %" PRId64 " entries in the opening book\n",InputBook.size(),book.size());
+        printf("info string From %" PRId64 " entries to %" PRId64 " entries in the opening book\n", (big)InputBook.size(), (big)book.size());
         printf("info string Parsed %d moves as null moves (they where consequently ignored)\n",nullMoveAmount);
     }
 

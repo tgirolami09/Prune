@@ -3,13 +3,19 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include <cstring>
-#include <sstream>
 #include <cassert>
 using namespace std;
 
-BINARY_ASM_INCLUDE("magics.out", magicsData);
+big KnightMoves[64]; //Knight moves for each position of the board
+big pieceCastlingMasks[2][2];
+big attackCastlingMasks[2][2];
+big normalKingMoves[64];
+big attackPawns[128];
+big directions[64][64];
+big* tableMagic[129];
+const constTable* constantsMagic = (const constTable*)magicsData;
 
-void LegalMoveGenerator::PrecomputeKnightMoveData(){
+void PrecomputeKnightMoveData(){
     const pair<int, int> moves[8] = {
         {-2,  1},
         {-2, -1},
@@ -39,7 +45,7 @@ void LegalMoveGenerator::PrecomputeKnightMoveData(){
         }
     }  
 }
-void LegalMoveGenerator::precomputeCastlingMasks(){
+void precomputeCastlingMasks(){
     pieceCastlingMasks[0][1] = 0b00000110;
     pieceCastlingMasks[0][0] = 0b01110000;
     pieceCastlingMasks[1][1] = pieceCastlingMasks[0][1] << 56;
@@ -51,7 +57,7 @@ void LegalMoveGenerator::precomputeCastlingMasks(){
     attackCastlingMasks[1][0] = attackCastlingMasks[0][0] << 56;
 }
 
-void LegalMoveGenerator::precomputeNormlaKingMoves(){
+void precomputeNormlaKingMoves(){
     for (int kingPosition = 0; kingPosition < 64 ; ++ kingPosition){
         big kingEndMask = 0;
 
@@ -93,7 +99,7 @@ void LegalMoveGenerator::precomputeNormlaKingMoves(){
     }
 }
 
-void LegalMoveGenerator::precomputePawnsAttack(){
+void precomputePawnsAttack(){
     for(int c=0; c<2; c++){
         int leftLimit = c ?  7 : 0;
         int rightLimit = leftLimit^7;
@@ -110,7 +116,7 @@ void LegalMoveGenerator::precomputePawnsAttack(){
         }
     }
 }
-void LegalMoveGenerator::precomputeDirections(){
+void precomputeDirections(){
     //Set everything to 0 first just to be sure
     for (int i = 0; i < 64; ++i){
         for (int j = 0; j < 64; ++j){
@@ -137,20 +143,21 @@ void LegalMoveGenerator::precomputeDirections(){
     }
 }
 
-inline big go_dir(big mask, int square, int dir, big clipped){
+big go_dir(big mask, int square, int dir, big clipped){
     int cur_square = square;
     big cur_mask=0;
-    big p;
     do{
         cur_square += dir;
         if(cur_square < 0 || cur_square >= 64)break;
-        p = 1ULL << cur_square;
+        big p = 1ULL << cur_square;
         cur_mask |= p;
-    }while((clipped&p) && (p&mask) == 0);
+        if((clipped&p) == 0 || (p&mask) != 0)
+            break;
+    }while(1);
     return cur_mask;
 }
 
-static big usefull_rook(big mask, int square){
+big usefull_rook(big mask, int square){
     int col = square&7;
     int row = square >> 3;
     big cur_mask = 0;
@@ -165,7 +172,7 @@ static big usefull_rook(big mask, int square){
     return cur_mask;
 }
 
-static big usefull_bishop(big mask, int square){
+big usefull_bishop(big mask, int square){
     big cur_mask=0;
     int col=square&7;
     int row=square >> 3;
@@ -216,46 +223,36 @@ static big get_mask(bool is_rook, big id, big square){
     return (is_rook?rook_mask:bishop_mask)(id, square);
 }
 
-void LegalMoveGenerator::load_table(){
-    big magic;
-    int decR, minimum, size;
-    int current = 0;
-    int pointer = 0;
-    while(pointer < magicsData_size){
-        memcpy(&magic  , &magicsData[pointer], 8);pointer += 8;
-        memcpy(&decR   , &magicsData[pointer], 4);pointer += 4;
-        memcpy(&minimum, &magicsData[pointer], 4);pointer += 4;
+void load_table(){
+    big magic=0;
+    int decR=0, minimum=0, size=0;
+    for(int current = 0; current<128; current++){
+        magic = constantsMagic[current].magic;
+        decR = constantsMagic[current].decR;
+        minimum = constantsMagic[current].bits;
         size = 1ul << minimum;
-        constantsMagic[current] = {minimum, decR, magic};
         tableMagic[current] = (big*)calloc(size, sizeof(big));
-        bool is_rook = current >= 64;
-        int square = current%64;
+        const bool is_rook = current >= 64;
+        const int square = current%64;
         int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
-        big nbIds = 1ul << nbBits;
+        const big nbIds = 1ul << nbBits;
         for(big id=0; id<nbIds; id++){
-            big mask = get_mask(is_rook, id, square);
-            big res = mask*magic;
-            big res_mask = get_usefull(is_rook, mask, square);
-            big key = (res&(MAX_BIG>>decR)) >> (64-decR-minimum);
+            const big mask = get_mask(is_rook, id, square);
+            const big res = mask*magic;
+            const big res_mask = get_usefull(is_rook, mask, square);
+            const big key = (res&(MAX_BIG>>decR)) >> (64-decR-minimum);
+            assert(key < (big)size);
             tableMagic[current][key] = res_mask;
         }
-        current++;
     }
 }
-LegalMoveGenerator::LegalMoveGenerator(){
-    PrecomputeKnightMoveData();
-    init_lines();
-    load_table();
-    precomputePawnsAttack();
-    precomputeCastlingMasks();
-    precomputeNormlaKingMoves();
-    precomputeDirections();
-}
-LegalMoveGenerator::~LegalMoveGenerator(){
-    for(int i=0; i<128; i++){
+
+void clear_table(){
+    for(int i=0; i < 128; i++){
         free(tableMagic[i]);
     }
 }
+
 template<bool isPawn>
 void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMoves, int8_t piece, bool promotQueen){
     while(mask){

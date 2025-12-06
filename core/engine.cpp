@@ -4,15 +4,34 @@
 #include <algorithm>
 // #include "util_magic.cpp"
 #include "Const.hpp"
+#include "Evaluator.hpp"
+#include "Functions.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include <vector>
 #include "BestMoveFinder.hpp"
+#include "NNUE.hpp"
 #include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
-
+int nbThreads = 1;
 using namespace std;
+
+class Init{
+public:
+    Init(){
+        PrecomputeKnightMoveData();
+        init_lines();
+        load_table();
+        precomputePawnsAttack();
+        precomputeCastlingMasks();
+        precomputeNormlaKingMoves();
+        precomputeDirections();
+        init_zobrs();
+    }
+};
+Init _init_everything;
+
 //Main class for the game
 const vector<string> benches = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -124,7 +143,8 @@ const Option Options[] = {
     Option("Hash", "spin", "64", 1, 512),
     Option("Move Overhead", "spin", "10", 0, 5000),
     Option("Clear Hash", "button"),
-    Option("nnueFile", "string", "embed")
+    Option("nnueFile", "string", "embed"),
+    Option("Threads", "spin", "1", 1, 512)
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -179,6 +199,7 @@ void manageSearch(){
     Chess* state = new Chess;
     state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     Move lastMove = nullMove;
+    IncrementalEvaluator* ieval = new IncrementalEvaluator;
     while(!stop_all){
         if(startQ != endQ){
             string com=inpQueue[startQ%sizeQ];
@@ -217,20 +238,20 @@ void manageSearch(){
             }else if(command == "eval"){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
-                bestMoveFinder.eval.init(state->root);
-                int overall_eval = bestMoveFinder.eval.getRaw(state->root.friendlyColor());
+                ieval->init(state->root);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
                         int square = (r << 3) | c;
                         int piece = state->root.getfullPiece(square);
                         if(type(piece) != SPACE){
-                            bestMoveFinder.eval.nnue.change2<-1>(piece, square);
+                            ieval->changePiece2<-1, true>(square, type(piece), color(piece));
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-bestMoveFinder.eval.getRaw(state->root.friendlyColor());
+                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
-                            bestMoveFinder.eval.nnue.change2<1>(piece, square);
+                            ieval->backStack();
                         }else evals[7-c] = {' ', 0};
                     }
                     for(int i=0; i<8; i++)
@@ -303,8 +324,9 @@ void manageSearch(){
                         sumTime += lastInfo.time;
                         Scores.push_back({lastInfo.depth, lastInfo.node});
                     }
+                    delete testState;
                 }
-                printf("\rposition %" PRId64 "/%" PRId64 "\n", benches.size(), benches.size());
+                printf("\rposition %d/%d\n", (int)benches.size(), (int)benches.size());
                 printf("depth\t");
                 for(int i=0; i<=maxDepthAttain; i++)
                     printf("\t%d", i);
@@ -408,9 +430,13 @@ void manageSearch(){
                             incr = false;
                         }else if(parsed[i].second == "nnueFile"){
                             if(parsed[i+1].second == "embed")
-                                bestMoveFinder.eval.nnue = NNUE();
+                                globnnue = NNUE();
                             else
-                                bestMoveFinder.eval.nnue = NNUE(parsed[i+1].second);
+                                globnnue = NNUE(parsed[i+1].second);
+                        }else if(parsed[i].second == "Threads"){
+                            int newT = stoi(parsed[i+1].second);
+                            bestMoveFinder.setThreads(newT);
+                            nbThreads = newT;
                         }
                         i += incr;
                     }
@@ -421,6 +447,7 @@ void manageSearch(){
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     delete state;
+    delete ieval;
 }
 
 int main(int argc, char** argv){
@@ -436,4 +463,5 @@ int main(int argc, char** argv){
     t = thread(&manageInput);
     manageSearch();
     t.join();
+    clear_table();   
 }

@@ -11,86 +11,103 @@
 #include "loadpolyglot.hpp"
 #include <chrono>
 #include <atomic>
+#include <condition_variable>
 #include <string>
 #include <vector>
+#include <thread>
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
-int compScoreMove(const void* a, const void*b);
-
-int fromTT(int score, int rootDist);
-
-int absoluteScore(int score, int rootDist);
-
-class LINE{
-public:
-    int cmove;
-    int16_t argMoves[maxDepth];
-};
-
-struct StackCase{
-    Order order;
-    int static_score;
-};
-
-string scoreToStr(int score);
-
 //Class to find the best in a situation
 class BestMoveFinder{
+    class usefull{
+    private:
+        class LINE{
+        public:
+            int cmove;
+            int16_t argMoves[maxDepth];
+        };
+        struct StackCase{
+            Order order;
+            int static_score;
+        };
+    public:
+        LegalMoveGenerator generator;
+        StackCase stack[maxDepth];
+        LINE PVlines[maxDepth];
+        IncrementalEvaluator eval;
+        sbig nodes;
+        sbig bestMoveNodes;
+        int seldepth;
+        int nbCutoff, nbFirstCutoff;
+        Move rootBest;
+        bool mainThread;
+        HelpOrdering history;
+        corrhists correctionHistory;
+        usefull(const GameState& state);
+        usefull();
+        void reinit(const GameState& state);
+        string PVprint(LINE pvLine);
+        void transfer(int relDepth, Move move);
+        void beginLine(int relDepth);
+        void beginLineMove(int relDepth, Move move);
+        void resetLines();
+    };
+
+    class HelperThread{
+    public:
+        usefull local;
+        GameState localState;
+        thread t;
+        bool running;
+        mutex mtx;
+        condition_variable cv;
+        int ans;
+        int depth, alpha, beta, relDepth, limitWay;
+        void launch(int depth, int alpha, int beta, int relDepth, int limitWay);
+        void wait_thread();
+    };
     unordered_map<uint64_t,PolyglotEntry> book;
 
     //Returns the best move given a position and time to use
     transpositionTable transposition;
-    HelpOrdering history;
-    StackCase stack[maxDepth];
 public:
     std::atomic<bool> running;
-    IncrementalEvaluator eval;
     BestMoveFinder(int memory, bool mute=false);
 
     sbig hardBound;
     using timeMesure=chrono::high_resolution_clock;
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
+    ~BestMoveFinder();
     void stop();
-    corrhists correctionHistory;
-
 private:
+    usefull localSS;
+    HelperThread* helperThreads;
+    atomic<bool> smp_abort, smp_end;
+    void clear_helpers();
     chrono::nanoseconds getElapsedTime();
-
-    LegalMoveGenerator generator;
-    sbig nodes;
-    int nbCutoff;
-    int nbFirstCutoff;
-    int seldepth;
-    int bestMoveNodes;
-    template<int limitWay, bool isPV>
-    int quiescenceSearch(GameState& state, int alpha, int beta, int relDepth);
+    template<int limitWay, bool isPV, bool isCalc>
+    int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    //PV making
-    LINE PVlines[maxDepth]; //store only the move info, because it only need that to print the pv
-
-    string PVprint(LINE pvLine);
-    LINE lastPV;
-    void transferLastPV();
-    void transfer(int relDepth, Move move);
-    void beginLine(int relDepth);
-    void beginLineMove(int relDepth, Move move);
-    void resetLines();
-    int16_t getPVMove(int relDepth);
     enum{PVNode=0, CutNode=1, AllNode=-1};
     template<int nodeType, int limitWay, bool mateSearch>
-    inline int Evaluate(GameState& state, int alpha, int beta, int relDepth);
-    Move rootBestMove;
+    inline int Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
     template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    template<bool mateSearch>
+    int launchSearch(int limitWay, HelperThread& ss);
+    void launchSMP(int idThread);
 public:
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
+    template <int limitWay=0>
+    bestMoveResponse goState(GameState& state, TM tm, bool verbose, bool mateHardBound, int actDepth);
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);
+    void setThreads(int nbThreads);
 };
 
 
