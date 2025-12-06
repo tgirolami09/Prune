@@ -25,6 +25,15 @@ def boardToInput(board):
             index += 64
     return res
 
+def fullInput(board):
+    res = np.zeros(12*64*2, dtype=np.int8)
+    if board.turn == BLACK:
+        res[12*64:] = boardToInput(board)
+        res[:12*64] = boardToInput(board.mirror())
+    else:
+        res[:12*64] = boardToInput(board)
+        res[12*64:] = boardToInput(board.mirror())
+    return res
 
 import argparse
 parser = argparse.ArgumentParser(prog='nnueTrainer')
@@ -51,27 +60,12 @@ if settings.reload:
     trainer.load(settings.outFile)
     endTime = time.time()
     print(f'in {endTime-startTime:.3f}s')
-print("read pickled data")
-startTime = time.time()
-dataX, dataY = pickle.load(open(settings.pickledData, "rb"))
-endTime = time.time()
-totLength = len(dataX[0])+len(dataX[1])
-print(f"finished in {endTime-startTime}s with {totLength} data")
-if settings.limit != -1:
-    per = int(round(len(dataX[0])*settings.limit/totLength)), int(round(len(dataX[1])*settings.limit/totLength))
-    dataX[0] = dataX[0][:per[0]]
-    dataX[1] = dataX[1][:per[1]]
-    dataY[0] = dataY[0][:per[0]]
-    dataY[1] = dataY[1][:per[1]]
-    print("remaining:", len(dataX[0])+len(dataX[1]))
 print('launch training')
-dataY = [trainer.model.outAct(Y[:, 0])*(1-settings.wdl)+settings.wdl*Y[:, 1] for Y in dataY]
-dataY = [Y.reshape(Y.shape[0], 1) for Y in dataY]
-testPos = torch.from_numpy(np.array([boardToInput(Board(fen)) for fen in [
+testPos = torch.from_numpy(np.array([fullInput(Board(fen)) for fen in [
     'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',           # starting position
     'r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w QKqk -',   # kiwipete position
     '8/8/2K5/2Q5/8/8/8/3k4 w - - 0 1',                                    # one queen advantage
     '8/8/2K5/2QQ4/8/8/8/3k4 w - - 0 1'                                    # two queen advantage
 ]]))
-trainer.train(settings.epoch, dataX, dataY, settings.percentTrain, settings.batchSize, settings.outFile, testPos, settings.processes)
+trainer.train(settings.epoch, settings.pickledData, settings.percentTrain, settings.batchSize, settings.outFile, testPos, settings.processes, settings.wdl)
 trainer.save()
