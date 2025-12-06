@@ -139,6 +139,7 @@ def readFile(arg):
             a, b, idMove = readGame(f, id, idMove)
             count += a
             filtredPos += b
+    clear_zip(id)
     return count, filtredPos
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
@@ -161,7 +162,7 @@ filtredPos = 0
 kMaxScoreMagnitude = 1500
 kMaxMaterialImbalance = 1200
 count = 0
-allocate(settings.processes)
+allocate(len(corrFiles))
 with Pool(settings.processes) as p:
     for c, fP in tqdm(p.imap_unordered(readFile, list(enumerate(corrFiles))), total=len(corrFiles)):
         count += c

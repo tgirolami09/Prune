@@ -11,3 +11,4 @@ open_zip = clib.open_zip
 add_data = clib.add_data
 read_data= clib.read_data
 get_entries = clib.get_nb_files
+clear_zip = clib.clear_zip
