@@ -431,6 +431,7 @@ void BestMoveFinder::launchSMP(int idThread){
     ss.local.mainThread = false;
     negamax<PVNode, limitWay, mateSearch, true>(ss.local, depth, ss.localState, alpha, beta, relDepth);*/
     HelperThread& ss = helperThreads[idThread];
+    ss.running = false;
     while(!smp_end){
         {
             unique_lock<mutex> lock(ss.mtx);
