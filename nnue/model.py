@@ -29,12 +29,10 @@ class PickledTensorDataset(Dataset):
 
     def read_file(self, id, idx):
         c = bytes([0]*(12*64*2+2*4))
-        index = zip_name_locate(self.buffers[id], id_to_name(idx), 0)
-        f = zip_fopen_index(self.buffers[id], index, 0)
+        f = zip_fopen(self.buffers[id], id_to_name(idx), 0)
         num_read = zip_fread(f, c, len(c))
         zip_fclose(f)
-        x, y = np.frombuffer(c[:-8], dtype=np.int8), np.frombuffer(c[-8:], dtype=np.float32)
-        print(c[-8:])
+        x, y = np.frombuffer(c[:-8], dtype=np.int8), np.frombuffer(c[-8:], dtype=np.int32)
         return x, y
 
     def __len__(self):
@@ -47,7 +45,7 @@ class PickledTensorDataset(Dataset):
                 fileId = i-1
                 break
         x, y = self.read_file(fileId, idx-self.cum[fileId])
-        yn = self.act(torch.tensor(y[0]))*(1-self.wdl)+self.wdl*y[1]
+        yn = self.act(torch.tensor(y[0]))*(1-self.wdl)+self.wdl*y[1]/2
         assert not yn.isnan(), y
         return torch.from_numpy(x.copy()), torch.from_numpy(np.array([yn]))
 
@@ -74,11 +72,10 @@ class Model(nn.Module):
         self.to(device)
         self.device = device
 
-    def calc_score(self, x, isInt=False):
+    def calc_score(self, x):
         hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
         hiddenRes[:, :self.HLSize] = self.activation(self.tohidden(x[:, :self.inputSize]))
         hiddenRes[:, self.HLSize:] = self.activation(self.tohidden(x[:, self.inputSize:]))
-        print(hiddenRes)
         x = self.toout(hiddenRes)
         return x
 
@@ -151,7 +148,6 @@ class Trainer:
             for xBatch, yBatch in dataL:
                 xBatch = xBatch.float().to(self.device)
                 yBatch = yBatch.float().to(self.device)
-                print(yBatch.sum())
                 totLoss += self.trainStep(xBatch, yBatch)*len(xBatch)
             totTestLoss = 0
             endTimeTrain = time.time()
@@ -175,7 +171,7 @@ class Trainer:
             print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {span:.3f}s ({span2/span*100:.2f}% for training) lr {current_lr}')
             if testPos is not None:
                 with torch.no_grad():
-                    print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), True)[:, 0].tolist())
+                    print("test eval result:", self.modelEval.get_cp(testPos.float().to(self.device))[:, 0].tolist())
             sys.stdout.flush()
             if totTestLoss < miniLoss:
                 miniLoss = totTestLoss
@@ -191,10 +187,9 @@ class Trainer:
         for g in self.optimizer.param_groups:
             g['lr'] = self.lr
 
-    def get_int(self, tensor):
+    def get_int(self, tensor, nbytes=1):
         tensor = float(tensor)
-        self.maxi = max(self.maxi, abs(tensor))
-        return int(round(tensor)).to_bytes(1, sys.byteorder, signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
+        return int(round(tensor)).to_bytes(nbytes, sys.byteorder, signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
 
     def read_bytes(self, bytes):
         return torch.tensor(int.from_bytes(bytes, sys.byteorder, signed=True), dtype=torch.float)
@@ -203,10 +198,6 @@ class Trainer:
         if model is None:
             model = self.model
         startTime = time.time()
-        self.maxi = -1000
-        self.mini =  1000
-        self.s = 0
-        self.count = 0
         with open(filename, "wb") as f:
             for i in range(model.inputSize):
                 for j in range(model.HLSize):
@@ -215,9 +206,9 @@ class Trainer:
                 f.write(self.get_int(model.tohidden.bias[i]*model.QA))
             for i in range(model.HLSize*2):
                 f.write(self.get_int(model.toout.weight[0][i]*model.QB))
-            f.write(self.get_int(model.toout.bias[0]*model.QA*model.QB))
+            f.write(self.get_int(model.toout.bias[0]*model.QA*model.QB, 2))
         endTime = time.time()
-        print(f'save model to {filename} (max |weight| {self.maxi}) in {endTime-startTime:.3f}s')
+        print(f'save model to {filename} in {endTime-startTime:.3f}s')
         sys.stdout.flush()
     
     def load(self, filename):
