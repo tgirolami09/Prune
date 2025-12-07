@@ -25,9 +25,28 @@ libzip.zip_close.argtypes = (c_void_p,)
 
 libzip.zip_set_file_compression.argtypes = (c_void_p, c_int, c_int, c_int)
 
+libzip.zip_name_locate.argtypes = (c_void_p, c_char_p, c_int)
+libzip.zip_name_locate.restype = c_int
+
+libzip.zip_fopen_index.argtypes = (c_void_p, c_int, c_int)
+libzip.zip_fopen_index.restype = c_void_p
+
+libzip.zip_fread.argtypes = (c_void_p, c_char_p, c_int)
+libzip.zip_fread.restype = c_int
+
+libzip.zip_fclose.argtypes = (c_void_p,)
+
 for name in dir(libzip):
     if not name.startswith("_"):
         globals()[name] = getattr(libzip, name)
+
+def id_to_name(id):
+    b = [0]*((id.bit_count()+6)//7)
+    i = 0
+    while id:
+        b[i] = (id&127) + 128
+        id //= 128
+    return bytes(b)
 
 error = c_int()
 if __name__ == "__main__":

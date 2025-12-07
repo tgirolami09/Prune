@@ -19,17 +19,20 @@ class PickledTensorDataset(Dataset):
         self.directory = directory
         self.file_names = os.listdir(directory)
         self.cum = [0]*(len(self.file_names)+1)
-        allocate(len(self.file_names))
+        self.buffers = [None]*len(self.file_names)
         for i, file in enumerate(tqdm(self.file_names)):
-            open_zip((self.directory+"/"+file).encode(), i)
-            nbdata = get_entries(i)
+            self.buffers[i] = zip_open((self.directory+"/"+file).encode(), 0, byref(error))
+            nbdata = zip_get_num_entries(self.buffers[i], 0)
             self.cum[i+1] = self.cum[i]+nbdata
         self.num_samples = self.cum[-1]
         print(self.num_samples)
 
     def read_file(self, id, idx):
         c = bytes([0]*(12*64*2+2*4))
-        read_data(id, c, idx)
+        index = zip_name_locate(self.buffers[id], id_to_name(idx), 0)
+        f = zip_fopen_index(self.buffers[id], index, 0)
+        num_read = zip_fread(f, c, len(c))
+        zip_fclose(f)
         x, y = np.frombuffer(c[:-8], dtype=np.int8), np.frombuffer(c[-8:], dtype=np.float32)
         return x, y
 
