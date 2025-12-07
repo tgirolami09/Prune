@@ -32,6 +32,9 @@ libzip.zip_name_locate.restype = c_int
 libzip.zip_fopen_index.argtypes = (c_void_p, c_int, c_int)
 libzip.zip_fopen_index.restype = c_void_p
 
+libzip.zip_fopen.argtypes = (c_void_p, c_char_p, c_int)
+libzip.zip_fopen.restype = c_void_p
+
 libzip.zip_fread.argtypes = (c_void_p, c_char_p, c_int)
 libzip.zip_fread.restype = c_int
 
