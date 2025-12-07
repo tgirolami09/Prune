@@ -73,10 +73,9 @@ def readGame(file, fw, idMove):
     if board.turn == BLACK:
         result = 2-result
     sizeGame = int.from_bytes(file.read(2), sys.byteorder, signed=True)
-    dataX = np.zeros(12*2*64, dtype=np.int8)
     dataY = np.zeros(2, dtype=np.int32)
-    datasX = []
-    datasY = []
+    datasX = [0]*sizeGame
+    datasY = [0]*sizeGame
     for i in range(sizeGame):
         doStore = not bool(file.read(1)[0])
         moveInfo = int.from_bytes(file.read(2), sys.byteorder, signed=True)
@@ -91,28 +90,25 @@ def readGame(file, fw, idMove):
             else:
                 #if abs(staticScore-score) >= 70:continue
                 pv, npv = board, board.mirror()
-                dataX = np.zeros(12*2*64, np.int8)
                 dataX = boardToInput(pv)
-                dataY[0] = score
-                dataY[1] = result
-                datasX.append(dataX.copy())
-                datasY.append(dataY.copy())
+                datasX[count] = dataX
+                datasY[count] = score, result
                 idMove += 1
                 count += 1
         result = 2-result
         if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
             board.ep_square = nextMove.to_square
         board.push(nextMove)
-    if len(datasX) >= 1:
+    if count >= 1:
         fw.write(datasX[0].tobytes())
-        fw.write(datasY[0].tobytes())
-        fw.write((len(datasX)-1).to_bytes(2))
-        for X, Y, Xm1 in zip(datasX[1:], datasY[1:], datasX):
+        fw.write(datasY[0][0].to_bytes(3, signed=True)+datasY[0][1].to_bytes(1))
+        fw.write((count-1).to_bytes(2))
+        for X, Y, Xm1 in zip(datasX[1:count], datasY[1:], datasX):
             D = X-Xm1
-            nb = np.count_nonzero(abs(D))
+            nb = np.count_nonzero(D == -1)
             nbP = np.count_nonzero(D == 1)
-            assert nbP < 16 and nb-nbP < 16, (nb, nbP, nb-nbP)
-            fw.write(bytes([nbP*16+nb-nbP]))
+            M = 20
+            fw.write(bytes([nbP, nb]))
             for e in (1, -1):
                 p = 0
                 for i in np.where(D == e)[0]:
@@ -121,7 +117,7 @@ def readGame(file, fw, idMove):
                     p = p*3+d
                 p = int(p)
                 fw.write(p.to_bytes(p.bit_length()+7 >> 3))
-            fw.write(Y.tobytes())
+            fw.write(Y[0].to_bytes(3, signed=True)+Y[1].to_bytes(1))
 
     return count, filtredPos, idMove
 
