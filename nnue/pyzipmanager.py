@@ -1,14 +1,34 @@
-import ctypes
-clib = ctypes.CDLL("./zipmanager.so")
-clib.allocate_zips.argtypes = (ctypes.c_int,)
-clib.open_zip.argtypes = ctypes.c_char_p, ctypes.c_int
-clib.add_data.argtypes = ctypes.c_int, ctypes.c_int, ctypes.c_char_p
-clib.read_data.argtypes = ctypes.c_int, ctypes.c_char_p, ctypes.c_int
-clib.get_nb_files.argtypes = (ctypes.c_int,)
-clib.get_nb_files.restype = ctypes.c_int
-allocate = clib.allocate_zips
-open_zip = clib.open_zip
-add_data = clib.add_data
-read_data= clib.read_data
-get_entries = clib.get_nb_files
-clear_zip = clib.clear_zip
+from ctypes import *
+c_int_p = POINTER(c_int)
+
+ZIP_CREATE = 0x0001
+ZIP_EXCL = 0x0002
+ZIP_FL_OVERWRITE = 0x0004
+
+libzip = CDLL("/usr/lib/x86_64-linux-gnu/libzip.so")
+
+libzip.zip_open.argtypes = (c_char_p, c_int, c_int_p)
+libzip.zip_open.restype = c_void_p
+
+libzip.zip_source_buffer.argtypes = c_void_p, c_char_p, c_int, c_int
+libzip.zip_source_buffer.restype = c_void_p
+
+libzip.zip_file_add.argtypes = c_void_p, c_char_p, c_void_p, c_int
+
+libzip.zip_source_free.argtypes = (c_void_p,)
+
+libzip.zip_get_num_entries.restype = c_int
+libzip.zip_get_num_entries.argtypes = (c_void_p, c_int)
+
+libzip.zip_close.argtypes = (c_void_p,)
+
+for name in dir(libzip):
+    if not name.startswith("_"):
+        globals()[name] = getattr(libzip, name)
+
+error = c_int()
+if __name__ == "__main__":
+    z = zip_open(b"archive.zip", ZIP_CREATE, byref(error))
+    source = zip_source_buffer(z, b"bonjour", 7, 0)
+    zip_file_add(z, b"n.txt", source, ZIP_FL_OVERWRITE)
+    zip_close(z)

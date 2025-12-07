@@ -98,7 +98,8 @@ def readGame(file, fw, idMove):
                 dataY[1] = result
                 name = hex(idMove)
                 data = dataX.tobytes()+dataY.tobytes()
-                add_data(fw, idMove, data)
+                source = zip_source_buffer(fw, data, len(data), 0)
+                zip_file_add(fw, name.encode(), source, ZIP_FL_OVERWRITE)
                 idMove += 1
                 count += 1
         result = 1-result
@@ -135,11 +136,12 @@ def readFile(arg):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(name, "rb") as f:
         for i in range(nbGame):
-            open_zip(filename.encode(), id)
-            a, b, idMove = readGame(f, id, idMove)
+            z = zip_open(filename.encode(), ZIP_CREATE, byref(error))
+            a, b, idMove = readGame(f, z, idMove)
             count += a
             filtredPos += b
-            clear_zip(id)
+            print(i, "/", nbGame)
+            zip_close(z)
     return count, filtredPos
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
@@ -162,7 +164,6 @@ filtredPos = 0
 kMaxScoreMagnitude = 1500
 kMaxMaterialImbalance = 1200
 count = 0
-allocate(len(corrFiles))
 with Pool(settings.processes) as p:
     for c, fP in tqdm(p.imap_unordered(readFile, list(enumerate(corrFiles))), total=len(corrFiles)):
         count += c
