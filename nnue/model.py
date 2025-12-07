@@ -63,8 +63,11 @@ class myDeflate:
                 p += n2
             Y = (int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4]))
             p += 4
-        X = np.concatenate((X, X[tranform]))
-        return X, Y
+        if Y[1]%2 == 1:
+            X = np.concatenate((X[tranform], X))
+        else:
+            X = np.concatenate((X, X[tranform]))
+        return X, (Y[0], Y[1]//2)
 
 
 class PickledTensorDataset(Dataset):
@@ -129,7 +132,7 @@ class Model(nn.Module):
         return x
 
     def forward(self, x):
-        return self.outAct(self.calc_score(x))
+        return F.sigmoid(self.calc_score(x))
     
     def get_cp(self, x):
         return torch.floor(self.calc_score(x)*self.SCALE)
@@ -137,8 +140,8 @@ class Model(nn.Module):
     def _round(self):
         self.toout.weight[:] = roundQ(self.toout.weight, self.QB)
         self.toout.bias[:] = roundQ(self.toout.bias, self.QB)
-        self.tohidden.weight[:] = roundQ(self.tohidden.weight.round(), self.QA)
-        self.tohidden.bias[:] = roundQ(self.tohidden.bias.round(), self.QA)
+        self.tohidden.weight[:] = roundQ(self.tohidden.weight, self.QA)
+        self.tohidden.bias[:] = roundQ(self.tohidden.bias, self.QA)
 
     def clamp(self):
         clampA = 127/self.QA

@@ -70,8 +70,6 @@ def readGame(file, fw, idMove):
     gameInfo = file.read(1)[0]
     board.turn = BLACK if gameInfo%2 else WHITE
     result = gameInfo//2
-    if board.turn == BLACK:
-        result = 2-result
     sizeGame = int.from_bytes(file.read(2), sys.byteorder, signed=True)
     dataY = np.zeros(2, dtype=np.int32)
     datasX = [0]*sizeGame
@@ -92,10 +90,9 @@ def readGame(file, fw, idMove):
                 pv, npv = board, board.mirror()
                 dataX = boardToInput(pv)
                 datasX[count] = dataX
-                datasY[count] = score, result
+                datasY[count] = score, result*2+(board.turn == BLACK)
                 idMove += 1
                 count += 1
-        result = 2-result
         if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
             board.ep_square = nextMove.to_square
         board.push(nextMove)
