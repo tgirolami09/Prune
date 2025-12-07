@@ -96,10 +96,10 @@ def readGame(file, fw, idMove):
                 dataX[12*64:] = boardToInput(npv)
                 dataY[0] = score
                 dataY[1] = result
-                name = hex(idMove)
+                name = id_to_name(idMove)
                 data = dataX.tobytes()+dataY.tobytes()
                 source = zip_source_buffer(fw, data, len(data), 0)
-                entry = zip_file_add(fw, name.encode(), source, ZIP_FL_OVERWRITE)
+                entry = zip_file_add(fw, name, source, ZIP_FL_OVERWRITE)
                 zip_set_file_compression(fw, entry, 9, ZIP_CM_BZIP2)
                 idMove += 1
                 count += 1
