@@ -1,4 +1,5 @@
 from ctypes import *
+from math import *
 c_int_p = POINTER(c_int)
 
 ZIP_CREATE = 0x0001
@@ -41,11 +42,18 @@ for name in dir(libzip):
         globals()[name] = getattr(libzip, name)
 
 def id_to_name(id):
-    b = [0]*((id.bit_count()+6)//7)
-    i = 0
+    idS = id
+    span = ord('z')-ord('a')+ord('Z')-ord('A')+2
+    b = []
     while id:
-        b[i] = (id&127) + 128
-        id //= 128
+        b.append(id%span)
+        if(b[-1] >= 26):
+            b[-1] += ord('a')-26
+        else:
+            b[-1] += ord('A')
+        id //= span
+    b = bytes(b)
+    #print(idS, b.decode(), end=" ")
     return bytes(b)
 
 error = c_int()

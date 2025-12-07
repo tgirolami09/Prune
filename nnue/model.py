@@ -34,6 +34,7 @@ class PickledTensorDataset(Dataset):
         num_read = zip_fread(f, c, len(c))
         zip_fclose(f)
         x, y = np.frombuffer(c[:-8], dtype=np.int8), np.frombuffer(c[-8:], dtype=np.float32)
+        print(c[-8:])
         return x, y
 
     def __len__(self):
@@ -46,8 +47,12 @@ class PickledTensorDataset(Dataset):
                 fileId = i-1
                 break
         x, y = self.read_file(fileId, idx-self.cum[fileId])
-        y = self.act(torch.tensor(y[0]))*(1-self.wdl)+self.wdl*y[1]
-        return torch.from_numpy(x), y
+        yn = self.act(torch.tensor(y[0]))*(1-self.wdl)+self.wdl*y[1]
+        assert not yn.isnan(), y
+        return torch.from_numpy(x.copy()), torch.from_numpy(np.array([yn]))
+
+def roundQ(tensor, Q):
+    return (tensor*Q).round()/Q
 
 class Model(nn.Module):
     inputSize = 64*12
@@ -57,7 +62,7 @@ class Model(nn.Module):
     QB = 64
     normal = 200
     def activation(self, x):
-        return torch.clamp(x, min=0, max=self.QA)**2
+        return torch.clamp(x, min=0, max=1)**2
 
     def outAct(self, x):
         return F.sigmoid(x/self.normal)
@@ -65,8 +70,7 @@ class Model(nn.Module):
     def __init__(self, device):
         super().__init__()
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
-        self.toout = nn.Linear(self.HLSize*2, 1, bias=False)
-        self.endBias = nn.Parameter(torch.randn(1))
+        self.toout = nn.Linear(self.HLSize*2, 1)
         self.to(device)
         self.device = device
 
@@ -74,41 +78,30 @@ class Model(nn.Module):
         hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
         hiddenRes[:, :self.HLSize] = self.activation(self.tohidden(x[:, :self.inputSize]))
         hiddenRes[:, self.HLSize:] = self.activation(self.tohidden(x[:, self.inputSize:]))
+        print(hiddenRes)
         x = self.toout(hiddenRes)
-        if isInt:
-            x //= self.QA
-        else:
-            x /= self.QA
-        x += self.endBias
-        if isInt:
-            return x*self.SCALE//(self.QA*self.QB)
-        else:
-            return x*self.SCALE/(self.QA*self.QB)
+        return x
 
     def forward(self, x):
         return self.outAct(self.calc_score(x))
     
-    def _round(self):
-        self.toout.weight[:] = self.toout.weight.round()
-        self.endBias[:] = self.endBias.round()
-        self.tohidden.weight[:] = self.tohidden.weight.round()
-        self.tohidden.bias[:] = self.tohidden.bias.round()
+    def get_cp(self, x):
+        return torch.floor(self.calc_score(x)*self.SCALE)
 
-class Clipper:
-    clamp = 127
-    def __call__(self, module):
-        if hasattr(module, 'weight'):
-            w = module.weight.data
-            w = w.clamp(-self.clamp, self.clamp)
-            module.weight.data = w
-        if hasattr(module, 'bias') and module.bias is not None:
-            b = module.bias.data
-            b = b.clamp(-self.clamp, self.clamp)
-            module.bias.data = b
-        elif hasattr(module, 'endBias'):
-            b = module.endBias.data
-            b = b.clamp(-self.clamp, self.clamp)
-            module.endBias.data = b
+    def _round(self):
+        self.toout.weight[:] = roundQ(self.toout.weight, self.QB)
+        self.toout.bias[:] = roundQ(self.toout.bias, self.QB)
+        self.tohidden.weight[:] = roundQ(self.tohidden.weight.round(), self.QA)
+        self.tohidden.bias[:] = roundQ(self.tohidden.bias.round(), self.QA)
+
+    def clamp(self):
+        clampA = 127/self.QA
+        clampB = 127/self.QB
+        clampC = 32767/(self.QA*self.QB)
+        self.toout.weight[:] = torch.clamp(self.toout.weight, -clampB, clampB)
+        self.toout.bias[:] = torch.clamp(self.toout.bias, -clampC, clampC)
+        self.tohidden.weight[:] = torch.clamp(self.tohidden.weight, -clampA, clampA)
+        self.tohidden.bias[:] = torch.clamp(self.tohidden.bias, -clampA, clampA)
 
 class Trainer:
     def __init__(self, lr, device):
@@ -150,8 +143,7 @@ class Trainer:
             self.modelEval.eval()
             with torch.no_grad():
                 self.modelEval._round()
-                print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), True)[:, 0].tolist())
-        clipper = Clipper()
+                print("result of test eval before training:", self.modelEval.get_cp(testPos.float().to(self.device))[:, 0].tolist())
         for i in range(epoch):
             startTime = time.time()
             totLoss = 0
@@ -159,11 +151,12 @@ class Trainer:
             for xBatch, yBatch in dataL:
                 xBatch = xBatch.float().to(self.device)
                 yBatch = yBatch.float().to(self.device)
+                print(yBatch.sum())
                 totLoss += self.trainStep(xBatch, yBatch)*len(xBatch)
             totTestLoss = 0
             endTimeTrain = time.time()
-            self.model.apply(clipper)
             with torch.no_grad():
+                self.model.clamp()
                 self.modelEval.load_state_dict(self.model.state_dict())
                 self.modelEval._round()
                 self.modelEval.eval()
@@ -217,12 +210,12 @@ class Trainer:
         with open(filename, "wb") as f:
             for i in range(model.inputSize):
                 for j in range(model.HLSize):
-                    f.write(self.get_int(model.tohidden.weight[j][i]))
+                    f.write(self.get_int(model.tohidden.weight[j][i]*model.QA))
             for i in range(model.HLSize):
-                f.write(self.get_int(model.tohidden.bias[i]))
+                f.write(self.get_int(model.tohidden.bias[i]*model.QA))
             for i in range(model.HLSize*2):
-                f.write(self.get_int(model.toout.weight[0][i]))
-            f.write(self.get_int(model.endBias[0]))
+                f.write(self.get_int(model.toout.weight[0][i]*model.QB))
+            f.write(self.get_int(model.toout.bias[0]*model.QA*model.QB))
         endTime = time.time()
         print(f'save model to {filename} (max |weight| {self.maxi}) in {endTime-startTime:.3f}s')
         sys.stdout.flush()
