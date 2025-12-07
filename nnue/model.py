@@ -10,7 +10,62 @@ import io
 from torch.utils.data import DataLoader, TensorDataset, random_split, Dataset
 from random import shuffle, seed, randrange
 from tqdm import trange, tqdm
-from pyzipmanager import *
+
+tranform = np.arange(12*64)^(56^64)
+
+class myDeflate:
+    def __init__(self, name):
+        self.name = name
+        with open(name, "rb") as f:
+            self.raw = f.read()
+        self.games = []
+        self.cum = [0]
+        i = 0
+        while i < len(self.raw):
+            self.games.append(i)
+            i += 12*64
+            i += 4
+            nb = int.from_bytes(self.raw[i:i+2])
+            i += 2
+            for k in range(nb):
+                a = self.raw[i]
+                b = self.raw[i+1]
+                n = a+b
+                i += 2+4
+                i += ((3**a).bit_length()+7 >> 3) + ((3**b).bit_length()+7 >> 3) + a+b
+            self.cum.append(self.cum[-1]+nb+1)
+    
+    def __len__(self):
+        return self.cum[-1]
+
+    def read(self, idx):
+        for i in range(len(self.cum)):
+            if self.cum[i] > idx:break
+        i -= 1
+        p = self.games[i]
+        X = np.frombuffer(self.raw[p:p+12*64], dtype=np.int8).copy()
+        p += 12*64
+        Y = (int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4]))
+        p += 4
+        p += 2
+        for t in range(idx-self.cum[i]):
+            a, b = self.raw[p:p+2]
+            p += 2
+            for s, n in ((1, a), (-1, b)):
+                indexes = np.array(list(self.raw[p:p+n]), dtype=np.int32)
+                p += n
+                n2 = (3**n).bit_length()+7 >> 3
+                T = int.from_bytes(self.raw[p:p+n2])
+                for r in range(n-1, -1, -1):
+                    indexes[r] += 64*4*(T%3)
+                    T //= 3
+                X[indexes] += s
+                p += n2
+            Y = (int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4]))
+            p += 4
+        X = np.concatenate((X, X[tranform]))
+        return X, Y
+
 
 class PickledTensorDataset(Dataset):
     def __init__(self, directory, wdl, act):
@@ -19,21 +74,15 @@ class PickledTensorDataset(Dataset):
         self.directory = directory
         self.file_names = os.listdir(directory)
         self.cum = [0]*(len(self.file_names)+1)
-        self.buffers = [None]*len(self.file_names)
+        self.buffers = [myDeflate(directory+"/"+name) for name in self.file_names]
         for i, file in enumerate(tqdm(self.file_names)):
-            self.buffers[i] = zip_open((self.directory+"/"+file).encode(), 0, byref(error))
-            nbdata = zip_get_num_entries(self.buffers[i], 0)
+            nbdata = len(self.buffers[i])
             self.cum[i+1] = self.cum[i]+nbdata
         self.num_samples = self.cum[-1]
         print(self.num_samples)
 
     def read_file(self, id, idx):
-        c = bytes([0]*(12*64*2+2*4))
-        f = zip_fopen(self.buffers[id], id_to_name(idx), 0)
-        num_read = zip_fread(f, c, len(c))
-        zip_fclose(f)
-        x, y = np.frombuffer(c[:-8], dtype=np.int8), np.frombuffer(c[-8:], dtype=np.int32)
-        return x, y
+        return self.buffers[id].read(idx)
 
     def __len__(self):
         return self.num_samples
