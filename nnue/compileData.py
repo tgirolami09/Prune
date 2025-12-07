@@ -144,6 +144,8 @@ def readFile(arg):
             filtredPos += b
             if i%1000 == 999:
                 zip_close(z)
+        if nbGame%1000 != 0:
+            zip_close(z)
     return count, filtredPos
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
