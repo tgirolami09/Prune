@@ -110,13 +110,15 @@ def readGame(file, fw, idMove):
             M = 20
             fw.write(bytes([nbP, nb]))
             for e in (1, -1):
+                S = 1
                 p = 0
                 for i in np.where(D == e)[0]:
                     d, m = divmod(i, 64*4)
                     fw.write(bytes([int(m)]))
                     p = p*3+d
+                    S *= 3
                 p = int(p)
-                fw.write(p.to_bytes(p.bit_length()+7 >> 3))
+                fw.write(p.to_bytes(S.bit_length()+7 >> 3))
             fw.write(Y[0].to_bytes(3, signed=True)+Y[1].to_bytes(1))
 
     return count, filtredPos, idMove
@@ -144,7 +146,7 @@ def readFile(arg):
     filtredPos = 0
     nbGame, nbMoves = count_games(name)
     print(nbGame, nbMoves)
-    filename = settings.pickledData+"/data"+str(id)+".zip"
+    filename = settings.pickledData+"/data"+str(id)
     idMove = 0
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     fw = open(filename, "wb")
