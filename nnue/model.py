@@ -45,7 +45,7 @@ class myDeflate:
         p = self.games[i]
         X = np.frombuffer(self.raw[p:p+12*64], dtype=np.int8).copy()
         p += 12*64
-        Y = (int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4]))
+        Y = [int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4])]
         p += 4
         p += 2
         for t in range(idx-self.cum[i]):
@@ -61,13 +61,16 @@ class myDeflate:
                     T //= 3
                 X[indexes] += s
                 p += n2
-            Y = (int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4]))
+            Y = [int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4])]
             p += 4
-        if Y[1]%2 == 1:
+        Y[1], color = divmod(Y[1], 2)
+        if color == 1:
             X = np.concatenate((X[tranform], X))
+            Y[0] *= -1
+            Y[1] = 2-Y[1]
         else:
             X = np.concatenate((X, X[tranform]))
-        return X, (Y[0], Y[1]//2)
+        return X, Y
 
 
 class PickledTensorDataset(Dataset):
@@ -139,7 +142,7 @@ class Model(nn.Module):
 
     def _round(self):
         self.toout.weight[:] = roundQ(self.toout.weight, self.QB)
-        self.toout.bias[:] = roundQ(self.toout.bias, self.QB)
+        self.toout.bias[:] = roundQ(self.toout.bias, self.QB*self.QA)
         self.tohidden.weight[:] = roundQ(self.tohidden.weight, self.QA)
         self.tohidden.bias[:] = roundQ(self.tohidden.bias, self.QA)
 

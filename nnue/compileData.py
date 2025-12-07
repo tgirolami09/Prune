@@ -90,6 +90,8 @@ def readGame(file, fw, idMove):
                 pv, npv = board, board.mirror()
                 dataX = boardToInput(pv)
                 datasX[count] = dataX
+                if(board.turn == BLACK):
+                    score = -score
                 datasY[count] = score, result*2+(board.turn == BLACK)
                 idMove += 1
                 count += 1
