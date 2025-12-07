@@ -99,7 +99,8 @@ def readGame(file, fw, idMove):
                 name = hex(idMove)
                 data = dataX.tobytes()+dataY.tobytes()
                 source = zip_source_buffer(fw, data, len(data), 0)
-                zip_file_add(fw, name.encode(), source, ZIP_FL_OVERWRITE)
+                entry = zip_file_add(fw, name.encode(), source, ZIP_FL_OVERWRITE)
+                zip_set_file_compression(fw, entry, 9, ZIP_CM_BZIP2)
                 idMove += 1
                 count += 1
         result = 1-result
@@ -140,7 +141,6 @@ def readFile(arg):
             a, b, idMove = readGame(f, z, idMove)
             count += a
             filtredPos += b
-            print(i, "/", nbGame)
             zip_close(z)
     return count, filtredPos
 

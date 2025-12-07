@@ -4,7 +4,8 @@ c_int_p = POINTER(c_int)
 ZIP_CREATE = 0x0001
 ZIP_EXCL = 0x0002
 ZIP_FL_OVERWRITE = 0x0004
-
+ZIP_CM_DEFLATE = 8
+ZIP_CM_BZIP2 = 12
 libzip = CDLL("/usr/lib/x86_64-linux-gnu/libzip.so")
 
 libzip.zip_open.argtypes = (c_char_p, c_int, c_int_p)
@@ -21,6 +22,8 @@ libzip.zip_get_num_entries.restype = c_int
 libzip.zip_get_num_entries.argtypes = (c_void_p, c_int)
 
 libzip.zip_close.argtypes = (c_void_p,)
+
+libzip.zip_set_file_compression.argtypes = (c_void_p, c_int, c_int, c_int)
 
 for name in dir(libzip):
     if not name.startswith("_"):
