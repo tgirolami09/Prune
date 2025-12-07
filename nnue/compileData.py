@@ -137,11 +137,13 @@ def readFile(arg):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(name, "rb") as f:
         for i in range(nbGame):
-            z = zip_open(filename.encode(), ZIP_CREATE, byref(error))
+            if i%1000 == 0:
+                z = zip_open(filename.encode(), ZIP_CREATE, byref(error))
             a, b, idMove = readGame(f, z, idMove)
             count += a
             filtredPos += b
-            zip_close(z)
+            if i%1000 == 999:
+                zip_close(z)
     return count, filtredPos
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
