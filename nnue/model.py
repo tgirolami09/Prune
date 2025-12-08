@@ -11,7 +11,23 @@ from torch.utils.data import DataLoader, TensorDataset, random_split, Dataset
 from random import shuffle, seed, randrange
 from tqdm import trange, tqdm
 
-tranform = np.arange(12*64)^(56^64)
+transform = np.arange(12*64)^(56^64)
+
+def compressUnit(a):
+    return a[0] << 7 | a[1] << 6 | a[2] << 5 | a[3] << 4 | a[4] << 3 | a[5] << 2 | a[6] << 1 | a[7]
+
+def compress(X):
+    return np.array(list(map(compressUnit, X.reshape(len(X)//8, 8))), dtype=np.uint8)
+
+intToArr = [np.array(tuple(map(int, bin(i)[2:].zfill(8))), dtype=np.int8) for i in range(256)]
+
+def uncompress(X):
+    res = np.zeros(12*64, dtype=np.int8)
+    for i, x in enumerate(X):
+        index = i*8
+        res[index:index+8] = intToArr[x]
+    return np.float32(np.concatenate((res, res[transform])))
+
 
 class myDeflate:
     def __init__(self, name):
@@ -38,43 +54,54 @@ class myDeflate:
     def __len__(self):
         return self.cum[-1]
 
-    def read(self, idx):
-        for i in range(len(self.cum)):
-            if self.cum[i] > idx:break
-        i -= 1
-        p = self.games[i]
-        X = np.frombuffer(self.raw[p:p+12*64], dtype=np.int8).copy()
-        p += 12*64
-        Y = [int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4])]
-        p += 4
-        p += 2
-        for t in range(idx-self.cum[i]):
-            a, b = self.raw[p:p+2]
-            p += 2
-            for s, n in ((1, a), (-1, b)):
-                indexes = np.array(list(self.raw[p:p+n]), dtype=np.int32)
-                p += n
-                n2 = (3**n).bit_length()+7 >> 3
-                T = int.from_bytes(self.raw[p:p+n2])
-                for r in range(n-1, -1, -1):
-                    indexes[r] += 64*4*(T%3)
-                    T //= 3
-                X[indexes] += s
-                p += n2
-            Y = [int.from_bytes(self.raw[p:p+3], signed=True), int.from_bytes(self.raw[p+3:p+4])]
+    def lower(self, idx):
+        low, high = 1, len(self.cum)
+        while low < high:
+            mid = (low+high)//2
+            if self.cum[mid] < idx:
+                low = mid+1
+            elif self.cum[mid] > idx:
+                high = mid
+            else:
+                return mid-1
+        return low-1
+
+    def read_range(self, start, end, formula):
+        resX = np.zeros((self.cum[end]-self.cum[start], 12*64//8), dtype=np.uint8)
+        resY = np.zeros((self.cum[end]-self.cum[start], 1), dtype=np.float32)
+        idData = 0
+        for i in range(start, end):
+            p = self.games[i]
+            X = np.frombuffer(self.raw[p:p+12*64], dtype=np.int8).copy()
+            p += 12*64
+            resX[idData] = compress(X)
+            resY[idData] = formula(torch.tensor(int.from_bytes(self.raw[p:p+3], signed=True), dtype=torch.float32), (self.raw[p+3]//2)/2)
+            idData += 1
             p += 4
-        Y[1], color = divmod(Y[1], 2)
-        if color == 1:
-            X = np.concatenate((X[tranform], X))
-            Y[0] *= -1
-            Y[1] = 2-Y[1]
-        else:
-            X = np.concatenate((X, X[tranform]))
-        return X, Y
+            N = int.from_bytes(self.raw[p:p+2])
+            p += 2
+            for t in range(N):
+                a, b = self.raw[p:p+2]
+                p += 2
+                for s, n in ((1, a), (-1, b)):
+                    indexes = np.array(list(self.raw[p:p+n]), dtype=np.int32)
+                    p += n
+                    n2 = (3**n).bit_length()+7 >> 3
+                    T = int.from_bytes(self.raw[p:p+n2])
+                    for r in range(n-1, -1, -1):
+                        indexes[r] += 64*4*(T%3)
+                        T //= 3
+                    X[indexes] += s
+                    p += n2
+                Y = formula(torch.tensor(int.from_bytes(self.raw[p:p+3], signed=True), dtype=torch.float32), (self.raw[p+3]//2)/2)
+                p += 4
+                resX[idData] = compress(X)
+                resY[idData] = Y
+                idData += 1
+        return resX, resY
 
-
-class PickledTensorDataset(Dataset):
-    def __init__(self, directory, wdl, act):
+class SuperBatch:
+    def __init__(self, directory, wdl, act, nbSuperBatch):
         self.wdl = wdl
         self.act = act
         self.directory = directory
@@ -86,23 +113,52 @@ class PickledTensorDataset(Dataset):
             self.cum[i+1] = self.cum[i]+nbdata
         self.num_samples = self.cum[-1]
         print(self.num_samples)
-
-    def read_file(self, id, idx):
-        return self.buffers[id].read(idx)
+        self.nbSuperBatch = nbSuperBatch
 
     def __len__(self):
         return self.num_samples
 
+    def find_index(self, idx):
+        low, high = 1, len(self.cum)
+        while low < high:
+            mid = (low+high)//2
+            #print(mid, self.cum[mid], idx)
+            if self.cum[mid] < idx:
+                low = mid+1
+            elif self.cum[mid] > idx:
+                high = mid
+            else:
+                return mid-1
+        return low-1
+
     def __getitem__(self, idx):
-        fileId = -1
-        for i in range(len(self.cum)):
-            if self.cum[i] > idx:
-                fileId = i-1
-                break
-        x, y = self.read_file(fileId, idx-self.cum[fileId])
-        yn = self.act(torch.tensor(y[0]))*(1-self.wdl)+self.wdl*y[1]/2
-        assert not yn.isnan(), y
-        return torch.from_numpy(x.copy()), torch.from_numpy(np.array([yn]))
+        tot = len(self)
+        start = idx*tot//self.nbSuperBatch
+        end = (idx+1)*tot//self.nbSuperBatch
+        startFile = self.find_index(start)
+        realStart = self.buffers[startFile].lower(start-self.cum[startFile])
+        endFile = self.find_index(end)
+        realEnd = self.buffers[endFile].lower(end-self.cum[endFile])
+        resX = None
+        for i in range(startFile, endFile+1):
+            curX, curY = self.buffers[i].read_range(realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd, lambda a, b:(1-self.wdl)*self.act(a)+self.wdl*b)
+            if resX is not None:
+                resX = np.concatenate((resX, curX))
+                resY = np.concatenate((resY, curY))
+            else:
+                resX = curX
+                resY = curY
+        return curX, curY
+
+class CompressedBatch(Dataset):
+    def __init__(self, dataX, dataY):
+        self.dataX, self.dataY = dataX, dataY
+    
+    def __len__(self):
+        return len(self.dataX)
+    
+    def __getitem__(self, idx):
+        return torch.from_numpy(uncompress(self.dataX[idx])), self.dataY[idx]
 
 def roundQ(tensor, Q):
     return (tensor*Q).round()/Q
@@ -177,17 +233,12 @@ class Trainer:
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
-    def train(self, epoch, directory, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, processes=1, wdl=0.0):
+    def train(self, epoch, directory, percentTrain, batchSize, fileBest, testPos, processes, wdl, nbSuperBatch):
         startTime = time.time()
-        dataset = PickledTensorDataset(directory, wdl, self.model.outAct)
-        dataTrain, dataTest = random_split(dataset, [percentTrain, 1-percentTrain])
-        totTrainData = len(dataTrain)
-        totTestData = len(dataset)-totTrainData
-        dataL = DataLoader(dataset=dataTrain, batch_size=batchSize, shuffle=True, num_workers=processes)
-        testDataL = DataLoader(dataset=dataTest, batch_size=batchSize, shuffle=False, num_workers=processes)
-        lastTestLoss = lastLoss = 0.0
-        miniLoss = 1000
+        SB = SuperBatch(directory, wdl, self.model.outAct, nbSuperBatch)
+        lastLoss = 0.0
         current_lr = self.lr
+        totTrainData = len(SB)
         endTime = time.time()
         print(f"setup in {endTime-startTime:.5f}s")
         if testPos is not None:
@@ -196,47 +247,36 @@ class Trainer:
             with torch.no_grad():
                 self.modelEval._round()
                 print("result of test eval before training:", self.modelEval.get_cp(testPos.float().to(self.device))[:, 0].tolist())
-        for i in range(epoch):
+        for idEpoch in range(epoch):
             startTime = time.time()
             totLoss = 0
             self.model.train()
-            for xBatch, yBatch in dataL:
-                xBatch = xBatch.float().to(self.device)
-                yBatch = yBatch.float().to(self.device)
-                totLoss += self.trainStep(xBatch, yBatch)*len(xBatch)
-            totTestLoss = 0
-            endTimeTrain = time.time()
+            for idSB in range(nbSuperBatch):
+                Batch = CompressedBatch(*SB[idSB])
+                dataL = DataLoader(Batch, batch_size=batchSize, shuffle=True)
+                for xBatch, yBatch in dataL:
+                    xBatch = xBatch.float().to(self.device)
+                    yBatch = yBatch.float().to(self.device)
+                    totLoss += self.trainStep(xBatch, yBatch)*len(xBatch)
+            endTime = time.time()
             with torch.no_grad():
                 self.model.clamp()
                 self.modelEval.load_state_dict(self.model.state_dict())
                 self.modelEval._round()
-                self.modelEval.eval()
-                for xBatch, yBatch in testDataL:
-                    xBatch = xBatch.float().to(self.device)
-                    yBatch = yBatch.float().to(self.device)
-                    totTestLoss += self.testLoss(xBatch, yBatch)*len(xBatch)
             totLoss /= totTrainData
-            totTestLoss /= totTestData
-            endTime = time.time()
-            if lastTestLoss == 0.0:
-                lastTestLoss = totTestLoss
+            if lastLoss == 0.0:
                 lastLoss = totLoss
             span = endTime-startTime
-            span2 = endTimeTrain-startTime
-            print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {span:.3f}s ({span2/span*100:.2f}% for training) lr {current_lr}')
+            print(f'epoch {idEpoch} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) in {span:.3f}s lr {current_lr}')
             if testPos is not None:
                 with torch.no_grad():
                     print("test eval result:", self.modelEval.get_cp(testPos.float().to(self.device))[:, 0].tolist())
             sys.stdout.flush()
-            if totTestLoss < miniLoss:
-                miniLoss = totTestLoss
-                with torch.no_grad():
-                    self.save(fileBest, self.modelEval)
-            elif totTestLoss > lastTestLoss:
-                current_lr /= 10**.5
-                for g in self.optimizer.param_groups:
-                    g['lr'] = current_lr
-            lastTestLoss = totTestLoss
+            with torch.no_grad():
+                self.save("modelEpoch"+str(idEpoch)+".bin", self.modelEval)
+            current_lr *= 0.99
+            for g in self.optimizer.param_groups:
+                g['lr'] = current_lr
             lastLoss = totLoss
         
         for g in self.optimizer.param_groups:
