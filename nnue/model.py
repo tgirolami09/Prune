@@ -14,19 +14,13 @@ from tqdm import trange, tqdm
 
 transform = np.arange(12*64)^(56^64)
 
-def compressUnit(a):
-    return a[0] << 7 | a[1] << 6 | a[2] << 5 | a[3] << 4 | a[4] << 3 | a[5] << 2 | a[6] << 1 | a[7]
-
 def compress(X):
-    return np.array(list(map(compressUnit, X.reshape(len(X)//8, 8))), dtype=np.uint8)
+    return np.packbits(X, axis=-1, bitorder="little")
 
 intToArr = [np.array(tuple(map(int, bin(i)[2:].zfill(8))), dtype=np.int8) for i in range(256)]
 
 def uncompress(X):
-    res = np.zeros(12*64, dtype=np.int8)
-    for i, x in enumerate(X):
-        index = i*8
-        res[index:index+8] = intToArr[x]
+    res = np.unpackbits(X, bitorder="little")
     return np.float32(np.concatenate((res, res[transform])))
 
 
@@ -262,10 +256,10 @@ class Trainer:
             startTime = time.time()
             totLoss = 0
             self.model.train()
-            for idSB in range(nbSuperBatch):
+            for idSB in trange(nbSuperBatch, leave=False):
                 Batch = CompressedBatch(*SB[idSB])
-                dataL = DataLoader(Batch, batch_size=batchSize, shuffle=True, num_workers=processes)
-                for xBatch, yBatch in dataL:
+                dataL = DataLoader(Batch, batch_size=batchSize, shuffle=True, num_workers=processes, pin_memory=self.device=="cuda")
+                for xBatch, yBatch in tqdm(dataL, leave=False):
                     xBatch = xBatch.float().to(self.device)
                     yBatch = yBatch.float().to(self.device)
                     totLoss += self.trainStep(xBatch, yBatch)*len(xBatch)
