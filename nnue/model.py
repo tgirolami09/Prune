@@ -10,6 +10,7 @@ import io
 from torch.utils.data import DataLoader, TensorDataset, random_split, Dataset
 from random import shuffle, seed, randrange
 from tqdm import trange, tqdm
+from multiprocessing import Pool
 
 transform = np.arange(12*64)^(56^64)
 
@@ -101,7 +102,7 @@ class myDeflate:
         return resX, resY
 
 class SuperBatch:
-    def __init__(self, directory, wdl, act, nbSuperBatch):
+    def __init__(self, directory, wdl, act, nbSuperBatch, nbProcess):
         self.wdl = wdl
         self.act = act
         self.directory = directory
@@ -114,6 +115,7 @@ class SuperBatch:
         self.num_samples = self.cum[-1]
         print(self.num_samples)
         self.nbSuperBatch = nbSuperBatch
+        self.processes = nbProcess
 
     def __len__(self):
         return self.num_samples
@@ -131,6 +133,10 @@ class SuperBatch:
                 return mid-1
         return low-1
 
+    def launch_worker(self, args):
+        id, start, end = args
+        return self.buffers[id].read_range(start, end, lambda a, b:(1-self.wdl)*self.act(a)+self.wdl*b)
+
     def __getitem__(self, idx):
         tot = len(self)
         start = idx*tot//self.nbSuperBatch
@@ -140,14 +146,17 @@ class SuperBatch:
         endFile = self.find_index(end)
         realEnd = self.buffers[endFile].lower(end-self.cum[endFile])
         resX = None
-        for i in range(startFile, endFile+1):
-            curX, curY = self.buffers[i].read_range(realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd, lambda a, b:(1-self.wdl)*self.act(a)+self.wdl*b)
-            if resX is not None:
-                resX = np.concatenate((resX, curX))
-                resY = np.concatenate((resY, curY))
-            else:
-                resX = curX
-                resY = curY
+        with Pool(self.processes) as p:
+            for curX, curY in p.imap_unordered(self.launch_worker, [
+                (i, realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd)
+                for i in range(startFile, endFile)
+            ]):
+                if resX is not None:
+                    resX = np.concatenate((resX, curX))
+                    resY = np.concatenate((resY, curY))
+                else:
+                    resX = curX
+                    resY = curY
         return curX, curY
 
 class CompressedBatch(Dataset):
@@ -235,7 +244,7 @@ class Trainer:
 
     def train(self, epoch, directory, percentTrain, batchSize, fileBest, testPos, processes, wdl, nbSuperBatch):
         startTime = time.time()
-        SB = SuperBatch(directory, wdl, self.model.outAct, nbSuperBatch)
+        SB = SuperBatch(directory, wdl, self.model.outAct, nbSuperBatch, processes)
         lastLoss = 0.0
         current_lr = self.lr
         totTrainData = len(SB)
@@ -253,7 +262,7 @@ class Trainer:
             self.model.train()
             for idSB in range(nbSuperBatch):
                 Batch = CompressedBatch(*SB[idSB])
-                dataL = DataLoader(Batch, batch_size=batchSize, shuffle=True)
+                dataL = DataLoader(Batch, batch_size=batchSize, shuffle=True, num_workers=processes)
                 for xBatch, yBatch in dataL:
                     xBatch = xBatch.float().to(self.device)
                     yBatch = yBatch.float().to(self.device)
