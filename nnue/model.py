@@ -20,8 +20,10 @@ def compress(X):
 intToArr = [np.array(tuple(map(int, bin(i)[2:].zfill(8))), dtype=np.int8) for i in range(256)]
 
 def uncompress(X):
-    res = np.unpackbits(X, bitorder="little")
-    return np.float32(np.concatenate((res, res[transform])))
+    res = np.zeros(12*64*2, dtype=np.int8)
+    res[:12*64] = np.unpackbits(X, bitorder="little")
+    res[12*64:] = res[transform]
+    return np.float32(res)
 
 
 class myDeflate:
