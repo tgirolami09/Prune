@@ -321,4 +321,4 @@ class Trainer:
                     self.model.tohidden.bias[i] = self.read_bytes(f.read(1))
                 for i in range(self.model.HLSize*2):
                     self.model.toout.weight[0][i] = self.read_bytes(f.read(1))
-                self.model.endBias[0] = self.read_bytes(f.read(1))
+                self.model.toout.bias[0] = self.read_bytes(f.read(2))
