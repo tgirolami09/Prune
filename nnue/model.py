@@ -1,3 +1,4 @@
+from multiprocessing import Pool
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,7 +11,6 @@ import io
 from torch.utils.data import DataLoader, TensorDataset, random_split, Dataset
 from random import shuffle, seed, randrange
 from tqdm import trange, tqdm
-from multiprocessing import Pool
 
 transform = np.arange(12*64)^(56^64)
 
@@ -102,9 +102,8 @@ class myDeflate:
         return resX, resY
 
 class SuperBatch:
-    def __init__(self, directory, wdl, act, nbSuperBatch, nbProcess):
+    def __init__(self, directory, wdl, nbSuperBatch, nbProcess):
         self.wdl = wdl
-        self.act = act
         self.directory = directory
         self.file_names = os.listdir(directory)
         self.cum = [0]*(len(self.file_names)+1)
@@ -135,7 +134,7 @@ class SuperBatch:
 
     def launch_worker(self, args):
         id, start, end = args
-        return self.buffers[id].read_range(start, end, lambda a, b:(1-self.wdl)*self.act(a)+self.wdl*b)
+        return self.buffers[id].read_range(start, end, lambda a, b:(1-self.wdl)*outAct(a)+self.wdl*b)
 
     def __getitem__(self, idx):
         tot = len(self)
@@ -171,6 +170,9 @@ class CompressedBatch(Dataset):
 
 def roundQ(tensor, Q):
     return (tensor*Q).round()/Q
+
+def outAct(x):
+    return F.sigmoid(x/Model.normal)
 
 class Model(nn.Module):
     inputSize = 64*12
@@ -244,7 +246,7 @@ class Trainer:
 
     def train(self, epoch, directory, percentTrain, batchSize, fileBest, testPos, processes, wdl, nbSuperBatch):
         startTime = time.time()
-        SB = SuperBatch(directory, wdl, self.model.outAct, nbSuperBatch, processes)
+        SB = SuperBatch(directory, wdl, nbSuperBatch, processes)
         lastLoss = 0.0
         current_lr = self.lr
         totTrainData = len(SB)
