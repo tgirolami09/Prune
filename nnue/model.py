@@ -138,19 +138,21 @@ class SuperBatch:
         realStart = self.buffers[startFile].lower(start-self.cum[startFile])
         endFile = self.find_index(end)
         realEnd = self.buffers[endFile].lower(end-self.cum[endFile])
-        resX = None
+        sbData = self.buffers[endFile].cum[realEnd]-self.buffers[startFile].cum[realStart]+self.buffers[startFile].cum[-1]
+        sbData += self.cum[endFile]-self.cum[startFile+1]
+        resX = np.zeros((sbData, 64*12//8), dtype=np.uint8)
+        resY = np.zeros((sbData, 1), dtype=np.float32)
+        idData = 0
         with Pool(self.processes) as p:
             for curX, curY in p.imap_unordered(self.launch_worker, [
                 (i, realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd)
-                for i in range(startFile, endFile)
+                for i in range(startFile, endFile+1)
             ]):
-                if resX is not None:
-                    resX = np.concatenate((resX, curX))
-                    resY = np.concatenate((resY, curY))
-                else:
-                    resX = curX
-                    resY = curY
-        return curX, curY
+                resX[idData:idData+len(curX)] = curX
+                resY[idData:idData+len(curY)] = curY
+                idData += len(curX)
+        assert(idData == len(resX))
+        return resX, resY
 
 class CompressedBatch(Dataset):
     def __init__(self, dataX, dataY):
@@ -316,9 +318,9 @@ class Trainer:
             with torch.no_grad():
                 for i in range(self.model.inputSize):
                     for j in range(self.model.HLSize):
-                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))
+                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))/self.model.QA
                 for i in range(self.model.HLSize):
-                    self.model.tohidden.bias[i] = self.read_bytes(f.read(1))
+                    self.model.tohidden.bias[i] = self.read_bytes(f.read(1))/self.model.QA
                 for i in range(self.model.HLSize*2):
-                    self.model.toout.weight[0][i] = self.read_bytes(f.read(1))
-                self.model.toout.bias[0] = self.read_bytes(f.read(2))
+                    self.model.toout.weight[0][i] = self.read_bytes(f.read(1))/self.model.QB
+                self.model.toout.bias[0] = self.read_bytes(f.read(2))/(self.QA*self.QB)
