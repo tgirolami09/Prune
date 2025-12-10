@@ -11,11 +11,12 @@ import io
 from torch.utils.data import DataLoader, TensorDataset, random_split, Dataset
 from random import shuffle, seed, randrange
 from tqdm import trange, tqdm
+import math
 
 transform = np.arange(12*64)^(56^64)
 
 def compress(X):
-    return np.packbits(X, axis=-1, bitorder="little")
+    return np.packbits(X, bitorder="little")
 
 intToArr = [np.array(tuple(map(int, bin(i)[2:].zfill(8))), dtype=np.int8) for i in range(256)]
 
@@ -63,7 +64,7 @@ class myDeflate:
                 return mid-1
         return low-1
 
-    def read_range(self, start, end, formula):
+    def read_range(self, start, end, wdl):
         resX = np.zeros((self.cum[end]-self.cum[start], 12*64//8), dtype=np.uint8)
         resY = np.zeros((self.cum[end]-self.cum[start], 1), dtype=np.float32)
         idData = 0
@@ -72,7 +73,7 @@ class myDeflate:
             X = np.frombuffer(self.raw[p:p+12*64], dtype=np.int8).copy()
             p += 12*64
             resX[idData] = compress(X)
-            resY[idData] = formula(torch.tensor(int.from_bytes(self.raw[p:p+3], signed=True), dtype=torch.float32), (self.raw[p+3]//2)/2)
+            resY[idData] = npOutAct(int.from_bytes(self.raw[p:p+3], signed=True))*(1-wdl)+wdl*(self.raw[p+3]//2)/2
             idData += 1
             p += 4
             N = int.from_bytes(self.raw[p:p+2])
@@ -81,19 +82,16 @@ class myDeflate:
                 a, b = self.raw[p:p+2]
                 p += 2
                 for s, n in ((1, a), (-1, b)):
-                    indexes = np.array(list(self.raw[p:p+n]), dtype=np.int32)
                     p += n
                     n2 = (3**n).bit_length()+7 >> 3
                     T = int.from_bytes(self.raw[p:p+n2])
                     for r in range(n-1, -1, -1):
-                        indexes[r] += 64*4*(T%3)
-                        T //= 3
-                    X[indexes] += s
+                        T, mod = divmod(T, 3)
+                        X[self.raw[p+r-n] + 64*4*mod] += s
                     p += n2
-                Y = formula(torch.tensor(int.from_bytes(self.raw[p:p+3], signed=True), dtype=torch.float32), (self.raw[p+3]//2)/2)
-                p += 4
                 resX[idData] = compress(X)
-                resY[idData] = Y
+                resY[idData] = npOutAct(int.from_bytes(self.raw[p:p+3], signed=True))*(1-wdl)+wdl*(self.raw[p+3]//2)/2
+                p += 4
                 idData += 1
         return resX, resY
 
@@ -130,7 +128,7 @@ class SuperBatch:
 
     def launch_worker(self, args):
         id, start, end = args
-        return self.buffers[id].read_range(start, end, lambda a, b:(1-self.wdl)*outAct(a)+self.wdl*b)
+        return self.buffers[id].read_range(start, end, self.wdl)
 
     def __getitem__(self, idx):
         tot = len(self)
@@ -145,14 +143,13 @@ class SuperBatch:
         resX = np.zeros((sbData, 64*12//8), dtype=np.uint8)
         resY = np.zeros((sbData, 1), dtype=np.float32)
         idData = 0
-        with Pool(self.processes) as p:
-            for curX, curY in p.imap_unordered(self.launch_worker, [
-                (i, realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd)
-                for i in range(startFile, endFile+1)
-            ]):
-                resX[idData:idData+len(curX)] = curX
-                resY[idData:idData+len(curY)] = curY
-                idData += len(curX)
+        for curX, curY in map(self.launch_worker, [
+            (i, realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd)
+            for i in range(startFile, endFile+1)
+        ]):
+            resX[idData:idData+len(curX)] = curX
+            resY[idData:idData+len(curY)] = curY
+            idData += len(curX)
         assert(idData == len(resX))
         return resX, resY
 
@@ -171,6 +168,9 @@ def roundQ(tensor, Q):
 
 def outAct(x):
     return F.sigmoid(x/Model.normal)
+
+def npOutAct(x):
+    return 1/(1+math.exp(-x/Model.normal))
 
 class Model(nn.Module):
     inputSize = 64*12
