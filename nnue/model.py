@@ -329,8 +329,8 @@ class Trainer:
                         self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))/self.model.QA
                 for i in range(self.model.HLSize):
                     self.model.tohidden.bias[i] = self.read_bytes(f.read(1))/self.model.QA
-                for idB in range(self.BUCKET):
+                for idB in range(self.model.BUCKET):
                     for i in range(self.model.HLSize*2):
                         self.model.toout.weight[idB][i] = self.read_bytes(f.read(1))/self.model.QB
-                for idB in range(self.BUCKET):
-                    self.model.toout.bias[idB] = self.read_bytes(f.read(2))/(self.QA*self.QB)
+                for idB in range(self.model.BUCKET):
+                    self.model.toout.bias[idB] = self.read_bytes(f.read(2))/(self.model.QA*self.model.QB)
