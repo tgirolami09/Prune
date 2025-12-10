@@ -56,6 +56,7 @@ public:
     simd16 outWeights[2*HL_SIZE/nb16];
     dbyte outbias;
     
+    template<typename T=char>
     dbyte read_bytes(ifstream& file);
     // Helper to set individual elements in SIMD vectors
     void set_simd16_element(simd16& vec, int index, dbyte value);

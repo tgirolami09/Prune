@@ -1,5 +1,6 @@
 #include "NNUE.hpp"
 #include "Const.hpp"
+#include <cstring>
 #include <immintrin.h>  // For Intel intrinsics
 #include "Functions.hpp"
 #include "embeder.hpp"
@@ -93,8 +94,9 @@ int mysum(simdint x){
 #endif
 }
 
+template<typename T>
 dbyte NNUE::read_bytes(ifstream& file){
-    char ret;
+    T ret;
     file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
     return ret;
 }
@@ -132,6 +134,12 @@ NNUE::NNUE(string name){
     
     outbias = read_bytes(file);
 }
+template<typename T>
+T get_int(const unsigned char* source, int length){
+    T res;
+    memcpy(&res, source, length);
+    return res;
+}
 
 NNUE::NNUE(){
     int pointer = 0;
@@ -139,7 +147,7 @@ NNUE::NNUE(){
         for(int j=0; j<HL_SIZE/nb16; j++) {
             hlWeights[i][j] = simd16_zero();
             for(int k=0; k<nb16; k++) {
-                set_simd16_element(hlWeights[i][j], k, transform(baseModel[pointer++]));
+                set_simd16_element(hlWeights[i][j], k, get_int<char>(&baseModel[pointer++], 1));
             }
         }
     }
@@ -147,18 +155,18 @@ NNUE::NNUE(){
     for(int i=0; i<HL_SIZE/nb16; i++){
         hlBiases[i] = simd16_zero();
         for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(hlBiases[i], id16, transform(baseModel[pointer++]));
+            set_simd16_element(hlBiases[i], id16, get_int<char>(&baseModel[pointer++], 1));
         }
     }
     
     for(int i=0; i<2*HL_SIZE/nb16; i++) {
         outWeights[i] = simd16_zero();
         for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(outWeights[i], id16, transform(baseModel[pointer++]));
+            set_simd16_element(outWeights[i], id16, get_int<char>(&baseModel[pointer++], 1));
         }
     }
     
-    outbias = transform(baseModel[pointer++]);
+    outbias = get_int<char>(&baseModel[pointer++], 1);
 }
 
 void NNUE::initAcc(Accumulator& accs){
