@@ -178,6 +178,8 @@ class Model(nn.Module):
     SCALE = 400
     QA = 255
     QB = 64
+    BUCKET = 8
+    DIVISOR = (31+BUCKET)//BUCKET
     normal = 200
     def activation(self, x):
         return torch.clamp(x, min=0, max=1)**2
@@ -188,7 +190,7 @@ class Model(nn.Module):
     def __init__(self, device):
         super().__init__()
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
-        self.toout = nn.Linear(self.HLSize*2, 1)
+        self.toout = nn.Linear(self.HLSize*2, self.BUCKET)
         self.to(device)
         self.device = device
 
@@ -196,8 +198,10 @@ class Model(nn.Module):
         hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
         hiddenRes[:, :self.HLSize] = self.activation(self.tohidden(x[:, :self.inputSize]))
         hiddenRes[:, self.HLSize:] = self.activation(self.tohidden(x[:, self.inputSize:]))
-        x = self.toout(hiddenRes)
-        return x
+        y = self.toout(hiddenRes)
+        idBucket = (x.count_nonzero(axis=1)//2-1)//self.DIVISOR
+        y = y.gather(1, idBucket.reshape(-1, 1))
+        return y
 
     def forward(self, x):
         return F.sigmoid(self.calc_score(x))
@@ -308,9 +312,11 @@ class Trainer:
                     f.write(self.get_int(model.tohidden.weight[j][i]*model.QA))
             for i in range(model.HLSize):
                 f.write(self.get_int(model.tohidden.bias[i]*model.QA))
-            for i in range(model.HLSize*2):
-                f.write(self.get_int(model.toout.weight[0][i]*model.QB))
-            f.write(self.get_int(model.toout.bias[0]*model.QA*model.QB, 2))
+            for idB in range(model.BUCKET):
+                for i in range(model.HLSize*2):
+                    f.write(self.get_int(model.toout.weight[idB][i]*model.QB))
+            for idB in range(model.BUCKET):
+                f.write(self.get_int(model.toout.bias[idB]*model.QA*model.QB, 2))
         endTime = time.time()
         print(f'save model to {filename} in {endTime-startTime:.3f}s')
         sys.stdout.flush()
@@ -323,6 +329,8 @@ class Trainer:
                         self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))/self.model.QA
                 for i in range(self.model.HLSize):
                     self.model.tohidden.bias[i] = self.read_bytes(f.read(1))/self.model.QA
-                for i in range(self.model.HLSize*2):
-                    self.model.toout.weight[0][i] = self.read_bytes(f.read(1))/self.model.QB
-                self.model.toout.bias[0] = self.read_bytes(f.read(2))/(self.QA*self.QB)
+                for idB in range(self.BUCKET):
+                    for i in range(self.model.HLSize*2):
+                        self.model.toout.weight[idB][i] = self.read_bytes(f.read(1))/self.model.QB
+                for idB in range(self.BUCKET):
+                    self.model.toout.bias[idB] = self.read_bytes(f.read(2))/(self.QA*self.QB)

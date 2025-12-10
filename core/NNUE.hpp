@@ -11,6 +11,8 @@ const int HL_SIZE = 64;
 const int SCALE = 400;
 const int QA = 255;
 const int QB = 64;
+const int BUCKET = 8;
+const int DIVISOR=(31+BUCKET)/BUCKET;
 const int turn=56^64;
 #define dbyte int16_t
 // Manual SIMD wrapper for cross-platform compatibility
@@ -53,9 +55,9 @@ class NNUE{
 public:
     simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
     simd16 hlBiases[HL_SIZE/nb16];
-    simd16 outWeights[2*HL_SIZE/nb16];
-    dbyte outbias;
-    
+    simd16 outWeights[BUCKET][2*HL_SIZE/nb16];
+    dbyte outbias[BUCKET];
+
     template<typename T=char>
     dbyte read_bytes(ifstream& file);
     // Helper to set individual elements in SIMD vectors
@@ -72,7 +74,7 @@ public:
     void move3(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
     void move2(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
     void move4(Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);
-    dbyte eval(const Accumulator& accs, bool side) const;
+    dbyte eval(const Accumulator& accs, bool side, int idB) const;
 };
 
 extern NNUE globnnue;

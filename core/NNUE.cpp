@@ -2,7 +2,6 @@
 #include "Const.hpp"
 #include <cstring>
 #include <immintrin.h>  // For Intel intrinsics
-#include "Functions.hpp"
 #include "embeder.hpp"
 
 using namespace std;
@@ -124,15 +123,16 @@ NNUE::NNUE(string name){
             set_simd16_element(hlBiases[i], id16, read_bytes(file));
         }
     }
-    
-    for(int i=0; i<2*HL_SIZE/nb16; i++) {
-        outWeights[i] = simd16_zero();
-        for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(outWeights[i], id16, read_bytes(file));
+    for(int idB = 0; idB < BUCKET; idB++){
+        for(int i=0; i<2*HL_SIZE/nb16; i++) {
+            outWeights[idB][i] = simd16_zero();
+            for(int id16=0; id16<nb16; id16++) {
+                set_simd16_element(outWeights[idB][i], id16, read_bytes(file));
+            }
         }
     }
-    
-    outbias = read_bytes<int16_t>(file);
+    for(int idB = 0; idB < BUCKET; idB++)
+        outbias[idB] = read_bytes<int16_t>(file);
 }
 template<typename T>
 T get_int(const unsigned char* source, int length){
@@ -159,14 +159,16 @@ NNUE::NNUE(){
         }
     }
     
-    for(int i=0; i<2*HL_SIZE/nb16; i++) {
-        outWeights[i] = simd16_zero();
-        for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(outWeights[i], id16, get_int<char>(&baseModel[pointer++], 1));
+    for(int idB = 0; idB < BUCKET; idB++){
+        for(int i=0; i<2*HL_SIZE/nb16; i++) {
+            outWeights[idB][i] = simd16_zero();
+            for(int id16=0; id16<nb16; id16++) {
+                set_simd16_element(outWeights[idB][i], id16, get_int<char>(&baseModel[pointer++], 1));
+            }
         }
     }
-    
-    outbias = get_int<char>(&baseModel[pointer++], 1);
+    for(int idB = 0; idB < BUCKET; idB++)
+        outbias[idB] = get_int<char>(&baseModel[pointer++], 1);
 }
 
 void NNUE::initAcc(Accumulator& accs){
@@ -189,15 +191,15 @@ simdint doOut(simd16 a, simd16 w){
     return overall;
 } 
 
-dbyte NNUE::eval(const Accumulator& accs, bool side) const{
+dbyte NNUE::eval(const Accumulator& accs, bool side, int idB) const{
     simdint res = simdint_zero();
     for(int i=0; i<HL_SIZE/nb16; i++){
-        res = simdint_add(res, doOut(accs[side^1][i], outWeights[i+HL_SIZE/nb16]));
-        res = simdint_add(res, doOut(accs[side][i], outWeights[i]));
+        res = simdint_add(res, doOut(accs[side^1][i], outWeights[idB][i+HL_SIZE/nb16]));
+        res = simdint_add(res, doOut(accs[side][i], outWeights[idB][i]));
     }
     int finRes = mysum(res);
     finRes /= QA;
-    finRes += outbias;
+    finRes += outbias[idB];
     finRes = finRes*SCALE/(QA*QB);
     return finRes;
 }
