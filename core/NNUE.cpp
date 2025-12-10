@@ -132,7 +132,7 @@ NNUE::NNUE(string name){
         }
     }
     
-    outbias = read_bytes(file);
+    outbias = read_bytes<int16_t>(file);
 }
 template<typename T>
 T get_int(const unsigned char* source, int length){
