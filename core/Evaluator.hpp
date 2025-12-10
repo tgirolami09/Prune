@@ -182,6 +182,7 @@ class IncrementalEvaluator{
     int presentPieces[2][6]; //keep trace of number of pieces by side
     Accumulator stackAcc[maxDepth];
     int stackIndex;
+    int nbMan;
 public:
     template<int f, bool updateNNUE>
     void changePiece(int pos, int piece, bool c);

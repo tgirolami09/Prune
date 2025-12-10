@@ -265,6 +265,7 @@ IncrementalEvaluator::IncrementalEvaluator(){
 
 void IncrementalEvaluator::init(const GameState& state){//should be only call at the start of the search
     mgPhase = 0;
+    nbMan = 0;
     stackIndex = 0;
     globnnue.initAcc(stackAcc[stackIndex]);
     memset(presentPieces, 0, sizeof(presentPieces));
@@ -289,11 +290,11 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 }
 
 int IncrementalEvaluator::getRaw(bool c) const{
-    return globnnue.eval(stackAcc[stackIndex], c);
+    return globnnue.eval(stackAcc[stackIndex], c, nbMan/DIVISOR);
 }
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
-    int raw_eval = globnnue.eval(stackAcc[stackIndex], c);
+    int raw_eval = globnnue.eval(stackAcc[stackIndex], c, nbMan/DIVISOR);
     return raw_eval+ch.probe(state);
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
@@ -305,6 +306,7 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
     if(updateNNUE)
         globnnue.change2<f>(stackAcc[stackIndex], piece*2+c, pos);
     mgPhase += f*gamephaseInc[piece];
+    nbMan += f;
     presentPieces[c][piece] += f;
 }
 
@@ -318,6 +320,7 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
         stackIndex--;
     }
     mgPhase += f*gamephaseInc[piece];
+    nbMan += f;
     presentPieces[c][piece] += f;
 }
 
