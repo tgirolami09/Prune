@@ -16,13 +16,11 @@ import math
 transform = np.arange(12*64)^(56^64)
 
 def compress(X):
-    return np.packbits(X, bitorder="little")
-
-intToArr = [np.array(tuple(map(int, bin(i)[2:].zfill(8))), dtype=np.int8) for i in range(256)]
+    return np.packbits(X)
 
 def uncompress(X):
     res = np.zeros(12*64*2, dtype=np.int8)
-    res[:12*64] = np.unpackbits(X, bitorder="little")
+    res[:12*64] = np.unpackbits(X)
     res[12*64:] = res[transform]
     return np.float32(res)
 
@@ -143,13 +141,14 @@ class SuperBatch:
         resX = np.zeros((sbData, 64*12//8), dtype=np.uint8)
         resY = np.zeros((sbData, 1), dtype=np.float32)
         idData = 0
-        for curX, curY in map(self.launch_worker, [
-            (i, realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd)
-            for i in range(startFile, endFile+1)
-        ]):
-            resX[idData:idData+len(curX)] = curX
-            resY[idData:idData+len(curY)] = curY
-            idData += len(curX)
+        with Pool(self.processes) as p:
+            for curX, curY in p.imap_unordered(self.launch_worker, [
+                (i, realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd)
+                for i in range(startFile, endFile+1)
+            ]):
+                resX[idData:idData+len(curX)] = curX
+                resY[idData:idData+len(curY)] = curY
+                idData += len(curX)
         assert(idData == len(resX))
         return resX, resY
 
