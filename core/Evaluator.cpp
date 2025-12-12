@@ -290,11 +290,11 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 }
 
 int IncrementalEvaluator::getRaw(bool c) const{
-    return globnnue.eval(stackAcc[stackIndex], c, nbMan/DIVISOR);
+    return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
 }
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
-    int raw_eval = globnnue.eval(stackAcc[stackIndex], c, nbMan/DIVISOR);
+    int raw_eval = getRaw(c);
     return raw_eval+ch.probe(state);
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
