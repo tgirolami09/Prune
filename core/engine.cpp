@@ -251,7 +251,7 @@ void manageSearch(){
                             int derived = overall_eval-ieval->getRaw(state->root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
-                            ieval->backStack();
+                            ieval->changePiece2<1, false>(square, type(piece), color(piece));
                         }else evals[7-c] = {' ', 0};
                     }
                     for(int i=0; i<8; i++)

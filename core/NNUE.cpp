@@ -1,5 +1,6 @@
 #include "NNUE.hpp"
 #include "Const.hpp"
+#include <cstdint>
 #include <cstring>
 #include <immintrin.h>  // For Intel intrinsics
 #include "embeder.hpp"
@@ -168,7 +169,7 @@ NNUE::NNUE(){
         }
     }
     for(int idB = 0; idB < BUCKET; idB++)
-        outbias[idB] = get_int<char>(&baseModel[pointer++], 1);
+        outbias[idB] = get_int<int16_t>(&baseModel[pointer++], 2);
 }
 
 void NNUE::initAcc(Accumulator& accs){
