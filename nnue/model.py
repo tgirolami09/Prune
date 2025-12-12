@@ -12,6 +12,8 @@ from torch.utils.data import DataLoader, TensorDataset, random_split, Dataset
 from random import shuffle, seed, randrange
 from tqdm import trange, tqdm
 import math
+import warnings
+warnings.filterwarnings('ignore')
 
 transform = np.arange(12*64)^(56^64)
 
@@ -29,23 +31,24 @@ class myDeflate:
     def __init__(self, name):
         self.name = name
         with open(name, "rb") as f:
-            self.raw = f.read()
+            raw = f.read()
         self.games = []
         self.cum = [0]
         i = 0
-        while i < len(self.raw):
+        while i < len(raw):
             self.games.append(i)
             i += 12*64
             i += 4
-            nb = int.from_bytes(self.raw[i:i+2])
+            nb = int.from_bytes(raw[i:i+2])
             i += 2
             for k in range(nb):
-                a = self.raw[i]
-                b = self.raw[i+1]
+                a = int(raw[i])
+                b = int(raw[i+1])
                 n = a+b
                 i += 2+4
                 i += ((3**a).bit_length()+7 >> 3) + ((3**b).bit_length()+7 >> 3) + a+b
             self.cum.append(self.cum[-1]+nb+1)
+        self.games.append(len(raw))
     
     def __len__(self):
         return self.cum[-1]
@@ -63,32 +66,37 @@ class myDeflate:
         return low-1
 
     def read_range(self, start, end, wdl):
-        resX = np.zeros((self.cum[end]-self.cum[start], 12*64//8), dtype=np.uint8)
-        resY = np.zeros((self.cum[end]-self.cum[start], 1), dtype=np.float32)
+        size = self.cum[end]-self.cum[start]
+        with open(self.name, "rb") as f:
+            startP = self.games[start]
+            f.seek(startP)
+            raw = np.array(list(f.read(self.games[end]-self.games[start])), dtype=np.uint8)
+        resX = np.zeros((size, 12*64//8), dtype=np.uint8)
+        resY = np.zeros((size, 1), dtype=np.float32)
         idData = 0
         for i in range(start, end):
-            p = self.games[i]
-            X = np.frombuffer(self.raw[p:p+12*64], dtype=np.int8).copy()
+            p = self.games[i]-startP
+            X = raw[p:p+12*64]
             p += 12*64
             resX[idData] = compress(X)
-            resY[idData] = npOutAct(int.from_bytes(self.raw[p:p+3], signed=True))*(1-wdl)+wdl*(self.raw[p+3]//2)/2
+            resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+wdl*(raw[p+3]//2)/2
             idData += 1
             p += 4
-            N = int.from_bytes(self.raw[p:p+2])
+            N = int.from_bytes(raw[p:p+2])
             p += 2
             for t in range(N):
-                a, b = self.raw[p:p+2]
+                a, b = map(int, raw[p:p+2])
                 p += 2
-                for s, n in ((1, a), (-1, b)):
+                for s, n in ((1, a), (255, b)):
                     p += n
                     n2 = (3**n).bit_length()+7 >> 3
-                    T = int.from_bytes(self.raw[p:p+n2])
+                    T = int.from_bytes(raw[p:p+n2])
                     for r in range(n-1, -1, -1):
                         T, mod = divmod(T, 3)
-                        X[self.raw[p+r-n] + 64*4*mod] += s
+                        X[int(raw[p+r-n]) + 64*4*mod] += s
                     p += n2
                 resX[idData] = compress(X)
-                resY[idData] = npOutAct(int.from_bytes(self.raw[p:p+3], signed=True))*(1-wdl)+wdl*(self.raw[p+3]//2)/2
+                resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+wdl*(raw[p+3]//2)/2
                 p += 4
                 idData += 1
         return resX, resY
@@ -142,10 +150,18 @@ class SuperBatch:
         resY = np.zeros((sbData, 1), dtype=np.float32)
         idData = 0
         with Pool(self.processes) as p:
-            for curX, curY in p.imap_unordered(self.launch_worker, [
+            inps = [
                 (i, realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd)
                 for i in range(startFile, endFile+1)
-            ]):
+            ]
+            if self.processes > len(inps):
+                inps.sort(reverse=True, key=lambda a:a[2]-a[1])
+                for i in range(self.processes-len(inps)):
+                    inp = inps.pop(0)
+                    mid = (inp[1]+inp[2])//2
+                    inps.append((inp[0], inp[1], mid))
+                    inps.append((inp[0], mid, inp[2]))
+            for curX, curY in tqdm(p.imap_unordered(self.launch_worker, inps), total=len(inps), leave=False):
                 resX[idData:idData+len(curX)] = curX
                 resY[idData:idData+len(curY)] = curY
                 idData += len(curX)
