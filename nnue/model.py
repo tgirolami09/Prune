@@ -350,3 +350,7 @@ class Trainer:
                         self.model.toout.weight[idB][i] = self.read_bytes(f.read(1))/self.model.QB
                 for idB in range(self.model.BUCKET):
                     self.model.toout.bias[idB] = self.read_bytes(f.read(2))/(self.model.QA*self.model.QB)
+
+if __name__ == '__main__':
+    T = Trainer(1, "cpu")
+    T.save("randomModel.bin")
