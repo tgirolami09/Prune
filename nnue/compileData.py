@@ -92,7 +92,7 @@ def readGame(file, fw, idMove):
                 datasX[count] = dataX
                 if(board.turn == BLACK):
                     score = -score
-                datasY[count] = score, result*2+(board.turn == BLACK)
+                datasY[count] = score, result
                 idMove += 1
                 count += 1
         if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
