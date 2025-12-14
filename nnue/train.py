@@ -70,4 +70,4 @@ testPos = torch.from_numpy(np.array([fullInput(Board(fen)) for fen in [
     '8/8/2K5/2QQ4/8/8/8/3k4 w - - 0 1'                                    # two queen advantage
 ]]))
 trainer.train(settings.epoch, settings.pickledData, settings.percentTrain, settings.batchSize, settings.outFile, testPos, settings.processes, settings.wdl, settings.nbSuperBatch)
-trainer.save()
+trainer.save(settings.outFile)

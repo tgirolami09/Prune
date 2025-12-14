@@ -79,7 +79,7 @@ class myDeflate:
             X = raw[p:p+12*64]
             p += 12*64
             resX[idData] = compress(X)
-            resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+wdl*raw[p+3]/2
+            resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+wdl*(1-raw[p+3]/2)
             idData += 1
             p += 4
             N = int.from_bytes(raw[p:p+2])
@@ -97,7 +97,7 @@ class myDeflate:
                     p += n2
                 resX[idData] = compress(X)
                 assert 0 <= raw[p+3] <= 2
-                resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+wdl*raw[p+3]/2
+                resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+wdl*(1-raw[p+3]/2)
                 p += 4
                 idData += 1
         return resX, resY
