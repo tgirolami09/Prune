@@ -288,7 +288,7 @@ void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMo
     }
 }
 
-inline big LegalMoveGenerator::moves_table(int index, big mask_pieces){
+big moves_table(int index, big mask_pieces){
     return tableMagic[index][(mask_pieces*constantsMagic[index].magic & (MAX_BIG >> constantsMagic[index].decR)) >> (64-constantsMagic[index].decR-constantsMagic[index].bits)];
 }
 

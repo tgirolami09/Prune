@@ -22,7 +22,7 @@ extern big attackPawns[128];
 extern big directions[64][64];
 extern big* tableMagic[129];
 extern const constTable* constantsMagic;
-
+const int x = sizeof(constTable::bits);
 void PrecomputeKnightMoveData();
 void precomputeDirections();
 void load_table();
@@ -30,6 +30,7 @@ void clear_table();
 void precomputeCastlingMasks();
 void precomputeNormlaKingMoves();
 void precomputePawnsAttack();
+big moves_table(int index, big mask_pieces);
 
 class LegalMoveGenerator{
 private:
@@ -41,7 +42,6 @@ private:
 
     template<bool isPawn>
     void maskToMoves(int start, big mask, Move* moves, int& nbMoves, int8_t piece, bool promotQueen=false);
-    big moves_table(int index, big mask_pieces);
     big pseudoLegalBishopMoves(int bishopPosition, big allPieces);
     big pseudoLegalRookMoves(int rookPosition, big allPieces);
     big pseudoLegalQueenMoves(int queenPositions, big allPieces);

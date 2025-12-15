@@ -198,10 +198,11 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     bool inCheck;
     ss.generator.initDangers(state);
     order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, -1, state, ss.generator, false);
+    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, -1, state, true);
     Move bestCapture;
     for(int i=0; i<order.nbMoves; i++){
-        Move capture = order.pop_max();
+        int flag;
+        Move capture = order.pop_max(flag);
         state.playMove(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor());
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
@@ -327,15 +328,16 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (sc > alpha && sc < beta && nodeType == PVNode)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
-    order.init(state.friendlyColor(), lastBest, ss.history, relDepth, state, ss.generator, false);
+    order.init(state.friendlyColor(), lastBest, ss.history, relDepth, state, true);
     Move bestMove = nullMove;
     int bestScore = -INF;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
-        Move curMove = order.pop_max();
+        int flag;
+        Move curMove = order.pop_max(flag);
         if(excludedMove == curMove.moveInfo)continue;
         sbig startNodes = ss.nodes;
         if(isRoot && verbose && ss.mainThread && getElapsedTime() >= chrono::milliseconds{10000}){
-            printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 "\n", depth+1, curMove.to_str().c_str(), rankMove+1, ss.nodes);
+            printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth+1, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
         int score;

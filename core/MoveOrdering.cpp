@@ -81,9 +81,13 @@ void Order::swap(int idMove1, int idMove2){
     std::swap(flags[idMove1], flags[idMove2]);
 }
 
-void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, GameState& state, LegalMoveGenerator& generator, bool useSEE){
+void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state, bool useSEE){
     nbPriority = 0;
     pointer = 0;
+    big occupancy = 0;
+    for(int _c=0; _c<2; _c++)
+        for(int p=0; p<6; p++)
+            occupancy |= state.boardRepresentation[_c][p];
     for(int i=0; i<nbMoves; i++){
         if(moveInfoPriority == moves[i].moveInfo){
             this->swap(i, 0);
@@ -91,9 +95,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 this->swap(i, 1);
             nbPriority++;
         }else{
-            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth), useSEE, state, flags[i], generator);
-            if(moves[i].isTactical())
-                flags[i]++;
+            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth), useSEE, occupancy, state, flags[i]);
         }
     }
 }
@@ -114,9 +116,10 @@ inline bool Order::compareMove(int idMove1, int idMove2){
     return scores[idMove2] > scores[idMove1];
 }
 
-Move Order::pop_max(){
+Move Order::pop_max(int& flag){
     if(pointer < nbPriority){
         pointer++;
+        flag = 5;
         return moves[pointer-1];
     }else{
         int bPointer=pointer;
@@ -125,6 +128,7 @@ Move Order::pop_max(){
                 bPointer = i;
         }
         this->swap(bPointer, pointer);
+        flag = flags[pointer];
         pointer++;
         return moves[pointer-1];
     }

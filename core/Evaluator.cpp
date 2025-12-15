@@ -64,33 +64,115 @@ int SEE(int square, GameState& state, LegalMoveGenerator& generator){
     return value;
 }
 
-int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator){
+inline int getLVA(int square, const GameState& state, bool stm, big occupancy, int& pieceType){ // return the square where the lva come from, set pieceType
+    //Pawns
+    big mask = occupancy&state.boardRepresentation[stm][PAWN]&attackPawns[(!stm)*64+square];
+    if(mask){
+        pieceType = PAWN;
+        return __builtin_ctzll(mask);
+    }
+    //Knight
+    mask = occupancy&state.boardRepresentation[stm][KNIGHT]&KnightMoves[square];
+    if(mask){
+        pieceType = KNIGHT;
+        return __builtin_ctzll(mask);
+    }
+    //Bishop
+    big maskB = occupancy&moves_table(square, occupancy);
+    mask = state.boardRepresentation[stm][BISHOP]&maskB;
+    if(mask){
+        pieceType = BISHOP;
+        return __builtin_ctzll(mask);
+    }
+    //Rook
+    big maskR = occupancy&moves_table(square+64, occupancy);
+    mask = state.boardRepresentation[stm][ROOK]&maskR;
+    if(mask){
+        pieceType = ROOK;
+        return __builtin_ctzll(mask);
+    }
+    //Queen
+    mask = state.boardRepresentation[stm][QUEEN]&(maskR|maskB);
+    if(mask){
+        pieceType = QUEEN;
+        return __builtin_ctzll(mask);
+    }
+    //KING
+    mask = occupancy&state.boardRepresentation[stm][KING]&normalKingMoves[square];
+    if(mask){
+        pieceType = KING;
+        return __builtin_ctzll(mask);
+    }
+    return -1;
+}
+
+int fastSEE(const Move& move, const GameState& state){
+    big occupancy = 0;
+    for(int c=0; c<2; c++)
+        for(int p=0; p<6; p++)
+            occupancy |= state.boardRepresentation[c][p];
+    occupancy ^= 1ULL << move.from();
+    int square = move.to();
+    bool stm = !state.friendlyColor();
+    int atk;
+    int pieceType;
+    ubyte stack[16];
+    int idStack = 0;
+    int lastPiece = move.piece;
+    while((atk = getLVA(square, state, stm, occupancy, pieceType)) != -1){
+        stack[idStack++] = lastPiece;
+        occupancy ^= 1ULL << atk;
+        lastPiece = pieceType;
+        stm = !stm;
+    }
+    int res = 0;
+    idStack--;
+    for(;idStack >= 0; idStack--){
+        res = max(0, value_pieces[stack[idStack]]-res);
+    }
+    return res;
+}
+
+bool see_ge(big occupancy, int born, const Move& move, const GameState& state){
+    int square = move.to();
+    //occupancy ^= 1ULL << move.from();
+    bool stm = state.friendlyColor();
+    int atk = move.from();
+    int lastPiece = move.capture != -2 ? max<int8_t>(0, move.capture) : 6;
+    int pieceType = move.piece;
+    bool sstm = stm;
+    do{
+        occupancy ^= 1ULL << atk;
+        //printf("atk=%d p=%d b=%d ", atk, pieceType, born);
+        born = value_pieces[lastPiece]-born;
+        //printf("nb=%d\n", born);
+        stm = !stm;
+        lastPiece = pieceType;
+        if(stm == sstm){
+            if(born <= 0)return true;
+        }else if(born < 0)
+            return false;
+    }while((atk = getLVA(square, state, stm, occupancy, pieceType)) != -1);
+    //printf("%d %d %d\n", stm, sstm, born);
+    return stm != sstm || born <= 0;
+}
+
+int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, big occupancy, const GameState& state, ubyte& flag){
     int score = 0;
-    int SEEscore = 0;
     flag = 0;
-    if(useSEE){
-        state.playMove(move);
-        SEEscore = -SEE(move.to(), state, generator);
-        if(move.capture != -2)
-            SEEscore += value_pieces[move.capture == -1?0:move.capture];
-        state.undoLastMove();
-        if(SEEscore > 0)
-            flag += 2;
-    }else if(move.isTactical()){
+    if(useSEE && see_ge(occupancy, 0, move, state)){
+        flag += 1;
+    }if(move.isTactical()){
         int cap = move.capture;
         if(cap == -1)cap = 0;
         if(cap != -2)
-            SEEscore = value_pieces[cap]*10;
+            score = value_pieces[cap]*10;
         if((1ULL << move.to())&dangerPositions)
-            SEEscore -= value_pieces[move.piece];
-    }
-    if(!move.isTactical()){
-        score += historyScore;
-        score += SEEscore*maxHistory;
-    }else{
-        flag++;
-        score += SEEscore;
+            score -= value_pieces[move.piece];
+        flag += 2;
         if(move.promotion() != -1)score += value_pieces[move.promotion()];
+    }else{
+        score += historyScore;
     }
     return score;
 }

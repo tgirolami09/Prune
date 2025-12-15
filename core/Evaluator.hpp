@@ -159,8 +159,9 @@ extern big mask_forward_inv[64];
 void init_forwards();
 
 int SEE(int square, GameState& state, LegalMoveGenerator& generator);
-
-int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator);
+int fastSEE(const Move& move, const GameState& state);
+bool see_ge(big occupancy, int born, const Move& move, const GameState& state);
+int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, big occupancy, const GameState& state, ubyte& flag);
 
 const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
 
