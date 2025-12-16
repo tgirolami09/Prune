@@ -203,7 +203,8 @@ int main(int argc, char** argv){
                     curProc.isVoid = true;
                 }
                 state->eval.playNoBack(curMove, state->state.friendlyColor());
-                if(state->state.playMove(curMove) == 3){
+                state->state.playMove(curMove);
+                if(state->state.threefold()){
                     result = 1;
                     break;
                 }

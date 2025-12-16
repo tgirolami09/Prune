@@ -92,7 +92,7 @@ def readGame(file, fw, idMove):
                 datasX[count] = dataX
                 if(board.turn == BLACK):
                     score = -score
-                datasY[count] = score, result
+                datasY[count] = score
                 idMove += 1
                 count += 1
         if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
@@ -100,7 +100,7 @@ def readGame(file, fw, idMove):
         board.push(nextMove)
     if count >= 1:
         fw.write(datasX[0].tobytes())
-        fw.write(datasY[0][0].to_bytes(3, signed=True)+datasY[0][1].to_bytes(1))
+        fw.write(datasY[0].to_bytes(3, signed=True)+result.to_bytes(1))
         fw.write((count-1).to_bytes(2))
         for X, Y, Xm1 in zip(datasX[1:count], datasY[1:], datasX):
             D = X-Xm1
@@ -118,7 +118,7 @@ def readGame(file, fw, idMove):
                     S *= 3
                 p = int(p)
                 fw.write(p.to_bytes(S.bit_length()+7 >> 3))
-            fw.write(Y[0].to_bytes(3, signed=True)+Y[1].to_bytes(1))
+            fw.write(Y.to_bytes(3, signed=True))
 
     return count, filtredPos, idMove
 

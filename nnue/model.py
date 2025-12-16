@@ -45,7 +45,7 @@ class myDeflate:
                 a = int(raw[i])
                 b = int(raw[i+1])
                 n = a+b
-                i += 2+4
+                i += 2+3
                 i += ((3**a).bit_length()+7 >> 3) + ((3**b).bit_length()+7 >> 3) + a+b
             self.cum.append(self.cum[-1]+nb+1)
         self.games.append(len(raw))
@@ -79,7 +79,8 @@ class myDeflate:
             X = raw[p:p+12*64]
             p += 12*64
             resX[idData] = compress(X)
-            resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+wdl*(1-raw[p+3]/2)
+            res = wdl*raw[p+3]/2
+            resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+res
             idData += 1
             p += 4
             N = int.from_bytes(raw[p:p+2])
@@ -96,9 +97,8 @@ class myDeflate:
                         X[int(raw[p+r-n]) + 64*4*mod] += s
                     p += n2
                 resX[idData] = compress(X)
-                assert 0 <= raw[p+3] <= 2
-                resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+wdl*(1-raw[p+3]/2)
-                p += 4
+                resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+res
+                p += 3
                 idData += 1
         return resX, resY
 
