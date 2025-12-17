@@ -78,9 +78,14 @@ class myDeflate:
             p = self.games[i]-startP
             X = raw[p:p+12*64]
             p += 12*64
-            resX[idData] = compress(X)
             res = wdl*raw[p+3]/2
-            resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+res
+            score, color = divmod(int.from_bytes(raw[p:p+3], signed=True), 2)
+            resY[idData] = npOutAct(score)*(1-wdl)+res
+            if color: # black's turn
+                resY[idData] = 1-resY[idData]
+                resX[idData] = compress(X[transform])
+            else:
+                resX[idData] = compress(X)
             idData += 1
             p += 4
             N = int.from_bytes(raw[p:p+2])
@@ -96,8 +101,13 @@ class myDeflate:
                         T, mod = divmod(T, 3)
                         X[int(raw[p+r-n]) + 64*4*mod] += s
                     p += n2
-                resX[idData] = compress(X)
-                resY[idData] = npOutAct(int.from_bytes(raw[p:p+3], signed=True))*(1-wdl)+res
+                score, color = divmod(int.from_bytes(raw[p:p+3], signed=True), 2)
+                resY[idData] = npOutAct(score)*(1-wdl)+res
+                if color: # black's turn
+                    resY[idData] = 1-resY[idData]
+                    resX[idData] = compress(X[transform])
+                else:
+                    resX[idData] = compress(X)
                 p += 3
                 idData += 1
         return resX, resY

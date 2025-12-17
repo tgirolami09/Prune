@@ -92,7 +92,7 @@ def readGame(file, fw, idMove):
                 datasX[count] = dataX
                 if(board.turn == BLACK):
                     score = -score
-                datasY[count] = score
+                datasY[count] = score*2+(board.turn == BLACK)
                 idMove += 1
                 count += 1
         if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
@@ -144,7 +144,6 @@ def readFile(arg):
     count = 0
     filtredPos = 0
     nbGame, nbMoves = count_games(name)
-    print(nbGame, nbMoves)
     filename = settings.pickledData+"/data"+str(id)
     idMove = 0
     os.makedirs(os.path.dirname(filename), exist_ok=True)
