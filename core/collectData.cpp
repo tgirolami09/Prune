@@ -187,15 +187,15 @@ int main(int argc, char** argv){
                 int score = get<2>(res);
                 Move curMove = get<0>(res);
                 assert(curMove.moveInfo != nullMove.moveInfo);
-                if(abs(score) > MAXIMUM-maxDepth){
+                /*if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
                     if(state->state.friendlyColor() == BLACK)
                         result = 2-result;
                     break;
-                }
+                }*/
                 MoveInfo curProc;
                 curProc.moveInfo = curMove.moveInfo;
-                if(score != INF){
+                if(score != INF && abs(score) < MAXIMUM-maxDepth){
                     curProc.score = score;
                     curProc.staticScore = state->eval.getRaw(state->state.friendlyColor());
                     curProc.isVoid = false;
@@ -209,18 +209,16 @@ int main(int argc, char** argv){
                     break;
                 }
                 state->game.game.push_back(curProc);
-                if(score == 0){
-                    bool inCheck;
-                    state->generator.initDangers(state->state);
-                    int nbMoves = state->generator.generateLegalMoves(state->state, inCheck, state->legalMoves, dngpos, false);
-                    if(nbMoves == 0){
-                        if(inCheck){
-                            printf("\n%s\n", state->state.toFen().c_str());
-                            result = (state->state.enemyColor() == WHITE)*2;
-                        }else
-                            result = 1;
-                        break;
-                    }
+                bool inCheck;
+                state->generator.initDangers(state->state);
+                int nbMoves = state->generator.generateLegalMoves(state->state, inCheck, state->legalMoves, dngpos, false);
+                if(nbMoves == 0){
+                    if(inCheck){
+                        if(score == 0)printf("\n%s\n", state->state.toFen().c_str());
+                        result = (state->state.enemyColor() == WHITE)*2;
+                    }else
+                        result = 1;
+                    break;
                 }
                 if(state->eval.isInsufficientMaterial())break;
             }while(state->state.rule50_count() < 100);
