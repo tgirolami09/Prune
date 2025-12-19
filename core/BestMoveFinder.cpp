@@ -198,7 +198,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     bool inCheck;
     ss.generator.initDangers(state);
     order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, -1, state, true);
+    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, -1, state);
     Move bestCapture;
     for(int i=0; i<order.nbMoves; i++){
         int flag;
@@ -328,7 +328,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (sc > alpha && sc < beta && nodeType == PVNode)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
-    order.init(state.friendlyColor(), lastBest, ss.history, relDepth, state, true);
+    order.init(state.friendlyColor(), lastBest, ss.history, relDepth, state);
     Move bestMove = nullMove;
     int bestScore = -INF;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){

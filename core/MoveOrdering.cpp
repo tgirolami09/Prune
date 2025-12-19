@@ -81,7 +81,7 @@ void Order::swap(int idMove1, int idMove2){
     std::swap(flags[idMove1], flags[idMove2]);
 }
 
-void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state, bool useSEE){
+void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state){
     nbPriority = 0;
     pointer = 0;
     big occupancy = 0;
@@ -95,7 +95,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 this->swap(i, 1);
             nbPriority++;
         }else{
-            scores[i] = score_move(moves[i], dangerPositions, history.getMoveScore(moves[i], c, relDepth), useSEE, occupancy, state, flags[i]);
+            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), occupancy, state, flags[i]);
         }
     }
 }

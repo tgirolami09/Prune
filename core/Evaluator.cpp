@@ -157,18 +157,17 @@ bool see_ge(big occupancy, int born, const Move& move, const GameState& state){
     return stm != sstm || born <= 0;
 }
 
-int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, big occupancy, const GameState& state, ubyte& flag){
+int score_move(const Move& move, int historyScore, big occupancy, const GameState& state, ubyte& flag){
     int score = 0;
     flag = 0;
-    if(useSEE && see_ge(occupancy, 0, move, state)){
+    if(see_ge(occupancy, 0, move, state)){
         flag += 1;
     }if(move.isTactical()){
         int cap = move.capture;
         if(cap == -1)cap = 0;
         if(cap != -2)
             score = value_pieces[cap]*10;
-        if((1ULL << move.to())&dangerPositions)
-            score -= value_pieces[move.piece];
+        score -= value_pieces[move.piece];
         flag += 2;
         if(move.promotion() != -1)score += value_pieces[move.promotion()];
     }else{
