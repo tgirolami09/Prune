@@ -240,6 +240,7 @@ inline int BestMoveFinder::Evaluate(usefull& ss, GameState& state, int alpha, in
 template <int nodeType, int limitWay, bool mateSearch, bool isRoot>
 int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove){
     const int rootDist = relDepth-startRelDepth;
+    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     ss.seldepth = max(ss.seldepth, relDepth);
     if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
