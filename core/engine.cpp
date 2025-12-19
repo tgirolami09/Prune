@@ -447,10 +447,7 @@ void manageSearch(){
                 istringstream moves(parsed[0].second);
                 string curMove;
                 bool isExact = true;
-                big occupancy=0;
-                for(int c=0; c<2; c++)
-                    for(int p=0; p<6; p++)
-                        occupancy |= state->root.boardRepresentation[c][p];
+                SEE_BB bb(state->root);
                 while(moves >> curMove){
                     if(curMove == "ge"){
                         isExact=false;
@@ -469,7 +466,7 @@ void manageSearch(){
                         if(move.capture != -2)
                             res += value_pieces[max(0, cap)];
                     }else
-                        res = see_ge(occupancy, 0, move, state->root);
+                        res = see_ge(bb, 0, move, state->root);
                     printf("%s : %d\n", move.to_str().c_str(), res);
                 }
                 for(unsigned long i=0; i<state->movesFromRoot.size(); i++)

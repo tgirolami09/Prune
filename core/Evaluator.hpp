@@ -158,10 +158,21 @@ extern big mask_forward[64];
 extern big mask_forward_inv[64];
 void init_forwards();
 
+class SEE_BB{
+public:
+    SEE_BB(const GameState& state);
+    big occupancy;
+    big Qs;
+    big Rs;
+    big Bs;
+    big Ns;
+    big Ks;
+};
+
 int SEE(int square, GameState& state, LegalMoveGenerator& generator);
 int fastSEE(const Move& move, const GameState& state);
-bool see_ge(big occupancy, int born, const Move& move, const GameState& state);
-int score_move(const Move& move, int historyScore, big occupancy, const GameState& state, ubyte& flag);
+bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state);
+int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, ubyte& flag);
 
 const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
 

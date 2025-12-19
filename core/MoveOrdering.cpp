@@ -84,10 +84,7 @@ void Order::swap(int idMove1, int idMove2){
 void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state){
     nbPriority = 0;
     pointer = 0;
-    big occupancy = 0;
-    for(int _c=0; _c<2; _c++)
-        for(int p=0; p<6; p++)
-            occupancy |= state.boardRepresentation[_c][p];
+    SEE_BB bb(state);
     for(int i=0; i<nbMoves; i++){
         if(moveInfoPriority == moves[i].moveInfo){
             this->swap(i, 0);
@@ -95,7 +92,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 this->swap(i, 1);
             nbPriority++;
         }else{
-            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), occupancy, state, flags[i]);
+            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state, flags[i]);
         }
     }
 }
