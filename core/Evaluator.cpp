@@ -158,15 +158,24 @@ SEE_BB::SEE_BB(const GameState& state){
             occupancy |= state.boardRepresentation[_c][p];
 }
 
+big firstTouch(int square, int square2, big occupancy){
+    big mask = fullDir[square][square2]&occupancy;
+    if(!mask)return 0;
+    if(square2 > square)
+        return mask&-mask;
+    else
+        return 1ULL << (__builtin_clzll(mask)^63);
+}
+
 bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state){
     int square = move.to();
     //occupancy ^= 1ULL << move.from();
     bool stm = state.friendlyColor();
-    big atk = 1ULL << move.from();
+    int atk = move.from();
     int lastPiece = move.capture != -2 ? max<int8_t>(0, move.capture) : 6;
     int pieceType = move.piece;
     bool sstm = stm;
-    big occupancy = bb.occupancy ^ atk;
+    big occupancy = bb.occupancy ^ (1ULL << atk);
     born = value_pieces[lastPiece]-born;
     stm = !stm;
     lastPiece = pieceType;
@@ -183,29 +192,31 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
         for(int p=0; p<nbPieces; p++){
             big mask = state.boardRepresentation[stm][p]&attacks;
             if(mask){
-                atk = mask&-mask;
+                atk = __builtin_ctzll(mask);
                 pieceType = p;
                 break;
             }
         }
         if((pieceType == KING && countbit(attacks) > 1) || pieceType == -1)
             break;
-        occupancy ^= atk;
-        //printf("atk=%d p=%d b=%d ", atk, pieceType, born);
+        occupancy ^= 1ULL << atk;
         born = value_pieces[lastPiece]-born;
-        //printf("nb=%d\n", born);
         stm = !stm;
         lastPiece = pieceType;
         if(stm == sstm){
             if(born <= 0)return true;
         }else if(born < 0)
             return false;
-        if(lastPiece >= QUEEN)
-            attacks |= (get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs) | (get_rook_lines(occupancy&rooksAtk, square)&bb.Rs);
-        else if(!(lastPiece & 1))
-            attacks |= get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs;
-        else if(lastPiece == ROOK)
-            attacks |= get_rook_lines(occupancy&rooksAtk, square)&bb.Rs;
+        if(pieceType == KING)break;
+        if(pieceType == QUEEN){
+            if((1ULL << atk)&bishopAtk)
+                attacks |= firstTouch(square, atk, occupancy)&bb.Bs;
+            else
+                attacks |= firstTouch(square, atk, occupancy)&bb.Rs;
+        }else if(pieceType == ROOK)
+            attacks |= firstTouch(square, atk, occupancy)&bb.Rs;
+        else if(pieceType != KNIGHT)
+            attacks |= firstTouch(square, atk, occupancy)&bb.Bs;
         attacks &= occupancy;
     }
     //printf("%d %d %d\n", stm, sstm, born);

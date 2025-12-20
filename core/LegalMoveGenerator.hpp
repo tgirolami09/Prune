@@ -20,6 +20,7 @@ extern big attackCastlingMasks[2][2];
 extern big normalKingMoves[64];
 extern big attackPawns[128];
 extern big directions[64][64];
+extern big fullDir[64][64];
 void PrecomputeKnightMoveData();
 void precomputeDirections();
 void load_table();
