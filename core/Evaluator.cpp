@@ -66,6 +66,13 @@ int SEE(int square, GameState& state, LegalMoveGenerator& generator){
     return value;
 }
 
+big get_rook_lines(big occupancy, int square){
+    return moves_table(square+64, occupancy);
+}
+big get_bishop_lines(big occupancy, int square){
+    return moves_table(square, occupancy);
+}
+
 inline int getLVA(int square, const GameState& state, bool stm, big occupancy, int& pieceType){ // return the square where the lva come from, set pieceType
     //Pawns
     big mask = occupancy&state.boardRepresentation[stm][PAWN]&attackPawns[(!stm)*64+square];
@@ -80,14 +87,14 @@ inline int getLVA(int square, const GameState& state, bool stm, big occupancy, i
         return __builtin_ctzll(mask);
     }
     //Bishop
-    big maskB = occupancy&moves_table(square, occupancy);
+    big maskB = occupancy&get_bishop_lines(occupancy&mask_empty_bishop(square), square);
     mask = state.boardRepresentation[stm][BISHOP]&maskB;
     if(mask){
         pieceType = BISHOP;
         return __builtin_ctzll(mask);
     }
     //Rook
-    big maskR = occupancy&moves_table(square+64, occupancy);
+    big maskR = occupancy&get_rook_lines(occupancy&mask_empty_rook(square), square);
     mask = state.boardRepresentation[stm][ROOK]&maskR;
     if(mask){
         pieceType = ROOK;
@@ -159,12 +166,31 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
     int lastPiece = move.capture != -2 ? max<int8_t>(0, move.capture) : 6;
     int pieceType = move.piece;
     bool sstm = stm;
-    big attacks = (moves_table(square, bb.occupancy)&bb.Bs) | (moves_table(square+64, bb.occupancy)&bb.Rs) |
+    big occupancy = bb.occupancy ^ (1ULL << atk);
+    born = value_pieces[lastPiece]-born;
+    stm = !stm;
+    lastPiece = pieceType;
+    if(born < 0)
+        return false;
+    big bishopAtk = mask_empty_bishop(square);
+    big rooksAtk = mask_empty_rook(square);
+    big attacks =((get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs) | (get_rook_lines(occupancy&rooksAtk, square)&bb.Rs) |
                   (KnightMoves[square]&bb.Ns) |
                   (attackPawns[square]&state.boardRepresentation[1][PAWN]) | (attackPawns[square+64]&state.boardRepresentation[0][PAWN]) |
-                  (normalKingMoves[square]&bb.Ks);
-    big occupancy = bb.occupancy;
-    do{
+                  (normalKingMoves[square]&bb.Ks))&occupancy;
+    while(1){
+        pieceType = -1;
+        atk = -1;
+        for(int p=0; p<nbPieces; p++){
+            big mask = state.boardRepresentation[stm][p]&attacks;
+            if(mask){
+                atk = __builtin_ctzll(mask);
+                pieceType = p;
+                break;
+            }
+        }
+        if((pieceType == KING && countbit(attacks) > 1) || pieceType == -1)
+            break;
         occupancy ^= 1ULL << atk;
         //printf("atk=%d p=%d b=%d ", atk, pieceType, born);
         born = value_pieces[lastPiece]-born;
@@ -176,24 +202,13 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
         }else if(born < 0)
             return false;
         if(lastPiece >= QUEEN)
-            attacks |= (moves_table(square, occupancy)&bb.Bs) | (moves_table(square+64, occupancy)&bb.Rs);
+            attacks |= (get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs) | (get_rook_lines(occupancy&rooksAtk, square)&bb.Rs);
         else if(!(lastPiece & 1))
-            attacks |= moves_table(square, occupancy)&bb.Bs;
+            attacks |= get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs;
         else if(lastPiece == ROOK)
-            attacks |= moves_table(square+64, occupancy)&bb.Rs;
+            attacks |= get_rook_lines(occupancy&rooksAtk, square)&bb.Rs;
         attacks &= occupancy;
-        pieceType = -1;
-        for(int p=0; p<nbPieces; p++){
-            big mask = state.boardRepresentation[stm][p]&attacks;
-            if(mask){
-                atk = __builtin_ctzll(mask);
-                pieceType = p;
-                break;
-            }
-        }
-        if(pieceType == KING && countbit(attacks) > 1)
-            break;
-    }while(pieceType != -1);
+    }
     //printf("%d %d %d\n", stm, sstm, born);
     return stm != sstm || born <= 0;
 }

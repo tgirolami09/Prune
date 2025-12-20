@@ -69,7 +69,7 @@ public :
     int getPiece(int square, int c);
     int getfullPiece(int square) const;
     pawnStruct getPawnStruct();
-    void print();
+    void print() const;
     void initMove(Move& move);
 };
 

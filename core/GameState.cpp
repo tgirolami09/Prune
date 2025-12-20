@@ -466,7 +466,7 @@ pawnStruct GameState::getPawnStruct(){
     return res;
 }
 
-void GameState::print(){
+void GameState::print() const{
     printf("/−");
     for(int i=1; i<7; i++){
         printf("−−");
