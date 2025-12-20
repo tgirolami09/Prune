@@ -197,7 +197,7 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
                 break;
             }
         }
-        if((pieceType == KING && countbit(attacks) > 1) || pieceType == -1)
+        if((pieceType == KING && (attacks&(attacks-1))) || pieceType == -1)
             break;
         occupancy ^= 1ULL << atk;
         born = value_pieces[lastPiece]-born;
