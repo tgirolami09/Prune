@@ -9,6 +9,7 @@ CPUSET?=unknow
 SOURCES := $(wildcard *.cpp)
 SOURCES := $(filter-out collectData.cpp,$(SOURCES))
 SOURCES := $(filter-out engine.cpp,$(SOURCES))
+SOURCES := $(filter-out unitest.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o)
 DEPENDS := $(SOURCES:%.cpp=%.d)
 ifeq ($(OS), Windows_NT)
@@ -53,6 +54,9 @@ endif
 
 all: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^
+
+unitest: unitest.cpp $(OBJECTS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^
 
 prune: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)

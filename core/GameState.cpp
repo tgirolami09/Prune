@@ -524,3 +524,15 @@ void GameState::print(){
     printf("%s", toFen().c_str());
     printf("\n");
 }
+
+void GameState::initMove(Move& move){
+    int piece=getPiece(move.to(), enemyColor());
+    if(piece != SPACE){
+        move.capture = piece;
+    }
+    int mover = getPiece(move.from(), friendlyColor());
+    if(mover == PAWN && col(move.from()) != col(move.to()) && move.capture == -2){
+        move.capture = -1;
+    }
+    move.piece = mover;
+}

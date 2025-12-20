@@ -70,6 +70,7 @@ public :
     int getfullPiece(int square) const;
     pawnStruct getPawnStruct();
     void print();
+    void initMove(Move& move);
 };
 
 const string startpos="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
