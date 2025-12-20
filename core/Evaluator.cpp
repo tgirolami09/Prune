@@ -175,9 +175,11 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
             if(born <= 0)return true;
         }else if(born < 0)
             return false;
-        if(lastPiece == PAWN || lastPiece == BISHOP || lastPiece == QUEEN || lastPiece == KING)
+        if(lastPiece >= QUEEN)
+            attacks |= (moves_table(square, occupancy)&bb.Bs) | (moves_table(square+64, occupancy)&bb.Rs);
+        else if(!(lastPiece & 1))
             attacks |= moves_table(square, occupancy)&bb.Bs;
-        if(lastPiece == ROOK || lastPiece == QUEEN || lastPiece == KING)
+        else if(lastPiece == ROOK)
             attacks |= moves_table(square+64, occupancy)&bb.Rs;
         attacks &= occupancy;
         pieceType = -1;
