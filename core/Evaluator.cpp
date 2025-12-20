@@ -162,11 +162,11 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
     int square = move.to();
     //occupancy ^= 1ULL << move.from();
     bool stm = state.friendlyColor();
-    int atk = move.from();
+    big atk = 1ULL << move.from();
     int lastPiece = move.capture != -2 ? max<int8_t>(0, move.capture) : 6;
     int pieceType = move.piece;
     bool sstm = stm;
-    big occupancy = bb.occupancy ^ (1ULL << atk);
+    big occupancy = bb.occupancy ^ atk;
     born = value_pieces[lastPiece]-born;
     stm = !stm;
     lastPiece = pieceType;
@@ -180,18 +180,17 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
                   (normalKingMoves[square]&bb.Ks))&occupancy;
     while(1){
         pieceType = -1;
-        atk = -1;
         for(int p=0; p<nbPieces; p++){
             big mask = state.boardRepresentation[stm][p]&attacks;
             if(mask){
-                atk = __builtin_ctzll(mask);
+                atk = mask&-mask;
                 pieceType = p;
                 break;
             }
         }
         if((pieceType == KING && countbit(attacks) > 1) || pieceType == -1)
             break;
-        occupancy ^= 1ULL << atk;
+        occupancy ^= atk;
         //printf("atk=%d p=%d b=%d ", atk, pieceType, born);
         born = value_pieces[lastPiece]-born;
         //printf("nb=%d\n", born);
