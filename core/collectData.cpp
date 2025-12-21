@@ -12,6 +12,7 @@ int nbThreads = 1;
 #include <chrono>
 #include <cassert>
 #include <omp.h>
+#define DEBUG
 using namespace std;
 const int alloted_space = 2*1000*1000;
 
@@ -69,9 +70,37 @@ public:
     static const int headerSize = sizeof(GameState::boardRepresentation)+sizeof(ubyte)+sizeof(dbyte);
 
     void dump(FILE* datafile){
+        big occupied = 0;
         for(int i=0; i<6; i++)
             for(int j=0; j<2; j++)
-                fastWrite(startPos.boardRepresentation[j][i], datafile);
+                occupied |= startPos.boardRepresentation[j][i];
+        fastWrite(occupied, datafile);
+        int8_t entry = 0x00;
+        bool isSec = false;
+        int nbEntry = 0;
+        big castle = startPos.castlingMask();
+        for(int i=0; i<64; i++){
+            int8_t piece = startPos.getfullPiece(i);
+            if(type(piece) != SPACE){
+                piece = type(piece)+8*color(piece);
+                if((piece&7) == ROOK && ((1ULL << i)&castle)){
+                    piece&= 0x8;
+                    piece |= 6;
+                }
+                entry = entry << 4 | piece;
+                if(isSec)
+                    fastWrite(entry, datafile);
+                isSec ^= 1;
+                nbEntry += 1;
+            }
+        }
+        for(int i=nbEntry; i<32; i++){
+            entry = entry << 4 | 0;
+            if(isSec){
+                fastWrite(entry, datafile);
+            }
+            isSec ^= 1;
+        }
         ubyte gameInfo = result*2+startPos.friendlyColor(); //the result (0-1-2) and the color of the starting player
         fastWrite(gameInfo, datafile);
         dbyte sizeGame = game.size();
@@ -136,13 +165,17 @@ int main(int argc, char** argv){
     auto start=chrono::high_resolution_clock::now();
     int lastGamesMade=0;
     int realThread;
+#ifndef DEBUG
     #pragma omp parallel
     #pragma omp single
-    realThread = min(omp_get_num_threads(), sizeGame);
+#endif
+    //realThread = min(omp_get_num_threads(), sizeGame);
     if(argc > 5)realThread = atoi(argv[5]);
     globnnue = NNUE(argv[2]);
     big nodesSearched = 0;
+#ifndef DEBUG
     #pragma omp parallel for shared(gamesMade, lastGamesMade, nodesSearched)
+#endif
     for(int idThread=0; idThread<realThread; idThread++){
         int startReg=sizeGame*idThread/realThread;
         string nameDataFile = string("data")+to_string(idThread)+string(".out");
@@ -164,7 +197,9 @@ int main(int argc, char** argv){
             }
             printf("file %d finding %d games (%d moves in total) delta %d\n", idThread, nbGames, totalMoves, pointer-fileSize);
             startReg += nbGames;
+#ifndef DEBUG
             #pragma omp atomic update
+#endif
             lastGamesMade += nbGames;
         }
         int endReg = sizeGame*(idThread+1)/realThread;
@@ -225,9 +260,13 @@ int main(int argc, char** argv){
             state->game.result = result;
             state->game.dump(fptr);
             fflush(fptr);
+#ifndef DEBUG
             #pragma omp atomic update
+#endif
             gamesMade++;
+#ifndef DEBUG
             #pragma omp atomic update
+#endif
             nodesSearched += localNodes;
             int totGamesMade = lastGamesMade+gamesMade;
             struct winsize w;
@@ -263,7 +302,9 @@ int main(int argc, char** argv){
                 printed += string((w.ws_col-printed.size()-1), ' ');
             }
             printed += "]";
+#ifndef DEBUG
             #pragma omp critical
+#endif
             {
                 printf("%s\r", printed.c_str());
                 fflush(stdout);
