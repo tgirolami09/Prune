@@ -316,6 +316,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         return score;
     }
     if(order.nbMoves == 1){
+        if(isRoot)
+            ss.rootBest = order.moves[0];
         state.playMove(order.moves[0]);
         if(state.twofold()){
             state.undoLastMove();

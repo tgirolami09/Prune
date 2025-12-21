@@ -12,7 +12,7 @@ int nbThreads = 1;
 #include <chrono>
 #include <cassert>
 #include <omp.h>
-#define DEBUG
+//#define DEBUG
 using namespace std;
 const int alloted_space = 2*1000*1000;
 
@@ -65,12 +65,11 @@ public:
         else if(move.piece == KING && abs(move.from()-move.to()) == 2){
             type = 2;
         }
-
+        mv |= type << 14;
         fastWrite(mv, datafile);
-        fastWrite(score, datafile);
-        fastWrite(staticScore, datafile);
+        fastWrite<int16_t>(score, datafile);
     }
-    static const int size = 2+sizeof(score);
+    static const int size = 4;
 };
 class GamePlayed{
 public:
@@ -114,16 +113,15 @@ public:
         uint8_t info = startPos.lastDoublePawnPush == -1 ? 64 : startPos.lastDoublePawnPush;
         info |= 0x8*startPos.friendlyColor();
         fastWrite(info, datafile);
-        fastWrite<int8_t>(0, datafile);  // halfmove clock (for 50 move rule)
-        fastWrite<int16_t>(0, datafile); // full move
-        fastWrite<int16_t>(0, datafile); //score of the position
-        fastWrite<int8_t>(result, datafile); // result
-        fastWrite<int8_t>(0, datafile); //unused extra byte
-        dbyte sizeGame = game.size();
-        fastWrite(sizeGame, datafile);//length of the game
+        fastWrite<uint8_t>(0, datafile);  // halfmove clock (for 50 move rule)
+        fastWrite<uint16_t>(0, datafile); // full move
+        fastWrite<uint16_t>(0, datafile); //score of the position
+        fastWrite<uint8_t>(result, datafile); // result
+        fastWrite<uint8_t>(0, datafile); //unused extra byte
         for(MoveInfo moves:game){
             moves.dump(datafile);
         }
+        fastWrite<uint32_t>(0, datafile);
     }
     void clear(){
         game.clear();
@@ -185,7 +183,7 @@ int main(int argc, char** argv){
     #pragma omp parallel
     #pragma omp single
 #endif
-    //realThread = min(omp_get_num_threads(), sizeGame);
+    realThread = min(omp_get_num_threads(), sizeGame);
     if(argc > 5)realThread = atoi(argv[5]);
     globnnue = NNUE(argv[2]);
     big nodesSearched = 0;
@@ -204,16 +202,14 @@ int main(int argc, char** argv){
             while(pointer < fileSize){
                 pointer += GamePlayed::headerSize;
                 nbGames++;
-                dbyte nbMoves=0;
                 assert(pointer < fileSize);
                 uint32_t bytes = 0;
                 infile.seekg(pointer);
                 do{
                     infile.read(reinterpret_cast<char*>(&bytes), sizeof(bytes));
-                    nbMoves += bool(bytes);
+                    totalMoves += bytes != 0;
+                    pointer += 4;
                 }while(bytes);
-                //pointer += MoveInfo::size*nbMoves+sizeof(dbyte);
-                totalMoves += nbMoves;
             }
             printf("file %d finding %d games (%d moves in total) delta %d\n", idThread, nbGames, totalMoves, pointer-fileSize);
             startReg += nbGames;
