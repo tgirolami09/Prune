@@ -162,6 +162,7 @@ class SEE_BB{
 public:
     SEE_BB(const GameState& state);
     big occupancy;
+    big occupancies[2];
     big Qs;
     big Rs;
     big Bs;

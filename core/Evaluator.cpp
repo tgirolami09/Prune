@@ -152,10 +152,12 @@ SEE_BB::SEE_BB(const GameState& state){
     Bs = get_mask(state, BISHOP)|Qs;
     Ns = get_mask(state, KNIGHT);
     Ks = get_mask(state, KING);
-    occupancy = 0;
+    occupancies[0] = 0;
+    occupancies[1] = 0;
     for(int _c=0; _c<2; _c++)
         for(int p=0; p<6; p++)
-            occupancy |= state.boardRepresentation[_c][p];
+            occupancies[_c] |= state.boardRepresentation[_c][p];
+    occupancy = occupancies[0]|occupancies[1];
 }
 
 big firstTouch(int square, int square2, big occupancy){
@@ -187,9 +189,11 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
                   (KnightMoves[square]&bb.Ns) |
                   (attackPawns[square]&state.boardRepresentation[1][PAWN]) | (attackPawns[square+64]&state.boardRepresentation[0][PAWN]) |
                   (normalKingMoves[square]&bb.Ks))&occupancy;
-    while(1){
+    bool begin2first = false;
+    bool begin2second = false;
+    while(attacks&bb.occupancies[stm]){
         pieceType = -1;
-        for(int p=0; p<nbPieces; p++){
+        for(int p=begin2first*2; p<nbPieces; p++){
             big mask = state.boardRepresentation[stm][p]&attacks;
             if(mask){
                 atk = __builtin_ctzll(mask);
@@ -197,7 +201,7 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
                 break;
             }
         }
-        if((pieceType == KING && (attacks&(attacks-1))) || pieceType == -1)
+        if((pieceType == KING && (attacks&(attacks-1))))
             break;
         occupancy ^= 1ULL << atk;
         born = value_pieces[lastPiece]-born;
@@ -208,6 +212,8 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
         }else if(born < 0)
             return false;
         if(pieceType == KING)break;
+        begin2first = begin2second;
+        begin2second = pieceType > KNIGHT;
         if(pieceType == QUEEN){
             if((1ULL << atk)&bishopAtk)
                 attacks |= firstTouch(square, atk, occupancy)&bb.Bs;
