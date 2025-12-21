@@ -516,7 +516,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if(limitWay == 2){
         depthMax = tm.hardBound;
     }
-    if(order.nbMoves == 1){
+    if(order.nbMoves == 1 && limitWay == 0){
         running = false;
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }

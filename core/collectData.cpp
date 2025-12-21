@@ -38,36 +38,46 @@ string secondsToStr(big s){
 }
 
 template<typename T> 
-void fastWrite(T& data, FILE* file){
+void fastWrite(T data, FILE* file){
     fwrite(reinterpret_cast<const char*>(&data), sizeof(data), 1, file);
 }
 
 class MoveInfo{
 public:
-    int16_t moveInfo;
+    Move move;
     int score;
     int staticScore;
     bool isVoid;
     MoveInfo(){
-        moveInfo = 0;
+        move = nullMove;
         score = 0;
         staticScore = 0;
         isVoid = false;
     }
     void dump(FILE* datafile){
-        fastWrite(isVoid, datafile);
-        fastWrite(moveInfo, datafile);
+        uint16_t mv = move.getMovePart();
+        int type = 0;
+        if(move.promotion() > 0){
+            mv |= (move.promotion()-1) << 12;
+            type = 3;
+        }else if(move.capture == -1)
+            type = 1;
+        else if(move.piece == KING && abs(move.from()-move.to()) == 2){
+            type = 2;
+        }
+
+        fastWrite(mv, datafile);
         fastWrite(score, datafile);
         fastWrite(staticScore, datafile);
     }
-    static const int size = sizeof(isVoid)+sizeof(moveInfo)+sizeof(score)+sizeof(staticScore);
+    static const int size = 2+sizeof(score);
 };
 class GamePlayed{
 public:
     vector<MoveInfo> game;
     GameState startPos;
     ubyte result;
-    static const int headerSize = sizeof(GameState::boardRepresentation)+sizeof(ubyte)+sizeof(dbyte);
+    static const int headerSize = 8+16+8;
 
     void dump(FILE* datafile){
         big occupied = 0;
@@ -101,8 +111,14 @@ public:
             }
             isSec ^= 1;
         }
-        ubyte gameInfo = result*2+startPos.friendlyColor(); //the result (0-1-2) and the color of the starting player
-        fastWrite(gameInfo, datafile);
+        uint8_t info = startPos.lastDoublePawnPush == -1 ? 64 : startPos.lastDoublePawnPush;
+        info |= 0x8*startPos.friendlyColor();
+        fastWrite(info, datafile);
+        fastWrite<int8_t>(0, datafile);  // halfmove clock (for 50 move rule)
+        fastWrite<int16_t>(0, datafile); // full move
+        fastWrite<int16_t>(0, datafile); //score of the position
+        fastWrite<int8_t>(result, datafile); // result
+        fastWrite<int8_t>(0, datafile); //unused extra byte
         dbyte sizeGame = game.size();
         fastWrite(sizeGame, datafile);//length of the game
         for(MoveInfo moves:game){
@@ -186,13 +202,17 @@ int main(int argc, char** argv){
             int nbGames=0;
             int totalMoves = 0;
             while(pointer < fileSize){
-                pointer += GamePlayed::headerSize-sizeof(dbyte);
+                pointer += GamePlayed::headerSize;
                 nbGames++;
                 dbyte nbMoves=0;
                 assert(pointer < fileSize);
+                uint32_t bytes = 0;
                 infile.seekg(pointer);
-                infile.read(reinterpret_cast<char*>(&nbMoves), sizeof(nbMoves));
-                pointer += MoveInfo::size*nbMoves+sizeof(dbyte);
+                do{
+                    infile.read(reinterpret_cast<char*>(&bytes), sizeof(bytes));
+                    nbMoves += bool(bytes);
+                }while(bytes);
+                //pointer += MoveInfo::size*nbMoves+sizeof(dbyte);
                 totalMoves += nbMoves;
             }
             printf("file %d finding %d games (%d moves in total) delta %d\n", idThread, nbGames, totalMoves, pointer-fileSize);
@@ -229,7 +249,7 @@ int main(int argc, char** argv){
                     break;
                 }*/
                 MoveInfo curProc;
-                curProc.moveInfo = curMove.moveInfo;
+                curProc.move = curMove;
                 if(score != INF && abs(score) < MAXIMUM-maxDepth){
                     curProc.score = score;
                     curProc.staticScore = state->eval.getRaw(state->state.friendlyColor());
