@@ -203,6 +203,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     for(int i=0; i<order.nbMoves; i++){
         int flag;
         Move capture = order.pop_max(flag);
+        if(!(flag&1))break;
         state.playMove(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor());
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);

@@ -232,7 +232,7 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
 int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, ubyte& flag){
     int score = 0;
     flag = 0;
-    if(see_ge(bb, 0, move, state)){
+    if(move.isTactical() && see_ge(bb, 0, move, state)){
         flag += 1;
     }if(move.isTactical()){
         int cap = move.capture;
