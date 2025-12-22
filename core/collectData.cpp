@@ -90,14 +90,13 @@ public:
         int nbEntry = 0;
         big castle = startPos.castlingMask();
         for(int i=0; i<64; i++){
-            int8_t piece = startPos.getfullPiece(i^0x07);
-            if(type(piece) != SPACE){
-                piece = type(piece)+8*color(piece);
-                if((piece&7) == ROOK && ((1ULL << i)&castle)){
-                    piece&= 0x8;
-                    piece |= 6;
-                }
-                entry = entry << 4 | piece;
+            if(((1ULL << (i^0x07)) & occupied)){
+                int8_t piece = startPos.getfullPiece(i^0x07);
+                int _c = color(piece);
+                piece = type(piece);
+                if(piece == ROOK && ((1ULL << i)&castle))
+                    piece = 6;
+                entry = (entry << 4) | (_c << 3) | piece;
                 if(isSec)
                     fastWrite(entry, datafile);
                 isSec ^= 1;
@@ -112,7 +111,7 @@ public:
             isSec ^= 1;
         }
         uint8_t info = startPos.lastDoublePawnPush == -1 ? 64 : startPos.lastDoublePawnPush^0x07;
-        info |= 0x8*startPos.friendlyColor();
+        info |= startPos.friendlyColor() << 7;
         fastWrite(info, datafile);
         fastWrite<uint8_t>(0, datafile);  // halfmove clock (for 50 move rule)
         fastWrite<uint16_t>(0, datafile); // full move
