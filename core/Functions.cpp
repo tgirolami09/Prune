@@ -40,6 +40,13 @@ big reverse(big board){
     return board;
 }
 
+big reverse_col(big board){
+    board = (board&0xF0F0F0F0F0F0F0F0) >> 4 | (board&0x0F0F0F0F0F0F0F0F) << 4;
+    board = (board&0xCCCCCCCCCCCCCCCC) >> 2 | (board&0x3333333333333333) << 2;
+    board = (board&0xAAAAAAAAAAAAAAAA) >> 1 | (board&0x5555555555555555) << 1;
+    return board;
+}
+
 void print_mask(big mask){
     for(int row=0; row<8; row++){
         for(int col=0; col<8; col++){
