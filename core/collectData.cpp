@@ -46,13 +46,9 @@ class MoveInfo{
 public:
     Move move;
     int score;
-    int staticScore;
-    bool isVoid;
     MoveInfo(){
         move = nullMove;
         score = 0;
-        staticScore = 0;
-        isVoid = false;
     }
     void dump(FILE* datafile){
         uint16_t mv = move.getMovePart();
@@ -246,13 +242,7 @@ int main(int argc, char** argv){
                 }*/
                 MoveInfo curProc;
                 curProc.move = curMove;
-                if(score != INF && abs(score) < MAXIMUM-maxDepth){
-                    curProc.score = score;
-                    curProc.staticScore = state->eval.getRaw(state->state.friendlyColor());
-                    curProc.isVoid = false;
-                }else{
-                    curProc.isVoid = true;
-                }
+                curProc.score = score;
                 state->eval.playNoBack(curMove, state->state.friendlyColor());
                 state->state.playMove(curMove);
                 if(state->state.threefold()){
