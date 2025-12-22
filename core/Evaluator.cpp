@@ -4,7 +4,9 @@
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "NNUE.hpp"
+#include <assert.h>
 #include <cstring>
+#include <iso646.h>
 
 const int* mg_pesto_table[6] =
 {
@@ -64,33 +66,184 @@ int SEE(int square, GameState& state, LegalMoveGenerator& generator){
     return value;
 }
 
-int score_move(const Move& move, big& dangerPositions, int historyScore, bool useSEE, GameState& state, ubyte& flag, LegalMoveGenerator& generator){
+big get_rook_lines(big occupancy, int square){
+    return moves_table(square+64, occupancy);
+}
+big get_bishop_lines(big occupancy, int square){
+    return moves_table(square, occupancy);
+}
+
+inline int getLVA(int square, const GameState& state, bool stm, big occupancy, int& pieceType){ // return the square where the lva come from, set pieceType
+    //Pawns
+    big mask = occupancy&state.boardRepresentation[stm][PAWN]&attackPawns[(!stm)*64+square];
+    if(mask){
+        pieceType = PAWN;
+        return __builtin_ctzll(mask);
+    }
+    //Knight
+    mask = occupancy&state.boardRepresentation[stm][KNIGHT]&KnightMoves[square];
+    if(mask){
+        pieceType = KNIGHT;
+        return __builtin_ctzll(mask);
+    }
+    //Bishop
+    big maskB = occupancy&get_bishop_lines(occupancy&mask_empty_bishop(square), square);
+    mask = state.boardRepresentation[stm][BISHOP]&maskB;
+    if(mask){
+        pieceType = BISHOP;
+        return __builtin_ctzll(mask);
+    }
+    //Rook
+    big maskR = occupancy&get_rook_lines(occupancy&mask_empty_rook(square), square);
+    mask = state.boardRepresentation[stm][ROOK]&maskR;
+    if(mask){
+        pieceType = ROOK;
+        return __builtin_ctzll(mask);
+    }
+    //Queen
+    mask = state.boardRepresentation[stm][QUEEN]&(maskR|maskB);
+    if(mask){
+        pieceType = QUEEN;
+        return __builtin_ctzll(mask);
+    }
+    //KING
+    mask = occupancy&state.boardRepresentation[stm][KING]&normalKingMoves[square];
+    if(mask){
+        pieceType = KING;
+        return __builtin_ctzll(mask);
+    }
+    return -1;
+}
+
+int fastSEE(const Move& move, const GameState& state){
+    big occupancy = 0;
+    for(int c=0; c<2; c++)
+        for(int p=0; p<6; p++)
+            occupancy |= state.boardRepresentation[c][p];
+    occupancy ^= 1ULL << move.from();
+    int square = move.to();
+    bool stm = !state.friendlyColor();
+    int atk;
+    int pieceType;
+    ubyte stack[16];
+    int idStack = 0;
+    int lastPiece = move.piece;
+    while((atk = getLVA(square, state, stm, occupancy, pieceType)) != -1){
+        stack[idStack++] = lastPiece;
+        occupancy ^= 1ULL << atk;
+        lastPiece = pieceType;
+        stm = !stm;
+    }
+    int res = 0;
+    idStack--;
+    for(;idStack >= 0; idStack--){
+        res = max(0, value_pieces[stack[idStack]]-res);
+    }
+    return res;
+}
+
+big get_mask(const GameState& state, int p){
+    return state.boardRepresentation[0][p]|state.boardRepresentation[1][p];
+}
+
+SEE_BB::SEE_BB(const GameState& state){
+    Qs = get_mask(state, QUEEN);
+    Rs = get_mask(state, ROOK)|Qs;
+    Bs = get_mask(state, BISHOP)|Qs;
+    Ns = get_mask(state, KNIGHT);
+    Ks = get_mask(state, KING);
+    occupancies[0] = 0;
+    occupancies[1] = 0;
+    for(int _c=0; _c<2; _c++)
+        for(int p=0; p<6; p++)
+            occupancies[_c] |= state.boardRepresentation[_c][p];
+    occupancy = occupancies[0]|occupancies[1];
+}
+
+big firstTouch(int square, int square2, big occupancy){
+    big mask = fullDir[square][square2]&occupancy;
+    if(!mask)return 0;
+    if(square2 > square)
+        return mask&-mask;
+    else
+        return 1ULL << (__builtin_clzll(mask)^63);
+}
+
+bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state){
+    int square = move.to();
+    //occupancy ^= 1ULL << move.from();
+    bool stm = state.friendlyColor();
+    int atk = move.from();
+    int lastPiece = move.capture != -2 ? max<int8_t>(0, move.capture) : 6;
+    int pieceType = move.piece;
+    bool sstm = stm;
+    big occupancy = bb.occupancy ^ (1ULL << atk);
+    born = value_pieces[lastPiece]-born;
+    stm = !stm;
+    lastPiece = pieceType;
+    if(born < 0)
+        return false;
+    big bishopAtk = mask_empty_bishop(square);
+    big rooksAtk = mask_empty_rook(square);
+    big attacks =((get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs) | (get_rook_lines(occupancy&rooksAtk, square)&bb.Rs) |
+                  (KnightMoves[square]&bb.Ns) |
+                  (attackPawns[square]&state.boardRepresentation[1][PAWN]) | (attackPawns[square+64]&state.boardRepresentation[0][PAWN]) |
+                  (normalKingMoves[square]&bb.Ks))&occupancy;
+    bool begin2first = false;
+    bool begin2second = false;
+    while(attacks&bb.occupancies[stm]){
+        pieceType = -1;
+        for(int p=begin2first*2; p<nbPieces; p++){
+            big mask = state.boardRepresentation[stm][p]&attacks;
+            if(mask){
+                atk = __builtin_ctzll(mask);
+                pieceType = p;
+                break;
+            }
+        }
+        if((pieceType == KING && (attacks&(attacks-1))))
+            break;
+        occupancy ^= 1ULL << atk;
+        born = value_pieces[lastPiece]-born;
+        stm = !stm;
+        lastPiece = pieceType;
+        if(stm == sstm){
+            if(born <= 0)return true;
+        }else if(born < 0)
+            return false;
+        if(pieceType == KING)break;
+        begin2first = begin2second;
+        begin2second = pieceType > KNIGHT;
+        if(pieceType == QUEEN){
+            if((1ULL << atk)&bishopAtk)
+                attacks |= firstTouch(square, atk, occupancy)&bb.Bs;
+            else
+                attacks |= firstTouch(square, atk, occupancy)&bb.Rs;
+        }else if(pieceType == ROOK)
+            attacks |= firstTouch(square, atk, occupancy)&bb.Rs;
+        else if(pieceType != KNIGHT)
+            attacks |= firstTouch(square, atk, occupancy)&bb.Bs;
+        attacks &= occupancy;
+    }
+    //printf("%d %d %d\n", stm, sstm, born);
+    return stm != sstm || born <= 0;
+}
+
+int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, ubyte& flag){
     int score = 0;
-    int SEEscore = 0;
     flag = 0;
-    if(useSEE){
-        state.playMove(move);
-        SEEscore = -SEE(move.to(), state, generator);
-        if(move.capture != -2)
-            SEEscore += value_pieces[move.capture == -1?0:move.capture];
-        state.undoLastMove();
-        if(SEEscore > 0)
-            flag += 2;
-    }else if(move.isTactical()){
+    if(move.isTactical() && see_ge(bb, 0, move, state)){
+        flag += 1;
+    }if(move.isTactical()){
         int cap = move.capture;
         if(cap == -1)cap = 0;
         if(cap != -2)
-            SEEscore = value_pieces[cap]*10;
-        if((1ULL << move.to())&dangerPositions)
-            SEEscore -= value_pieces[move.piece];
-    }
-    if(!move.isTactical()){
-        score += historyScore;
-        score += SEEscore*maxHistory;
-    }else{
-        flag++;
-        score += SEEscore;
+            score = value_pieces[cap]*10;
+        score -= value_pieces[move.piece];
+        flag += 2;
         if(move.promotion() != -1)score += value_pieces[move.promotion()];
+    }else{
+        score += historyScore;
     }
     return score;
 }

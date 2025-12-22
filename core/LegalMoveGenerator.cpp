@@ -12,7 +12,9 @@ big attackCastlingMasks[2][2];
 big normalKingMoves[64];
 big attackPawns[128];
 big directions[64][64];
-big* tableMagic[129];
+big fullDir[64][64];
+big* tableMagic;
+int indexesTable[128];
 const constTable* constantsMagic = (const constTable*)magicsData;
 
 void PrecomputeKnightMoveData(){
@@ -121,6 +123,7 @@ void precomputeDirections(){
     for (int i = 0; i < 64; ++i){
         for (int j = 0; j < 64; ++j){
             directions[i][j] = 0;
+            fullDir[i][j] = 0;
         }    
     }
     for(int row=0; row<8; row++){
@@ -137,7 +140,14 @@ void precomputeDirections(){
                     r += dirs[idDir][0];
                     c += dirs[idDir][1];
                 }
-                // fullDir[square][idDir] = mask;
+                r=row+dirs[idDir][0];
+                c=col+dirs[idDir][1];
+                while(r >= 0 && r < 8 && c >= 0 && c < 8){
+                    int sq = (r*8+c);
+                    fullDir[square][sq] = mask; // line of 1 from square in the direction of sq
+                    r += dirs[idDir][0];
+                    c += dirs[idDir][1];
+                }
             }
         }
     }
@@ -226,12 +236,17 @@ static big get_mask(bool is_rook, big id, big square){
 void load_table(){
     big magic=0;
     int decR=0, minimum=0, size=0;
+    int total = 0;
+    for(int i=0; i<128; i++){
+        indexesTable[i] = i ? indexesTable[i-1]+(1<<constantsMagic[i-1].bits) : 0;
+        total += 1<<constantsMagic[i].bits;
+    }
+    tableMagic = (big*)calloc(total, sizeof(big));
     for(int current = 0; current<128; current++){
         magic = constantsMagic[current].magic;
         decR = constantsMagic[current].decR;
         minimum = constantsMagic[current].bits;
         size = 1ul << minimum;
-        tableMagic[current] = (big*)calloc(size, sizeof(big));
         const bool is_rook = current >= 64;
         const int square = current%64;
         int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
@@ -242,15 +257,13 @@ void load_table(){
             const big res_mask = get_usefull(is_rook, mask, square);
             const big key = (res&(MAX_BIG>>decR)) >> (64-decR-minimum);
             assert(key < (big)size);
-            tableMagic[current][key] = res_mask;
+            tableMagic[indexesTable[current]+key] = res_mask;
         }
     }
 }
 
 void clear_table(){
-    for(int i=0; i < 128; i++){
-        free(tableMagic[i]);
-    }
+    free(tableMagic);
 }
 
 template<bool isPawn>
@@ -288,8 +301,9 @@ void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMo
     }
 }
 
-inline big LegalMoveGenerator::moves_table(int index, big mask_pieces){
-    return tableMagic[index][(mask_pieces*constantsMagic[index].magic & (MAX_BIG >> constantsMagic[index].decR)) >> (64-constantsMagic[index].decR-constantsMagic[index].bits)];
+big moves_table(int index, big mask_pieces){
+    int tIndex = (mask_pieces*constantsMagic[index].magic & (MAX_BIG >> constantsMagic[index].decR)) >> (64-constantsMagic[index].decR-constantsMagic[index].bits);
+    return tableMagic[indexesTable[index]+tIndex];
 }
 
 inline big LegalMoveGenerator::pseudoLegalBishopMoves(int bishopPosition, big Pieces){

@@ -441,6 +441,36 @@ void manageSearch(){
                         i += incr;
                     }
                 }
+            }else if(command == "runSEE"){
+                for(Move move:state->movesFromRoot)
+                    state->root.playPartialMove(move);
+                istringstream moves(parsed[0].second);
+                string curMove;
+                bool isExact = true;
+                SEE_BB bb(state->root);
+                while(moves >> curMove){
+                    if(curMove == "ge"){
+                        isExact=false;
+                        continue;
+                    }
+                    Move move;
+                    move.from_uci(curMove);
+                    move.piece = type(state->root.getfullPiece(move.from()));
+                    int cap = type(state->root.getfullPiece(move.to()));
+                    move.capture = cap != SPACE ? cap : -2;
+                    if(move.capture == -2 && move.piece == PAWN && abs(move.from()-move.to()) != 8 && abs(move.from()-move.to()) != 16)
+                        move.capture = -1;
+                    int res;
+                    if(isExact){
+                        res = -fastSEE(move, state->root);
+                        if(move.capture != -2)
+                            res += value_pieces[max(0, cap)];
+                    }else
+                        res = see_ge(bb, 0, move, state->root);
+                    printf("%s : %d\n", move.to_str().c_str(), res);
+                }
+                for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
+                    state->root.undoLastMove();
             }
             fflush(stdout);
         }

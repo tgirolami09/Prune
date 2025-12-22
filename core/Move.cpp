@@ -46,14 +46,14 @@ void Move::from_uci(string move){
     }
 }
 
-string Move::to_str(){
+string Move::to_str() const{
     string newRes = to_uci(from())+to_uci(to());
     if (promotion() != -1){
         newRes += id_to_piece[promotion()];
     }
     return newRes;
 }
-bool Move::operator==(Move o){
+bool Move::operator==(Move o) const{
     //if capture is not the same, I think we can also considere that there are the same
     return o.moveInfo == moveInfo && o.piece == piece;
 }

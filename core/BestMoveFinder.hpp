@@ -118,7 +118,7 @@ public:
     Perft();
     big visitedNodes;
     big _perft(GameState& state, ubyte depth);
-    big perft(GameState& state, ubyte depth);
+    big perft(GameState& state, ubyte depth, bool verbose=true);
     void reinit(size_t count);
 };
 #endif

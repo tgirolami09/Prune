@@ -24,8 +24,8 @@ public :
     void updateTo(int to_square);
     void updatePromotion(int promotionPiece);
     void from_uci(string move);
-    string to_str();
-    bool operator==(Move o);
+    string to_str() const;
+    bool operator==(Move o) const;
     bool isTactical() const;
     bool isChanger() const;
     int getMovePart() const;
