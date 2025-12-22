@@ -53,19 +53,21 @@ public:
     void dump(FILE* datafile){
         uint16_t mv = move.getMovePart();
         int type = 0;
-        if(move.promotion() > 0){
-            mv |= (move.promotion()-1) << 12;
-            type = 3;
-        }else if(move.capture == -1)
+        if(move.capture == -1)
             type = 1;
         else if(move.piece == KING && abs(move.from()-move.to()) == 2){
             type = 2;
+            // king takes rook notation
             if(move.from() > move.to())
                 mv &= ~7;
             else
                 mv |= 7;
         }
-        mv ^= 0x0707;
+        mv = (((mv&(0x3f))^0x7) << 6) | ((mv >> 6)^0x7);
+        if(move.promotion() != -1){
+            mv |= (move.promotion()-1) << 12;
+            type = 3;
+        }
         mv |= type << 14;
         fastWrite(mv, datafile);
         fastWrite<int16_t>(score, datafile);
@@ -90,11 +92,13 @@ public:
         int nbEntry = 0;
         big castle = startPos.castlingMask();
         for(int i=0; i<64; i++){
-            if(((1ULL << (i^0x07)) & occupied)){
-                int8_t piece = startPos.getfullPiece(i^0x07);
+            int index = i ^ 0x07;
+            big mask = 1ULL << index;
+            if(mask & occupied){
+                int8_t piece = startPos.getfullPiece(index);
                 int _c = color(piece);
                 piece = type(piece);
-                if(piece == ROOK && ((1ULL << i)&castle))
+                if(piece == ROOK && (mask&castle))
                     piece = 6;
                 entry = (entry << 4) | (_c << 3) | piece;
                 if(isSec)
@@ -104,10 +108,9 @@ public:
             }
         }
         for(int i=nbEntry; i<32; i++){
-            entry = entry << 4 | 0;
-            if(isSec){
+            entry <<= 4;
+            if(isSec)
                 fastWrite(entry, datafile);
-            }
             isSec ^= 1;
         }
         uint8_t info = startPos.lastDoublePawnPush == -1 ? 64 : startPos.lastDoublePawnPush^0x07;
@@ -246,7 +249,7 @@ int main(int argc, char** argv){
                 }*/
                 MoveInfo curProc;
                 curProc.move = curMove;
-                curProc.score = score;
+                curProc.score = state->state.friendlyColor() == BLACK ? -score : score;
                 state->eval.playNoBack(curMove, state->state.friendlyColor());
                 state->state.playMove(curMove);
                 if(state->state.threefold()){
