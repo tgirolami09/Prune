@@ -9,7 +9,6 @@ CPUSET?=unknow
 SOURCES := $(wildcard *.cpp)
 SOURCES := $(filter-out collectData.cpp,$(SOURCES))
 SOURCES := $(filter-out engine.cpp,$(SOURCES))
-SOURCES := $(filter-out viriformatUtil.cpp,$(SOURCES))
 SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o)
 DEPENDS := $(SOURCES:%.cpp=%.d)

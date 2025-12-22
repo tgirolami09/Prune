@@ -4,7 +4,7 @@
 #include "polyglotHash.hpp"
 #include <string>
 #include <vector>
-#include "viriformatUtil.cpp"
+#include "viriformatUtil.hpp"
 using namespace std;
 
 string suitFens[71] = {
@@ -214,18 +214,28 @@ void testPolyHash(){
     }
 }
 
+vector<string> Games[] = {
+    {"e2e4", "e7e5", "d1h5", "e8e7", "h5e5"},
+    {"e2e4", "e7e5", "g1f3", "g8f6", "f1c4", "f8c5", "e1g1", "e8g8"}
+};
+
 void testViri(){
-    GamePlayed game;
-    game.startPos.fromFen(startpos);
-    for(string move:{"e2e4", "e7e5", "d1h5", "e8e7", "h5e5"}){
-        MoveInfo mv;
-        mv.move.from_uci(move);
-        game.game.push_back(mv);
-    }
-    game.result = 2;
     FILE* fptr;
-    fptr = fopen("test.out", "ab");
-    game.dump(fptr);
+    fptr = fopen("test.out", "wb");
+    for(vector<string> moves:Games){
+        GamePlayed game;
+        game.startPos.fromFen(startpos);
+        GameState state;
+        state.fromFen(startpos);
+        for(string move:moves){
+            MoveInfo mv;
+            mv.move.from_uci(move);
+            mv.move = state.playPartialMove(mv.move);
+            game.game.push_back(mv);
+        }
+        game.result = 2;
+        game.dump(fptr);
+    }
     fclose(fptr);
 }
 

@@ -12,7 +12,7 @@ int nbThreads = 1;
 #include <chrono>
 #include <cassert>
 #include <omp.h>
-#include "viriformatUtil.cpp"
+#include "viriformatUtil.hpp"
 //#define DEBUG
 using namespace std;
 const int alloted_space = 2*1000*1000;
