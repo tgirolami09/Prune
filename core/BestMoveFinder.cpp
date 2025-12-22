@@ -667,7 +667,7 @@ big Perft::_perft(GameState& state, ubyte depth){
     //tt.push({state.zobristHash, count, depth});
     return count;
 }
-big Perft::perft(GameState& state, ubyte depth){
+big Perft::perft(GameState& state, ubyte depth, bool verbose){
     visitedNodes = 0;
     if(depth == 0)return 1;
     clock_t start=clock();
@@ -685,13 +685,17 @@ big Perft::perft(GameState& state, ubyte depth){
         state.undoLastMove();
         clock_t end=clock();
         double tcpu = double(end-startMove)/CLOCKS_PER_SEC;
-        printf("%s: %" PRId64 " (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
-        fflush(stdout);
+        if(verbose){
+            printf("%s: %" PRId64 " (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
+            fflush(stdout);
+        }
         count += nbNodes;
     }
     clock_t end=clock();
     double tcpu = double(end-start)/CLOCKS_PER_SEC;
-    printf("%.3f : %.3f nps %" PRId64 " visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
-    fflush(stdout);
+    if(verbose){
+        printf("%.3f : %.3f nps %" PRId64 " visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
+        fflush(stdout);
+    }
     return count;
 }

@@ -1,6 +1,9 @@
 #include "GameState.hpp"
 #include "Evaluator.hpp"
+#include "BestMoveFinder.hpp"
+#include "polyglotHash.hpp"
 #include <string>
+#include <vector>
 using namespace std;
 string suitFens[71] = {
     "6k1/1pp4p/p1pb4/6q1/3P1pRr/2P4P/PP1Br1P1/5RKN w - -",
@@ -116,7 +119,101 @@ void testSEE(){
             printf("%s & %s & %d\n", suitFens[i].c_str(), suitMoves[i].c_str(), threshold);
     }
 }
+const string StartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const string position2FromCPW = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
+const string position3FromCPW = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+const string position4FromCPW = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+const string position5FromCPW = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+struct PTest{
+    string fen;
+    vector<int> expResults;
+};
+const PTest TestsPerft[] = {
+    {StartFen, {
+        20,
+        400,
+        8902,
+        197281
+    }},
+    {position2FromCPW, {
+        48,
+        2039,
+        97862
+    }},
+    {position3FromCPW, {
+        14,
+        191,
+        2812,
+        43238,
+        674624
+    }},
+    {position4FromCPW, {
+        6,
+        264,
+        9467,
+    }},
+    {position5FromCPW, {
+        44,
+        1486,
+        62379
+    }},
+    {"7k/8/8/1Pp5/1K6/8/8/7B w - c6 0 2", {
+        8,
+        29,
+        369
+    }},
+    {"rnbqk1nr/pppp1pbp/6p1/4P3/8/2K5/PPP1PPPP/RNBQ1BNR b kq - 0 4", {
+        28,
+        912
+    }},
+    {"8/2p5/3p4/KP5r/4Ppk1/8/6P1/7R b - e3 0 3", {20}},
+    {"8/p2n1p2/1p1Pp2p/4P1k1/r4p1P/5K2/6P1/4R3 b - - 0 1", {
+        4,
+        59,
+        1219,
+        16899,
+        347600,
+        5076659
+    }}
+};
+
+void testPerft(){
+    Perft perft;
+    for(PTest test: TestsPerft){
+        GameState game;
+        game.fromFen(test.fen);
+        for(int depth=0; depth<(int)test.expResults.size(); depth++){
+            int res = perft.perft(game, depth+1, false);
+            if(test.expResults[depth] != res){
+                printf("ERROR : fen %s expected %d != result %d\n", test.fen.c_str(), test.expResults[depth], res);
+            }
+        }
+    }
+}
+
+const pair<string, big> TestsPolyHash[] = {
+    {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 0x463b96181691fc9c},
+    {"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", 0x823c9b50fd114196},
+    {"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3", 0x22a48b5a8e47ff78},
+    {"rnbqkbnr/p1pppppp/8/8/PpP4P/8/1P1PPPP1/RNBQKBNR b KQkq c3 0 3", 0x3c8123ea7b067637},
+    {"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4", 0x5c3f9b829b279560},
+    {"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3", 0x652a607ca3f242c1},
+    {"r1bqkbnr/ppp1pppp/2n5/3p4/3P4/4PN2/PPP2PPP/RNBQKB1R b KQkq - 1 3", 15834916877423137634ul}
+};
+
+void testPolyHash(){
+    for(auto test:TestsPolyHash){
+        GameState game;
+        game.fromFen(test.first);
+        big resHash = polyglotHash(game);
+        if(resHash != test.second){
+            printf("ERROR : fen %s\nexpected %016" PRIx64 "\nresult   %016" PRIx64 "\n", test.first.c_str(), test.second, resHash);
+        }
+    }
+}
 
 int main(){
     testSEE();
+    testPerft();
+    testPolyHash();
 }
