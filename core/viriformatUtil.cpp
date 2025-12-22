@@ -1,7 +1,9 @@
+#include "Functions.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
 #include <vector>
 #include "viriformatUtil.hpp"
+#include <cassert>
 
 template<typename T> 
 void fastWrite(T data, FILE* file){
@@ -15,7 +17,7 @@ MoveInfo::MoveInfo(){
 void MoveInfo::dump(FILE* datafile){
     uint16_t mv = move.to() << 6 | move.from();
     int type = 0;
-    if(move.capture == -1)
+    if(move.capture == -1) // en passant
         type = 1;
     else if(move.piece == KING && abs(move.from()-move.to()) == 2){
         type = 2;

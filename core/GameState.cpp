@@ -183,7 +183,7 @@ big GameState::castlingMask(){
     for(int c=0; c<2; c++){
         for(int side=0; side<2; side++){
             if(castlingRights[c][side])
-                res |= 1ULL << (56*c+7*side);
+                res |= 1ULL << (56*c+7*!side);
         }
     }
     return res;
