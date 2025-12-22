@@ -4,7 +4,9 @@
 #include "polyglotHash.hpp"
 #include <string>
 #include <vector>
+#include "viriformatUtil.cpp"
 using namespace std;
+
 string suitFens[71] = {
     "6k1/1pp4p/p1pb4/6q1/3P1pRr/2P4P/PP1Br1P1/5RKN w - -",
     "5rk1/1pp2q1p/p1pb4/8/3P1NP1/2P5/1P1BQ1P1/5RK1 b - -",
@@ -212,8 +214,24 @@ void testPolyHash(){
     }
 }
 
+void testViri(){
+    GamePlayed game;
+    game.startPos.fromFen(startpos);
+    for(string move:{"e2e4", "e7e5", "d1h5", "e8e7", "h5e5"}){
+        MoveInfo mv;
+        mv.move.from_uci(move);
+        game.game.push_back(mv);
+    }
+    game.result = 2;
+    FILE* fptr;
+    fptr = fopen("test.out", "ab");
+    game.dump(fptr);
+    fclose(fptr);
+}
+
 int main(){
     testSEE();
     testPerft();
     testPolyHash();
+    testViri();
 }
