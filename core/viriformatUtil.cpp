@@ -16,19 +16,19 @@ public:
         score = 0;
     }
     void dump(FILE* datafile){
-        uint16_t mv = move.getMovePart();
+        uint16_t mv = move.to() << 6 | move.from();
         int type = 0;
         if(move.capture == -1)
             type = 1;
         else if(move.piece == KING && abs(move.from()-move.to()) == 2){
             type = 2;
             // king takes rook notation
-            if(move.from() > move.to())
-                mv &= ~7;
+            if(move.to() > move.from())
+                mv |= 7 << 6;
             else
-                mv |= 7;
+                mv &= ~((uint16_t)7 << 6);
         }
-        mv = (((mv&(0x3f))^0x7) << 6) | ((mv >> 6)^0x7);
+        mv ^= 0x7 << 6 | 0x7; // mirror verticaly the move
         if(move.promotion() != -1){
             mv |= (move.promotion()-1) << 12;
             type = 3;
