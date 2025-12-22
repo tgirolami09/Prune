@@ -216,7 +216,8 @@ void testPolyHash(){
 
 vector<string> Games[] = {
     {"e2e4", "e7e5", "d1h5", "e8e7", "h5e5"},
-    {"e2e4", "e7e5", "g1f3", "g8f6", "f1c4", "f8c5", "e1g1", "e8g8"}
+    {"e2e4", "e7e5", "g1f3", "g8f6", "f1c4", "f8c5", "e1g1", "e8g8"},
+    {"e2e4", "d7d5", "g1f3", "c8g4", "f1b5", "b8c6", "e1g1", "d8d6", "f1e1", "e8c8"}
 };
 
 void testViri(){
