@@ -14,8 +14,9 @@ MoveInfo::MoveInfo(){
     move = nullMove;
     score = 0;
 }
+const uint16_t coltofield=7<<6;
 void MoveInfo::dump(FILE* datafile){
-    uint16_t mv = move.to() << 6 | move.from();
+    uint16_t mv = (move.to()^0x07) << 6 | (move.from()^0x07);
     int type = 0;
     if(move.capture == -1) // en passant
         type = 1;
@@ -23,12 +24,11 @@ void MoveInfo::dump(FILE* datafile){
         type = 2;
         // king takes rook notation
         if(move.to() > move.from())
-            mv |= 7 << 6;
+            mv &= ~coltofield;
         else
-            mv &= ~((uint16_t)7 << 6);
+            mv |= coltofield;
         //printf("%s => %d %d\n", move.to_str().c_str(), mv >> 6, mv&0x3f);
     }
-    mv ^= 0x7 << 6 | 0x7; // mirror verticaly the move
     if(move.promotion() != -1){
         mv |= (move.promotion()-1) << 12;
         type = 3;
