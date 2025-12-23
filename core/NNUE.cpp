@@ -119,36 +119,51 @@ void NNUE::set_simd16_element(simd16& vec, int index, dbyte value) {
     ptr[index] = value;
 }
 
+big genRandom(big& state){
+    big z = (state += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+
 NNUE::NNUE(string name){
-    ifstream file(name);
-    file.read(reinterpret_cast<char*>(hlWeights), sizeof(hlWeights));
-    /*for(int i=0; i<INPUT_SIZE; i++) {
-        for(int j=0; j<HL_SIZE/nb16; j++) {
-            hlWeights[i][j] = simd16_zero();
-            for(int k=0; k<nb16; k++) {
-                set_simd16_element(hlWeights[i][j], k, read_i16(file));
+    if(name == "random"){
+        big state = 42;
+        for(int i=0; i<INPUT_SIZE; i++) {
+            for(int j=0; j<HL_SIZE/nb16; j++) {
+                hlWeights[i][j] = simd16_zero();
+                for(int k=0; k<nb16; k++) {
+                    set_simd16_element(hlWeights[i][j], k, genRandom(state)%256-128);
+                }
             }
         }
-    }*/
-    file.read(reinterpret_cast<char*>(hlBiases), sizeof(hlBiases));
-    /*for(int i=0; i<HL_SIZE/nb16; i++){
-        hlBiases[i] = simd16_zero();
-        for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(hlBiases[i], id16, read_i16(file));
-        }
-    }*/
-    file.read(reinterpret_cast<char*>(outWeights), sizeof(outWeights));
-    /*for(int idB = 0; idB < BUCKET; idB++){
-        for(int i=0; i<2*HL_SIZE/nb16; i++) {
-            outWeights[idB][i] = simd16_zero();
+        
+        for(int i=0; i<HL_SIZE/nb16; i++){
+            hlBiases[i] = simd16_zero();
             for(int id16=0; id16<nb16; id16++) {
-                set_simd16_element(outWeights[idB][i], id16, read_i16(file));
+                set_simd16_element(hlBiases[i], id16, genRandom(state)%256-128);
             }
         }
-    }*/
-    file.read(reinterpret_cast<char*>(outbias), sizeof(outbias));
-    /*for(int idB = 0; idB < BUCKET; idB++)
-        outbias[idB] = read_i16(file);*/
+        
+        for(int idB = 0; idB < BUCKET; idB++){
+            for(int side=0; side < 2; side++){
+                for(int i=0; i<HL_SIZE/nb16; i++) {
+                    outWeights[idB][side][i] = simd16_zero();
+                    for(int id16=0; id16<nb16; id16++) {
+                        set_simd16_element(outWeights[idB][side][i], id16, genRandom(state)%256-128);
+                    }
+                }
+            }
+        }
+        for(int idB = 0; idB < BUCKET; idB++)
+            outbias[idB] = genRandom(state)%256-128;
+    }else{
+        ifstream file(name);
+        file.read(reinterpret_cast<char*>(hlWeights), sizeof(hlWeights));
+        file.read(reinterpret_cast<char*>(hlBiases), sizeof(hlBiases));
+        file.read(reinterpret_cast<char*>(outWeights), sizeof(outWeights));
+        file.read(reinterpret_cast<char*>(outbias), sizeof(outbias));
+    }
 }
 template<typename T>
 T get_int(const unsigned char* source, int length){
