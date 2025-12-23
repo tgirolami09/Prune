@@ -64,17 +64,21 @@ void GamePlayed::dump(FILE* datafile){
             piece = type(piece);
             if(piece == ROOK && (mask&castle)) // rook that can castle
                 piece = 6;
-            entry = (entry << 4) | (_c << 3) | piece;
-            if(isSec) //if it's the second piece of the byte, we write it
-                fastWrite(entry, datafile);
+            int8_t full = ((_c << 3) | piece);
+            if(isSec){ //if it's the second piece of the byte, we write it
+                fastWrite(entry|(full << 4), datafile);
+            }else {
+                entry = (_c << 3) | piece;
+            }
             isSec ^= 1;
             nbEntry += 1;
         }
     }
     for(int i=nbEntry; i<32; i++){
-        entry <<= 4; // if there is an entry that haven't been pushed yet
         if(isSec)
             fastWrite(entry, datafile);
+        else
+            entry = 0;
         isSec ^= 1;
     }
     uint8_t info = startPos.lastDoublePawnPush == -1 ? 64 : startPos.lastDoublePawnPush^0x07; //en passant square
