@@ -174,6 +174,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             return lastEval;
     }
     const int rootDist = relDepth-startRelDepth;
+    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     int& staticEval = ss.stack[rootDist].static_score;
     if(!isCalc)
         staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
