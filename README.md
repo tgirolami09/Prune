@@ -8,7 +8,7 @@ this is a hobby project made by two passionate about informatic.
 currently, the engine includes:
 - Evaluation:
     - nnue
-    - trained on self-gen data with own trainer
+    - trained on self-gen data using [bullet](https://github.com/jw1912/bullet) (if you want the data used to train it, you can directly ask one of us)
 - Search:
     - iterative Deepening
     - quiescence search
