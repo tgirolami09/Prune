@@ -52,3 +52,5 @@ in the core/ directory, and you will have the executable prune, which contains t
     2. corrhist help  (took some constant from sirius for update)
     3. speedup of the nnue (lizard updates)
 - chessprogramming wiki
+- especially to :
+    - chef (the dev from pawnocchio and vine) for helping me debugging the viriformat writer
