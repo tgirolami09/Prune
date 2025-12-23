@@ -13,7 +13,6 @@ const int QA = 255;
 const int QB = 64;
 const int BUCKET = 8;
 const int DIVISOR=(31+BUCKET)/BUCKET;
-const int turn=56^64;
 #define dbyte int16_t
 // Manual SIMD wrapper for cross-platform compatibility
 #if defined(__AVX2__)
@@ -55,7 +54,7 @@ class NNUE{
 public:
     simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
     simd16 hlBiases[HL_SIZE/nb16];
-    simd16 outWeights[BUCKET][2*HL_SIZE/nb16];
+    simd16 outWeights[BUCKET][2][HL_SIZE/nb16];
     dbyte outbias[BUCKET];
 
     template<typename T=char>
@@ -66,11 +65,11 @@ public:
     NNUE(string name);
     NNUE();
     void initAcc(Accumulator& accs);
-    int get_index(int piece, int square) const;
+    int get_index(int piece, int c, int square) const;
     template<int f>
-    void change2(Accumulator& accIn, int piece, int square);
+    void change2(Accumulator& accIn, int piece, int c, int square);
     template<int f>
-    void change2(Accumulator& accIn, Accumulator& accOut, int piece, int square);
+    void change2(Accumulator& accIn, Accumulator& accOut, int piece, int c, int square);
     void move3(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
     void move2(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
     void move4(Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);

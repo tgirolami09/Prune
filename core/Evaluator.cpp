@@ -304,7 +304,7 @@ void IncrementalEvaluator::undoMove(Move move, bool c){
 template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
     if(updateNNUE)
-        globnnue.change2<f>(stackAcc[stackIndex], piece*2+c, pos);
+        globnnue.change2<f>(stackAcc[stackIndex], piece, c, pos);
     mgPhase += f*gamephaseInc[piece];
     nbMan += f;
     presentPieces[c][piece] += f;
@@ -314,7 +314,7 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
 template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
     if(updateNNUE){
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], piece*2+c, pos);
+        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], piece, c, pos);
         stackIndex++;
     }else{
         stackIndex--;
@@ -344,9 +344,9 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         changePiece<-f, false>(posCapture, pieceCapture, !c);
         if(f == 1)
             globnnue.move3(stackAcc[stackIndex], stackAcc[stackIndex+1],
-                globnnue.get_index(move.piece*2+c, move.from()),
-                globnnue.get_index(toPiece*2+c, move.to()),
-                globnnue.get_index(pieceCapture*2+!c, posCapture)
+                globnnue.get_index(move.piece, c, move.from()),
+                globnnue.get_index(toPiece, c, move.to()),
+                globnnue.get_index(pieceCapture, !c, posCapture)
             );
     }else if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
         int rookStart = move.from();
@@ -360,15 +360,15 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         }
         if(f == 1)
             globnnue.move4(stackAcc[stackIndex], stackAcc[stackIndex+1],
-                globnnue.get_index(move.piece*2+c, move.from()),
-                globnnue.get_index(toPiece*2+c, move.to()),
-                globnnue.get_index(ROOK*2+c, rookStart), 
-                globnnue.get_index(ROOK*2+c, rookEnd)
+                globnnue.get_index(move.piece, c, move.from()),
+                globnnue.get_index(toPiece, c, move.to()),
+                globnnue.get_index(ROOK, c, rookStart), 
+                globnnue.get_index(ROOK, c, rookEnd)
             );
     }else if(f == 1){
         globnnue.move2(stackAcc[stackIndex], stackAcc[stackIndex+1],
-            globnnue.get_index(move.piece*2+c, move.from()),
-            globnnue.get_index(toPiece*2+c, move.to())
+            globnnue.get_index(move.piece, c, move.from()),
+            globnnue.get_index(toPiece, c, move.to())
         );
     }
     if(f == 1)
