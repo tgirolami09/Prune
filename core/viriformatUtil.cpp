@@ -1,6 +1,7 @@
 #include "Functions.hpp"
 #include "Move.hpp"
 #include "GameState.hpp"
+#include <cstdint>
 #include <vector>
 #include "viriformatUtil.hpp"
 #include <cassert>
@@ -64,11 +65,11 @@ void GamePlayed::dump(FILE* datafile){
             piece = type(piece);
             if(piece == ROOK && (mask&castle)) // rook that can castle
                 piece = 6;
-            int8_t full = ((_c << 3) | piece);
+            uint8_t full = (_c << 3) | piece;
             if(isSec){ //if it's the second piece of the byte, we write it
-                fastWrite(entry|(full << 4), datafile);
+                fastWrite<uint8_t>(entry|(full << 4), datafile);
             }else {
-                entry = (_c << 3) | piece;
+                entry = full;
             }
             isSec ^= 1;
             nbEntry += 1;
@@ -76,7 +77,7 @@ void GamePlayed::dump(FILE* datafile){
     }
     for(int i=nbEntry; i<32; i++){
         if(isSec)
-            fastWrite(entry, datafile);
+            fastWrite<uint8_t>(entry, datafile);
         else
             entry = 0;
         isSec ^= 1;
