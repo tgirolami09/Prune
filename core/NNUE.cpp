@@ -2,6 +2,7 @@
 #include "Const.hpp"
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <immintrin.h>  // For Intel intrinsics
 #include "embeder.hpp"
 
@@ -101,6 +102,18 @@ dbyte NNUE::read_bytes(ifstream& file){
     return ret;
 }
 
+dbyte read_i16(ifstream& file){
+    dbyte ret;
+    file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
+    return ret;
+}
+
+dbyte read_i16(const unsigned char* file){
+    dbyte ret;
+    memcpy(&ret, file, sizeof(ret));
+    return ret;
+}
+
 // Helper to set individual elements in SIMD vectors
 void NNUE::set_simd16_element(simd16& vec, int index, dbyte value) {
     dbyte* ptr = reinterpret_cast<dbyte*>(&vec);
@@ -113,7 +126,7 @@ NNUE::NNUE(string name){
         for(int j=0; j<HL_SIZE/nb16; j++) {
             hlWeights[i][j] = simd16_zero();
             for(int k=0; k<nb16; k++) {
-                set_simd16_element(hlWeights[i][j], k, read_bytes(file));
+                set_simd16_element(hlWeights[i][j], k, read_i16(file));
             }
         }
     }
@@ -121,19 +134,19 @@ NNUE::NNUE(string name){
     for(int i=0; i<HL_SIZE/nb16; i++){
         hlBiases[i] = simd16_zero();
         for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(hlBiases[i], id16, read_bytes(file));
+            set_simd16_element(hlBiases[i], id16, read_i16(file));
         }
     }
     for(int idB = 0; idB < BUCKET; idB++){
         for(int i=0; i<2*HL_SIZE/nb16; i++) {
             outWeights[idB][i] = simd16_zero();
             for(int id16=0; id16<nb16; id16++) {
-                set_simd16_element(outWeights[idB][i], id16, read_bytes(file));
+                set_simd16_element(outWeights[idB][i], id16, read_i16(file));
             }
         }
     }
     for(int idB = 0; idB < BUCKET; idB++)
-        outbias[idB] = read_bytes<int16_t>(file);
+        outbias[idB] = read_i16(file);
 }
 template<typename T>
 T get_int(const unsigned char* source, int length){
@@ -148,7 +161,7 @@ NNUE::NNUE(){
         for(int j=0; j<HL_SIZE/nb16; j++) {
             hlWeights[i][j] = simd16_zero();
             for(int k=0; k<nb16; k++) {
-                set_simd16_element(hlWeights[i][j], k, get_int<char>(&baseModel[pointer++], 1));
+                set_simd16_element(hlWeights[i][j], k, read_i16(&baseModel[pointer++]));
             }
         }
     }
@@ -156,7 +169,7 @@ NNUE::NNUE(){
     for(int i=0; i<HL_SIZE/nb16; i++){
         hlBiases[i] = simd16_zero();
         for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(hlBiases[i], id16, get_int<char>(&baseModel[pointer++], 1));
+            set_simd16_element(hlBiases[i], id16, read_i16(&baseModel[pointer++]));
         }
     }
     
@@ -164,12 +177,12 @@ NNUE::NNUE(){
         for(int i=0; i<2*HL_SIZE/nb16; i++) {
             outWeights[idB][i] = simd16_zero();
             for(int id16=0; id16<nb16; id16++) {
-                set_simd16_element(outWeights[idB][i], id16, get_int<char>(&baseModel[pointer++], 1));
+                set_simd16_element(outWeights[idB][i], id16, read_i16(&baseModel[pointer++]));
             }
         }
     }
     for(int idB = 0; idB < BUCKET; idB++)
-        outbias[idB] = get_int<int16_t>(&baseModel[pointer++], 2);
+        outbias[idB] = read_i16(&baseModel[pointer++]);
 }
 
 void NNUE::initAcc(Accumulator& accs){
