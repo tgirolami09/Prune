@@ -178,34 +178,13 @@ int turn(int index){
 
 NNUE::NNUE(){
     int pointer = 0;
-    for(int i=0; i<INPUT_SIZE; i++) {
-        for(int j=0; j<HL_SIZE/nb16; j++) {
-            hlWeights[i][j] = simd16_zero();
-            for(int k=0; k<nb16; k++) {
-                set_simd16_element(hlWeights[i][j], k, read_i16(&baseModel[pointer++]));
-            }
-        }
-    }
-    
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        hlBiases[i] = simd16_zero();
-        for(int id16=0; id16<nb16; id16++) {
-            set_simd16_element(hlBiases[i], id16, read_i16(&baseModel[pointer++]));
-        }
-    }
-    
-    for(int idB = 0; idB < BUCKET; idB++){
-        for(int side=0; side < 2; side++){
-            for(int i=0; i<HL_SIZE/nb16; i++) {
-                outWeights[idB][side][i] = simd16_zero();
-                for(int id16=0; id16<nb16; id16++) {
-                    set_simd16_element(outWeights[idB][side][i], id16, read_i16(&baseModel[pointer++]));
-                }
-            }
-        }
-    }
-    for(int idB = 0; idB < BUCKET; idB++)
-        outbias[idB] = read_i16(&baseModel[pointer++]);
+    memcpy(hlWeights, baseModel, sizeof(hlWeights));
+    pointer += sizeof(hlWeights);
+    memcpy(hlBiases, &baseModel[pointer], sizeof(hlBiases));
+    pointer += sizeof(hlBiases);
+    memcpy(outWeights, &baseModel[pointer], sizeof(outWeights));
+    pointer += sizeof(outWeights);
+    memcpy(outbias, &baseModel[pointer], sizeof(outbias));
 }
 
 void NNUE::initAcc(Accumulator& accs){
