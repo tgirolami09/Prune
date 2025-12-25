@@ -296,12 +296,16 @@ int IncrementalEvaluator::getRaw(bool c) const{
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
     int raw_eval = getRaw(c);
     raw_eval += ch.probe(state);
+#ifndef DATAGEN
     int nbQ = presentPieces[WHITE][QUEEN]+presentPieces[BLACK][QUEEN];
     int nbR = presentPieces[WHITE][ROOK]+presentPieces[BLACK][ROOK];
     int nbB = presentPieces[WHITE][BISHOP]+presentPieces[BLACK][BISHOP];
     int nbN = presentPieces[WHITE][KNIGHT]+presentPieces[BLACK][KNIGHT];
     int matScaling = raw_eval*(nbQ*4+nbR*2+nbB+nbN+24)/48;
     return matScaling;
+#else
+    return raw_eval;
+#endif
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
     playMove<-1>(move, c);
