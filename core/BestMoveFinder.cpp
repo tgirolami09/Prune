@@ -288,7 +288,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(static_eval >= beta+margin)
                     return Evaluate<nodeType, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
             }
-            int r = 3;
+            int r = depth/4+3;
             if(depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
                 ss.generator.initDangers(state);
