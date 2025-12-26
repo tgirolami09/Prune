@@ -278,16 +278,14 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(rootDist > 2)
         improving = ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
     if constexpr(nodeType != PVNode){
-        if(!inCheck && excludedMove == nullMove.moveInfo){
-            if(beta > MINIMUM+maxDepth){
-                int margin;
-                if(improving)
-                    margin = 120*depth;
-                else
-                    margin = 150*depth;
-                if(static_eval >= beta+margin)
-                    return Evaluate<nodeType, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
-            }
+        if(!inCheck && excludedMove == nullMove.moveInfo && beta > MINIMUM+maxDepth){
+            int margin;
+            if(improving)
+                margin = 120*depth;
+            else
+                margin = 150*depth;
+            if(static_eval >= beta+margin)
+                return Evaluate<nodeType, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
             int r = depth/4+3;
             if(depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
