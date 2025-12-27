@@ -149,12 +149,12 @@ int main(int argc, char** argv){
                 int score = get<2>(res);
                 Move curMove = get<0>(res);
                 assert(curMove.moveInfo != nullMove.moveInfo);
-                /*if(abs(score) > MAXIMUM-maxDepth){
+                if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
                     if(state->state.friendlyColor() == BLACK)
                         result = 2-result;
                     break;
-                }*/
+                }
                 MoveInfo curProc;
                 curProc.move = curMove;
                 curProc.score = state->state.friendlyColor() == BLACK ? -score : score;
