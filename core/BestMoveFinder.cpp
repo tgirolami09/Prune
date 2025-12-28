@@ -186,13 +186,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(staticEval > alpha){
         alpha = staticEval;
         typeNode = EXACT;
-    }else{
-        int delta = value_pieces[QUEEN];
-        big promotion_row = state.friendlyColor() == WHITE ? row1 << 8*6 : row1 << 8;
-        if(state.friendlyPieces()[PAWN]&promotion_row)
-            delta += value_pieces[QUEEN];
-        if(staticEval+delta <= alpha)
-            return alpha;
     }
     int bestEval = staticEval;
     Order& order = ss.stack[rootDist].order;
