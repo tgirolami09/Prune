@@ -66,5 +66,5 @@ bool Move::isChanger() const{
     return piece == PAWN || capture != -2;
 }
 int Move::getMovePart() const{
-    return moveInfo&~(clearTo|clearFrom);
+    return moveInfo&(clearTo|clearFrom);
 }

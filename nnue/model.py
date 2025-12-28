@@ -1,12 +1,202 @@
+from multiprocessing import Pool
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import sys
-import time
-from torch.utils.data import DataLoader, TensorDataset, random_split
+import time, os
+import pickle
+import numpy as np
+import io
+from torch.utils.data import DataLoader, TensorDataset, random_split, Dataset
 from random import shuffle, seed, randrange
-from tqdm import trange
+from tqdm import trange, tqdm
+import math
+import warnings
+warnings.filterwarnings('ignore')
+
+transform = np.arange(12*64)^(56^64)
+
+def compress(X):
+    return np.packbits(X)
+
+def uncompress(X):
+    res = np.zeros(12*64*2, dtype=np.int8)
+    res[:12*64] = np.unpackbits(X)
+    res[12*64:] = res[transform]
+    return np.float32(res)
+
+
+class myDeflate:
+    def __init__(self, name):
+        self.name = name
+        with open(name, "rb") as f:
+            raw = f.read()
+        self.games = []
+        self.cum = [0]
+        i = 0
+        while i < len(raw):
+            self.games.append(i)
+            i += 12*64
+            i += 4
+            nb = int.from_bytes(raw[i:i+2])
+            i += 2
+            for k in range(nb):
+                a = int(raw[i])
+                b = int(raw[i+1])
+                n = a+b
+                i += 2+3
+                i += ((3**a).bit_length()+7 >> 3) + ((3**b).bit_length()+7 >> 3) + a+b
+            self.cum.append(self.cum[-1]+nb+1)
+        self.games.append(len(raw))
+    
+    def __len__(self):
+        return self.cum[-1]
+
+    def lower(self, idx):
+        low, high = 1, len(self.cum)
+        while low < high:
+            mid = (low+high)//2
+            if self.cum[mid] < idx:
+                low = mid+1
+            elif self.cum[mid] > idx:
+                high = mid
+            else:
+                return mid-1
+        return low-1
+
+    def read_range(self, start, end, wdl):
+        size = self.cum[end]-self.cum[start]
+        with open(self.name, "rb") as f:
+            startP = self.games[start]
+            f.seek(startP)
+            raw = np.array(list(f.read(self.games[end]-self.games[start])), dtype=np.uint8)
+        resX = np.zeros((size, 12*64//8), dtype=np.uint8)
+        resY = np.zeros((size, 1), dtype=np.float32)
+        idData = 0
+        for i in range(start, end):
+            p = self.games[i]-startP
+            X = raw[p:p+12*64]
+            p += 12*64
+            res = wdl*raw[p+3]/2
+            score, color = divmod(int.from_bytes(raw[p:p+3], signed=True), 2)
+            resY[idData] = npOutAct(score)*(1-wdl)+res
+            if color: # black's turn
+                resY[idData] = 1-resY[idData]
+                resX[idData] = compress(X[transform])
+            else:
+                resX[idData] = compress(X)
+            idData += 1
+            p += 4
+            N = int.from_bytes(raw[p:p+2])
+            p += 2
+            for t in range(N):
+                a, b = map(int, raw[p:p+2])
+                p += 2
+                for s, n in ((1, a), (255, b)):
+                    p += n
+                    n2 = (3**n).bit_length()+7 >> 3
+                    T = int.from_bytes(raw[p:p+n2])
+                    for r in range(n-1, -1, -1):
+                        T, mod = divmod(T, 3)
+                        X[int(raw[p+r-n]) + 64*4*mod] += s
+                    p += n2
+                score, color = divmod(int.from_bytes(raw[p:p+3], signed=True), 2)
+                resY[idData] = npOutAct(score)*(1-wdl)+res
+                if color: # black's turn
+                    resY[idData] = 1-resY[idData]
+                    resX[idData] = compress(X[transform])
+                else:
+                    resX[idData] = compress(X)
+                p += 3
+                idData += 1
+        return resX, resY
+
+class SuperBatch:
+    def __init__(self, directory, wdl, nbSuperBatch, nbProcess):
+        self.wdl = wdl
+        self.directory = directory
+        self.file_names = os.listdir(directory)
+        self.cum = [0]*(len(self.file_names)+1)
+        self.buffers = [myDeflate(directory+"/"+name) for name in self.file_names]
+        for i, file in enumerate(tqdm(self.file_names)):
+            nbdata = len(self.buffers[i])
+            self.cum[i+1] = self.cum[i]+nbdata
+        self.num_samples = self.cum[-1]
+        print(self.num_samples)
+        self.nbSuperBatch = nbSuperBatch
+        self.processes = nbProcess
+
+    def __len__(self):
+        return self.num_samples
+
+    def find_index(self, idx):
+        low, high = 1, len(self.cum)
+        while low < high:
+            mid = (low+high)//2
+            #print(mid, self.cum[mid], idx)
+            if self.cum[mid] < idx:
+                low = mid+1
+            elif self.cum[mid] > idx:
+                high = mid
+            else:
+                return mid-1
+        return low-1
+
+    def launch_worker(self, args):
+        id, start, end = args
+        return self.buffers[id].read_range(start, end, self.wdl)
+
+    def __getitem__(self, idx):
+        tot = len(self)
+        start = idx*tot//self.nbSuperBatch
+        end = (idx+1)*tot//self.nbSuperBatch
+        startFile = self.find_index(start)
+        realStart = self.buffers[startFile].lower(start-self.cum[startFile])
+        endFile = self.find_index(end)
+        realEnd = self.buffers[endFile].lower(end-self.cum[endFile])
+        sbData = self.buffers[endFile].cum[realEnd]-self.buffers[startFile].cum[realStart]+self.buffers[startFile].cum[-1]
+        sbData += self.cum[endFile]-self.cum[startFile+1]
+        resX = np.zeros((sbData, 64*12//8), dtype=np.uint8)
+        resY = np.zeros((sbData, 1), dtype=np.float32)
+        idData = 0
+        with Pool(self.processes) as p:
+            inps = [
+                (i, realStart*(i == startFile), len(self.buffers[i].cum)-1 if i != endFile else realEnd)
+                for i in range(startFile, endFile+1)
+            ]
+            if self.processes > len(inps):
+                inps.sort(reverse=True, key=lambda a:a[2]-a[1])
+                for i in range(self.processes-len(inps)):
+                    inp = inps.pop(0)
+                    mid = (inp[1]+inp[2])//2
+                    inps.append((inp[0], inp[1], mid))
+                    inps.append((inp[0], mid, inp[2]))
+            for curX, curY in tqdm(p.imap_unordered(self.launch_worker, inps), total=len(inps), leave=False):
+                resX[idData:idData+len(curX)] = curX
+                resY[idData:idData+len(curY)] = curY
+                idData += len(curX)
+        assert(idData == len(resX))
+        return resX, resY
+
+class CompressedBatch(Dataset):
+    def __init__(self, dataX, dataY):
+        self.dataX, self.dataY = dataX, dataY
+    
+    def __len__(self):
+        return len(self.dataX)
+    
+    def __getitem__(self, idx):
+        return torch.from_numpy(uncompress(self.dataX[idx])), self.dataY[idx]
+
+def roundQ(tensor, Q):
+    return (tensor*Q).round()/Q
+
+def outAct(x):
+    return F.sigmoid(x/Model.normal)
+
+def npOutAct(x):
+    return 1/(1+math.exp(-x/Model.normal))
 
 class Model(nn.Module):
     inputSize = 64*12
@@ -14,9 +204,11 @@ class Model(nn.Module):
     SCALE = 400
     QA = 255
     QB = 64
+    BUCKET = 8
+    DIVISOR = (31+BUCKET)//BUCKET
     normal = 200
     def activation(self, x):
-        return torch.clamp(x, min=0, max=self.QA)**2
+        return torch.clamp(x, min=0, max=1)**2
 
     def outAct(self, x):
         return F.sigmoid(x/self.normal)
@@ -24,53 +216,39 @@ class Model(nn.Module):
     def __init__(self, device):
         super().__init__()
         self.tohidden = nn.Linear(self.inputSize, self.HLSize)
-        self.toout = nn.Linear(self.HLSize*2, 1, bias=False)
-        self.endBias = nn.Parameter(torch.randn(1))
+        self.toout = nn.Linear(self.HLSize*2, self.BUCKET)
         self.to(device)
-        self.transfo = torch.arange(self.inputSize)^56^64
         self.device = device
 
-    def calc_score(self, x, color, isInt=False):
+    def calc_score(self, x):
         hiddenRes = torch.zeros(x.shape[0], self.HLSize*2, device=self.device)
-        firstIndex = color*self.HLSize
-        secondIndex = (1-color)*self.HLSize
-        hiddenRes[:, firstIndex:firstIndex+self.HLSize] = self.activation(self.tohidden(x))
-        hiddenRes[:, secondIndex:secondIndex+self.HLSize] = self.activation(self.tohidden(x[:, self.transfo]))
-        x = self.toout(hiddenRes)
-        if isInt:
-            x //= self.QA
-        else:
-            x /= self.QA
-        x += self.endBias
-        if isInt:
-            return x*self.SCALE//(self.QA*self.QB)
-        else:
-            return x*self.SCALE/(self.QA*self.QB)
+        hiddenRes[:, :self.HLSize] = self.activation(self.tohidden(x[:, :self.inputSize]))
+        hiddenRes[:, self.HLSize:] = self.activation(self.tohidden(x[:, self.inputSize:]))
+        y = self.toout(hiddenRes)
+        idBucket = (x.count_nonzero(axis=1)//2-1)//self.DIVISOR
+        y = y.gather(1, idBucket.reshape(-1, 1))
+        return y
 
-    def forward(self, x, color):
-        return self.outAct(self.calc_score(x, color))
+    def forward(self, x):
+        return F.sigmoid(self.calc_score(x))
     
-    def _round(self):
-        self.toout.weight[:] = self.toout.weight.round()
-        self.endBias[:] = self.endBias.round()
-        self.tohidden.weight[:] = self.tohidden.weight.round()
-        self.tohidden.bias[:] = self.tohidden.bias.round()
+    def get_cp(self, x):
+        return torch.floor(self.calc_score(x)*self.SCALE)
 
-class Clipper:
-    clamp = 127
-    def __call__(self, module):
-        if hasattr(module, 'weight'):
-            w = module.weight.data
-            w = w.clamp(-self.clamp, self.clamp)
-            module.weight.data = w
-        if hasattr(module, 'bias') and module.bias is not None:
-            b = module.bias.data
-            b = b.clamp(-self.clamp, self.clamp)
-            module.bias.data = b
-        elif hasattr(module, 'endBias'):
-            b = module.endBias.data
-            b = b.clamp(-self.clamp, self.clamp)
-            module.endBias.data = b
+    def _round(self):
+        self.toout.weight[:] = roundQ(self.toout.weight, self.QB)
+        self.toout.bias[:] = roundQ(self.toout.bias, self.QB*self.QA)
+        self.tohidden.weight[:] = roundQ(self.tohidden.weight, self.QA)
+        self.tohidden.bias[:] = roundQ(self.tohidden.bias, self.QA)
+
+    def clamp(self):
+        clampA = 127/self.QA
+        clampB = 127/self.QB
+        clampC = 32767/(self.QA*self.QB)
+        self.toout.weight[:] = torch.clamp(self.toout.weight, -clampB, clampB)
+        self.toout.bias[:] = torch.clamp(self.toout.bias, -clampC, clampC)
+        self.tohidden.weight[:] = torch.clamp(self.tohidden.weight, -clampA, clampA)
+        self.tohidden.bias[:] = torch.clamp(self.tohidden.bias, -clampA, clampA)
 
 class Trainer:
     def __init__(self, lr, device):
@@ -81,34 +259,25 @@ class Trainer:
         self.lr = lr
         self.modelEval = Model(device)
     
-    def trainStep(self, dataX, dataY, color):
-        yhat = self.model(dataX, color)
+    def trainStep(self, dataX, dataY):
+        yhat = self.model(dataX)
         loss = self.loss_fn(dataY, yhat)
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()
         return loss.item()
 
-    def testLoss(self, dataX, dataY, color):
-        yhat = self.modelEval(dataX, color)
+    def testLoss(self, dataX, dataY):
+        yhat = self.modelEval(dataX)
         loss = self.loss_fn(dataY, yhat)
         return loss.item()
 
-    def train(self, epoch, dataX, dataY, percentTrain=0.9, batchSize=100000, fileBest="bestModel.bin", testPos=None, processes=1):
+    def train(self, epoch, directory, percentTrain, batchSize, fileBest, testPos, processes, wdl, nbSuperBatch):
         startTime = time.time()
-        dataset1 = TensorDataset(dataX[0], dataY[0])
-        dataset2 = TensorDataset(dataX[1], dataY[1])
-        dataTrain1, dataTest1 = random_split(dataset1, [percentTrain, 1-percentTrain])
-        dataTrain2, dataTest2 = random_split(dataset2, [percentTrain, 1-percentTrain])
-        totTrainData = len(dataTrain1)+len(dataTrain2)
-        totTestData = sum(map(len, dataX))-totTrainData
-        dataL1 = DataLoader(dataset=dataTrain1, batch_size=batchSize, shuffle=True, num_workers=processes)
-        dataL2 = DataLoader(dataset=dataTrain2, batch_size=batchSize, shuffle=True, num_workers=processes)
-        testDataL1 = DataLoader(dataset=dataTest1, batch_size=batchSize, shuffle=False, num_workers=processes)
-        testDataL2 = DataLoader(dataset=dataTest2, batch_size=batchSize, shuffle=False, num_workers=processes)
-        lastTestLoss = lastLoss = 0.0
-        miniLoss = 1000
+        SB = SuperBatch(directory, wdl, nbSuperBatch, processes)
+        lastLoss = 0.0
         current_lr = self.lr
+        totTrainData = len(SB)
         endTime = time.time()
         print(f"setup in {endTime-startTime:.5f}s")
         if testPos is not None:
@@ -116,68 +285,45 @@ class Trainer:
             self.modelEval.eval()
             with torch.no_grad():
                 self.modelEval._round()
-                print("result of test eval before training:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
-        clipper = Clipper()
-        for i in range(epoch):
+                print("result of test eval before training:", self.modelEval.get_cp(testPos.float().to(self.device))[:, 0].tolist())
+        for idEpoch in range(epoch):
             startTime = time.time()
             totLoss = 0
             self.model.train()
-            colors = {0:iter(dataL1), 1:iter(dataL2)}
-            while colors:
-                for color in list(colors.keys()):
-                    try:
-                        xBatch, yBatch = next(colors[color])
-                    except StopIteration:
-                        colors.pop(color)
-                        continue
-                    except:
-                        print(colors, color)
-                        raise StopIteration()
+            for idSB in trange(nbSuperBatch, leave=False):
+                Batch = CompressedBatch(*SB[idSB])
+                dataL = DataLoader(Batch, batch_size=batchSize, shuffle=True, num_workers=processes, pin_memory=self.device=="cuda")
+                for xBatch, yBatch in tqdm(dataL, leave=False):
                     xBatch = xBatch.float().to(self.device)
                     yBatch = yBatch.float().to(self.device)
-                    totLoss += self.trainStep(xBatch, yBatch, color)*len(xBatch)
-            totTestLoss = 0
-            endTimeTrain = time.time()
-            self.model.apply(clipper)
+                    totLoss += self.trainStep(xBatch, yBatch)*len(xBatch)
+            endTime = time.time()
             with torch.no_grad():
+                self.model.clamp()
                 self.modelEval.load_state_dict(self.model.state_dict())
                 self.modelEval._round()
-                self.modelEval.eval()
-                for c, testDataL in enumerate((testDataL1, testDataL2)):
-                    for xBatch, yBatch in testDataL:
-                        xBatch = xBatch.float().to(self.device)
-                        yBatch = yBatch.float().to(self.device)
-                        totTestLoss += self.testLoss(xBatch, yBatch, c)*len(xBatch)
             totLoss /= totTrainData
-            totTestLoss /= totTestData
-            endTime = time.time()
-            if lastTestLoss == 0.0:
-                lastTestLoss = totTestLoss
+            if lastLoss == 0.0:
                 lastLoss = totLoss
             span = endTime-startTime
-            span2 = endTimeTrain-startTime
-            print(f'epoch {i} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) test loss {totTestLoss:.5f} ({(totTestLoss-lastTestLoss)*100/lastTestLoss:+.2f}%) in {span:.3f}s ({span2/span*100:.2f}% for training) lr {current_lr}')
+            print(f'epoch {idEpoch} training loss {totLoss:.5f} ({(totLoss-lastLoss)*100/lastLoss:+.2f}%) in {span:.3f}s lr {current_lr}')
             if testPos is not None:
                 with torch.no_grad():
-                    print("test eval result:", self.modelEval.calc_score(testPos.float().to(self.device), 0, True)[:, 0].tolist())
+                    print("test eval result:", self.modelEval.get_cp(testPos.float().to(self.device))[:, 0].tolist())
             sys.stdout.flush()
-            if totTestLoss < miniLoss:
-                miniLoss = totTestLoss
-                self.save(fileBest, self.modelEval)
-            elif totTestLoss > lastTestLoss:
-                current_lr /= 10**.5
-                for g in self.optimizer.param_groups:
-                    g['lr'] = current_lr
-            lastTestLoss = totTestLoss
+            with torch.no_grad():
+                self.save("modelEpoch"+str(idEpoch)+".bin", self.modelEval)
+            current_lr *= 0.99
+            for g in self.optimizer.param_groups:
+                g['lr'] = current_lr
             lastLoss = totLoss
         
         for g in self.optimizer.param_groups:
             g['lr'] = self.lr
 
-    def get_int(self, tensor):
+    def get_int(self, tensor, nbytes=1):
         tensor = float(tensor)
-        self.maxi = max(self.maxi, abs(tensor))
-        return int(round(tensor)).to_bytes(1, sys.byteorder, signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
+        return int(round(tensor)).to_bytes(nbytes, sys.byteorder, signed=True) #if the value is not in 2 bytes (in int16_t), there is a problem
 
     def read_bytes(self, bytes):
         return torch.tensor(int.from_bytes(bytes, sys.byteorder, signed=True), dtype=torch.float)
@@ -186,21 +332,19 @@ class Trainer:
         if model is None:
             model = self.model
         startTime = time.time()
-        self.maxi = -1000
-        self.mini =  1000
-        self.s = 0
-        self.count = 0
         with open(filename, "wb") as f:
             for i in range(model.inputSize):
                 for j in range(model.HLSize):
-                    f.write(self.get_int(model.tohidden.weight[j][i]))
+                    f.write(self.get_int(model.tohidden.weight[j][i]*model.QA))
             for i in range(model.HLSize):
-                f.write(self.get_int(model.tohidden.bias[i]))
-            for i in range(model.HLSize*2):
-                f.write(self.get_int(model.toout.weight[0][i]))
-            f.write(self.get_int(model.endBias[0]))
+                f.write(self.get_int(model.tohidden.bias[i]*model.QA))
+            for idB in range(model.BUCKET):
+                for i in range(model.HLSize*2):
+                    f.write(self.get_int(model.toout.weight[idB][i]*model.QB))
+            for idB in range(model.BUCKET):
+                f.write(self.get_int(model.toout.bias[idB]*model.QA*model.QB, 2))
         endTime = time.time()
-        print(f'save model to {filename} (max |weight| {self.maxi}) in {endTime-startTime:.3f}s')
+        print(f'save model to {filename} in {endTime-startTime:.3f}s')
         sys.stdout.flush()
     
     def load(self, filename):
@@ -208,9 +352,15 @@ class Trainer:
             with torch.no_grad():
                 for i in range(self.model.inputSize):
                     for j in range(self.model.HLSize):
-                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))
+                        self.model.tohidden.weight[j][i] = self.read_bytes(f.read(1))/self.model.QA
                 for i in range(self.model.HLSize):
-                    self.model.tohidden.bias[i] = self.read_bytes(f.read(1))
-                for i in range(self.model.HLSize*2):
-                    self.model.toout.weight[0][i] = self.read_bytes(f.read(1))
-                self.model.endBias[0] = self.read_bytes(f.read(1))
+                    self.model.tohidden.bias[i] = self.read_bytes(f.read(1))/self.model.QA
+                for idB in range(self.model.BUCKET):
+                    for i in range(self.model.HLSize*2):
+                        self.model.toout.weight[idB][i] = self.read_bytes(f.read(1))/self.model.QB
+                for idB in range(self.model.BUCKET):
+                    self.model.toout.bias[idB] = self.read_bytes(f.read(2))/(self.model.QA*self.model.QB)
+
+if __name__ == '__main__':
+    T = Trainer(1, "cpu")
+    T.save("randomModel.bin")

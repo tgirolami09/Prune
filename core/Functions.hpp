@@ -11,6 +11,7 @@ int countbit(const big& board);
 int flip(const int& square);
 int places(big mask, ubyte* positions);
 big reverse(big board);
+big reverse_col(big board);
 void print_mask(big mask);
 big addBitToMask(const big& mask, const int& pos);
 big removeBitFromMask(big mask, int pos);

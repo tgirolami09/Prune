@@ -178,6 +178,17 @@ string GameState::toFen() const{
     return fen;
 }
 
+big GameState::castlingMask(){
+    big res = 0;
+    for(int c=0; c<2; c++){
+        for(int side=0; side<2; side++){
+            if(castlingRights[c][side])
+                res |= 1ULL << (56*c+7*!side);
+        }
+    }
+    return res;
+}
+
 int GameState::friendlyColor() const{
     //Turn 1 is white (so friend on odd is white)
     return (turnNumber%2)?WHITE:BLACK;

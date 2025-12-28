@@ -174,6 +174,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             return lastEval;
     }
     const int rootDist = relDepth-startRelDepth;
+    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     int& staticEval = ss.stack[rootDist].static_score;
     if(!isCalc)
         staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
@@ -240,6 +241,7 @@ inline int BestMoveFinder::Evaluate(usefull& ss, GameState& state, int alpha, in
 template <int nodeType, int limitWay, bool mateSearch, bool isRoot>
 int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove){
     const int rootDist = relDepth-startRelDepth;
+    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     ss.seldepth = max(ss.seldepth, relDepth);
     if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
@@ -276,17 +278,15 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(rootDist > 2)
         improving = ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
     if constexpr(nodeType != PVNode){
-        if(!inCheck && excludedMove == nullMove.moveInfo){
-            if(beta > MINIMUM+maxDepth){
-                int margin;
-                if(improving)
-                    margin = 120*depth;
-                else
-                    margin = 150*depth;
-                if(static_eval >= beta+margin)
-                    return Evaluate<nodeType, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
-            }
-            int r = 3;
+        if(!inCheck && excludedMove == nullMove.moveInfo && beta > MINIMUM+maxDepth){
+            int margin;
+            if(improving)
+                margin = 120*depth;
+            else
+                margin = 150*depth;
+            if(static_eval >= beta+margin)
+                return Evaluate<nodeType, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
+            int r = depth/4+3;
             if(depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
                 ss.generator.initDangers(state);
@@ -315,6 +315,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         return score;
     }
     if(order.nbMoves == 1){
+        if(isRoot)
+            ss.rootBest = order.moves[0];
         state.playMove(order.moves[0]);
         if(state.twofold()){
             state.undoLastMove();
@@ -515,7 +517,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if(limitWay == 2){
         depthMax = tm.hardBound;
     }
-    if(order.nbMoves == 1){
+    if(order.nbMoves == 1 && limitWay == 0){
         running = false;
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }

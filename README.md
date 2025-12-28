@@ -8,7 +8,7 @@ this is a hobby project made by two passionate about informatic.
 currently, the engine includes:
 - Evaluation:
     - nnue
-    - trained on self-gen data with own trainer
+    - trained on self-gen data using [bullet](https://github.com/jw1912/bullet) (if you want the data used to train it, you can directly ask one of us)
 - Search:
     - iterative Deepening
     - quiescence search
@@ -52,3 +52,5 @@ in the core/ directory, and you will have the executable prune, which contains t
     2. corrhist help  (took some constant from sirius for update)
     3. speedup of the nnue (lizard updates)
 - chessprogramming wiki
+- especially to :
+    - chef (the dev from pawnocchio and vine) for helping me debugging the viriformat writer

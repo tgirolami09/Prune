@@ -7,6 +7,7 @@ import re
 import numpy as np
 import pickle
 import os
+from pyzipmanager import *
 import torch
 pieces = ['p', 'n', 'b', 'r', 'q', 'k']
 def col(square):
@@ -55,7 +56,7 @@ def moveFromInfo(moveInfo):
         promot += 1
     return Move(start, end, promot)
 
-def readGame(file, dataX, dataY):
+def readGame(file, fw, idMove):
     count = 0
     filtredPos = 0
     board = Board.empty()
@@ -68,10 +69,11 @@ def readGame(file, dataX, dataY):
             board.occupied_co[color] |= bitboard
     gameInfo = file.read(1)[0]
     board.turn = BLACK if gameInfo%2 else WHITE
-    result = gameInfo//2/2
-    if board.turn == BLACK:
-        result = 1-result
+    result = gameInfo//2
     sizeGame = int.from_bytes(file.read(2), sys.byteorder, signed=True)
+    dataY = np.zeros(2, dtype=np.int32)
+    datasX = [0]*sizeGame
+    datasY = [0]*sizeGame
     for i in range(sizeGame):
         doStore = not bool(file.read(1)[0])
         moveInfo = int.from_bytes(file.read(2), sys.byteorder, signed=True)
@@ -85,27 +87,74 @@ def readGame(file, dataX, dataY):
                 filtredPos += 1
             else:
                 #if abs(staticScore-score) >= 70:continue
-                dataX[board.turn == BLACK].append(boardToInput(board))
-                dataY[board.turn == BLACK].append([score, result])
+                pv, npv = board, board.mirror()
+                dataX = boardToInput(pv)
+                datasX[count] = dataX
+                if(board.turn == BLACK):
+                    score = -score
+                datasY[count] = score*2+(board.turn == BLACK)
+                idMove += 1
                 count += 1
-        result = 1-result
         if i == 0 and board.piece_type_at(nextMove.from_square) == PAWN and abs(nextMove.from_square-nextMove.to_square)%8 != 0 and board.piece_type_at(nextMove.to_square) is None:
             board.ep_square = nextMove.to_square
         board.push(nextMove)
-    return count, filtredPos
+    if count >= 1:
+        fw.write(datasX[0].tobytes())
+        fw.write(datasY[0].to_bytes(3, signed=True)+result.to_bytes(1))
+        fw.write((count-1).to_bytes(2))
+        for X, Y, Xm1 in zip(datasX[1:count], datasY[1:], datasX):
+            D = X-Xm1
+            nb = np.count_nonzero(D == -1)
+            nbP = np.count_nonzero(D == 1)
+            M = 20
+            fw.write(bytes([nbP, nb]))
+            for e in (1, -1):
+                S = 1
+                p = 0
+                for i in np.where(D == e)[0]:
+                    d, m = divmod(i, 64*4)
+                    fw.write(bytes([int(m)]))
+                    p = p*3+d
+                    S *= 3
+                p = int(p)
+                fw.write(p.to_bytes(S.bit_length()+7 >> 3))
+            fw.write(Y.to_bytes(3, signed=True))
 
-def readFile(name):
+    return count, filtredPos, idMove
+
+def count_games(name):
+    nbGame = 0
+    nbMove = 0
+    with open(name, "rb") as f:
+        f.seek(0, 2)
+        size_file = f.tell()
+        f.seek(0, 0)
+        while f.tell() != size_file:
+            f.seek(8*2*6+1, 1)
+            sizeGame = int.from_bytes(f.read(2), sys.byteorder, signed=True)
+            nbGame += 1
+            for i in range(sizeGame):
+                nbMove += not bool(f.read(1)[0])
+                f.seek(10, 1)
+    return nbGame, nbMove
+
+
+def readFile(arg):
+    id, name = arg
     count = 0
     filtredPos = 0
-    dataX = [[], []]
-    dataY = [[], []]
+    nbGame, nbMoves = count_games(name)
+    filename = settings.pickledData+"/data"+str(id)
+    idMove = 0
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    fw = open(filename, "wb")
     with open(name, "rb") as f:
-        while f.tell() != os.fstat(f.fileno()).st_size:
-            a, b = readGame(f, dataX, dataY)
+        for i in range(nbGame):
+            a, b, idMove = readGame(f, fw, idMove)
             count += a
             filtredPos += b
-    return count, filtredPos, dataX, dataY
-
+    fw.close()
+    return count, filtredPos
 
 parser = argparse.ArgumentParser(prog='nnueTrainer')
 parser.add_argument("dataFile", type=str, help="the file where the data is")
@@ -116,9 +165,8 @@ settings = parser.parse_args(sys.argv[1:])
 parts = settings.dataFile.split('/')
 directory = '/'.join(parts[:-1])
 rule = re.compile(parts[-1])
-dataX = [[], []]
-dataY = [[], []]
-passed = set()
+dataX = np.array([], dtype=np.int8)
+dataY = np.array([], dtype=np.float16)
 corrFiles = []
 for file in os.listdir(directory):
     if rule.match(file):
@@ -129,16 +177,9 @@ kMaxScoreMagnitude = 1500
 kMaxMaterialImbalance = 1200
 count = 0
 with Pool(settings.processes) as p:
-    for c, fP, X, Y in tqdm(p.imap(readFile, corrFiles), total=len(corrFiles)):
+    for c, fP in tqdm(p.imap_unordered(readFile, list(enumerate(corrFiles))), total=len(corrFiles)):
         count += c
         filtredPos += fP
-        dataX[0].extend(X[0])
-        dataX[1].extend(X[1])
-        dataY[0].extend(Y[0])
-        dataY[1].extend(Y[1])
 
 print(f'{filtredPos*100/(filtredPos+count)}% of pos were filtred')
-print('data collected:', len(dataX[0])+len(dataX[1]))
-dataX = [torch.from_numpy(np.array(i)) for i in dataX]
-dataY = [torch.from_numpy(np.array(i)) for i in dataY]
-pickle.dump((dataX, dataY), open(settings.pickledData, "wb"))
+print('data collected:', count)

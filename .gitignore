@@ -14,7 +14,9 @@ build
 *.pgn
 *.log
 *.bin
+*.so
 */__pycache__*
+*/*/*
 !model.bin
 !Makefile
 !magics.out
