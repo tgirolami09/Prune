@@ -529,7 +529,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     int instability2side = 1;
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
-    for(int depth=1; depth<depthMax && running; depth++){
+    for(int depth=1; depth<=depthMax && running; depth++){
         int deltaUp = 5<<(1+instability2side);
         int deltaDown = 5<<(1+instability2side);
         localSS.seldepth = 0;
