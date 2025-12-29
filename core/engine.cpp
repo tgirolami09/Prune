@@ -15,6 +15,7 @@
 #include <set>
 #include <iostream>
 int nbThreads = 1;
+bool DEBUG = false;
 using namespace std;
 
 class Init{
@@ -302,8 +303,10 @@ void manageSearch(){
                 int maxDepthAttain = 0;
                 vector<pair<int, int>> Scores;
                 for(unsigned idFen=0; idFen<benches.size(); idFen++){
-                    printf("\rposition %d/%d", idFen, (int)benches.size());
-                    fflush(stdout);
+                    if(DEBUG){
+                        printf("\rposition %d/%d", idFen, (int)benches.size());
+                        fflush(stdout);
+                    }
                     Chess* testState = new Chess;
                     testState->movesFromRoot = {};
                     testState->root.fromFen(benches[idFen]);
@@ -326,28 +329,30 @@ void manageSearch(){
                     }
                     delete testState;
                 }
-                printf("\rposition %d/%d\n", (int)benches.size(), (int)benches.size());
-                printf("depth\t");
-                for(int i=0; i<=maxDepthAttain; i++)
-                    printf("\t%d", i);
-                printf("\nnodes\t");
-                for(int i=0; i<=maxDepthAttain; i++){
-                    if(histDepth[i])
-                        printf("\t%d", sumNodes[i]/histDepth[i]);
-                    else printf("\t0");
+                if(DEBUG){
+                    printf("\rposition %d/%d\n", (int)benches.size(), (int)benches.size());
+                    printf("depth\t");
+                    for(int i=0; i<=maxDepthAttain; i++)
+                        printf("\t%d", i);
+                    printf("\nnodes\t");
+                    for(int i=0; i<=maxDepthAttain; i++){
+                        if(histDepth[i])
+                            printf("\t%d", sumNodes[i]/histDepth[i]);
+                        else printf("\t0");
+                    }
+                    printf("\nseldepth");
+                    for(int i=0; i<=maxDepthAttain; i++){
+                        if(histDepth[i])
+                            printf("\t%d", sumSelDepth[i]/histDepth[i]);
+                        else printf("\t0");
+                    }
+                    printf("\n%.0fnps\n", sumNPS*1000.0/sumTime);
                 }
-                printf("\nseldepth");
-                for(int i=0; i<=maxDepthAttain; i++){
-                    if(histDepth[i])
-                        printf("\t%d", sumSelDepth[i]/histDepth[i]);
-                    else printf("\t0");
-                }
-                printf("\n%.0fnps\n", sumNPS*1000.0/sumTime);
                 sort(Scores.begin(), Scores.end());
                 int size = Scores.size();
-                pair<double, double> scoreThird = {0.0, 0.0}, scoreAll={0.0, 0.0};
+                pair<int, big> scoreThird = {0.0, 0.0}, scoreAll={0.0, 0.0};
                 for(int i=0; i<size; i++){
-                    pair<double, double> locScore = {Scores[i].first, Scores[i].second};
+                    pair<int, big> locScore = {Scores[i].first, Scores[i].second};
                     scoreAll.first += locScore.first;
                     scoreAll.second += locScore.second;
                     if(i >= size/3 && i < size*2/3){
@@ -355,7 +360,8 @@ void manageSearch(){
                         scoreThird.second += locScore.second;
                     }
                 }
-                printf("search score: (%.0f %.0f) (%.0f %.0f)\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
+                if(DEBUG)printf("search score: (%d %" PRId64 ") (%d %" PRId64 ")\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
+                printf("%" PRId64 " nodes %.0f nps\n", scoreAll.second, sumNPS*1000.0/sumTime);
 #ifdef DEBUG
                 printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
 #endif
@@ -471,6 +477,11 @@ void manageSearch(){
                 }
                 for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
                     state->root.undoLastMove();
+            }else if(command == "debug"){
+                if(parsed[0].second == "off")
+                    DEBUG = false;
+                else
+                    DEBUG = true;
             }
             fflush(stdout);
         }
@@ -483,15 +494,27 @@ void manageSearch(){
 int main(int argc, char** argv){
     string UCI_instruction = "programStart";
     thread t;
+    bool seeInput = true;
     if(argc > 1){
         startQ = endQ = 0;
+        seeInput = false;
+        if(string(argv[argc-1]) == string("continue")){
+            argc--;
+            seeInput = true;
+        }
         for(int i=1; i<argc; i++){
             inpQueue[endQ%sizeQ] = argv[i];
             endQ++;
         }
+        if(!seeInput){
+            inpQueue[endQ%sizeQ] = "quit";
+            endQ++;
+        }
     }
-    t = thread(&manageInput);
+    if(seeInput)
+        t = thread(&manageInput);
     manageSearch();
-    t.join();
+    if(seeInput)
+        t.join();
     clear_table();   
 }

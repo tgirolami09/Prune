@@ -10,6 +10,7 @@
 #define sbig int64_t
 using namespace std;
 extern int nbThreads;
+extern bool DEBUG;
 const big MAX_BIG=~0ULL;
 const int WHITE=0;
 const int BLACK=1; // odd = black
