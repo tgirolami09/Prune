@@ -294,8 +294,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(!isRoot && ttHit && ttEntry.depth + 3 >= depth && ttEntry.typeNode != UPPERBOUND && depth >= 6 && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - depth;
         int score = negamax<CutNode, limitWay, mateSearch>(ss, (depth-1)/2, state, goal-1, goal, relDepth, ttEntry.bestMoveInfo);
-        if(score < goal)
+        if(score < goal){
             firstMoveExtension++;
+            if(nodeType != PVNode && score <= goal-20)
+                firstMoveExtension++;
+        }
         ss.generator.initDangers(state);
     }
     order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
