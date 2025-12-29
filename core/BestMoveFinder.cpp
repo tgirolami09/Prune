@@ -298,6 +298,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             firstMoveExtension++;
             if(nodeType != PVNode && score <= goal-20)
                 firstMoveExtension++;
+        }else if(ttEntry.score >= beta){
+            firstMoveExtension--;
         }
         ss.generator.initDangers(state);
     }
