@@ -338,7 +338,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(excludedMove == curMove.moveInfo)continue;
         sbig startNodes = ss.nodes;
         if(isRoot && verbose && ss.mainThread && getElapsedTime() >= chrono::milliseconds{10000}){
-            printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth+1, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
+            printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
         int score;
@@ -584,7 +584,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             if(verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
                 sbig totNodes = localSS.nodes;
                 double tcpu = getElapsedTime().count()/1'000'000'000.0;
-                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth+1, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
+                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
                 fflush(stdout);
             }
         }while(running);
@@ -599,11 +599,11 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         double speed=0;
         if(tcpu != 0)speed = totNodes/tcpu;
         if(verbose && bestScore != -INF){
-            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)localSS.nbFirstCutoff/localSS.nbCutoff);
+            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)localSS.nbFirstCutoff/localSS.nbCutoff);
             fflush(stdout);
         }
         if(running)
-            allInfos.push_back({localSS.nodes, (int)(tcpu*1000), (int)(speed), depth+1, localSS.seldepth-startRelDepth, bestScore});
+            allInfos.push_back({localSS.nodes, (int)(tcpu*1000), (int)(speed), depth, localSS.seldepth-startRelDepth, bestScore});
         if(abs(bestScore) > MAXIMUM-maxDepth && mateHardBound){
             tm.softBound = hardBound;
             softBoundTime = hardBoundTime;
