@@ -6,6 +6,7 @@ OPT=-O3 -flto
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
+EXE?=
 SOURCES := $(wildcard *.cpp)
 SOURCES := $(filter-out collectData.cpp,$(SOURCES))
 SOURCES := $(filter-out engine.cpp,$(SOURCES))
@@ -44,12 +45,17 @@ ifeq ($(CPUSET), unknow)
 else
 	CPUSETNAME=-$(CPUSET)
 endif
-NAME=prune-$(OS)-$(REC)
-SHORTNAME=prune$(REC)
-VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
-ifeq ($(OS), Windows_NT)
-	NAME := $(NAME).exe
-	SHORTNAME := $(SHORTNAME).exe
+ifeq ($(EXE), )
+	NAME=prune-$(OS)-$(REC)
+	SHORTNAME=prune$(REC)
+	VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
+	ifeq ($(OS), Windows_NT)
+		NAME := $(NAME).exe
+		SHORTNAME := $(SHORTNAME).exe
+	endif
+else
+	NAME=$(EXE)
+	SHORTNAME=$(EXE)
 endif
 
 all: engine.cpp $(OBJECTS)
