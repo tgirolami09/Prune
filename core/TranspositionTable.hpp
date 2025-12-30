@@ -15,7 +15,7 @@ public:
 const int INVALID = INT_MAX;
 class transpositionTable{
 public:
-    vector<infoScore> table;
+    infoScore* table;
     int modulo;
     int rewrite=0;
     int place=0;

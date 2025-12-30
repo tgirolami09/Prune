@@ -302,6 +302,9 @@ void manageSearch(){
                 }
                 int maxDepthAttain = 0;
                 vector<pair<int, int>> Scores;
+                if(parsed.size() == 0){
+                    parsed = {{"depth", "10"}};
+                }
                 for(unsigned idFen=0; idFen<benches.size(); idFen++){
                     if(DEBUG){
                         printf("\rposition %d/%d", idFen, (int)benches.size());

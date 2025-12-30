@@ -1,10 +1,11 @@
 #include "TranspositionTable.hpp"
 #include "Const.hpp"
 #include "GameState.hpp"
+#include <cstring>
 
 transpositionTable::transpositionTable(size_t count){
     count /= sizeof(infoScore);
-    table = vector<infoScore>(count);
+    table = (infoScore*)calloc(count, sizeof(infoScore));
     modulo=count;
 }
 
@@ -63,11 +64,11 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
         table[index] = info;
 }
 void transpositionTable::clear(){
-    table = vector<infoScore>(modulo);
+    memset(table, 0, modulo*sizeof(infoScore));
 }
 void transpositionTable::reinit(int count){
     count /= sizeof(infoScore);
-    table.resize(count);
+    table = (infoScore*)realloc(table, sizeof(infoScore)*count);
     modulo = count;
     place = 0;
     rewrite = 0;
