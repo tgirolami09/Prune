@@ -8,7 +8,6 @@
 #endif
 #include <assert.h>
 #include <cstring>
-#include <iso646.h>
 
 const int* mg_pesto_table[6] =
 {
@@ -365,6 +364,12 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         changePiece<-f, false>(move.from(), move.piece, c);
         changePiece<f, false>(move.to(), toPiece, c);
     }
+#ifdef HCE
+    else{
+        changePiece<-f, false>(move.from(), move.piece, c);
+        changePiece<f, false>(move.to(), toPiece, c);
+    }
+#endif
     if(move.capture != -2){
         int posCapture = move.to();
         int pieceCapture = move.capture;
@@ -392,7 +397,10 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             rookStart |= 7;
             rookEnd--;
         }
-#ifndef HCE
+#ifdef HCE // when not HCE, no need to update the numbers of pieces
+        changePiece<-f, false>(rookStart, ROOK, c);
+        changePiece<f, false>(rookEnd, ROOK, c);
+#else
         if(f == 1)
             globnnue.move4(stackAcc[stackIndex], stackAcc[stackIndex+1],
                 globnnue.get_index(move.piece, c, move.from()),
