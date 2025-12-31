@@ -10,7 +10,9 @@
 #include "GameState.hpp"
 #include <vector>
 #include "BestMoveFinder.hpp"
+#ifndef HCE
 #include "NNUE.hpp"
+#endif
 #include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
@@ -23,6 +25,8 @@ public:
     Init(){
         PrecomputeKnightMoveData();
         init_lines();
+        init_tables();
+        init_forwards();
         load_table();
         precomputePawnsAttack();
         precomputeCastlingMasks();
@@ -144,7 +148,9 @@ const Option Options[] = {
     Option("Hash", "spin", "64", 1, 512),
     Option("Move Overhead", "spin", "10", 0, 5000),
     Option("Clear Hash", "button"),
+#ifndef HCE
     Option("nnueFile", "string", "embed"),
+#endif
     Option("Threads", "spin", "1", 1, 512)
 };
 
@@ -437,12 +443,16 @@ void manageSearch(){
                         else if(parsed[i].second == "Clear Hash"){
                             bestMoveFinder.clear();
                             incr = false;
-                        }else if(parsed[i].second == "nnueFile"){
+                        }
+#ifndef HCE
+                        else if(parsed[i].second == "nnueFile"){
                             if(parsed[i+1].second == "embed")
                                 globnnue = NNUE();
                             else
                                 globnnue = NNUE(parsed[i+1].second);
-                        }else if(parsed[i].second == "Threads"){
+                        }
+#endif
+                        else if(parsed[i].second == "Threads"){
                             int newT = stoi(parsed[i+1].second);
                             bestMoveFinder.setThreads(newT);
                             nbThreads = newT;

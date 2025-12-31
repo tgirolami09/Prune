@@ -3,7 +3,9 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
+#ifndef HCE
 #include "NNUE.hpp"
+#endif
 #include <assert.h>
 #include <cstring>
 #include <iso646.h>
@@ -35,8 +37,8 @@ void init_tables(){
         for (sq = 0; sq < 64; sq++) {
             mg_table[WHITE][p][sq] = mg_value[p] + mg_pesto_table[p][sq^63];
             eg_table[WHITE][p][sq] = eg_value[p] + eg_pesto_table[p][sq^63];
-            mg_table[BLACK][p][sq] = mg_value[p] + mg_pesto_table[p][sq^7];
-            eg_table[BLACK][p][sq] = eg_value[p] + eg_pesto_table[p][sq^7];
+            mg_table[BLACK][p][sq] = -(mg_value[p] + mg_pesto_table[p][sq^7]);
+            eg_table[BLACK][p][sq] = -(eg_value[p] + eg_pesto_table[p][sq^7]);
         }
     }
 }
@@ -258,8 +260,6 @@ void IncrementalEvaluator::print(){
 }
 
 IncrementalEvaluator::IncrementalEvaluator(){
-    init_tables();
-    init_forwards();
     memset(presentPieces, 0, sizeof(presentPieces));
 }
 
@@ -267,7 +267,12 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     mgPhase = 0;
     nbMan = 0;
     stackIndex = 0;
+#ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
+#else
+    egScore = 0;
+    mgScore = 0;
+#endif
     memset(presentPieces, 0, sizeof(presentPieces));
     for(int square=0; square<64; square++){
         int piece=state.getfullPiece(square);
@@ -290,13 +295,20 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 }
 
 int IncrementalEvaluator::getRaw(bool c) const{
+#ifndef HCE
     return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
+#else
+    int clampPhase = min(mgPhase, 24);
+    int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
+    if(c == BLACK)score = -score;
+    return score;
+#endif
 }
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
     int raw_eval = getRaw(c);
     raw_eval += ch.probe(state);
-#ifndef DATAGEN
+#if !defined(DATAGEN) && !defined(HCE)
     int nbQ = presentPieces[WHITE][QUEEN]+presentPieces[BLACK][QUEEN];
     int nbR = presentPieces[WHITE][ROOK]+presentPieces[BLACK][ROOK];
     int nbB = presentPieces[WHITE][BISHOP]+presentPieces[BLACK][BISHOP];
@@ -313,8 +325,13 @@ void IncrementalEvaluator::undoMove(Move move, bool c){
 
 template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
+#ifndef HCE
     if(updateNNUE)
         globnnue.change2<f>(stackAcc[stackIndex], piece, c, pos);
+#else
+    mgScore += f*mg_table[c][piece][pos];
+    egScore += f*eg_table[c][piece][pos];
+#endif
     mgPhase += f*gamephaseInc[piece];
     nbMan += f;
     presentPieces[c][piece] += f;
@@ -323,12 +340,17 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
 
 template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
+#ifndef HCE
     if(updateNNUE){
         globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], piece, c, pos);
         stackIndex++;
     }else{
         stackIndex--;
     }
+#else
+    mgScore += f*mg_table[c][piece][pos];
+    egScore += f*eg_table[c][piece][pos];
+#endif
     mgPhase += f*gamephaseInc[piece];
     nbMan += f;
     presentPieces[c][piece] += f;
@@ -352,12 +374,14 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             pieceCapture = PAWN;
         }
         changePiece<-f, false>(posCapture, pieceCapture, !c);
+#ifndef HCE
         if(f == 1)
             globnnue.move3(stackAcc[stackIndex], stackAcc[stackIndex+1],
                 globnnue.get_index(move.piece, c, move.from()),
                 globnnue.get_index(toPiece, c, move.to()),
                 globnnue.get_index(pieceCapture, !c, posCapture)
             );
+#endif
     }else if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
         int rookStart = move.from();
         int rookEnd = move.to();
@@ -368,6 +392,7 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             rookStart |= 7;
             rookEnd--;
         }
+#ifndef HCE
         if(f == 1)
             globnnue.move4(stackAcc[stackIndex], stackAcc[stackIndex+1],
                 globnnue.get_index(move.piece, c, move.from()),
@@ -380,6 +405,7 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             globnnue.get_index(move.piece, c, move.from()),
             globnnue.get_index(toPiece, c, move.to())
         );
+#endif
     }
     if(f == 1)
         stackIndex++;

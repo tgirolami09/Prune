@@ -3,7 +3,9 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
-#include "NNUE.hpp"
+#ifndef HCE
+    #include "NNUE.hpp"
+#endif
 #include "corrhist.hpp"
 //https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
@@ -180,7 +182,12 @@ const int tableSize=1<<10;//must be a power of two, for now it's pretty small be
 class IncrementalEvaluator{
     int mgPhase;
     int presentPieces[2][6]; //keep trace of number of pieces by side
+#ifndef HCE
     Accumulator stackAcc[maxDepth];
+#else
+    int egScore;
+    int mgScore;
+#endif
     int stackIndex;
     int nbMan;
 public:

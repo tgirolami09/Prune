@@ -12,7 +12,8 @@ SOURCES := $(filter-out collectData.cpp,$(SOURCES))
 SOURCES := $(filter-out engine.cpp,$(SOURCES))
 SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o)
-DEPENDS := $(SOURCES:%.cpp=%.d)
+OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o)
+OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
 ifeq ($(OS), Windows_NT)
 	CC=clang++
 	CFLAGS := $(CFLAGS) -static
@@ -67,11 +68,17 @@ unittest: unittest.cpp $(OBJECTS)
 prune: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)
 
+pruneHCE: engine.cpp $(OBJECTSHCE)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE
+
 coreGen: collectData.cpp $(OBJECTS)
 	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
 
 %.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+
+%HCE.o: %.cpp
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
 
 embeder.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
