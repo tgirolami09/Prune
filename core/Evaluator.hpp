@@ -175,7 +175,7 @@ public:
 int SEE(int square, GameState& state, LegalMoveGenerator& generator);
 int fastSEE(const Move& move, const GameState& state);
 bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state);
-int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, ubyte& flag);
+int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state);
 
 const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
 

@@ -337,7 +337,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         Move curMove = order.pop_max(flag);
         if(excludedMove == curMove.moveInfo)continue;
         sbig startNodes = ss.nodes;
-        if(isRoot && verbose && ss.mainThread && getElapsedTime() >= chrono::milliseconds{10000}){
+        if(isRoot && verbose && ss.mainThread && DEBUG){
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
