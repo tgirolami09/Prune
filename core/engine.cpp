@@ -428,7 +428,11 @@ void manageSearch(){
 #endif
                 if(v[0] == 'v')
                     v = v.substr(1, v.size()-1);
+#ifdef HCE
+                printf("id name Prune HCE %s\nid author tgirolami09 & jbienvenue", v.c_str());
+#else
                 printf("id name Prune %s\nid author tgirolami09 & jbienvenue\n", v.c_str());
+#endif
                 for(Option opt:Options)
                     opt.print();
                 printf("uciok\n");

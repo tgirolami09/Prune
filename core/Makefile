@@ -15,6 +15,7 @@ OBJECTS := $(SOURCES:%.cpp=%.o)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
 ifeq ($(OS), Windows_NT)
+	OS = Windows
 	CC=clang++
 	CFLAGS := $(CFLAGS) -static
 	OPT := $(OPT) -fuse-ld=lld
@@ -46,13 +47,15 @@ ifeq ($(CPUSET), unknow)
 else
 	CPUSETNAME=-$(CPUSET)
 endif
+EXTENSION=
 ifeq ($(EXE), )
 	NAME=prune-$(OS)-$(REC)
 	SHORTNAME=prune$(REC)
 	VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
-	ifeq ($(OS), Windows_NT)
+	ifeq ($(OS), Windows)
 		NAME := $(NAME).exe
 		SHORTNAME := $(SHORTNAME).exe
+		EXTENSION = .exe
 	endif
 else
 	NAME=$(EXE)
@@ -70,6 +73,9 @@ prune: engine.cpp $(OBJECTS)
 
 pruneHCE: engine.cpp $(OBJECTSHCE)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE
+
+HCE: engine.cpp $(OBJECTSHCE)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE-$(OS)-$(REC)$(EXTENSION) $^ $(VERSIONNING) -DHCE
 
 coreGen: collectData.cpp $(OBJECTS)
 	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
