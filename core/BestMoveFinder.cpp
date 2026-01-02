@@ -537,7 +537,6 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         int startNodes = localSS.nodes;
         int bestScore;
         Move finalBestMove=bestMove;
-        int countUp = 0, countDown=0;
         sbig lastUsedNodes = 0;
         string PV;
         do{
@@ -566,13 +565,11 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             if(bestScore <= alpha){
                 deltaDown = max(deltaDown*2, lastScore-bestScore+1);
                 limit = "upperbound";
-                countDown++;
             }else if(bestScore >= beta){
                 deltaUp = max(deltaUp*2, bestScore-lastScore+1);
                 finalBestMove = bestMove;
                 limit = "lowerbound";
                 ponderMove = nullMove;
-                countUp++;
             }else{
                 finalBestMove = bestMove;
                 PV = localSS.PVprint(localSS.PVlines[0]);
