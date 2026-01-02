@@ -526,13 +526,11 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     Move bestMove=nullMove;
     sbig lastNodes = 1;
     int lastScore = localSS.eval.getScore(state.friendlyColor(), localSS.correctionHistory, state);
-    int instability1side = 0;
-    int instability2side = 1;
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
     for(int depth=1; depth<=depthMax && running; depth++){
-        int deltaUp = 5<<(1+instability2side);
-        int deltaDown = 5<<(1+instability2side);
+        int deltaUp = 20;
+        int deltaDown = 20;
         localSS.seldepth = 0;
         if(abs(lastScore) > MAXIMUM-maxDepth)
             deltaDown = 1;
@@ -589,8 +587,6 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
                 fflush(stdout);
             }
         }while(running);
-        instability1side = (instability1side+(countDown-countUp)+1)/2;
-        instability2side = (instability2side+min(countDown, countUp)+1)/2;
         bestMove = finalBestMove;
         if(bestScore != -INF)
             lastScore = bestScore;
