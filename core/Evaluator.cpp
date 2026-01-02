@@ -233,18 +233,18 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
 int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, const int* value_pieces){
     int score = 0;
     if(move.isTactical()){
-        if(see_ge(bb, 0, move, state, value_pieces))
-            score |= 1<<28;
         int cap = move.capture;
         if(cap == -1)cap = 0;
         if(cap != -2)
             score += cap*6;
         score += 6-move.piece;
-        score |= 2<<28;
         if(move.promotion() != -1)score += move.promotion();
-    }else{
-        score += historyScore;
+        score *= maxHistory;
+        score |= 2<<28;
+        if(see_ge(bb, 0, move, state, value_pieces))
+            score |= 1<<28;
     }
+    score += historyScore;
     return score;
 }
 

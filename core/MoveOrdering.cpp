@@ -13,7 +13,10 @@ int getrand(big& state){
 }
 
 int& HelpOrdering::getIndex(Move move, bool c){
-    return history[c][move.from()][move.to()];
+    if(move.capture == -2)
+        return history[c][move.from()][move.to()];
+    else
+        return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
 }
 bool HelpOrdering::fastEq(Move a, Move b) const{
     return a.moveInfo == b.moveInfo;
@@ -25,20 +28,21 @@ void HelpOrdering::init(tunables& Parameters){
     }
     this->parameters = Parameters;
     memset(history, 0, sizeof(history));
+    memset(captHist, 0, sizeof(captHist));
 #ifdef COUNTER
     for(int f=0; f<64*64; f++)
         counterMove[f] = nullMove.moveInfo;
 #endif
 }
-void HelpOrdering::updateHistory(Move move, bool c, int bonus){
+void HelpOrdering::updateHistory(int bonus, int& hist){
     bonus = min(max(bonus, -maxHistory), maxHistory);
-    getIndex(move, c) += bonus - getIndex(move, c)*abs(bonus)/maxHistory;
+    hist += bonus - hist*abs(bonus)/maxHistory;
 }
 
 void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth){
     for(int i=0; i<upto; i++){
         if(!moves[i].isTactical())
-            updateHistory(moves[i], c, -depth*parameters.mo_mul_malus);
+            updateHistory(-depth*parameters.mo_mul_malus, getIndex(moves[i], c));
     }
 }
 
@@ -48,8 +52,8 @@ void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c){
             killers[relDepth][1] = killers[relDepth][0];
             killers[relDepth][0] = move;
         }
-        updateHistory(move, c, depth*depth);
     }
+    updateHistory(depth*depth, getIndex(move, c));
 }
 
 bool HelpOrdering::isKiller(Move move, int relDepth) const{
@@ -57,22 +61,18 @@ bool HelpOrdering::isKiller(Move move, int relDepth) const{
     return fastEq(move, killers[relDepth][0]) || fastEq(move, killers[relDepth][1]);
 }
 int HelpOrdering::getHistoryScore(Move move, bool c) const{
-    return history[c][move.from()][move.to()];
+    if(move.capture == -2)
+        return history[c][move.from()][move.to()];
+    else
+        return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
 }
-#ifdef COUNTER
-bool HelpOrdering::isCounter(Move move, Move lastMove) const{
-    return move.moveInfo == counterMove[lastMove.getMovePart()];
-}
-#endif
 
 int HelpOrdering::getMoveScore(Move move, bool c, int relDepth) const{
     int score = 0;
-    if(isKiller(move, relDepth))
-        score = KILLER_ADVANTAGE;
-#ifdef COUNTER
-    if(isCounter(move, lastMove))
-        score += KILLER_ADVANTAGE/2;
-#endif
+    if(move.capture == -2){
+        if(isKiller(move, relDepth))
+            score = KILLER_ADVANTAGE;
+    }
     return score+getHistoryScore(move, c);
 }
 
