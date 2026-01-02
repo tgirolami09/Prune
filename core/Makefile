@@ -24,9 +24,13 @@ else
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
 endif
 CFLAGSALL=$(CFLAGS) $(DEBUGOPT)
-ARCHCOM=-march=$(ARCH)
+ifneq ($(ARCH), unknow)
+	ARCHCOM=-march=$(ARCH)
+else
+	ARCHCOM=
+endif
 ifneq ($(CPUSET), unknow)
-	ARCHCOM=$(ARCHCOM) -m$(ARCH)
+	ARCHCOM := $(ARCHCOM) -m$(CPUSET)
 endif
 TAG=$(shell git tag --contains=HEAD)
 ifeq ($(TAG), )
