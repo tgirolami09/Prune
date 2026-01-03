@@ -166,14 +166,14 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     ss.nodes++;
     if(relDepth > ss.seldepth)ss.seldepth = relDepth;
     dbyte hint;
+    const int rootDist = relDepth-startRelDepth;
     if(isPV)
         hint = transposition.getMove(state);
     else{
         int lastEval=transposition.get_eval(state, alpha, beta, 0, hint);
         if(lastEval != INVALID)
-            return lastEval;
+            return fromTT(lastEval, rootDist);
     }
-    const int rootDist = relDepth-startRelDepth;
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     int& staticEval = ss.stack[rootDist].static_score;
     if(!isCalc)
