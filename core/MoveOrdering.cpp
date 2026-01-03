@@ -3,8 +3,18 @@
 #include "MoveOrdering.hpp"
 #include "Evaluator.hpp"
 #include "Const.hpp"
+
 #include "tunables.hpp"
-//#define COUNTER
+
+#ifdef DEBUG_MACRO
+int quiethistSum=0;
+double quiethistSquare=0;
+int nbquietHist=0;
+int capthistSum=0;
+double capthistSquare=0;
+int nbCaptHist=0;
+#endif
+
 int getrand(big& state){
     big z = (state += 0x9E3779B97F4A7C15ULL);
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
@@ -13,10 +23,12 @@ int getrand(big& state){
 }
 
 int& HelpOrdering::getIndex(Move move, bool c){
-    if(move.capture == -2)
+    if(!move.isTactical())
         return history[c][move.from()][move.to()];
-    else
+    else if(move.promotion() == -1)
         return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
+    else
+        return captHist[c][move.promotion()-KNIGHT+nbPieces][max<int>(move.capture, 0)][move.to()];
 }
 bool HelpOrdering::fastEq(Move a, Move b) const{
     return a.moveInfo == b.moveInfo;
@@ -29,10 +41,6 @@ void HelpOrdering::init(tunables& Parameters){
     this->parameters = Parameters;
     memset(history, 0, sizeof(history));
     memset(captHist, 0, sizeof(captHist));
-#ifdef COUNTER
-    for(int f=0; f<64*64; f++)
-        counterMove[f] = nullMove.moveInfo;
-#endif
 }
 void HelpOrdering::updateHistory(int bonus, int& hist){
     bonus = min(max(bonus, -maxHistory), maxHistory);
@@ -41,7 +49,7 @@ void HelpOrdering::updateHistory(int bonus, int& hist){
 
 void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth){
     for(int i=0; i<upto; i++){
-        if(!moves[i].isTactical())
+        if(moves[i].isTactical() >= moves[upto].isTactical())
             updateHistory(-depth*parameters.mo_mul_malus, getIndex(moves[i], c));
     }
 }
@@ -61,18 +69,18 @@ bool HelpOrdering::isKiller(Move move, int relDepth) const{
     return fastEq(move, killers[relDepth][0]) || fastEq(move, killers[relDepth][1]);
 }
 int HelpOrdering::getHistoryScore(Move move, bool c) const{
-    if(move.capture == -2)
+    if(!move.isTactical())
         return history[c][move.from()][move.to()];
-    else
+    else if(move.promotion() == -1)
         return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
+    else
+        return captHist[c][move.promotion()-KNIGHT+nbPieces][max<int>(move.capture, 0)][move.to()];
 }
 
 int HelpOrdering::getMoveScore(Move move, bool c, int relDepth) const{
     int score = 0;
-    if(move.capture == -2){
-        if(isKiller(move, relDepth))
-            score = KILLER_ADVANTAGE;
-    }
+    if(move.capture == -2 && isKiller(move, relDepth))
+        score = KILLER_ADVANTAGE;
     return score+getHistoryScore(move, c);
 }
 
@@ -91,9 +99,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
     for(int i=0; i<nbMoves; i++){
         if(moveInfoPriority == moves[i].moveInfo){
             this->swap(i, 0);
-            if(nbPriority)
-                this->swap(i, 1);
-            nbPriority++;
+            nbPriority = 1;
         }else{
             scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state, value_pieces);
         }
