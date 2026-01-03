@@ -22,7 +22,7 @@ inline int transpositionTable::storedScore(int alpha, int beta, int depth, const
 }
 
 int transpositionTable::get_eval(const GameState& state, int alpha, int beta, ubyte depth, int16_t& best){
-    int index=state.zobristHash%modulo;
+    big index=state.zobristHash%modulo;
     uint32_t resHash = state.zobristHash/modulo;
     if(table[index].hash == resHash){
         int score = storedScore(alpha, beta, depth, table[index]);
@@ -33,7 +33,7 @@ int transpositionTable::get_eval(const GameState& state, int alpha, int beta, ub
 }
 
 int16_t transpositionTable::getMove(const GameState& state){
-    int index=state.zobristHash%modulo;
+    big index=state.zobristHash%modulo;
     uint32_t resHash = state.zobristHash/modulo;
     if(table[index].hash == resHash)
         return table[index].bestMoveInfo; //probably a good move
@@ -42,7 +42,7 @@ int16_t transpositionTable::getMove(const GameState& state){
 
 infoScore transpositionTable::getEntry(const GameState& state, bool& ttHit){
     ttHit = false;
-    int index=state.zobristHash%modulo;
+    big index=state.zobristHash%modulo;
     uint32_t resHash = state.zobristHash/modulo;
     if(table[index].hash == resHash)
         ttHit = true;
@@ -58,7 +58,7 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.bestMoveInfo = move.moveInfo;
     info.depth = depth;
     info.typeNode = typeNode;
-    int index = state.zobristHash%modulo;
+    big index = state.zobristHash%modulo;
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
     if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND)))
         table[index] = info;
@@ -66,7 +66,7 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
 void transpositionTable::clear(){
     memset(table, 0, modulo*sizeof(infoScore));
 }
-void transpositionTable::reinit(int count){
+void transpositionTable::reinit(size_t count){
     count /= sizeof(infoScore);
     table = (infoScore*)realloc(table, sizeof(infoScore)*count);
     modulo = count;
