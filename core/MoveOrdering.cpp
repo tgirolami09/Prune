@@ -80,9 +80,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
     for(int i=0; i<nbMoves; i++){
         if(moveInfoPriority == moves[i].moveInfo){
             this->swap(i, 0);
-            if(nbPriority)
-                this->swap(i, 1);
-            nbPriority++;
+            nbPriority = 1;
         }else{
             scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state);
         }
