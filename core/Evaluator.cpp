@@ -3,10 +3,11 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
+#ifndef HCE
 #include "NNUE.hpp"
+#endif
 #include <assert.h>
 #include <cstring>
-#include <iso646.h>
 
 const int* mg_pesto_table[6] =
 {
@@ -35,8 +36,8 @@ void init_tables(){
         for (sq = 0; sq < 64; sq++) {
             mg_table[WHITE][p][sq] = mg_value[p] + mg_pesto_table[p][sq^63];
             eg_table[WHITE][p][sq] = eg_value[p] + eg_pesto_table[p][sq^63];
-            mg_table[BLACK][p][sq] = mg_value[p] + mg_pesto_table[p][sq^7];
-            eg_table[BLACK][p][sq] = eg_value[p] + eg_pesto_table[p][sq^7];
+            mg_table[BLACK][p][sq] = -(mg_value[p] + mg_pesto_table[p][sq^7]);
+            eg_table[BLACK][p][sq] = -(eg_value[p] + eg_pesto_table[p][sq^7]);
         }
     }
 }
@@ -229,19 +230,18 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
     return stm != sstm || born <= 0;
 }
 
-int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, ubyte& flag){
+int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state){
     int score = 0;
-    flag = 0;
-    if(move.isTactical() && see_ge(bb, 0, move, state)){
-        flag += 1;
-    }if(move.isTactical()){
+    if(move.isTactical()){
+        if(see_ge(bb, 0, move, state))
+            score |= 1<<28;
         int cap = move.capture;
         if(cap == -1)cap = 0;
         if(cap != -2)
-            score = value_pieces[cap]*10;
-        score -= value_pieces[move.piece];
-        flag += 2;
-        if(move.promotion() != -1)score += value_pieces[move.promotion()];
+            score += cap*6;
+        score += 6-move.piece;
+        score |= 2<<28;
+        if(move.promotion() != -1)score += move.promotion();
     }else{
         score += historyScore;
     }
@@ -258,8 +258,6 @@ void IncrementalEvaluator::print(){
 }
 
 IncrementalEvaluator::IncrementalEvaluator(){
-    init_tables();
-    init_forwards();
     memset(presentPieces, 0, sizeof(presentPieces));
 }
 
@@ -267,7 +265,12 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     mgPhase = 0;
     nbMan = 0;
     stackIndex = 0;
+#ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
+#else
+    egScore = 0;
+    mgScore = 0;
+#endif
     memset(presentPieces, 0, sizeof(presentPieces));
     for(int square=0; square<64; square++){
         int piece=state.getfullPiece(square);
@@ -290,13 +293,20 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 }
 
 int IncrementalEvaluator::getRaw(bool c) const{
+#ifndef HCE
     return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
+#else
+    int clampPhase = min(mgPhase, 24);
+    int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
+    if(c == BLACK)score = -score;
+    return score;
+#endif
 }
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
     int raw_eval = getRaw(c);
     raw_eval += ch.probe(state);
-#ifndef DATAGEN
+#if !defined(DATAGEN) && !defined(HCE)
     int nbQ = presentPieces[WHITE][QUEEN]+presentPieces[BLACK][QUEEN];
     int nbR = presentPieces[WHITE][ROOK]+presentPieces[BLACK][ROOK];
     int nbB = presentPieces[WHITE][BISHOP]+presentPieces[BLACK][BISHOP];
@@ -313,8 +323,13 @@ void IncrementalEvaluator::undoMove(Move move, bool c){
 
 template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
+#ifndef HCE
     if(updateNNUE)
         globnnue.change2<f>(stackAcc[stackIndex], piece, c, pos);
+#else
+    mgScore += f*mg_table[c][piece][pos];
+    egScore += f*eg_table[c][piece][pos];
+#endif
     mgPhase += f*gamephaseInc[piece];
     nbMan += f;
     presentPieces[c][piece] += f;
@@ -323,12 +338,17 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
 
 template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
+#ifndef HCE
     if(updateNNUE){
         globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], piece, c, pos);
         stackIndex++;
     }else{
         stackIndex--;
     }
+#else
+    mgScore += f*mg_table[c][piece][pos];
+    egScore += f*eg_table[c][piece][pos];
+#endif
     mgPhase += f*gamephaseInc[piece];
     nbMan += f;
     presentPieces[c][piece] += f;
@@ -343,6 +363,12 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         changePiece<-f, false>(move.from(), move.piece, c);
         changePiece<f, false>(move.to(), toPiece, c);
     }
+#ifdef HCE
+    else{
+        changePiece<-f, false>(move.from(), move.piece, c);
+        changePiece<f, false>(move.to(), toPiece, c);
+    }
+#endif
     if(move.capture != -2){
         int posCapture = move.to();
         int pieceCapture = move.capture;
@@ -352,12 +378,14 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             pieceCapture = PAWN;
         }
         changePiece<-f, false>(posCapture, pieceCapture, !c);
+#ifndef HCE
         if(f == 1)
             globnnue.move3(stackAcc[stackIndex], stackAcc[stackIndex+1],
                 globnnue.get_index(move.piece, c, move.from()),
                 globnnue.get_index(toPiece, c, move.to()),
                 globnnue.get_index(pieceCapture, !c, posCapture)
             );
+#endif
     }else if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
         int rookStart = move.from();
         int rookEnd = move.to();
@@ -368,6 +396,10 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             rookStart |= 7;
             rookEnd--;
         }
+#ifdef HCE // when not HCE, no need to update the numbers of pieces
+        changePiece<-f, false>(rookStart, ROOK, c);
+        changePiece<f, false>(rookEnd, ROOK, c);
+#else
         if(f == 1)
             globnnue.move4(stackAcc[stackIndex], stackAcc[stackIndex+1],
                 globnnue.get_index(move.piece, c, move.from()),
@@ -380,6 +412,7 @@ void IncrementalEvaluator::playMove(Move move, bool c){
             globnnue.get_index(move.piece, c, move.from()),
             globnnue.get_index(toPiece, c, move.to())
         );
+#endif
     }
     if(f == 1)
         stackIndex++;

@@ -78,7 +78,6 @@ Order::Order():dangerPositions(0){
 void Order::swap(int idMove1, int idMove2){
     std::swap(moves[idMove1], moves[idMove2]);
     std::swap(scores[idMove1], scores[idMove2]);
-    std::swap(flags[idMove1], flags[idMove2]);
 }
 
 void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state){
@@ -92,7 +91,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 this->swap(i, 1);
             nbPriority++;
         }else{
-            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state, flags[i]);
+            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state);
         }
     }
 }
@@ -109,7 +108,6 @@ void Order::reinit(int16_t priorityMove){
     pointer = 0;
 }
 inline bool Order::compareMove(int idMove1, int idMove2){
-    if(flags[idMove1] != flags[idMove2])return flags[idMove2] > flags[idMove1];
     return scores[idMove2] > scores[idMove1];
 }
 
@@ -125,7 +123,7 @@ Move Order::pop_max(int& flag){
                 bPointer = i;
         }
         this->swap(bPointer, pointer);
-        flag = flags[pointer];
+        flag = scores[pointer] >> 28;
         pointer++;
         return moves[pointer-1];
     }

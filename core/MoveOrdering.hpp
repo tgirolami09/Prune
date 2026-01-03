@@ -27,7 +27,6 @@ public:
     int scores[maxMoves];
     int nbPriority;
     int pointer;
-    ubyte flags[maxMoves]; // winning captures, non-losing quiet move, losing captures, losing quiet moves
     big dangerPositions;
     bool sorted = false;
     Order();

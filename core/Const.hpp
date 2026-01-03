@@ -10,6 +10,7 @@
 #define sbig int64_t
 using namespace std;
 extern int nbThreads;
+extern bool DEBUG;
 const big MAX_BIG=~0ULL;
 const int WHITE=0;
 const int BLACK=1; // odd = black
@@ -41,7 +42,7 @@ const int maxDepth=200;
 const int maxMoves=218;
 const int maxCaptures = 12*8+4*4;
 const int maxExtension = 16;
-const int hashMul = 1024*1024;
+const big hashMul = 1024*1024;
 
 const int MINIMUM=-32767;
 const int MAXIMUM=-MINIMUM;

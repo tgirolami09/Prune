@@ -59,4 +59,6 @@ extern "C"{\
 #endif
 
 BINARY_INCLUDE(magicsData);
-BINARY_INCLUDE(baseModel)
+#ifndef HCE
+BINARY_INCLUDE(baseModel);
+#endif

@@ -37,6 +37,11 @@ jobs:
         run: |
           make
       
+      - name: Build HCE version
+        working-directory: ./core
+        run: |
+          make HCE
+
       - name: Upload binaries
         if: success()
         uses: actions/upload-artifact@v4
