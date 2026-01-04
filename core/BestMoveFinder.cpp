@@ -341,7 +341,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
-        if(!curMove.isTactical() && rankMove > depth*depth*4+4 && abs(beta) > MAXIMUM-maxDepth)continue;
+        if(!curMove.isTactical() && rankMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
         int score;
         state.playMove(curMove);
         bool isDraw = false;
