@@ -524,7 +524,6 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         printf("info string use a tt of %" PRId64 "entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));
     }
     Move bestMove=nullMove;
-    sbig lastNodes = 1;
     int lastScore = localSS.eval.getScore(state.friendlyColor(), localSS.correctionHistory, state);
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
@@ -534,7 +533,6 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         localSS.seldepth = 0;
         if(abs(lastScore) > MAXIMUM-maxDepth)
             deltaDown = 1;
-        int startNodes = localSS.nodes;
         int bestScore;
         Move finalBestMove=bestMove;
         sbig lastUsedNodes = 0;
@@ -589,11 +587,10 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             lastScore = bestScore;
         double tcpu = getElapsedTime().count()/1'000'000'000.0;
         sbig totNodes = localSS.nodes;
-        sbig usedNodes = totNodes-startNodes;
         double speed=0;
         if(tcpu != 0)speed = totNodes/tcpu;
         if(verbose && bestScore != -INF){
-            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)localSS.nbFirstCutoff/localSS.nbCutoff);
+            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), pow(totNodes, 1.0/depth), (double)localSS.nbFirstCutoff/localSS.nbCutoff);
             fflush(stdout);
         }
         if(running)
@@ -603,7 +600,6 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             softBoundTime = hardBoundTime;
         }
         softBoundTime = chrono::milliseconds{tm.updateSoft(localSS.bestMoveNodes, lastUsedNodes)};
-        lastNodes = usedNodes;
         this->hardBound = tm.hardBound;
         if(limitWay == 1 && localSS.nodes > tm.softBound)break;
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
