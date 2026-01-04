@@ -1,7 +1,9 @@
 #include "TranspositionTable.hpp"
 #include "Const.hpp"
 #include "GameState.hpp"
+#include "Move.hpp"
 #include <cstring>
+#include <thread>
 
 transpositionTable::transpositionTable(size_t count){
     count /= sizeof(infoScore);
@@ -63,13 +65,28 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND)))
         table[index] = info;
 }
+
+void transpositionTable::clearRange(big start, big end){
+    memset(table+start, 0, (end-start)*sizeof(infoScore));
+}
+
 void transpositionTable::clear(){
-    memset(table, 0, modulo*sizeof(infoScore));
+    thread threads[nbThreads];
+    for(int i=0; i<nbThreads; i++){
+        big start = modulo*i/nbThreads;
+        big end = modulo*(i+1)/nbThreads;
+        threads[i] = thread(&transpositionTable::clearRange, this, start, end);
+    }
+    for(int i=0; i<nbThreads; i++){
+        if(threads[i].joinable())
+            threads[i].join();
+    }
 }
 void transpositionTable::reinit(size_t count){
     count /= sizeof(infoScore);
     table = (infoScore*)realloc(table, sizeof(infoScore)*count);
     modulo = count;
+    clear();
     place = 0;
     rewrite = 0;
 }

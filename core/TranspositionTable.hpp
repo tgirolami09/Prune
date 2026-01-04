@@ -29,6 +29,7 @@ public:
     int16_t getMove(const GameState& state);
 
     void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth);
+    void clearRange(big start, big end);
     void clear();
     void reinit(size_t count);
 };
