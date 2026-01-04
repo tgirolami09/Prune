@@ -74,7 +74,7 @@ void transpositionTable::clear(){
     if(nbThreads == 1){
         clearRange(0, modulo);
     }else{
-        thread* threads = (thread*)malloc(sizeof(thread)*nbThreads);
+        thread* threads = (thread*)calloc(nbThreads, sizeof(infoScore));
         for(int i=0; i<nbThreads; i++){
             big start = modulo*i/nbThreads;
             big end = modulo*(i+1)/nbThreads;
