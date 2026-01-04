@@ -71,7 +71,7 @@ void transpositionTable::clearRange(big start, big end){
 }
 
 void transpositionTable::clear(){
-    thread threads[nbThreads];
+    thread* threads = (thread*)malloc(sizeof(thread)*nbThreads);
     for(int i=0; i<nbThreads; i++){
         big start = modulo*i/nbThreads;
         big end = modulo*(i+1)/nbThreads;
@@ -81,6 +81,7 @@ void transpositionTable::clear(){
         if(threads[i].joinable())
             threads[i].join();
     }
+    free(threads);
 }
 void transpositionTable::reinit(size_t count){
     count /= sizeof(infoScore);
