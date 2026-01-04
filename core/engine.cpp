@@ -145,7 +145,7 @@ public:
 };
 
 const Option Options[] = {
-    Option("Hash", "spin", "64", 1, 512),
+    Option("Hash", "spin", "64", 1, 2147483647),
     Option("Move Overhead", "spin", "10", 0, 5000),
     Option("Clear Hash", "button"),
 #ifndef HCE
