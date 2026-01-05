@@ -30,6 +30,7 @@ public:
 
     void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth);
     void clearRange(big start, big end);
+    void prefetch(const GameState& state);
     void clear();
     void reinit(size_t count);
 };

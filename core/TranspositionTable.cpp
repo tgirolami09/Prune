@@ -11,6 +11,11 @@ transpositionTable::transpositionTable(size_t count){
     modulo=count;
 }
 
+pair<big, uint32_t> getIndex(const GameState& state, big modulo){
+    __uint128_t tHash = ((__uint128_t)state.zobristHash)*modulo;
+    return {tHash >> 64, tHash};
+}
+
 inline int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry){
     if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
         if(entry.typeNode == EXACT)
@@ -24,8 +29,7 @@ inline int transpositionTable::storedScore(int alpha, int beta, int depth, const
 }
 
 int transpositionTable::get_eval(const GameState& state, int alpha, int beta, ubyte depth, int16_t& best){
-    big index=((__uint128_t)state.zobristHash)*modulo >> 64;
-    uint32_t resHash = state.zobristHash*modulo;
+    auto [index, resHash] = getIndex(state, modulo);
     if(table[index].hash == resHash){
         int score = storedScore(alpha, beta, depth, table[index]);
         if(score != INVALID)return score;
@@ -35,8 +39,7 @@ int transpositionTable::get_eval(const GameState& state, int alpha, int beta, ub
 }
 
 int16_t transpositionTable::getMove(const GameState& state){
-    big index=((__uint128_t)state.zobristHash)*modulo >> 64;
-    uint32_t resHash = state.zobristHash*modulo;
+    auto [index, resHash] = getIndex(state, modulo);
     if(table[index].hash == resHash)
         return table[index].bestMoveInfo; //probably a good move
     return nullMove.moveInfo;
@@ -44,8 +47,7 @@ int16_t transpositionTable::getMove(const GameState& state){
 
 infoScore transpositionTable::getEntry(const GameState& state, bool& ttHit){
     ttHit = false;
-    big index=((__uint128_t)state.zobristHash)*modulo >> 64;
-    uint32_t resHash = state.zobristHash*modulo;
+    auto [index, resHash] = getIndex(state, modulo);
     if(table[index].hash == resHash)
         ttHit = true;
     return table[index];
@@ -55,15 +57,19 @@ infoScore transpositionTable::getEntry(const GameState& state, bool& ttHit){
 void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth){
     //if(score == 0)return; //because of the repetition
     infoScore info;
+    auto [index, resHash] = getIndex(state, modulo);
     info.score = score;
-    info.hash = state.zobristHash*modulo;
+    info.hash = resHash;
     info.bestMoveInfo = move.moveInfo;
     info.depth = depth;
     info.typeNode = typeNode;
-    big index = ((__uint128_t)state.zobristHash)*modulo >> 64;
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
     if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND)))
         table[index] = info;
+}
+
+void transpositionTable::prefetch(const GameState& state){
+    __builtin_prefetch(&table[getIndex(state, modulo).first]);
 }
 
 void transpositionTable::clearRange(big start, big end){
