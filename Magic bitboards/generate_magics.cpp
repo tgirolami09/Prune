@@ -5,7 +5,7 @@
 #include "util_magic.hpp"
 using namespace std;
 
-const int SPAN=1000;
+const int SPAN=10;
 
 std::random_device rd;
 std::mt19937_64 e2(rd());
@@ -37,22 +37,33 @@ public:
 class creux{
 public:
     vector<node> Ns;
-    vector<big> mapping;
+    big* mapping;
     int valid;
     int depthMax;
     int autorizedDepth;
-    creux(){}
-    creux(int depth, int aDepth){
+    int curID;
+    creux(){mapping=NULL;}
+    creux(int depth, int aDepth, int maxElement){
         Ns = {node()};
+        mapping = (big*)calloc(maxElement, sizeof(big));
         valid = 0;
+        curID = 0;
+        depthMax = depth;
+        autorizedDepth=aDepth;
+    }
+    void reset(int depth, int aDepth, int maxElement){
+        Ns = {node()};
+        mapping = (big*)realloc(mapping, maxElement*sizeof(big));
+        valid = 0;
+        curID = 0;
         depthMax = depth;
         autorizedDepth=aDepth;
     }
     void push(big x, big res){
-        mapping.push_back(res);
+        mapping[curID++] = res;
         born curL=0, curR=((born)1)<<depthMax;
         int T=0;
-        int id=mapping.size()-1;
+        int id=curID-1;
         for(int depth=0; depth<autorizedDepth; depth++){
             if(Ns[T].last != -1 && mapping[Ns[T].last] != mapping[id] && depth+1 > valid)
                 valid = depth+1;
@@ -77,10 +88,9 @@ public:
     }
 };
 
-info test_magic(big magic, int square, bool is_rook, int current_best){
+info test_magic(big magic, int square, bool is_rook, int current_best, creux* tree){
     int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
-    creux tree[63];
-    for(int i=0; i<63; i++)tree[i] = creux(64-i, current_best);
+    for(int i=0; i<63; i++)tree[i].reset(64-i, current_best, 1ULL << nbBits);
     for(big id=0; id<(1<<nbBits); id++){
         big mask = get_mask(is_rook, id, square);
         big res = mask*magic;
@@ -123,6 +133,7 @@ int main(int argc, char* argv[]){
     clock_t last=clock();
     struct timeval diff, last_real, now_real;
     gettimeofday(&last_real, NULL);
+    creux tree[64][63];
     while(1){
         big magic = generate();
         bool change=false;
@@ -130,7 +141,7 @@ int main(int argc, char* argv[]){
             bool is_rook_printed=false;
             #pragma omp parallel for num_threads(70)
             for(int square=0; square<64; square++){
-                info r=test_magic(magic, square, is_rook, best[is_rook][square].minimum);
+                info r=test_magic(magic, square, is_rook, best[is_rook][square].minimum, tree[square]);
                 if(r.minimum < best[is_rook][square].minimum){
                     totLength += (1<<r.minimum)-(1<<best[is_rook][square].minimum);
                     if(best[is_rook][square].minimum == 20)
