@@ -107,6 +107,9 @@ string inpQueue[sizeQ];
 atomic<int> startQ = 0;
 atomic<int> endQ = 0;
 atomic<bool> stop_all=false;
+bool exec_command;
+mutex mtx_command;
+condition_variable cv_command;
 
 void manageInput(){
     while(!stop_all){
@@ -116,6 +119,10 @@ void manageInput(){
         if(com == "stop"){
             bestMoveFinder.running = false;
         }else if(com == "isready"){
+            {
+                unique_lock<mutex> lock(mtx_command);
+                cv_command.wait(lock, [&]{return !exec_command || bestMoveFinder.running;});
+            }
             printf("readyok\n");
         }else if(com == "quit"){
             bestMoveFinder.running = false;
@@ -209,6 +216,11 @@ void manageSearch(){
     IncrementalEvaluator* ieval = new IncrementalEvaluator;
     while(!stop_all){
         if(startQ != endQ){
+            {
+                lock_guard<mutex> lock(mtx_command);
+                exec_command = true;
+            }
+            cv_command.notify_one();
             string com=inpQueue[startQ%sizeQ];
             startQ++;
             istringstream stream(com);
@@ -501,6 +513,11 @@ void manageSearch(){
                     DEBUG = true;
             }
             fflush(stdout);
+            {
+                lock_guard<mutex> lock(mtx_command);
+                exec_command = false;
+            }
+            cv_command.notify_one();
         }
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
