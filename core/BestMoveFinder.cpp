@@ -359,9 +359,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove > 0){
                 int addRedDepth = 0;
                 if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
-                    addRedDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
+                    addRedDepth = static_cast<int>((0.9 + log(depth) * log(rankMove) / 3)*1024);
                     if(mateSearch && inCheckPos)
-                        addRedDepth--;
+                        addRedDepth -= 1024;
+                    addRedDepth -= (order.scores[rankMove]%KILLER_ADVANTAGE)*512/maxHistory;
+                    addRedDepth /= 1024;
+                    addRedDepth = max(addRedDepth, 0);
                 }
                 score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1);
                 bool fullSearch = false;
