@@ -343,6 +343,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             fflush(stdout);
         }
         if(!curMove.isTactical() && rankMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
+        int moveHistory = curMove.isTactical() ? 0 : order.scores[rankMove]%KILLER_ADVANTAGE;
+        if(moveHistory < -100*depth && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
+            continue;
         int score;
         state.playMove(curMove);
         bool isDraw = false;
@@ -362,7 +365,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth = static_cast<int>((0.9 + log(depth) * log(rankMove) / 3)*1024);
                     if(mateSearch && inCheckPos)
                         addRedDepth -= 1024;
-                    addRedDepth -= (order.scores[rankMove]%KILLER_ADVANTAGE)*512/maxHistory;
+                    addRedDepth -= (moveHistory)*512/maxHistory;
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
