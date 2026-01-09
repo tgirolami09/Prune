@@ -343,7 +343,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             fflush(stdout);
         }
         if(!curMove.isTactical() && rankMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
-        int moveHistory = curMove.isTactical() ? 0 : order.scores[rankMove]%KILLER_ADVANTAGE;
+        int moveHistory = curMove.isTactical() ? 0 : (order.scores[rankMove]>=KILLER_ADVANTAGE-maxHistory ? maxHistory : order.scores[rankMove]);
         if(moveHistory < -100*depth && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
             continue;
         int score;
