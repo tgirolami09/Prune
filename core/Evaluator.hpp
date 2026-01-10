@@ -3,7 +3,9 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
-#include "NNUE.hpp"
+#ifndef HCE
+    #include "NNUE.hpp"
+#endif
 #include "corrhist.hpp"
 //https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
@@ -173,14 +175,19 @@ public:
 int SEE(int square, GameState& state, LegalMoveGenerator& generator);
 int fastSEE(const Move& move, const GameState& state);
 bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state);
-int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, ubyte& flag);
+int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state);
 
 const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
 
 class IncrementalEvaluator{
     int mgPhase;
     int presentPieces[2][6]; //keep trace of number of pieces by side
+#ifndef HCE
     Accumulator stackAcc[maxDepth];
+#else
+    int egScore;
+    int mgScore;
+#endif
     int stackIndex;
     int nbMan;
 public:

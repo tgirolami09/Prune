@@ -8,7 +8,15 @@ this is a hobby project made by two passionate about informatic.
 currently, the engine includes:
 - Evaluation:
     - nnue
+        - 128 HL
+        - 8 output buckets
+        - 10 iterations from random net
     - trained on self-gen data using [bullet](https://github.com/jw1912/bullet) (if you want the data used to train it, you can directly ask one of us)
+    - correction history :
+        - pawn
+        - previous move
+        - continuation move
+    - material scaling
 - Search:
     - iterative Deepening
     - quiescence search
@@ -20,7 +28,7 @@ currently, the engine includes:
         - null move pruning
         - reverse futility pruning
         - razoring at depth 1
-    -  transposition table
+    - transposition table
     - move ordering:
         - killer move
         - PV move
@@ -28,6 +36,14 @@ currently, the engine includes:
         - MVV-LVA otherwise
         - root move ordering based on node count
         - history heuristic
+    - singulare extension :
+        - singular
+        - double
+        - negative
+    - IIR
+- movegen
+    - use bitboards
+    - fully legal movegen
 - UCI protocol:
     - fancy commands:
         - version (give the commit's hash when it was compiled)
@@ -36,7 +52,14 @@ currently, the engine includes:
         - runQ (run quiescnce search on the given position)
         - d (print the current position [after the moves])
         - position kiwipete (set kiwipete's position)
-- does not support multithreading yet
+- option :
+    - nnueFile
+        - for bullet format quantised
+        - random will init a random net
+        - embed will use the embeded one
+    the other ones should be known, refer to the stockfish readme
+- support multithreading
+- don't support yet frc, planed for v4
 
 to compile, just run 
 
@@ -46,11 +69,18 @@ make prune
 
 in the core/ directory, and you will have the executable prune, which contains the engine (so it is moveable)
 
+## note 
+for the version naming, we currently use the following :
+- 3rd digit is only for bug fix versions
+- 2nd digit is for elo improvement (for now, we target a +190 elo per release)
+- 1st digit is for new features (as smp for v3, or planed frc for v4)
+
 ## thanks
 - stockfish discord :
     1. TM improvement (took some constant from heimdall for init)
     2. corrhist help  (took some constant from sirius for update)
     3. speedup of the nnue (lizard updates)
 - chessprogramming wiki
+    - warn for new dev, can be outdated, so don't forget to sprt every changes
 - especially to :
-    - chef (the dev from pawnocchio and vine) for helping me debugging the viriformat writer
+    - swedishchef (the dev from pawnocchio and vine) for helping me debugging the viriformat writer

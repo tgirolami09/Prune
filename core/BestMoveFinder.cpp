@@ -166,14 +166,14 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     ss.nodes++;
     if(relDepth > ss.seldepth)ss.seldepth = relDepth;
     dbyte hint;
+    const int rootDist = relDepth-startRelDepth;
     if(isPV)
         hint = transposition.getMove(state);
     else{
         int lastEval=transposition.get_eval(state, alpha, beta, 0, hint);
         if(lastEval != INVALID)
-            return lastEval;
+            return fromTT(lastEval, rootDist);
     }
-    const int rootDist = relDepth-startRelDepth;
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     int& staticEval = ss.stack[rootDist].static_score;
     if(!isCalc)
@@ -186,13 +186,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(staticEval > alpha){
         alpha = staticEval;
         typeNode = EXACT;
-    }else{
-        int delta = value_pieces[QUEEN];
-        big promotion_row = state.friendlyColor() == WHITE ? row1 << 8*6 : row1 << 8;
-        if(state.friendlyPieces()[PAWN]&promotion_row)
-            delta += value_pieces[QUEEN];
-        if(staticEval+delta <= alpha)
-            return alpha;
     }
     int bestEval = staticEval;
     Order& order = ss.stack[rootDist].order;
@@ -243,6 +236,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     const int rootDist = relDepth-startRelDepth;
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     ss.seldepth = max(ss.seldepth, relDepth);
+    transposition.prefetch(state);
     if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
     if constexpr(limitWay == 0)if((ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
@@ -301,8 +295,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(!isRoot && ttHit && ttEntry.depth + 3 >= depth && ttEntry.typeNode != UPPERBOUND && depth >= 6 && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - depth;
         int score = negamax<CutNode, limitWay, mateSearch>(ss, (depth-1)/2, state, goal-1, goal, relDepth, ttEntry.bestMoveInfo);
-        if(score < goal)
+        if(score < goal){
             firstMoveExtension++;
+            if(nodeType != PVNode && score <= goal-20)
+                firstMoveExtension++;
+        }else if(ttEntry.score >= beta){
+            firstMoveExtension--;
+        }
         ss.generator.initDangers(state);
     }
     order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
@@ -339,10 +338,14 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         Move curMove = order.pop_max(flag);
         if(excludedMove == curMove.moveInfo)continue;
         sbig startNodes = ss.nodes;
-        if(isRoot && verbose && ss.mainThread && getElapsedTime() >= chrono::milliseconds{10000}){
-            printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth+1, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
+        if(isRoot && verbose && ss.mainThread && DEBUG){
+            printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
+        if(!curMove.isTactical() && rankMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
+        int moveHistory = curMove.isTactical() ? 0 : (order.scores[rankMove]>=KILLER_ADVANTAGE-maxHistory ? maxHistory : order.scores[rankMove]);
+        if(moveHistory < -100*depth && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
+            continue;
         int score;
         state.playMove(curMove);
         bool isDraw = false;
@@ -359,9 +362,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove > 0){
                 int addRedDepth = 0;
                 if(rankMove > 3 && depth > 3 && !curMove.isTactical()){
-                    addRedDepth = static_cast<int>(0.9 + log(depth) * log(rankMove) / 3);
+                    addRedDepth = static_cast<int>((0.9 + log(depth) * log(rankMove) / 3)*1024);
                     if(mateSearch && inCheckPos)
-                        addRedDepth--;
+                        addRedDepth -= 1024;
+                    addRedDepth -= (moveHistory)*512/maxHistory;
+                    addRedDepth /= 1024;
+                    addRedDepth = max(addRedDepth, 0);
                 }
                 score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1);
                 bool fullSearch = false;
@@ -522,25 +528,20 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
     if(verbose){
-        printf("info string use a tt of %d entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));
+        printf("info string use a tt of %" PRId64 "entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));
     }
     Move bestMove=nullMove;
-    sbig lastNodes = 1;
     int lastScore = localSS.eval.getScore(state.friendlyColor(), localSS.correctionHistory, state);
-    int instability1side = 0;
-    int instability2side = 1;
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
-    for(int depth=1; depth<depthMax && running; depth++){
-        int deltaUp = 5<<(1+instability2side);
-        int deltaDown = 5<<(1+instability2side);
+    for(int depth=1; depth<=depthMax && running; depth++){
+        int deltaUp = 20;
+        int deltaDown = 20;
         localSS.seldepth = 0;
         if(abs(lastScore) > MAXIMUM-maxDepth)
             deltaDown = 1;
-        int startNodes = localSS.nodes;
         int bestScore;
         Move finalBestMove=bestMove;
-        int countUp = 0, countDown=0;
         sbig lastUsedNodes = 0;
         string PV;
         do{
@@ -569,13 +570,11 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             if(bestScore <= alpha){
                 deltaDown = max(deltaDown*2, lastScore-bestScore+1);
                 limit = "upperbound";
-                countDown++;
             }else if(bestScore >= beta){
                 deltaUp = max(deltaUp*2, bestScore-lastScore+1);
                 finalBestMove = bestMove;
                 limit = "lowerbound";
                 ponderMove = nullMove;
-                countUp++;
             }else{
                 finalBestMove = bestMove;
                 PV = localSS.PVprint(localSS.PVlines[0]);
@@ -586,32 +585,28 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             if(verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
                 sbig totNodes = localSS.nodes;
                 double tcpu = getElapsedTime().count()/1'000'000'000.0;
-                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth+1, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
+                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
                 fflush(stdout);
             }
         }while(running);
-        instability1side = (instability1side+(countDown-countUp)+1)/2;
-        instability2side = (instability2side+min(countDown, countUp)+1)/2;
         bestMove = finalBestMove;
         if(bestScore != -INF)
             lastScore = bestScore;
         double tcpu = getElapsedTime().count()/1'000'000'000.0;
         sbig totNodes = localSS.nodes;
-        sbig usedNodes = totNodes-startNodes;
         double speed=0;
         if(tcpu != 0)speed = totNodes/tcpu;
         if(verbose && bestScore != -INF){
-            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth+1, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), (double)usedNodes/lastNodes, (double)localSS.nbFirstCutoff/localSS.nbCutoff);
+            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), pow(totNodes, 1.0/depth), (double)localSS.nbFirstCutoff/localSS.nbCutoff);
             fflush(stdout);
         }
         if(running)
-            allInfos.push_back({localSS.nodes, (int)(tcpu*1000), (int)(speed), depth+1, localSS.seldepth-startRelDepth, bestScore});
+            allInfos.push_back({localSS.nodes, (int)(tcpu*1000), (int)(speed), depth, localSS.seldepth-startRelDepth, bestScore});
         if(abs(bestScore) > MAXIMUM-maxDepth && mateHardBound){
             tm.softBound = hardBound;
             softBoundTime = hardBoundTime;
         }
         softBoundTime = chrono::milliseconds{tm.updateSoft(localSS.bestMoveNodes, lastUsedNodes)};
-        lastNodes = usedNodes;
         this->hardBound = tm.hardBound;
         if(limitWay == 1 && localSS.nodes > tm.softBound)break;
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;

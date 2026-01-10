@@ -175,12 +175,7 @@ vector<vector<info>> load_info(const char* name){
             int size;
             file.read(reinterpret_cast<char*>(&decR), sizeof(decR));
             file.read(reinterpret_cast<char*>(&minimum), sizeof(minimum));
-            file.read(reinterpret_cast<char*>(&size), sizeof(size));
             bests.push_back({minimum, decR, magic});
-            for(int i=0; i<size; i++){
-                big mask;
-                file.read(reinterpret_cast<char*>(&mask), sizeof(mask));
-            }
         }
         if(bests.size() == 64)
             return {vector<info>(64, {20, 0, 1}), bests};
@@ -195,26 +190,6 @@ vector<vector<info>> load_info(const char* name){
             return res;
         }
     }else return {};
-}
-
-void load_whole(info* constants, big** table, char* name){
-    ifstream file(name);
-    big magic;
-    int decR, minimum, size;
-    big mask;
-    int current = 0;
-    while(file.read(reinterpret_cast<char*>(&magic), sizeof(magic))){
-        file.read(reinterpret_cast<char*>(&decR), sizeof(decR));
-        file.read(reinterpret_cast<char*>(&minimum), sizeof(minimum));
-        file.read(reinterpret_cast<char*>(&size), sizeof(size));
-        constants[current] = {minimum, decR, magic};
-        table[current] = (big*)calloc(size, sizeof(big));
-        for(int i=0; i<size; i++){
-            file.read(reinterpret_cast<char*>(&mask), sizeof(mask));
-            table[current][i] = mask;
-        }
-        current++;
-    }
 }
 
 void print_table(vector<vector<info>> table){
