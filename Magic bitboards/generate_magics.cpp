@@ -42,10 +42,12 @@ public:
     int depthMax;
     int autorizedDepth;
     int curID;
-    creux(){mapping=NULL;}
+    creux(){
+        mapping = (big*)calloc((1 << 14), sizeof(big));
+    }
     creux(int depth, int aDepth, int maxElement){
         Ns = {node()};
-        mapping = (big*)calloc(maxElement, sizeof(big));
+        mapping = (big*)calloc((1 << 14), sizeof(big));
         valid = 0;
         curID = 0;
         depthMax = depth;
@@ -53,7 +55,6 @@ public:
     }
     void reset(int depth, int aDepth, int maxElement){
         Ns = {node()};
-        mapping = (big*)realloc(mapping, maxElement*sizeof(big));
         valid = 0;
         curID = 0;
         depthMax = depth;
