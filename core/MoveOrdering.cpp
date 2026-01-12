@@ -117,63 +117,14 @@ Move Order::pop_max(int& flag){
         flag = 5;
         return moves[pointer-1];
     }else{
-        // Utilise maxIdx au lieu de bPointer
-        int maxIdx = pointer;
-        int maxScore = scores[pointer];
-        
-        // SIMD-accelerated max finding
-        int remaining = nbMoves - pointer - 1;
-        int i = pointer + 1;
-        
-        if(remaining >= 8) {
-            // Ajouter le max partout
-            __m256i vMaxScore = _mm256_set1_epi32(maxScore);
-            __m256i vMaxIdx = _mm256_set1_epi32(maxIdx);
-            
-            // On s'occupe de 8 scores à la fois
-            for(; i + 7 < nbMoves; i += 8) {
-                // Charge 8 scores
-                __m256i vScores = _mm256_loadu_si256((__m256i*)&scores[i]);
-                
-                // On crée une liste avec des indices i -> i+7
-                __m256i vIndices = _mm256_add_epi32(
-                    _mm256_set1_epi32(i),
-                    _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7)
-                );
-                
-                // On compare et mask = vScores > vMaxScore
-                __m256i mask = _mm256_cmpgt_epi32(vScores, vMaxScore);
-                
-                // On update max score et idx quand mask est vrai
-                vMaxScore = _mm256_blendv_epi8(vMaxScore, vScores, mask);
-                vMaxIdx = _mm256_blendv_epi8(vMaxIdx, vIndices, mask);
-            }
-            
-            // Reduction horizontale pour le max (partie que je comprend le moins)
-            int temp[8];
-            int tempIdx[8];
-            _mm256_storeu_si256((__m256i*)temp, vMaxScore);
-            _mm256_storeu_si256((__m256i*)tempIdx, vMaxIdx);
-            
-            for(int j = 0; j < 8; j++) {
-                if(temp[j] > maxScore) {
-                    maxScore = temp[j];
-                    maxIdx = tempIdx[j];
-                }
-            }
+        int bPointer=pointer;
+        for(int i=pointer+1; i<nbMoves; i++){
+            if(compareMove(bPointer, i))
+                bPointer = i;
         }
-    
-    // Même logique qu'avant
-    // Ce qui reste (pas besoin de redef i)
-    for(; i < nbMoves; i++) {
-        if(scores[i] > maxScore) {
-            maxScore = scores[i];
-            maxIdx = i;
-        }
-    }
-    
-    this->swap(maxIdx, pointer);
-    flag = scores[pointer] >> 28;
-    return moves[pointer++];
+        this->swap(bPointer, pointer);
+        flag = scores[pointer] >> 28;
+        pointer++;
+        return moves[pointer-1];
     }
 }
