@@ -4,7 +4,7 @@
 #include <cstring>
 #include <cassert>
 
-#ifdef DEBUG
+#ifdef DEBUG_MACRO
 int sum_diffs = 0;
 int nb_diffs = 0;
 int max_diff = 0;
@@ -49,7 +49,7 @@ int corrhists::probe(const GameState& state) const{
         cont.probe(state.getContMove().moveInfo+(1<<15), state.friendlyColor()) +
         prevMove.probe(state.getLastMove().moveInfo+(1<<15), state.friendlyColor())
     )/corrhistGrain;
-#ifdef DEBUG
+#ifdef DEBUG_MACRO
     if(diff > max_diff)max_diff = diff;
     else if(diff < min_diff)min_diff = diff;
     sum_diffs += diff;

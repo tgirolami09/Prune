@@ -4,6 +4,12 @@
 #include "GameState.hpp"
 #include "Move.hpp"
 
+#ifdef DEBUG_MACRO
+extern int histSum;
+extern double histSquare;
+extern int nbHist;
+#endif
+
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];

@@ -3,6 +3,13 @@
 #include "Evaluator.hpp"
 #include "Const.hpp"
 //#define COUNTER
+
+#ifdef DEBUG_MACRO
+int histSum=0;
+double histSquare=0;
+int nbHist=0;
+#endif
+
 int getrand(big& state){
     big z = (state += 0x9E3779B97F4A7C15ULL);
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
@@ -22,14 +29,12 @@ void HelpOrdering::init(){
         killers[i][1] = nullMove;
     }
     memset(history, 0, sizeof(history));
-#ifdef COUNTER
-    for(int f=0; f<64*64; f++)
-        counterMove[f] = nullMove.moveInfo;
-#endif
 }
 void HelpOrdering::updateHistory(Move move, bool c, int bonus){
+    int& index = getIndex(move, c);
     bonus = min(max(bonus, -maxHistory), maxHistory);
-    getIndex(move, c) += bonus - getIndex(move, c)*abs(bonus)/maxHistory;
+    int correction = bonus - index*abs(bonus)/maxHistory;
+    index += correction;
 }
 
 void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth){
@@ -56,20 +61,11 @@ bool HelpOrdering::isKiller(Move move, int relDepth) const{
 int HelpOrdering::getHistoryScore(Move move, bool c) const{
     return history[c][move.from()][move.to()];
 }
-#ifdef COUNTER
-bool HelpOrdering::isCounter(Move move, Move lastMove) const{
-    return move.moveInfo == counterMove[lastMove.getMovePart()];
-}
-#endif
 
 int HelpOrdering::getMoveScore(Move move, bool c, int relDepth) const{
     int score = 0;
     if(isKiller(move, relDepth))
         score = KILLER_ADVANTAGE;
-#ifdef COUNTER
-    if(isCounter(move, lastMove))
-        score += KILLER_ADVANTAGE/2;
-#endif
     return score+getHistoryScore(move, c);
 }
 
