@@ -232,7 +232,7 @@ inline int BestMoveFinder::Evaluate(usefull& ss, GameState& state, int alpha, in
 }
 
 template <int nodeType, int limitWay, bool mateSearch, bool isRoot>
-int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove){
+int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove, const int lastReduction){
     const int rootDist = relDepth-startRelDepth;
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     ss.seldepth = max(ss.seldepth, relDepth);
@@ -268,7 +268,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     Order& order = ss.stack[rootDist].order;
     bool inCheck=ss.generator.isCheck();
     bool improving = false;
-    if((!ttHit || ttEntry.depth+3 < depth) && depth >= 3 && nodeType != AllNode && excludedMove == nullMove.moveInfo)depth--;
+    if((!ttHit || ttEntry.depth+3 < depth) && depth >= 3 && nodeType != AllNode && excludedMove == nullMove.moveInfo && lastReduction <= 3)depth--;
     if(rootDist > 2)
         improving = ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
     if constexpr(nodeType != PVNode){
@@ -373,7 +373,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
-                score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1);
+                score = -negamax<((nodeType == CutNode)?AllNode:CutNode), limitWay, mateSearch>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, nullMove.moveInfo, addRedDepth);
                 bool fullSearch = false;
                 if((score > alpha && score < beta) || (nodeType == PVNode && score == beta && beta == alpha+1)){
                     fullSearch = true;
