@@ -197,14 +197,18 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     int bestEval = staticEval;
     Order& order = ss.stack[rootDist].order;
     bool inCheck;
-    ss.generator.initDangers(state);
-    order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
+    bool testCheck = ss.generator.initDangers(state);
+    order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, !testCheck);
+    if(order.nbMoves == 0 && testCheck){
+        return MINIMUM+rootDist;
+    }
     order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, rootDist, state);
     Move bestCapture;
     for(int i=0; i<order.nbMoves; i++){
         int flag;
         Move capture = order.pop_max(flag);
-        if(!(flag&1))break;
+        if(capture.isTactical() && !(flag&1))break;
+        else if(!capture.isTactical() && bestEval > MINIMUM+maxDepth)continue;
         state.playMove(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor());
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
@@ -226,7 +230,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             }
         }
     }
-    transposition.push(state, bestEval, typeNode, bestCapture, 0);
+    transposition.push(state, absoluteScore(bestEval, rootDist), typeNode, bestCapture, 0);
     return bestEval;
 }
 
