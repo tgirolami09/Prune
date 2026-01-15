@@ -44,6 +44,7 @@ class BestMoveFinder{
         bool mainThread;
         HelpOrdering history;
         corrhists correctionHistory;
+        int min_nmp_ply=0;
         usefull(const GameState& state);
         usefull();
         void reinit(const GameState& state);
