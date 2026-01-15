@@ -281,12 +281,19 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(static_eval >= beta+margin)
                 return Evaluate<nodeType, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
             int r = depth/4+3;
-            if(depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
+            if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
                 ss.generator.initDangers(state);
                 int v = -negamax<CutNode, limitWay, mateSearch>(ss, depth-r, state, -beta, -beta+1, relDepth+1);
                 state.undoNullMove();
-                if(v >= beta)return v;
+                if(v >= beta){
+                    if(depth <= 10 || ss.min_nmp_ply != 0)
+                        return v;
+                    ss.min_nmp_ply = rootDist+r;
+                    v = negamax<CutNode, limitWay, mateSearch>(ss, depth-r, state, beta-1, beta, relDepth);
+                    ss.min_nmp_ply = 0;
+                    if(v >= beta)return v;
+                };
                 ss.generator.initDangers(state);
             }
         }
