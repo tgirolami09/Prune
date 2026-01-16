@@ -290,6 +290,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     if(depth <= 10 || ss.min_nmp_ply != 0)
                         return v;
                     ss.min_nmp_ply = rootDist+r;
+                    ss.generator.initDangers(state);
                     v = negamax<CutNode, limitWay, mateSearch>(ss, depth-r, state, beta-1, beta, relDepth);
                     ss.min_nmp_ply = 0;
                     if(v >= beta)return v;
