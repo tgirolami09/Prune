@@ -1,4 +1,5 @@
 #include <cstring>
+#include <climits>
 #include "MoveOrdering.hpp"
 #include "Evaluator.hpp"
 #include "Const.hpp"
