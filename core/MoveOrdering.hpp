@@ -6,6 +6,15 @@
 #include "simd_definitions.hpp"
 #include "tunables.hpp"
 
+#ifdef DEBUG_MACRO
+extern int quiethistSum;
+extern double quiethistSquare;
+extern int nbquietHist;
+extern int capthistSum;
+extern double capthistSquare;
+extern int nbCaptHist;
+#endif
+
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
