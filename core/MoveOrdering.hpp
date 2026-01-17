@@ -18,7 +18,7 @@ extern int nbCaptHist;
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
-    int captHist[2][6][6][64];
+    int captHist[2][nbPieces+4][6][64];
     int& getIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;
 public:
