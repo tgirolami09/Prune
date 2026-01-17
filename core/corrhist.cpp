@@ -4,7 +4,7 @@
 #include <cstring>
 #include <cassert>
 
-#ifdef DEBUG
+#ifdef DEBUG_MACRO
 int sum_diffs = 0;
 int nb_diffs = 0;
 int max_diff = 0;

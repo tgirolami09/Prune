@@ -343,13 +343,24 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             fflush(stdout);
         }
         if(!curMove.isTactical() && rankMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
-        int moveHistory = curMove.isTactical() ? 0 : (order.scores[rankMove]>=KILLER_ADVANTAGE-maxHistory ? maxHistory : order.scores[rankMove]);
-        if(moveHistory < -100*depth && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
+        int moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor());
+        if(moveHistory < -100*depth && !curMove.isTactical() && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
             continue;
         int futilityValue = static_eval+300+150*depth;
         if(nodeType != PVNode && !curMove.isTactical() && depth <= 5 && !inCheck && futilityValue <= alpha){
             continue;
         }
+#ifdef DEBUG_MACRO
+        if(curMove.isTactical()){
+            capthistSum += moveHistory;
+            capthistSquare += moveHistory*moveHistory;
+            nbCaptHist++;
+        }else{
+            quiethistSum += moveHistory;
+            quiethistSquare += moveHistory*moveHistory;
+            nbquietHist++;
+        }
+#endif
         int score;
         state.playMove(curMove);
         bool isDraw = false;

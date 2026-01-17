@@ -16,6 +16,7 @@
 #include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
+#include <cmath>
 int nbThreads = 1;
 bool DEBUG = false;
 using namespace std;
@@ -383,8 +384,12 @@ void manageSearch(){
                 }
                 if(DEBUG)printf("search score: (%d %" PRId64 ") (%d %" PRId64 ")\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
                 printf("%" PRId64 " nodes %.0f nps\n", scoreAll.second, sumNPS*1000.0/sumTime);
-#ifdef DEBUG
+#ifdef DEBUG_MACRO
                 printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
+                double meanQuiet = ((double)quiethistSum)/nbquietHist;
+                printf("quiethist=%.2f ± %.2f\n", meanQuiet, sqrt(quiethistSquare/nbquietHist-meanQuiet*meanQuiet));
+                double meanCapt = ((double)capthistSum)/nbCaptHist;
+                printf("capthist=%.2f ± %.2f\n", meanCapt, sqrt(capthistSquare/nbCaptHist-meanCapt*meanCapt));
 #endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
