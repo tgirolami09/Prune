@@ -23,6 +23,7 @@ class corrhists{
     corrhist<16384, 64*corrhistGrain> pawns;
     corrhist<16384, 64*corrhistGrain> prevMove;
     corrhist<16384, 64*corrhistGrain> cont;
+    corrhist<16384, 64*corrhistGrain> minor;
 public:
     corrhists();
     void update(const GameState&, int, int);
