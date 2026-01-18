@@ -3,6 +3,7 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
+#include "simd_definitions.hpp"
 
 class HelpOrdering{
     Move killers[maxDepth][2];
@@ -24,7 +25,13 @@ class Order{
 public:
     Move moves[maxMoves];
     int nbMoves;
+    #if defined(__AVX2__)
+    // +8 pour avoir la place de rajouter 8 valeurs de padding de simd
+    // 32-byte aligned memory
+    alignas(32) int scores[maxMoves + 8];
+    #else
     int scores[maxMoves];
+    #endif
     int nbPriority;
     int pointer;
     big dangerPositions;

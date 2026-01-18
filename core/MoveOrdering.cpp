@@ -1,4 +1,5 @@
 #include <cstring>
+#include <climits>
 #include "MoveOrdering.hpp"
 #include "Evaluator.hpp"
 #include "Const.hpp"
@@ -94,6 +95,10 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
             scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state);
         }
     }
+    #if defined(__AVX2__)
+    __m256i vIntMin = _mm256_set1_epi32(INT_MIN);
+    _mm256_storeu_si256((__m256i*)&scores[nbMoves], vIntMin);
+    #endif
 }
 
 void Order::reinit(int16_t priorityMove){
@@ -117,11 +122,54 @@ Move Order::pop_max(int& flag){
         flag = 5;
         return moves[pointer-1];
     }else{
+        // AVX2 accelerated max finding
+#if defined(__AVX2__)
+        int bPointer = pointer;
+        int maxScore = scores[pointer];
+        
+        __m256i vMaxScore = _mm256_set1_epi32(maxScore);
+        __m256i vMaxIdx = _mm256_set1_epi32(bPointer);
+
+        for(int i = pointer + 1; i < nbMoves; i += 8) {
+            __m256i vScores = _mm256_loadu_si256((__m256i*)&scores[i]);
+            __m256i vIndices = _mm256_add_epi32(
+                _mm256_set1_epi32(i),
+                _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7)
+            );
+            
+            __m256i mask = _mm256_cmpgt_epi32(vScores, vMaxScore);
+            vMaxScore = _mm256_blendv_epi8(vMaxScore, vScores, mask);
+            vMaxIdx = _mm256_blendv_epi8(vMaxIdx, vIndices, mask);
+        }
+        
+        // Horizontal reduction magic
+        __m256i permScore = _mm256_permute2x128_si256(vMaxScore, vMaxScore, 1);
+        __m256i permIdx = _mm256_permute2x128_si256(vMaxIdx, vMaxIdx, 1);
+        __m256i mask1 = _mm256_cmpgt_epi32(permScore, vMaxScore);
+        vMaxScore = _mm256_blendv_epi8(vMaxScore, permScore, mask1);
+        vMaxIdx = _mm256_blendv_epi8(vMaxIdx, permIdx, mask1);
+        
+        permScore = _mm256_shuffle_epi32(vMaxScore, _MM_SHUFFLE(1, 0, 3, 2));
+        permIdx = _mm256_shuffle_epi32(vMaxIdx, _MM_SHUFFLE(1, 0, 3, 2));
+        __m256i mask2 = _mm256_cmpgt_epi32(permScore, vMaxScore);
+        vMaxScore = _mm256_blendv_epi8(vMaxScore, permScore, mask2);
+        vMaxIdx = _mm256_blendv_epi8(vMaxIdx, permIdx, mask2);
+        
+        permScore = _mm256_shuffle_epi32(vMaxScore, _MM_SHUFFLE(2, 3, 0, 1));
+        permIdx = _mm256_shuffle_epi32(vMaxIdx, _MM_SHUFFLE(2, 3, 0, 1));
+        __m256i mask3 = _mm256_cmpgt_epi32(permScore, vMaxScore);
+        vMaxScore = _mm256_blendv_epi8(vMaxScore, permScore, mask3);
+        vMaxIdx = _mm256_blendv_epi8(vMaxIdx, permIdx, mask3);
+        
+        maxScore = _mm256_extract_epi32(vMaxScore, 0);
+        bPointer = _mm256_extract_epi32(vMaxIdx, 0);
+#else
         int bPointer=pointer;
         for(int i=pointer+1; i<nbMoves; i++){
             if(compareMove(bPointer, i))
                 bPointer = i;
         }
+#endif
         this->swap(bPointer, pointer);
         flag = scores[pointer] >> 28;
         pointer++;

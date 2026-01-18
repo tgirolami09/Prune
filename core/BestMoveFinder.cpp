@@ -346,6 +346,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         int moveHistory = curMove.isTactical() ? 0 : (order.scores[rankMove]>=KILLER_ADVANTAGE-maxHistory ? maxHistory : order.scores[rankMove]);
         if(moveHistory < -100*depth && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
             continue;
+        int futilityValue = static_eval+300+150*depth;
+        if(nodeType != PVNode && !curMove.isTactical() && depth <= 5 && !inCheck && futilityValue <= alpha){
+            continue;
+        }
         int score;
         state.playMove(curMove);
         bool isDraw = false;
