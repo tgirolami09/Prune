@@ -344,7 +344,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
         if(!curMove.isTactical() && rankMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
         int moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor());
-        if(!curMove.isTactical() && ss.history.isKiller(curMove, relDepth))
+        if(!curMove.isTactical() && ss.history.isKiller(curMove, rootDist))
             moveHistory = maxHistory;
         if(moveHistory < -100*depth && !curMove.isTactical() && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
             continue;
