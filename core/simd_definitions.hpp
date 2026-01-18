@@ -1,6 +1,6 @@
 #ifndef SIMD_DEFINITIONS_HPP
 #define SIMD_DEFINITIONS_HPP
-
+#include <cstdint>
 #if defined(__x86_64__)
     #include <immintrin.h>
 
