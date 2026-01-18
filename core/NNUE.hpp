@@ -1,7 +1,7 @@
 #ifndef NNUE_CPP
 #define NNUE_CPP
 #include "Const.hpp"
-#include <immintrin.h>  // For Intel intrinsics
+#include "simd_definitions.hpp"
 #include <fstream>
 
 using namespace std;
@@ -13,41 +13,9 @@ const int QA = 255;
 const int QB = 64;
 const int BUCKET = 8;
 const int DIVISOR=(31+BUCKET)/BUCKET;
-#define dbyte int16_t
-// Manual SIMD wrapper for cross-platform compatibility
-#if defined(__AVX2__)
-    using simd16 = __m256i;  // 16 int16_t values
-    const int nb16 = 16;
-    using simdint = __m256i;
-    const int nbint = 16;  // 16 int32 values total
-#elif defined(__SSE2__)
-    using simd16 = __m128i;  // 8 int16_t values  
-    const int nb16 = 8;
-    // For SSE2, we need TWO __m128i to hold 8 int32 values
-    using simdint = __m128i;
-    const int nbint = 8;  // 8 int32 values total
-#else
-    #error "This code requires at least SSE2 support"
-#endif
 
 static_assert(HL_SIZE%nb16 == 0);
 
-// SIMD utility functions
-inline simd16 simd16_zero();
-inline simdint simdint_zero();
-inline simd16 simd16_set1(dbyte value);
-inline simdint simdint_set1(int value);
-inline simd16 simd16_add(simd16 a, simd16 b);
-inline simd16 simd16_sub(simd16 a, simd16 b);
-inline simdint simdint_add(simdint a, simdint b);
-inline simd16 simd16_mullo(simd16 a, simd16 b);
-inline simd16 simd16_clamp(simd16 value, simd16 min_val, simd16 max_val);
-inline simdint convert16(simd16 var);
-inline simdint simdint_mullo(simdint a, simdint b);
-template<int min, int max>
-simd16 SCReLU(simd16 value);
-simd16 activation(simd16 value);
-int mysum(simdint x);
 using Accumulator=simd16[2][HL_SIZE/nb16];
 
 class NNUE{

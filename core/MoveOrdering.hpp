@@ -3,6 +3,7 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
+#include "simd_definitions.hpp"
 
 class HelpOrdering{
     Move killers[maxDepth][2];
