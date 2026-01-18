@@ -192,7 +192,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     bool inCheck;
     ss.generator.initDangers(state);
     order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, -1, state);
+    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, rootDist, state);
     Move bestCapture;
     for(int i=0; i<order.nbMoves; i++){
         int flag;
@@ -330,7 +330,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (sc > alpha && sc < beta && nodeType == PVNode)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
-    order.init(state.friendlyColor(), lastBest, ss.history, relDepth, state);
+    order.init(state.friendlyColor(), lastBest, ss.history, rootDist, state);
     Move bestMove = nullMove;
     int bestScore = -INF;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
@@ -395,7 +395,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.nbCutoff++;
             if(isRoot)ss.rootBest=curMove;
             if(rankMove == 0)ss.nbFirstCutoff++;
-            ss.history.addKiller(curMove, depth, relDepth, state.friendlyColor());
+            ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor());
             if(!curMove.isTactical()){
                 ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
                 if(score > static_eval && !inCheck)
