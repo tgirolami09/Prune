@@ -123,14 +123,13 @@ Move Order::pop_max(int& flag){
         return moves[pointer-1];
     }else{
         // AVX2 accelerated max finding
-        #if defined(__AVX2__)
+#if defined(__AVX2__)
         int bPointer = pointer;
         int maxScore = scores[pointer];
         
         __m256i vMaxScore = _mm256_set1_epi32(maxScore);
         __m256i vMaxIdx = _mm256_set1_epi32(bPointer);
-        
-        // Il n'y a plus de check on peu load tant qu'il reste des coups puisqu'on a rajouter un buffer de 8 elements INT_MIN
+
         for(int i = pointer + 1; i < nbMoves; i += 8) {
             __m256i vScores = _mm256_loadu_si256((__m256i*)&scores[i]);
             __m256i vIndices = _mm256_add_epi32(
@@ -164,13 +163,13 @@ Move Order::pop_max(int& flag){
         
         maxScore = _mm256_extract_epi32(vMaxScore, 0);
         bPointer = _mm256_extract_epi32(vMaxIdx, 0);
-        #else
+#else
         int bPointer=pointer;
         for(int i=pointer+1; i<nbMoves; i++){
             if(compareMove(bPointer, i))
                 bPointer = i;
         }
-        #endif
+#endif
         this->swap(bPointer, pointer);
         flag = scores[pointer] >> 28;
         pointer++;
