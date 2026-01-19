@@ -24,7 +24,7 @@ inline void GameState::updateZobrists(int piece, bool color, int square){
     zobristHash ^= zobr;
     if(piece == PAWN)
         pawnZobrist ^= zobr;
-    if(piece == KNIGHT || piece == BISHOP)
+    if(piece == KNIGHT || piece == BISHOP || piece == KING)
         minorZobrist ^= zobr;
 }
 
