@@ -24,8 +24,13 @@ inline void GameState::updateZobrists(int piece, bool color, int square){
     zobristHash ^= zobr;
     if(piece == PAWN)
         pawnZobrist ^= zobr;
-    if(piece == KNIGHT || piece == BISHOP || piece == KING)
+    else if(piece == KING){
         minorZobrist ^= zobr;
+        majorZobrist ^= zobr;
+    }else if(piece == KNIGHT || piece == BISHOP)
+        minorZobrist ^= zobr;
+    else if(piece == QUEEN || piece == ROOK)
+        majorZobrist ^= zobr;
 }
 
 void GameState::testPawnZobr(){
@@ -45,6 +50,7 @@ void GameState::fromFen(string fen){
     zobristHash=0;
     pawnZobrist = 0;
     minorZobrist = 0;
+    majorZobrist = 0;
     for(int c=0; c<2; c++)
         for(int p=0; p<6; p++)
             boardRepresentation[c][p] = 0;

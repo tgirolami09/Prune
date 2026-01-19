@@ -42,6 +42,7 @@ void corrhists::update(const GameState& state, int diff, int depth){
     prevMove.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
     cont.update(state.getContMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
     minor.update(state.minorZobrist, state.friendlyColor(), bonus, weight);
+    major.update(state.majorZobrist, state.friendlyColor(), bonus, weight);
 }
 
 int corrhists::probe(const GameState& state) const{
@@ -49,7 +50,8 @@ int corrhists::probe(const GameState& state) const{
         pawns.probe(state.pawnZobrist, state.friendlyColor()) +
         cont.probe(state.getContMove().moveInfo+(1<<15), state.friendlyColor()) +
         prevMove.probe(state.getLastMove().moveInfo+(1<<15), state.friendlyColor()) +
-        minor.probe(state.minorZobrist, state.friendlyColor())
+        minor.probe(state.minorZobrist, state.friendlyColor()) +
+        major.probe(state.majorZobrist, state.friendlyColor())
     )/corrhistGrain;
 #ifdef DEBUG_MACRO
     if(diff > max_diff)max_diff = diff;

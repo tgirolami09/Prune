@@ -24,6 +24,7 @@ class corrhists{
     corrhist<16384, 64*corrhistGrain> prevMove;
     corrhist<16384, 64*corrhistGrain> cont;
     corrhist<16384, 64*corrhistGrain> minor;
+    corrhist<16384, 64*corrhistGrain> major;
 public:
     corrhists();
     void update(const GameState&, int, int);

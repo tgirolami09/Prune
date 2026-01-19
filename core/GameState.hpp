@@ -32,6 +32,7 @@ public :
     big zobristHash;
     big pawnZobrist;
     big minorZobrist;
+    big majorZobrist;
     big boardRepresentation[2][6];
     //End of last double pawn push, (-1) if last move was not a double pawn push
     int lastDoublePawnPush;
