@@ -13,6 +13,13 @@
 #include <thread>
 #include <cassert>
 
+#ifdef DEBUG_MACRO
+int nmpVerifAllNode=0,
+    nmpVerifCutNode=0,
+    nmpVerifPassCutNode=0,
+    nmpVerifPassAllNode=0;
+#endif
+
 BestMoveFinder::usefull::usefull(const GameState& state):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
@@ -289,11 +296,25 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(v >= beta){
                     if(depth <= 10 || ss.min_nmp_ply != 0)
                         return v;
+#ifdef DEBUG_MACRO
+                    if(nodeType == CutNode)
+                        nmpVerifCutNode++;
+                    else
+                        nmpVerifAllNode++;
+#endif
                     ss.min_nmp_ply = rootDist+r;
                     ss.generator.initDangers(state);
                     v = negamax<CutNode, limitWay, mateSearch>(ss, depth-r, state, beta-1, beta, relDepth);
                     ss.min_nmp_ply = 0;
-                    if(v >= beta)return v;
+                    if(v >= beta){
+#ifdef DEBUG_MACRO
+                    if(nodeType == CutNode)
+                        nmpVerifPassCutNode++;
+                    else
+                        nmpVerifPassAllNode++;
+#endif
+                        return v;
+                    };
                 };
                 ss.generator.initDangers(state);
             }

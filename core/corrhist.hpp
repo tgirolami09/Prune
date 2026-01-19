@@ -2,7 +2,7 @@
 #define CORR_HIST_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
-#ifdef DEBUG
+#ifdef DEBUG_MACRO
 extern int max_diff;
 extern int min_diff;
 extern int nb_diffs;
