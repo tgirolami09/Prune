@@ -383,8 +383,10 @@ void manageSearch(){
                 }
                 if(DEBUG)printf("search score: (%d %" PRId64 ") (%d %" PRId64 ")\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
                 printf("%" PRId64 " nodes %.0f nps\n", scoreAll.second, sumNPS*1000.0/sumTime);
-#ifdef DEBUG
+#ifdef DEBUG_MACRO
                 printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
+                printf("nmp in allnodes stats : %d/%d = %.2f%%\n", nmpVerifPassAllNode, nmpVerifAllNode, nmpVerifPassAllNode*100.0/nmpVerifAllNode);
+                printf("nmp in curnodes stats : %d/%d = %.2f%%\n", nmpVerifPassCutNode, nmpVerifCutNode, nmpVerifPassCutNode*100.0/nmpVerifCutNode);
 #endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
