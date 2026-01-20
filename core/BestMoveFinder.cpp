@@ -210,8 +210,10 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     for(int i=0; i<order.nbMoves; i++){
         int flag;
         Move capture = order.pop_max(flag);
-        if(capture.isTactical() && !(flag&1))break;
-        else if(!capture.isTactical() && bestEval > MINIMUM+maxDepth)continue;
+        if(bestEval >= MINIMUM+maxDepth){
+            if(capture.isTactical() && !(flag&1))continue;
+            else if(!capture.isTactical())continue;
+        }
         state.playMove(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor());
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
