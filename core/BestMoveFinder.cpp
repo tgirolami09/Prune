@@ -360,7 +360,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.eval.playMove(curMove, !state.friendlyColor());
             bool inCheckPos = ss.generator.initDangers(state);
             int reductionDepth = 1;
-            if(inCheckPos){
+            if(inCheckPos && firstMoveExtension == 0){
                 reductionDepth--;
             }
             if(rankMove > 0){
