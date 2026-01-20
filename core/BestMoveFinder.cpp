@@ -185,19 +185,22 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     int& staticEval = ss.stack[rootDist].static_score;
     if(!isCalc)
         staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
-    if(staticEval >= beta){
-        transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
-        return staticEval;
-    }
     int typeNode = UPPERBOUND;
-    if(staticEval > alpha){
-        alpha = staticEval;
-        typeNode = EXACT;
+    bool testCheck = ss.generator.initDangers(state);
+    int bestEval = MINIMUM;
+    if(!testCheck){
+        if(staticEval >= beta){
+            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
+            return staticEval;
+        }
+        if(staticEval > alpha){
+            alpha = staticEval;
+            typeNode = EXACT;
+        }
+        bestEval = staticEval;
     }
-    int bestEval = staticEval;
     Order& order = ss.stack[rootDist].order;
     bool inCheck;
-    bool testCheck = ss.generator.initDangers(state);
     order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, !testCheck);
     if(order.nbMoves == 0 && testCheck){
         return MINIMUM+rootDist;
