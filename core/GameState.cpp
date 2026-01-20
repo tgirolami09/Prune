@@ -26,7 +26,6 @@ inline void GameState::updateZobrists(int piece, bool color, int square){
         pawnZobrist ^= zobr;
     else if(piece == KING){
         minorZobrist ^= zobr;
-        majorZobrist ^= zobr;
     }else if(piece == KNIGHT || piece == BISHOP)
         minorZobrist ^= zobr;
     else if(piece == QUEEN || piece == ROOK)
