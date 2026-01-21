@@ -5,7 +5,7 @@ big clipped_col[8];
 big clipped_diag[15];
 big clipped_idiag[15];
 
-void init_lines(){
+__attribute__((constructor(101))) void init_lines(){
     big row = MAX_BIG >> (8*7+2) << 1;
     big col = 0x0001010101010100ULL;
     for(int i=0; i<8; i++){

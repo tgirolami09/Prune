@@ -153,12 +153,9 @@ const int gamephaseInc[6] = {0,1,1,2,4,0};
 extern int mg_table[2][6][64];
 extern int eg_table[2][6][64];
 
-void init_tables();
-
 //Class to evaluate a position
 extern big mask_forward[64];
 extern big mask_forward_inv[64];
-void init_forwards();
 
 class SEE_BB{
 public:

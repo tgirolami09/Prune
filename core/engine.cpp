@@ -20,22 +20,6 @@ int nbThreads = 1;
 bool DEBUG = false;
 using namespace std;
 
-class Init{
-public:
-    Init(){
-        PrecomputeKnightMoveData();
-        init_lines();
-        init_tables();
-        init_forwards();
-        load_table();
-        precomputePawnsAttack();
-        precomputeCastlingMasks();
-        precomputeNormlaKingMoves();
-        precomputeDirections();
-        init_zobrs();
-    }
-};
-Init _init_everything;
 
 //Main class for the game
 const vector<string> benches = {
