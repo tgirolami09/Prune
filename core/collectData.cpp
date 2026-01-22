@@ -1,4 +1,5 @@
 int nbThreads = 1;
+bool DEBUG=false;
 #define DATAGEN //disable material scaling for example
 #include "BestMoveFinder.hpp"
 #include "Evaluator.hpp"
