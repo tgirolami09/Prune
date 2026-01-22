@@ -266,6 +266,16 @@ void clear_table(){
     free(tableMagic);
 }
 
+__attribute__((constructor(102)))
+void init_consts_legalMove(){
+    PrecomputeKnightMoveData();
+    precomputeDirections();
+    load_table();
+    precomputeCastlingMasks();
+    precomputeNormlaKingMoves();
+    precomputePawnsAttack();
+}
+
 template<bool isPawn>
 void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMoves, int8_t piece, bool promotQueen){
     while(mask){

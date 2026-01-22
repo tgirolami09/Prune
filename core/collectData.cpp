@@ -1,4 +1,5 @@
 int nbThreads = 1;
+bool DEBUG=false;
 #define DATAGEN //disable material scaling for example
 #include "BestMoveFinder.hpp"
 #include "Evaluator.hpp"
@@ -65,14 +66,6 @@ public:
 };
 
 int main(int argc, char** argv){
-    PrecomputeKnightMoveData();
-    init_lines();
-    precomputePawnsAttack();
-    precomputeCastlingMasks();
-    precomputeNormlaKingMoves();
-    precomputeDirections();
-    init_zobrs();
-    load_table();
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;

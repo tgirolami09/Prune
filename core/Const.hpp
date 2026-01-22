@@ -36,7 +36,6 @@ extern big clipped_idiag[15];
 const big clipped_brow = (MAX_BIG >> 16 << 8);
 const big clipped_bcol = (~0x8181818181818181);
 const big clipped_mask = clipped_brow & clipped_bcol;
-void init_lines();
 
 const int maxDepth=200;
 const int maxMoves=218;

@@ -13,6 +13,13 @@
 #include <thread>
 #include <cassert>
 
+#ifdef DEBUG_MACRO
+int nmpVerifAllNode=0,
+    nmpVerifCutNode=0,
+    nmpVerifPassCutNode=0,
+    nmpVerifPassAllNode=0;
+#endif
+
 BestMoveFinder::usefull::usefull(const GameState& state):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
@@ -178,26 +185,35 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     int& staticEval = ss.stack[rootDist].static_score;
     if(!isCalc)
         staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
-    if(staticEval >= beta){
-        transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
-        return staticEval;
-    }
     int typeNode = UPPERBOUND;
-    if(staticEval > alpha){
-        alpha = staticEval;
-        typeNode = EXACT;
+    bool testCheck = ss.generator.initDangers(state);
+    int bestEval = MINIMUM;
+    if(!testCheck){
+        if(staticEval >= beta){
+            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0);
+            return staticEval;
+        }
+        if(staticEval > alpha){
+            alpha = staticEval;
+            typeNode = EXACT;
+        }
+        bestEval = staticEval;
     }
-    int bestEval = staticEval;
     Order& order = ss.stack[rootDist].order;
     bool inCheck;
-    ss.generator.initDangers(state);
-    order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, true);
-    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, -1, state);
+    order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, !testCheck);
+    if(order.nbMoves == 0 && testCheck){
+        return MINIMUM+rootDist;
+    }
+    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, rootDist, state);
     Move bestCapture;
     for(int i=0; i<order.nbMoves; i++){
         int flag;
         Move capture = order.pop_max(flag);
-        if(!(flag&1))break;
+        if(bestEval >= MINIMUM+maxDepth){
+            if(capture.isTactical() && !(flag&1))continue;
+            else if(!capture.isTactical())continue;
+        }
         state.playMove(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor());
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
@@ -219,7 +235,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             }
         }
     }
-    transposition.push(state, bestEval, typeNode, bestCapture, 0);
+    transposition.push(state, absoluteScore(bestEval, rootDist), typeNode, bestCapture, 0);
     return bestEval;
 }
 
@@ -281,12 +297,34 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(static_eval >= beta+margin)
                 return Evaluate<nodeType, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
             int r = depth/4+3;
-            if(depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
+            if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
                 ss.generator.initDangers(state);
                 int v = -negamax<CutNode, limitWay, mateSearch>(ss, depth-r, state, -beta, -beta+1, relDepth+1);
                 state.undoNullMove();
-                if(v >= beta)return v;
+                if(v >= beta){
+                    if(depth <= 10 || ss.min_nmp_ply != 0)
+                        return v;
+#ifdef DEBUG_MACRO
+                    if(nodeType == CutNode)
+                        nmpVerifCutNode++;
+                    else
+                        nmpVerifAllNode++;
+#endif
+                    ss.min_nmp_ply = rootDist+r;
+                    ss.generator.initDangers(state);
+                    v = negamax<CutNode, limitWay, mateSearch>(ss, depth-r, state, beta-1, beta, relDepth);
+                    ss.min_nmp_ply = 0;
+                    if(v >= beta){
+#ifdef DEBUG_MACRO
+                    if(nodeType == CutNode)
+                        nmpVerifPassCutNode++;
+                    else
+                        nmpVerifPassAllNode++;
+#endif
+                        return v;
+                    };
+                };
                 ss.generator.initDangers(state);
             }
         }
@@ -330,9 +368,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (sc > alpha && sc < beta && nodeType == PVNode)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
-    order.init(state.friendlyColor(), lastBest, ss.history, relDepth, state);
+    order.init(state.friendlyColor(), lastBest, ss.history, rootDist, state);
     Move bestMove = nullMove;
     int bestScore = -INF;
+    int triedMove = 0;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         int flag;
         Move curMove = order.pop_max(flag);
@@ -342,17 +381,18 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
-        if(!curMove.isTactical() && rankMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
+        if(!curMove.isTactical() && triedMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
         int moveHistory = curMove.isTactical() ? 0 : (order.scores[rankMove]>=KILLER_ADVANTAGE-maxHistory ? maxHistory : order.scores[rankMove]);
-        if(moveHistory < -100*depth && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
+        if(moveHistory < -100*depth && triedMove > 1 && bestScore >= MINIMUM+maxDepth)
             continue;
         int futilityValue = static_eval+300+150*depth;
-        if(nodeType != PVNode && !curMove.isTactical() && depth <= 5 && !inCheck && futilityValue <= alpha){
+        if(nodeType != PVNode && !curMove.isTactical() && triedMove >= 1 && depth <= 5 && !inCheck && futilityValue <= alpha && bestScore >= MINIMUM+maxDepth){
             continue;
         }
         int score;
         state.playMove(curMove);
         bool isDraw = false;
+        triedMove++;
         if(state.twofold()){
             score = MIDDLE;
             isDraw = true;
@@ -360,7 +400,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.eval.playMove(curMove, !state.friendlyColor());
             bool inCheckPos = ss.generator.initDangers(state);
             int reductionDepth = 1;
-            if(inCheckPos){
+            if(inCheckPos && firstMoveExtension == 0){
                 reductionDepth--;
             }
             if(rankMove > 0){
@@ -395,7 +435,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.nbCutoff++;
             if(isRoot)ss.rootBest=curMove;
             if(rankMove == 0)ss.nbFirstCutoff++;
-            ss.history.addKiller(curMove, depth, relDepth, state.friendlyColor());
+            ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor());
             if(!curMove.isTactical()){
                 ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
                 if(score > static_eval && !inCheck)

@@ -2,7 +2,7 @@
 #define CORR_HIST_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
-#ifdef DEBUG
+#ifdef DEBUG_MACRO
 extern int max_diff;
 extern int min_diff;
 extern int nb_diffs;
@@ -23,6 +23,7 @@ class corrhists{
     corrhist<16384, 64*corrhistGrain> pawns;
     corrhist<16384, 64*corrhistGrain> prevMove;
     corrhist<16384, 64*corrhistGrain> cont;
+    corrhist<16384, 64*corrhistGrain> minor;
 public:
     corrhists();
     void update(const GameState&, int, int);

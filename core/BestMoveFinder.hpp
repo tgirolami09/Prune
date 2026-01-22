@@ -18,6 +18,14 @@
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
+#ifdef DEBUG_MACRO
+extern int
+    nmpVerifAllNode,
+    nmpVerifCutNode,
+    nmpVerifPassCutNode,
+    nmpVerifPassAllNode;
+#endif
+
 //Class to find the best in a situation
 class BestMoveFinder{
     class usefull{
@@ -44,6 +52,7 @@ class BestMoveFinder{
         bool mainThread;
         HelpOrdering history;
         corrhists correctionHistory;
+        int min_nmp_ply=0;
         usefull(const GameState& state);
         usefull();
         void reinit(const GameState& state);

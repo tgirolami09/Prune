@@ -6,7 +6,7 @@ using namespace std;
 
 big zobrist[nbZobrist];
 
-void init_zobrs(){
+__attribute__((constructor)) void init_zobrs(){
     big state(42);
     for(int idz=0; idz<nbZobrist; idz++){
         big z = (state += 0x9E3779B97F4A7C15ULL);
@@ -24,6 +24,8 @@ inline void GameState::updateZobrists(int piece, bool color, int square){
     zobristHash ^= zobr;
     if(piece == PAWN)
         pawnZobrist ^= zobr;
+    if(piece == KNIGHT || piece == BISHOP || piece == KING)
+        minorZobrist ^= zobr;
 }
 
 void GameState::testPawnZobr(){
@@ -42,6 +44,7 @@ void GameState::testPawnZobr(){
 void GameState::fromFen(string fen){
     zobristHash=0;
     pawnZobrist = 0;
+    minorZobrist = 0;
     for(int c=0; c<2; c++)
         for(int p=0; p<6; p++)
             boardRepresentation[c][p] = 0;

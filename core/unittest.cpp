@@ -91,20 +91,6 @@ string suitMoves[71] = {
     "g5f6","g5f6","g5f6","c7b8q","g1h2","c6d8","c7d8q","e6d8","e3d1","c3d1",
     "e1g1"
 };
-class Init{
-public:
-    Init(){
-        PrecomputeKnightMoveData();
-        init_lines();
-        load_table();
-        precomputePawnsAttack();
-        precomputeCastlingMasks();
-        precomputeNormlaKingMoves();
-        precomputeDirections();
-        init_zobrs();
-    }
-};
-Init _init_everything;
 
 void testSEE(){
     for(int i=0; i<71; i++){

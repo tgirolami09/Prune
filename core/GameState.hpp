@@ -10,7 +10,6 @@ const int zobrTurn=zobrPassant+8;
 const int nbZobrist=zobrTurn+1;
 const int sizeThreeFold=8192;
 extern big zobrist[nbZobrist];
-void init_zobrs();
 //Represents a state in the game
 class GameState{
     // (not necessary if we create new states for exploration)
@@ -31,6 +30,7 @@ class GameState{
 public : 
     big zobristHash;
     big pawnZobrist;
+    big minorZobrist;
     big boardRepresentation[2][6];
     //End of last double pawn push, (-1) if last move was not a double pawn push
     int lastDoublePawnPush;

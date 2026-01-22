@@ -30,7 +30,7 @@ const int* eg_pesto_table[6] =
 };
 int mg_table[2][6][64];
 int eg_table[2][6][64];
-void init_tables(){
+__attribute__((constructor(104))) void init_tables(){
     int p, sq;
     for (p = PAWN; p <= KING; p++) {
         for (sq = 0; sq < 64; sq++) {
@@ -43,7 +43,7 @@ void init_tables(){
 }
 big mask_forward[64];
 big mask_forward_inv[64];
-void init_forwards(){
+__attribute__((constructor(103))) void init_forwards(){
     for(int square=0; square<56; square++){
         big triCol = (colH << col(square)) | (colH << max(0, col(square)-1)) | (colH << min(7, col(square)+1));
         if(row(square) != 7)mask_forward[square] = (MAX_BIG << (row(square)+1)*8) & triCol;
