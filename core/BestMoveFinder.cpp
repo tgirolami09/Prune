@@ -371,6 +371,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     order.init(state.friendlyColor(), lastBest, ss.history, rootDist, state);
     Move bestMove = nullMove;
     int bestScore = -INF;
+    int triedMove = 0;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         int flag;
         Move curMove = order.pop_max(flag);
@@ -380,17 +381,18 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
-        if(!curMove.isTactical() && rankMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
+        if(!curMove.isTactical() && triedMove > depth*depth*4+4 && bestScore >= MINIMUM+maxDepth)continue;
         int moveHistory = curMove.isTactical() ? 0 : (order.scores[rankMove]>=KILLER_ADVANTAGE-maxHistory ? maxHistory : order.scores[rankMove]);
-        if(moveHistory < -100*depth && rankMove > 1 && bestScore >= MINIMUM+maxDepth)
+        if(moveHistory < -100*depth && triedMove > 1 && bestScore >= MINIMUM+maxDepth)
             continue;
         int futilityValue = static_eval+300+150*depth;
-        if(nodeType != PVNode && !curMove.isTactical() && depth <= 5 && !inCheck && futilityValue <= alpha){
+        if(nodeType != PVNode && !curMove.isTactical() && triedMove >= 1 && depth <= 5 && !inCheck && futilityValue <= alpha && bestScore >= MINIMUM+maxDepth){
             continue;
         }
         int score;
         state.playMove(curMove);
         bool isDraw = false;
+        triedMove++;
         if(state.twofold()){
             score = MIDDLE;
             isDraw = true;
