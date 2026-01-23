@@ -9,6 +9,7 @@
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
 #include "loadpolyglot.hpp"
+#include "tunables.hpp"
 #include <chrono>
 #include <atomic>
 #include <condition_variable>
@@ -53,7 +54,7 @@ class BestMoveFinder{
         HelpOrdering history;
         corrhists correctionHistory;
         int min_nmp_ply=0;
-        usefull(const GameState& state);
+        usefull(const GameState& state, tunables& parameters);
         usefull();
         void reinit(const GameState& state);
         string PVprint(LINE pvLine);
@@ -90,6 +91,7 @@ public:
     chrono::milliseconds hardBoundTime;
     ~BestMoveFinder();
     void stop();
+    tunables parameters;
 private:
     usefull localSS;
     HelperThread* helperThreads;

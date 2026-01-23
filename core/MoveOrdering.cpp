@@ -3,6 +3,7 @@
 #include "MoveOrdering.hpp"
 #include "Evaluator.hpp"
 #include "Const.hpp"
+#include "tunables.hpp"
 //#define COUNTER
 int getrand(big& state){
     big z = (state += 0x9E3779B97F4A7C15ULL);
@@ -17,11 +18,12 @@ int& HelpOrdering::getIndex(Move move, bool c){
 bool HelpOrdering::fastEq(Move a, Move b) const{
     return a.moveInfo == b.moveInfo;
 }
-void HelpOrdering::init(){
+void HelpOrdering::init(tunables& Parameters){
     for(int i=0; i<maxDepth; i++){
         killers[i][0] = nullMove;
         killers[i][1] = nullMove;
     }
+    this->parameters = Parameters;
     memset(history, 0, sizeof(history));
 #ifdef COUNTER
     for(int f=0; f<64*64; f++)
@@ -36,7 +38,7 @@ void HelpOrdering::updateHistory(Move move, bool c, int bonus){
 void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth){
     for(int i=0; i<upto; i++){
         if(!moves[i].isTactical())
-            updateHistory(moves[i], c, -depth*3);
+            updateHistory(moves[i], c, -depth*parameters.mo_mul_malus);
     }
 }
 
@@ -85,6 +87,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
     nbPriority = 0;
     pointer = 0;
     SEE_BB bb(state);
+    const int value_pieces[7] = {history.parameters.pvalue, history.parameters.nvalue, history.parameters.bvalue, history.parameters.rvalue, history.parameters.qvalue, 100000, 0};
     for(int i=0; i<nbMoves; i++){
         if(moveInfoPriority == moves[i].moveInfo){
             this->swap(i, 0);
@@ -92,7 +95,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 this->swap(i, 1);
             nbPriority++;
         }else{
-            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state);
+            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state, value_pieces);
         }
     }
     #if defined(__AVX2__)

@@ -1,3 +1,5 @@
+#ifndef TUNABLE_HPP
+#define TUNABLE_HPP
 #include <vector>
 using namespace std;
 
@@ -22,7 +24,12 @@ public:
         lmr_history,
         mo_mul_malus,
         aw_base,
-        see_born;
+        see_born,
+        pvalue,
+        nvalue,
+        bvalue,
+        rvalue,
+        qvalue;
     float
         aw_mul,
         lmr_base,
@@ -32,3 +39,4 @@ public:
     vector<int*> to_tune_int();
     vector<float*> to_tune_float();
 };
+#endif

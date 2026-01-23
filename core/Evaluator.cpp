@@ -53,12 +53,12 @@ __attribute__((constructor(103))) void init_forwards(){
     }
 }
 
-int SEE(int square, GameState& state, LegalMoveGenerator& generator){
+int SEE(int square, GameState& state, LegalMoveGenerator& generator, int* value_pieces){
     Move goodMove = generator.getLVA(square, state);
     int value = 0;
     if(goodMove.moveInfo != nullMove.moveInfo){
         state.playMove(goodMove);
-        int SEErec = value_pieces[goodMove.capture < 0?0:goodMove.capture]-SEE(square, state, generator);
+        int SEErec = value_pieces[goodMove.capture < 0?0:goodMove.capture]-SEE(square, state, generator, value_pieces);
         if(goodMove.promotion() != -1)
             SEErec += value_pieces[goodMove.promotion()];
         value = max(0, SEErec);
@@ -116,7 +116,7 @@ inline int getLVA(int square, const GameState& state, bool stm, big occupancy, i
     return -1;
 }
 
-int fastSEE(const Move& move, const GameState& state){
+int fastSEE(const Move& move, const GameState& state, const int* value_pieces){
     big occupancy = 0;
     for(int c=0; c<2; c++)
         for(int p=0; p<6; p++)
@@ -170,7 +170,7 @@ big firstTouch(int square, int square2, big occupancy){
         return 1ULL << (__builtin_clzll(mask)^63);
 }
 
-bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state){
+bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state, const int* value_pieces){
     int square = move.to();
     //occupancy ^= 1ULL << move.from();
     bool stm = state.friendlyColor();
@@ -230,10 +230,10 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
     return stm != sstm || born <= 0;
 }
 
-int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state){
+int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, const int* value_pieces){
     int score = 0;
     if(move.isTactical()){
-        if(see_ge(bb, 0, move, state))
+        if(see_ge(bb, 0, move, state, value_pieces))
             score |= 1<<28;
         int cap = move.capture;
         if(cap == -1)cap = 0;

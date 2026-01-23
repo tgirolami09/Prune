@@ -18,8 +18,13 @@ tunables::tunables():
     lmr_history(512),
     mo_mul_malus(3),
     aw_base(20),
-    aw_mul(2.0),
     see_born(0),
+    pvalue(100),
+    nvalue(300),
+    bvalue(300),
+    rvalue(500),
+    qvalue(900),
+    aw_mul(2.0),
     lmr_base(0.9),
     lmr_div(3.0),
     nodetm_base(2.0),
@@ -46,7 +51,12 @@ vector<int*> tunables::to_tune_int(){
         &lmr_history,
         &mo_mul_malus,
         &aw_base,
-        &see_born
+        &see_born,
+        &pvalue,
+        &nvalue,
+        &bvalue,
+        &rvalue,
+        &qvalue
     };
 }
 
