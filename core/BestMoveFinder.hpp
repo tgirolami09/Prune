@@ -27,6 +27,7 @@ extern int
     nmpVerifPassAllNode;
 #endif
 
+using timeMesure=chrono::high_resolution_clock;
 //Class to find the best in a situation
 class BestMoveFinder{
     class usefull{
@@ -84,9 +85,8 @@ class BestMoveFinder{
 public:
     std::atomic<bool> running;
     BestMoveFinder(int memory, bool mute=false);
-
+    BestMoveFinder();
     sbig hardBound;
-    using timeMesure=chrono::high_resolution_clock;
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
     ~BestMoveFinder();

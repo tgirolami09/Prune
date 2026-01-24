@@ -1,3 +1,4 @@
+bool DEBUG = false;
 #include "BestMoveFinder.hpp"
 #include "Const.hpp"
 #include "Evaluator.hpp"
@@ -11,12 +12,11 @@
 #include <cstring>
 #include <mutex>
 #include <vector>
-#include <deque>
 #include <random>
 #include <cmath>
 using namespace std;
 
-vector<BestMoveFinder> players;
+BestMoveFinder* players;
 
 vector<string> fens;
 int idFen;
@@ -49,9 +49,9 @@ public:
         nbFinished = 0;
         std::mt19937 gen(idSPSA);
         std::normal_distribution<double> d(0, 1);
-        for(auto i:parameters.to_tune_int())
+        for(int i=0; i<(int)parameters.to_tune_int().size(); i++)
             randoms.push_back(d(gen));
-        for(auto i:parameters.to_tune_float())
+        for(int i=0; i<(int)parameters.to_tune_float().size(); i++)
             randoms.push_back(d(gen));
     }
 
@@ -72,12 +72,12 @@ public:
             int sign = idPlayer?-1:1;
             vector<int*> Vs = players[id+idPlayer].parameters.to_tune_int();
             vector<int*> VBs = parameters.to_tune_int();
-            for(int i = 0; i<VBs.size(); i++){
+            for(int i = 0; i<(int)VBs.size(); i++){
                 *Vs[i] = *VBs[i]+*VBs[i]*randoms[i]*sign/100;
             }
             vector<float*> Vfs = players[id+idPlayer].parameters.to_tune_float();
             vector<float*> VBfs = parameters.to_tune_float();
-            for(int i = 0; i<VBfs.size(); i++){
+            for(int i = 0; i<(int)VBfs.size(); i++){
                 *Vfs[i] = *VBfs[i]+*VBfs[i]*randoms[i+VBs.size()]*sign/100;
             }
         }
@@ -96,12 +96,12 @@ public:
 
     double diffloss(){
         //code used from fastchess
-        const int pairs = penta[0]+penta[1]+penta[1]+penta[1]+penta[4];
-        const double WW       = double(penta[4]) / pairs;
-        const double WD       = double(penta[3]) / pairs;
-        const double WLDD     = double(penta[2]) / pairs;
-        const double LD       = double(penta[1]) / pairs;
-        const double LL       = double(penta[0]) / pairs;
+        const int pairs_ = penta[0]+penta[1]+penta[1]+penta[1]+penta[4];
+        const double WW       = double(penta[4]) / pairs_;
+        const double WD       = double(penta[3]) / pairs_;
+        const double WLDD     = double(penta[2]) / pairs_;
+        const double LD       = double(penta[1]) / pairs_;
+        const double LL       = double(penta[0]) / pairs_;
         double score = WW + WD*0.75 + WLDD*0.5 + LD*0.25;
         const double WW_dev   = WW   * std::pow((1    - score), 2);
         const double WD_dev   = WD   * std::pow((0.75 - score), 2);
@@ -137,9 +137,9 @@ public:
         zombie = false;
         running = false;
     }
-    void launch(string startpos){ 
+    void launch(string _pos){ 
         ans = 0;
-        fen = startpos;
+        fen = _pos;
         {
             lock_guard<mutex> lock(mtx);
             running = true;
@@ -234,7 +234,10 @@ int main(int argc, char** argv){
         increment = atoi(argv[7]);
     }
     memory *= hashMul;
-    players = vector<BestMoveFinder>(nbThreads*2, BestMoveFinder(memory));
+    players = (BestMoveFinder*)calloc(nbThreads*2, sizeof(BestMoveFinder));
+    for(int i=0; i<nbThreads*2; i++){
+        players[i].reinit(memory);
+    }
     tunables state;
     vector<stateIter> Q;
     int idSPSA = 0;

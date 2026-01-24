@@ -76,6 +76,9 @@ BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory){
     book = load_book("book.bin", mute);
     helperThreads = NULL;
 }
+BestMoveFinder::BestMoveFinder():transposition(hashMul){
+    helperThreads = NULL;
+}
 
 void BestMoveFinder::clear_helpers(){
     if(helperThreads == NULL)return;
