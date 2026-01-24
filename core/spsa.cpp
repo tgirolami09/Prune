@@ -65,7 +65,7 @@ public:
             fen = pairs[idPair].second;
         }else{
             pairs[idPair].first ^= 1;
-            fen = pairs[idPair].second = fens[idFen];
+            fen = pairs[idPair].second = fens[idFen++];
         }
         id *= 2;
         for(int idPlayer=0; idPlayer<2; idPlayer++){
@@ -223,6 +223,11 @@ int main(int argc, char** argv){
         return 0;
     }
     string book(argv[1]);
+    ifstream file(book);
+    idFen = 0;
+    string curFen;
+    while(getline(file, curFen))
+        fens.push_back(curFen);
     nbGamesPerIter = atoi(argv[2]);
     nbIters = atoi(argv[3]);
     nbThreads = atoi(argv[4]);
