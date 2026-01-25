@@ -14,6 +14,7 @@
 #include "NNUE.hpp"
 #endif
 #include "TimeManagement.hpp"
+#include "TablebaseProbe.hpp"
 #include <set>
 #include <iostream>
 #include <cmath>
@@ -143,7 +144,10 @@ const Option Options[] = {
 #ifndef HCE
     Option("nnueFile", "string", "embed"),
 #endif
-    Option("Threads", "spin", "1", 1, 512)
+    Option("Threads", "spin", "1", 1, 512),
+    Option("SyzygyPath", "string", "<empty>"),
+    Option("SyzygyProbeDepth", "spin", "1", 1, 100),
+    Option("SyzygyProbeLimit", "spin", "7", 0, 7)
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -464,6 +468,17 @@ void manageSearch(){
                             int newT = stoi(parsed[i+1].second);
                             bestMoveFinder.setThreads(newT);
                             nbThreads = newT;
+                        }
+                        else if(parsed[i].second == "SyzygyPath"){
+                            tbProbe.init(parsed[i+1].second);
+                            if(tbProbe.isAvailable())
+                                printf("info string Syzygy tablebases loaded, max %d pieces\n", tbProbe.maxPieces());
+                        }
+                        else if(parsed[i].second == "SyzygyProbeDepth"){
+                            tbProbe.setProbeDepth(stoi(parsed[i+1].second));
+                        }
+                        else if(parsed[i].second == "SyzygyProbeLimit"){
+                            tbProbe.setProbeLimit(stoi(parsed[i+1].second));
                         }
                         i += incr;
                     }

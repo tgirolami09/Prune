@@ -9,6 +9,7 @@
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
 #include "loadpolyglot.hpp"
+#include "TablebaseProbe.hpp"
 #include "tunables.hpp"
 #include <chrono>
 #include <atomic>

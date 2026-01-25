@@ -184,6 +184,19 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
                 return fromTT(lastEval, rootDist);
         }
         //hint = transposition.getMove(ttEntry);
+    // Tablebase probe in quiescence
+    if (tbProbe.isAvailable()) {
+        int pieceCount = TablebaseProbe::countPieces(state);
+        if (pieceCount <= tbProbe.maxPieces() && pieceCount <= tbProbe.getProbeLimit()) {
+            if (!state.castlingRights[WHITE][0] && !state.castlingRights[WHITE][1] &&
+                !state.castlingRights[BLACK][0] && !state.castlingRights[BLACK][1]) {
+                int wdl = tbProbe.probeWDL(state);
+                if (wdl != TB_RESULT_INVALID) {
+                    return TablebaseProbe::wdlToScore(wdl, rootDist);
+                }
+            }
+        }
+    }
     }
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
@@ -292,6 +305,32 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     else
         raw_eval = ss.eval.getRaw(state.friendlyColor());
     static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
+    // Tablebase probe in search
+    if (!isRoot && tbProbe.isAvailable() && depth >= tbProbe.getProbeDepth()) {
+        int pieceCount = TablebaseProbe::countPieces(state);
+        if (pieceCount <= tbProbe.maxPieces() && pieceCount <= tbProbe.getProbeLimit()) {
+            if (!state.castlingRights[WHITE][0] && !state.castlingRights[WHITE][1] &&
+                !state.castlingRights[BLACK][0] && !state.castlingRights[BLACK][1]) {
+                int wdl = tbProbe.probeWDL(state);
+                if (wdl != TB_RESULT_INVALID) {
+                    int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
+                    // For wins/losses, cut off immediately
+                    if (wdl == TB_RESULT_WIN || wdl == TB_RESULT_LOSS) {
+                        // if constexpr(nodeType == PVNode) ss.beginLine(rootDist);
+                        return tbScore;
+                    }
+                    // For draws, use as bounds
+                    if (wdl == TB_RESULT_DRAW) {
+                        if (tbScore >= beta) {
+                            // if constexpr(nodeType == PVNode) ss.beginLine(rootDist);
+                            return tbScore;
+                        }
+                        if (tbScore > alpha) alpha = tbScore;
+                    }
+                }
+            }
+        }
+    }
     if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
         if constexpr(isPV)ss.beginLine(rootDist);
         return Evaluate<isPV, limitWay>(ss, state, alpha, beta, relDepth);
@@ -706,6 +745,30 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         if(verbose)
             printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor())).c_str());
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
+    }
+    // Tablebase probe at root
+    Move tbMove = nullMove;
+    int tbWdl = TB_RESULT_INVALID;
+    if (tbProbe.isAvailable() && tbProbe.canProbe(state)) {
+        tbWdl = tbProbe.probeRoot(state, tbMove);
+        if (tbWdl != TB_RESULT_INVALID) {
+            if (true) {
+                printf("info string Tablebase hit: ");
+                switch (tbWdl) {
+                    case TB_RESULT_WIN: printf("Win"); break;
+                    case TB_RESULT_CURSED_WIN: printf("Cursed Win"); break;
+                    case TB_RESULT_DRAW: printf("Draw"); break;
+                    case TB_RESULT_BLESSED_LOSS: printf("Blessed Loss"); break;
+                    case TB_RESULT_LOSS: printf("Loss"); break;
+                }
+                printf("\n");
+                fflush(stdout);
+            }
+            // In drawn positions, return immediately
+            if (tbWdl == TB_RESULT_DRAW) {
+                return make_tuple(tbMove, nullMove, 0, vector<depthInfo>());
+            }
+        }
     }
     if(verbose){
         printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));
