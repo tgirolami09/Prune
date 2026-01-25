@@ -58,12 +58,41 @@ public:
         eval.init(state);
         game.clear();
     }
+    void playMove(Move move){
+        MoveInfo curProc;
+        curProc.move = move;
+        curProc.score = 0;
+        eval.playNoBack(move, state.friendlyColor());
+        state.playMove(move);
+    }
     BestMoveFinder& getPlayer(){
         if(state.friendlyColor() == WHITE)
             return player0;
         else return player1;
     }
 };
+const int nbRandomMove = 8;
+
+big genRandom64(big& state){
+    big z = (state += 0x9E3779B97F4A7C15ULL);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+    return z ^ (z >> 31);
+}
+
+bool moveRandom(threadHelper* state, int id){
+    bool inCheck;
+    big dngpos;
+    big s(state->state.zobristHash^id);
+    for(int i=0; i<nbRandomMove; i++){
+        state->generator.initDangers(state->state);
+        int nbMoves = state->generator.generateLegalMoves(state->state, inCheck, state->legalMoves, dngpos, false);
+        if(nbMoves == 0)return true;
+        int idMove = nbMoves*(__uint128_t)genRandom64(s) >> 64;
+        state->playMove(state->legalMoves[idMove]);
+    }
+    return false;
+}
 
 int main(int argc, char** argv){
     ifstream file(argv[1]);
@@ -126,15 +155,20 @@ int main(int argc, char** argv){
         threadHelper* state = new threadHelper;
         FILE* fptr;
         fptr = fopen(nameDataFile.c_str(), "ab");
+        int idFenTried = 0;
         for(int i=startReg; i<endReg; i++){
+            const TM tm(limitNodes, limitNodes*1000);
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
-            state->init(fens[i]);
+            int nbTry = 0;
+            do{
+                state->init(fens[i%fens[i].size()]);
+                if(moveRandom(state, (idFenTried++)+idThread+(nbTry++)))continue;
+            }while(abs(get<2>(state->getPlayer().goState<1>(state->state, tm, false, false, state->game.game.size()))) > 500);
             int result = 1; //0 black win 1 draw 2 white win
             big dngpos;
             big localNodes = 0;
             do{
                 bestMoveResponse res;
-                TM tm(limitNodes, limitNodes*1000);
                 res = state->getPlayer().goState<1>(state->state, tm, false, false, state->game.game.size());
                 vector<depthInfo> infos = get<3>(res);
                 if(!infos.empty())
