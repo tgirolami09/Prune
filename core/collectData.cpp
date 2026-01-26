@@ -70,6 +70,13 @@ public:
             return player0;
         else return player1;
     }
+    void reset(){
+        for(int i=0; i<game.game.size(); i++){
+            state.undoLastMove();
+        }
+        eval.init(state);
+        game.game.clear();
+    }
 };
 const int nbRandomMove = 8;
 
@@ -160,10 +167,12 @@ int main(int argc, char** argv){
             const TM tm(limitNodes, limitNodes*1000);
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
             int nbTry = 0;
-            do{
-                state->init(fens[i%fens[i].size()]);
-                if(moveRandom(state, (idFenTried++)+idThread+(nbTry++)))continue;
-            }while(abs(get<2>(state->getPlayer().goState<1>(state->state, tm, false, false, state->game.game.size()))) > 500);
+            state->init(fens[i%fens[i].size()]);
+            while(moveRandom(state, (idFenTried++)+idThread+(nbTry++)) || 
+                abs(get<2>(state->getPlayer().goState<1>(state->state, tm, false, false, state->game.game.size()))) > 500
+            ){
+                state->reset();
+            }
             int result = 1; //0 black win 1 draw 2 white win
             big dngpos;
             big localNodes = 0;
