@@ -64,6 +64,7 @@ public:
         curProc.score = 0;
         eval.playNoBack(move, state.friendlyColor());
         state.playMove(move);
+        game.game.push_back(curProc);
     }
     BestMoveFinder& getPlayer(){
         if(state.friendlyColor() == WHITE)
