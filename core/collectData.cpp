@@ -70,6 +70,9 @@ public:
             return player0;
         else return player1;
     }
+    bestMoveResponse getEval(TM tm){
+        return getPlayer().goState<1>(state, tm, false, false, game.game.size());
+    }
     void reset(){
         for(int i=0; i<game.game.size(); i++){
             state.undoLastMove();
@@ -167,9 +170,9 @@ int main(int argc, char** argv){
             const TM tm(limitNodes, limitNodes*1000);
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
             int nbTry = 0;
-            state->init(fens[i%fens[i].size()]);
+            state->init(fens[i%fens.size()]);
             while(moveRandom(state, (idFenTried++)+idThread+(nbTry++)) || 
-                abs(get<2>(state->getPlayer().goState<1>(state->state, tm, false, false, state->game.game.size()))) > 500
+                abs(get<2>(state->getEval(tm))) > 500
             ){
                 state->reset();
             }
@@ -178,7 +181,7 @@ int main(int argc, char** argv){
             big localNodes = 0;
             do{
                 bestMoveResponse res;
-                res = state->getPlayer().goState<1>(state->state, tm, false, false, state->game.game.size());
+                res = state->getEval(tm);
                 vector<depthInfo> infos = get<3>(res);
                 if(!infos.empty())
                     localNodes += infos.back().node;
