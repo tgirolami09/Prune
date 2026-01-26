@@ -73,10 +73,8 @@ public:
     bestMoveResponse getEval(TM tm){
         return getPlayer().goState<1>(state, tm, false, false, game.game.size());
     }
-    void reset(){
-        for(int i=0; i<game.game.size(); i++){
-            state.undoLastMove();
-        }
+    void reset(string fen){
+        state.fromFen(fen);
         eval.init(state);
         game.game.clear();
     }
@@ -137,6 +135,7 @@ int main(int argc, char** argv){
         int startReg=sizeGame*idThread/realThread;
         string nameDataFile = string("data")+to_string(idThread)+string(".out");
         ifstream infile(nameDataFile);
+        int idFenTried = 0;
         if(infile.is_open()){
             int pointer=0;
             int fileSize = filesystem::file_size(nameDataFile);
@@ -156,6 +155,7 @@ int main(int argc, char** argv){
             }
             printf("file %d finding %d games (%d moves in total) delta %d\n", idThread, nbGames, totalMoves, pointer-fileSize);
             startReg += nbGames;
+            idFenTried += nbGames;
 #ifndef DEBUG
             #pragma omp atomic update
 #endif
@@ -165,16 +165,16 @@ int main(int argc, char** argv){
         threadHelper* state = new threadHelper;
         FILE* fptr;
         fptr = fopen(nameDataFile.c_str(), "ab");
-        int idFenTried = 0;
         for(int i=startReg; i<endReg; i++){
             const TM tm(limitNodes, limitNodes*1000);
             //printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
             int nbTry = 0;
             state->init(fens[i%fens.size()]);
-            while(moveRandom(state, (idFenTried++)+idThread+(nbTry++)) || 
+            idFenTried++;
+            while(moveRandom(state, idFenTried+idThread+(nbTry++)) || 
                 abs(get<2>(state->getEval(tm))) > 500
             ){
-                state->reset();
+                state->reset(fens[i%fens.size()]);
             }
             int result = 1; //0 black win 1 draw 2 white win
             big dngpos;
