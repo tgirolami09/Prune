@@ -1,4 +1,5 @@
 bool DEBUG = false;
+int nbThreads=1;
 #include "BestMoveFinder.hpp"
 #include "Const.hpp"
 #include "Evaluator.hpp"
@@ -14,22 +15,106 @@ bool DEBUG = false;
 #include <vector>
 #include <random>
 #include <cmath>
+#include <vector>
 using namespace std;
-
-BestMoveFinder* players;
 
 vector<string> fens;
 int idFen;
 int nbGamesPerIter;
 int nbIters;
-int nbThreads;
+int nbThreadsSPSA;
 int baseTime, increment;
+int memory;
 int moveOverhead = 100;
 
+class internalState{
+public:
+    vector<float> state;
+    internalState(int nbParams):state(nbParams, 1){
+    }
+    internalState(tunables tun){
+        state.resize(tun.to_tune_int().size()+tun.to_tune_float().size());
+        int i = 0;
+        for(int *j:tun.to_tune_int()){
+            state[i++] = *j;
+        }
+        for(float *j:tun.to_tune_float()){
+            state[i++] = *j;
+        }
+    }
+    float getParam(int idx, int precision=1){
+        return round(state[idx]*precision)/precision;
+    }
+    float getUpdate(int idx, float evolution, int precision=1){
+        return round(state[idx]*(1+evolution)*precision)/precision;
+    }
+    void updateParam(int idx, float evolution){
+        state[idx] += state[idx]*evolution;
+        state[idx] = max(state[idx], 1.0f);
+    }
+    void print(){
+        for(float i:state){
+            printf("%.2f ", i);
+        }
+        printf("\n");
+    }
+};
+
+
+class HelperThread{
+public:
+    int id;
+    thread t;
+    string fen;
+    bool running;
+    mutex mtx;
+    condition_variable cv;
+    BestMoveFinder player0, player1;
+    HelperThread():player0(memory, true), player1(memory, true){}
+    int ans;
+    bool zombie;
+    void init(){
+        zombie = false;
+        running = false;
+    }
+    void launch(string _pos){ 
+        ans = 0;
+        fen = _pos;
+        {
+            lock_guard<mutex> lock(mtx);
+            running = true;
+        }
+        cv.notify_one();
+    }
+    void wait_notification(){
+        unique_lock<mutex> lock(mtx);
+        cv.wait(lock, [this]{return running;});
+    }
+    BestMoveFinder& getPlayer(int idPlayer){
+        return idPlayer?player0:player1;
+    }
+    void set_result(int result){
+        ans = result;
+        {
+            lock_guard<mutex> lock(mtx);
+            running = false;
+            cv.notify_one();
+        }
+    }
+    bool check_finished(){
+        lock_guard<mutex> lock(mtx);
+        return running || zombie;
+    }
+    void bezombie(){
+        zombie = true;
+    }
+};
+
+HelperThread *threads;
 class stateIter{
 public:
     int penta[5];
-    tunables parameters;
+    internalState* parameters;
     int idSPSA;
     int idPair;
     int nbFinished;
@@ -37,7 +122,7 @@ public:
     vector<pair<int, string>> pairs;
     vector<float> randoms;
     map<int, int> M;
-    void init(int id, tunables& globParams){
+    void init(int id, internalState* globParams){
         randoms.clear();
         M.clear();
         pairs.clear();
@@ -46,12 +131,10 @@ public:
         memset(penta, 0, sizeof(penta));
         parameters = globParams;
         pairs.resize(nbGamesPerIter/2);
-        nbFinished = 0;
+        nbLaunched = nbFinished = 0;
         std::mt19937 gen(idSPSA);
         std::normal_distribution<double> d(0, 1);
-        for(int i=0; i<(int)parameters.to_tune_int().size(); i++)
-            randoms.push_back(d(gen));
-        for(int i=0; i<(int)parameters.to_tune_float().size(); i++)
+        for(int i=0; i<(int)parameters->state.size(); i++)
             randoms.push_back(d(gen));
     }
 
@@ -61,8 +144,8 @@ public:
         lastGame = nbLaunched == nbGamesPerIter;
         string fen;
         if(pairs[idPair].first&1){
-            idPair++;
             fen = pairs[idPair].second;
+            idPair++;
         }else{
             pairs[idPair].first ^= 1;
             fen = pairs[idPair].second = fens[idFen++];
@@ -70,15 +153,14 @@ public:
         id *= 2;
         for(int idPlayer=0; idPlayer<2; idPlayer++){
             int sign = idPlayer?-1:1;
-            vector<int*> Vs = players[id+idPlayer].parameters.to_tune_int();
-            vector<int*> VBs = parameters.to_tune_int();
-            for(int i = 0; i<(int)VBs.size(); i++){
-                *Vs[i] = *VBs[i]+*VBs[i]*randoms[i]*sign/100;
+            vector<int*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
+            for(int i = 0; i<(int)Vs.size(); i++){
+                *Vs[i] = parameters->getUpdate(i, randoms[i]*sign/100);
             }
-            vector<float*> Vfs = players[id+idPlayer].parameters.to_tune_float();
-            vector<float*> VBfs = parameters.to_tune_float();
-            for(int i = 0; i<(int)VBfs.size(); i++){
-                *Vfs[i] = *VBfs[i]+*VBfs[i]*randoms[i+VBs.size()]*sign/100;
+            vector<float*> Vfs = threads[id].getPlayer(idPlayer).parameters.to_tune_float();
+            int offset = Vs.size();
+            for(int i = 0; i<(int)Vfs.size(); i++){
+                *Vfs[i] = parameters->getUpdate(i+offset, randoms[i+offset]*sign/100, 1000);
             }
         }
         return fen;
@@ -112,62 +194,13 @@ public:
         return (score-0.5)/sqrt(2*variance)*(800/log(10));
     }
 
-    void apply(tunables& globals){
+    void apply(int lr){
         double loss = diffloss();
-        int ind=0;
-        for(int* v:globals.to_tune_int())
-            *v += loss*randoms[ind++]/100;
-        for(float* v:globals.to_tune_float())
-            *v += loss*randoms[ind++]/100;
+        for(int i=0; i<(int)parameters->state.size(); i++)
+            parameters->updateParam(i, loss*randoms[i]/100/lr);
     }
 };
 
-
-class HelperThread{
-public:
-    int id;
-    thread t;
-    string fen;
-    bool running;
-    mutex mtx;
-    condition_variable cv;
-    int ans;
-    bool zombie;
-    void init(){
-        zombie = false;
-        running = false;
-    }
-    void launch(string _pos){ 
-        ans = 0;
-        fen = _pos;
-        {
-            lock_guard<mutex> lock(mtx);
-            running = true;
-        }
-        cv.notify_one();
-    }
-    void wait_notification(){
-        unique_lock<mutex> lock(mtx);
-        cv.wait(lock, [this]{return running;});
-    }
-    void set_result(int result){
-        ans = result;
-        {
-            lock_guard<mutex> lock(mtx);
-            running = false;
-            cv.notify_one();
-        }
-    }
-    bool check_finished(){
-        lock_guard<mutex> lock(mtx);
-        return running || zombie;
-    }
-    void bezombie(){
-        zombie = true;
-    }
-};
-
-vector<HelperThread> threads;
 void play_games(int id){
     HelperThread& ss=threads[id];
     GameState* state = new GameState;
@@ -187,7 +220,7 @@ void play_games(int id){
         int ply = 0;
         while(1){
             auto start = chrono::steady_clock::now();
-            auto res=players[id*2+player].goState(*state, TM(moveOverhead, times[0], times[1], increment, increment, state->friendlyColor()), false, true, ply);
+            auto res=ss.getPlayer(player).goState(*state, TM(moveOverhead, times[0], times[1], increment, increment, state->friendlyColor()), false, true, ply);
             auto end = start.time_since_epoch();
             times[player] -= chrono::duration_cast<chrono::milliseconds>(end).count();
             if(times[player] < 0){
@@ -230,8 +263,8 @@ int main(int argc, char** argv){
         fens.push_back(curFen);
     nbGamesPerIter = atoi(argv[2]);
     nbIters = atoi(argv[3]);
-    nbThreads = atoi(argv[4]);
-    int memory = 16;
+    nbThreadsSPSA = atoi(argv[4]);
+    memory = 16;
     baseTime = 10000, increment = 100;
     if(argc > 5){
         memory = atoi(argv[5]);
@@ -239,38 +272,39 @@ int main(int argc, char** argv){
         increment = atoi(argv[7]);
     }
     memory *= hashMul;
-    players = (BestMoveFinder*)calloc(nbThreads*2, sizeof(BestMoveFinder));
-    for(int i=0; i<nbThreads*2; i++){
-        players[i].reinit(memory);
-    }
-    tunables state;
+    internalState state((tunables()));
     vector<stateIter> Q;
     int idSPSA = 0;
     stateIter S;
-    S.init(idSPSA++, state);
+    S.init(idSPSA++, &state);
     Q.push_back(S);
-    vector<stateIter*> games(nbThreads, NULL);
-    printf("start tuning with %ld parameters %d threads tc=%.1f+%.1f memory=%dB %d iters %d games per iter\n", state.to_tune_int().size()+state.to_tune_float().size(), nbThreads, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
-    for(int i=0; i<nbThreads; i++){
+    vector<stateIter*> games(nbThreadsSPSA, NULL);
+    threads = new HelperThread[nbThreadsSPSA];
+    printf("start tuning with %ld parameters %d threads tc=%.1f+%.1f memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
+    for(int i=0; i<nbThreadsSPSA; i++){
         threads[i].t = thread(play_games, i);
-        bool islast;
+        bool islast = false;
         string fen = Q.back().init_players(i, islast);
         threads[i].launch(fen);
         games[i] = &Q.back();
         if(islast){
             stateIter nS;
-            nS.init(idSPSA++, state);
+            nS.init(idSPSA++, &state);
             Q.push_back(nS);
         }
     }
-    int threadUp = nbThreads;
+    printf("all threads has been launched\n");
+    int threadUp = nbThreadsSPSA;
+    float lr = 1;
     while(threadUp){
-        for(int i=0; i<nbThreads; i++){
+        for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
                 if(games[i]->add_result(threads[i].ans, i)){
-                    games[i]->apply(state);
+                    games[i]->apply(lr);
+                    lr *= 1.001;
+                    state.print();
                 }
-                bool islast;
+                bool islast = false;
                 if(Q.back().nbLaunched < nbGamesPerIter){
                     string fen = Q.back().init_players(i, islast);
                     threads[i].launch(fen);
@@ -283,7 +317,7 @@ int main(int argc, char** argv){
                         continue;
                     }
                     stateIter nS;
-                    nS.init(idSPSA++, state);
+                    nS.init(idSPSA++, &state);
                     Q.push_back(nS);
                 }
             }

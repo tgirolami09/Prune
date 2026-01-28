@@ -9,7 +9,7 @@ public:
     bool enableUpdate;
     TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color);
     TM(int softBound, int hardBound);
-    sbig updateSoft(sbig bestMoveNodes, sbig totalNodes, tunables& parameters);
+    sbig updateSoft(sbig bestMoveNodes, sbig totalNodes, tunables& parameters, bool verbose);
 };
 
 #endif

@@ -653,7 +653,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             tm.softBound = hardBound;
             softBoundTime = hardBoundTime;
         }
-        softBoundTime = chrono::milliseconds{tm.updateSoft(localSS.bestMoveNodes, lastUsedNodes, parameters)};
+        softBoundTime = chrono::milliseconds{tm.updateSoft(localSS.bestMoveNodes, lastUsedNodes, parameters, verbose)};
         this->hardBound = tm.hardBound;
         if(limitWay == 1 && localSS.nodes > tm.softBound)break;
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
