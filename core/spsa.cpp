@@ -51,12 +51,12 @@ public:
         return round(state[idx]*(1+evolution)*precision)/precision;
     }
     void updateParam(int idx, float evolution){
-        state[idx] += state[idx]*evolution;
+        state[idx] += state[idx]*(1+evolution);
         state[idx] = max(state[idx], 1.0f);
     }
     void print(){
         for(float i:state){
-            printf("%.2f ", i);
+            printf("%.2f\t", i);
         }
         printf("\n");
     }
@@ -144,13 +144,9 @@ public:
         std::normal_distribution<double> d(0, 1);
         for(int i=0; i<(int)parameters->state.size(); i++)
             randoms.push_back(d(gen));
-        for(float i:randoms)
-            printf("%lf ", i);
-        printf("\n");
     }
 
     string init_players(int id, bool& lastGame){
-        printf("init players of thread %d\n", id);
         M[id] = idPair;
         nbLaunched++;
         lastGame = nbLaunched == nbGamesPerIter;
@@ -321,7 +317,6 @@ int main(int argc, char** argv){
     while(threadUp){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
-                printf("games on thread %d finished\n", i);
                 if(Qiters[games[i]].add_result(threads[i].ans, i)){
                     Qiters[games[i]].apply(lr);
                     lr *= 1.001;
