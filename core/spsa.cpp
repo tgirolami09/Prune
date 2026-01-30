@@ -148,18 +148,21 @@ public:
     }
 
     string init_players(int id, bool& lastGame){
-        M[id] = idPair;
+        M[id] = nbLaunched;
         nbLaunched++;
         lastGame = nbLaunched == nbGamesPerIter;
         string fen;
+        bool isfirst = false;
         if(pairs[idPair].first&1){
             fen = pairs[idPair].second;
             idPair++;
         }else{
             pairs[idPair].first ^= 1;
+            isfirst = true;
             fen = pairs[idPair].second = fens[idFen++];
         }
-        for(int idPlayer=0; idPlayer<2; idPlayer++){
+        int idPlayer = !isfirst;
+        for(int _=0; _<2; _++){
             int sign = idPlayer?-1:1;
             vector<int*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
             for(int i = 0; i<(int)Vs.size(); i++){
@@ -170,16 +173,19 @@ public:
             for(int i = 0; i<(int)Vfs.size(); i++){
                 *Vfs[i] = parameters->getUpdate(i+offset, randoms[i+offset]*sign/100, 1000);
             }
+            idPlayer ^= 1;
         }
         return fen;
     }
 
     bool add_result(int result, int id){
-        int i = M[id];
-        if(pairs[i].first/2){
-            penta[pairs[i].first/2+result-1]++;
+        int curPair = M[id]/2;
+        int side = M[id]&1;
+        if(side)result = 2-result;
+        if(pairs[curPair].first/2){
+            penta[pairs[curPair].first/2+result-1]++;
         }else{
-            pairs[i].first += (result+1)*2;
+            pairs[curPair].first += (result+1)*2;
         }
         return (++nbFinished) == nbGamesPerIter;
     }
@@ -198,7 +204,7 @@ public:
     void apply(float lr){
         double loss = diffloss();
         for(int i=0; i<(int)parameters->state.size(); i++)
-            parameters->updateParam(i, loss*randoms[i]/(10*lr));
+            parameters->updateParam(i, loss*randoms[i]*lr/10);
     }
 };
 
@@ -317,6 +323,7 @@ int main(int argc, char** argv){
                 if(Qiters[games[i]].add_result(threads[i].ans, i)){
                     float lr = lr_min + 0.5*(lr_max - lr_min)*(1 + cos(M_PI * nbPassedIters / nbIters));
                     Qiters[games[i]].apply(lr);
+                    logFile << Qiters[games[i]].diffloss() << '\n';
                     nbPassedIters++;
                     printf("\r%d/%d iters", nbPassedIters, nbIters);
                     fflush(stdout);
