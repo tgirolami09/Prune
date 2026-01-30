@@ -51,7 +51,7 @@ public:
         return round(state[idx]*(1+evolution)*precision)/precision;
     }
     void updateParam(int idx, float evolution){
-        state[idx] += state[idx]*(1+evolution);
+        state[idx] *= (1+evolution);
         state[idx] = max(state[idx], 1.0f);
     }
     void print(){
@@ -185,26 +185,20 @@ public:
 
     double diffloss(){
         //code used from fastchess
-        const int pairs_ = penta[0]+penta[1]+penta[1]+penta[1]+penta[4];
+        const int pairs_ = penta[0]+penta[1]+penta[2]+penta[3]+penta[4];
         const double WW       = double(penta[4]) / pairs_;
         const double WD       = double(penta[3]) / pairs_;
         const double WLDD     = double(penta[2]) / pairs_;
         const double LD       = double(penta[1]) / pairs_;
-        const double LL       = double(penta[0]) / pairs_;
         double score = WW + WD*0.75 + WLDD*0.5 + LD*0.25;
-        const double WW_dev   = WW   * std::pow((1    - score), 2);
-        const double WD_dev   = WD   * std::pow((0.75 - score), 2);
-        const double WLDD_dev = WLDD * std::pow((0.5  - score), 2);
-        const double LD_dev   = LD   * std::pow((0.25 - score), 2);
-        const double LL_dev   = LL   * std::pow((0    - score), 2);
-        const double variance = WW_dev + WD_dev + WLDD_dev + LD_dev + LL_dev;
-        return (score-0.5)/sqrt(2*variance)*(800/log(10));
+        return (score-0.5)*2;
     }
 
     void apply(float lr){
         double loss = diffloss();
+        printf("elo diff: %lf\n", loss);
         for(int i=0; i<(int)parameters->state.size(); i++)
-            parameters->updateParam(i, loss*randoms[i]/100/lr);
+            parameters->updateParam(i, loss*randoms[i]/(10*lr));
     }
 };
 
