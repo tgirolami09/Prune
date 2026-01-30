@@ -531,7 +531,8 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
 template<int limitWay>
 bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, bool mateHardBound, int actDepth){
     verbose = _verbose;
-    hardBoundTime = chrono::milliseconds{tm.hardBound};
+    hardBoundTime = chrono::milliseconds{tm.hardBound*1000};
+    startSearch = timeMesure::now();
     chrono::milliseconds softBoundTime{tm.softBound};
     vector<depthInfo> allInfos;
     bool moveInTable = false;
@@ -655,6 +656,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         }
         softBoundTime = chrono::milliseconds{tm.updateSoft(localSS.bestMoveNodes, lastUsedNodes, parameters, verbose)};
         this->hardBound = tm.hardBound;
+        hardBoundTime = chrono::milliseconds{tm.hardBound};
         if(limitWay == 1 && localSS.nodes > tm.softBound)break;
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
     }

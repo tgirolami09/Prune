@@ -16,7 +16,9 @@ int nbThreads=1;
 #include <random>
 #include <cmath>
 #include <vector>
+#include <cassert>
 using namespace std;
+using namespace std::chrono;
 
 vector<string> fens;
 int idFen;
@@ -25,7 +27,7 @@ int nbIters;
 int nbThreadsSPSA;
 int baseTime, increment;
 int memory;
-int moveOverhead = 100;
+int moveOverhead = 10;
 
 class internalState{
 public:
@@ -67,9 +69,12 @@ public:
     thread t;
     string fen;
     bool running;
+    int ply;
     mutex mtx;
     condition_variable cv;
     BestMoveFinder player0, player1;
+    GameState state;
+    IncrementalEvaluator eval;
     HelperThread():player0(memory, true), player1(memory, true){}
     int ans;
     bool zombie;
@@ -93,6 +98,9 @@ public:
     BestMoveFinder& getPlayer(int idPlayer){
         return idPlayer?player0:player1;
     }
+    bestMoveResponse getEval(int idPlayer, TM tm){
+        return getPlayer(idPlayer).goState<0>(state, tm, false, true, ply);
+    }
     void set_result(int result){
         ans = result;
         {
@@ -103,7 +111,7 @@ public:
     }
     bool check_finished(){
         lock_guard<mutex> lock(mtx);
-        return running || zombie;
+        return !running || zombie;
     }
     void bezombie(){
         zombie = true;
@@ -136,9 +144,13 @@ public:
         std::normal_distribution<double> d(0, 1);
         for(int i=0; i<(int)parameters->state.size(); i++)
             randoms.push_back(d(gen));
+        for(float i:randoms)
+            printf("%lf ", i);
+        printf("\n");
     }
 
     string init_players(int id, bool& lastGame){
+        printf("init players of thread %d\n", id);
         M[id] = idPair;
         nbLaunched++;
         lastGame = nbLaunched == nbGamesPerIter;
@@ -150,7 +162,6 @@ public:
             pairs[idPair].first ^= 1;
             fen = pairs[idPair].second = fens[idFen++];
         }
-        id *= 2;
         for(int idPlayer=0; idPlayer<2; idPlayer++){
             int sign = idPlayer?-1:1;
             vector<int*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
@@ -194,7 +205,7 @@ public:
         return (score-0.5)/sqrt(2*variance)*(800/log(10));
     }
 
-    void apply(int lr){
+    void apply(float lr){
         double loss = diffloss();
         for(int i=0; i<(int)parameters->state.size(); i++)
             parameters->updateParam(i, loss*randoms[i]/100/lr);
@@ -203,8 +214,6 @@ public:
 
 void play_games(int id){
     HelperThread& ss=threads[id];
-    GameState* state = new GameState;
-    IncrementalEvaluator* eval = new IncrementalEvaluator;
     Move legalMoves[maxMoves];
     LegalMoveGenerator generator;
     bool inCheck;
@@ -214,34 +223,47 @@ void play_games(int id){
         if(ss.fen == "-")return;
         int times[2] = {baseTime, baseTime};
         int result = 1;
-        state->fromFen(ss.fen);
-        eval->init(*state);
-        int player = (state->friendlyColor() == BLACK);
-        int ply = 0;
+        ss.state.fromFen(ss.fen);
+        ss.eval.init(ss.state);
+        int player = (ss.state.friendlyColor() == BLACK);
+        ss.ply = 0;
         while(1){
-            auto start = chrono::steady_clock::now();
-            auto res=ss.getPlayer(player).goState(*state, TM(moveOverhead, times[0], times[1], increment, increment, state->friendlyColor()), false, true, ply);
-            auto end = start.time_since_epoch();
-            times[player] -= chrono::duration_cast<chrono::milliseconds>(end).count();
+            auto start = high_resolution_clock::now();
+            auto res=ss.getEval(player, TM(moveOverhead, times[0], times[1], increment, increment, ss.state.friendlyColor()));
+            auto end = high_resolution_clock::now();
+            int used_time = duration_cast<milliseconds>(end - start).count();
+            Move bm=get<0>(res);
+            if(bm.moveInfo == nullMove.moveInfo){
+                printf("score: %d fen: %s ply: %d times: %d %d\n", get<2>(res), ss.state.toFen().c_str(), ss.ply, times[player], times[player^1]);
+                assert(false);
+            }
+            times[player] -= used_time;
             if(times[player] < 0){
-                result = (state->enemyColor() == WHITE)*2;
+                printf("loss on time on thread %d, last time used = %d, time now remains=%d\n", id, used_time, times[player]);
+                result = (ss.state.enemyColor() == WHITE)*2;
                 break;
             }
             times[player] += increment;
-            Move bm=get<0>(res);
-            state->playMove(bm);
-            if(state->threefold() || state->rule50_count() >= 100){
+            ss.eval.playNoBack(bm, ss.state.friendlyColor());
+            ss.state.playMove(bm);
+            ss.ply++;
+            if(ss.state.threefold()){
                 break;
             }
-            eval->playNoBack(bm, state->enemyColor());
-            if(eval->isInsufficientMaterial())break;
-            generator.initDangers(*state);
-            int nbMoves = generator.generateLegalMoves(*state, inCheck, legalMoves, dngpos, false);
+            if(ss.eval.isInsufficientMaterial()){
+                break;
+            }
+            generator.initDangers(ss.state);
+            int nbMoves = generator.generateLegalMoves(ss.state, inCheck, legalMoves, dngpos, false);
             if(nbMoves == 0){
                 if(inCheck){
-                    result = (state->enemyColor() == WHITE)*2;
-                }else
+                    result = (ss.state.enemyColor() == WHITE)*2;
+                }else{
                     result = 1;
+                }
+                break;
+            }
+            if(ss.state.rule50_count() >= 100){
                 break;
             }
             player ^= 1;
@@ -299,6 +321,7 @@ int main(int argc, char** argv){
     while(threadUp){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
+                printf("games on thread %d finished\n", i);
                 if(games[i]->add_result(threads[i].ans, i)){
                     games[i]->apply(lr);
                     lr *= 1.001;
