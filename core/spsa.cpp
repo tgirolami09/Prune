@@ -295,24 +295,24 @@ int main(int argc, char** argv){
     }
     memory *= hashMul;
     internalState state((tunables()));
-    vector<stateIter> Q;
     int idSPSA = 0;
     stateIter S;
     S.init(idSPSA++, &state);
-    Q.push_back(S);
-    vector<stateIter*> games(nbThreadsSPSA, NULL);
+    vector<stateIter> Qiters;
+    Qiters.push_back(S);
+    vector<int> games(nbThreadsSPSA, -1);
     threads = new HelperThread[nbThreadsSPSA];
     printf("start tuning with %ld parameters %d threads tc=%.1f+%.1f memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
     for(int i=0; i<nbThreadsSPSA; i++){
         threads[i].t = thread(play_games, i);
         bool islast = false;
-        string fen = Q.back().init_players(i, islast);
+        string fen = Qiters.back().init_players(i, islast);
         threads[i].launch(fen);
-        games[i] = &Q.back();
+        games[i] = Qiters.size()-1;
         if(islast){
             stateIter nS;
             nS.init(idSPSA++, &state);
-            Q.push_back(nS);
+            Qiters.push_back(nS);
         }
     }
     printf("all threads has been launched\n");
@@ -322,16 +322,16 @@ int main(int argc, char** argv){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
                 printf("games on thread %d finished\n", i);
-                if(games[i]->add_result(threads[i].ans, i)){
-                    games[i]->apply(lr);
+                if(Qiters[games[i]].add_result(threads[i].ans, i)){
+                    Qiters[games[i]].apply(lr);
                     lr *= 1.001;
                     state.print();
                 }
                 bool islast = false;
-                if(Q.back().nbLaunched < nbGamesPerIter){
-                    string fen = Q.back().init_players(i, islast);
+                if(Qiters.back().nbLaunched < nbGamesPerIter){
+                    string fen = Qiters.back().init_players(i, islast);
                     threads[i].launch(fen);
-                    games[i] = &Q.back();
+                    games[i] = Qiters.size()-1;
                 }
                 if(islast){
                     if(idSPSA >= nbIters){
@@ -341,7 +341,7 @@ int main(int argc, char** argv){
                     }
                     stateIter nS;
                     nS.init(idSPSA++, &state);
-                    Q.push_back(nS);
+                    Qiters.push_back(nS);
                 }
             }
         }
