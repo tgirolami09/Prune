@@ -54,11 +54,12 @@ public:
         state[idx] *= (1+evolution);
         state[idx] = max(state[idx], 1.0f);
     }
-    void print(){
+    void print(ofstream& file){
         for(float i:state){
-            printf("%.2f\t", i);
+            file << i << "\t";
         }
-        printf("\n");
+        file << "\n";
+        file.flush();
     }
 };
 
@@ -196,7 +197,6 @@ public:
 
     void apply(float lr){
         double loss = diffloss();
-        printf("elo diff: %lf\n", loss);
         for(int i=0; i<(int)parameters->state.size(); i++)
             parameters->updateParam(i, loss*randoms[i]/(10*lr));
     }
@@ -292,6 +292,9 @@ int main(int argc, char** argv){
     Qiters.push_back(S);
     vector<int> games(nbThreadsSPSA, -1);
     threads = new HelperThread[nbThreadsSPSA];
+    float lr_min = 0.0001;
+    float lr_max = 1;
+    int nbPassedIters = 0;
     printf("start tuning with %ld parameters %d threads tc=%.1f+%.1f memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
     for(int i=0; i<nbThreadsSPSA; i++){
         threads[i].t = thread(play_games, i);
@@ -307,14 +310,17 @@ int main(int argc, char** argv){
     }
     printf("all threads has been launched\n");
     int threadUp = nbThreadsSPSA;
-    float lr = 1;
+    ofstream logFile("spsaOut.log");
     while(threadUp){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
                 if(Qiters[games[i]].add_result(threads[i].ans, i)){
+                    float lr = lr_min + 0.5*(lr_max - lr_min)*(1 + cos(M_PI * nbPassedIters / nbIters));
                     Qiters[games[i]].apply(lr);
-                    lr *= 1.001;
-                    state.print();
+                    nbPassedIters++;
+                    printf("\r%d/%d iters", nbPassedIters, nbIters);
+                    fflush(stdout);
+                    state.print(logFile);
                 }
                 bool islast = false;
                 if(Qiters.back().nbLaunched < nbGamesPerIter){
