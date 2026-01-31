@@ -20,6 +20,27 @@ int nbThreads=1;
 using namespace std;
 using namespace std::chrono;
 
+string secondsToStr(big s){
+    string res="";
+    if(s >= 60){
+        big m=s/60;
+        s %= 60;
+        if(m >= 60){
+            big h=m/60;
+            m %= 60;
+            if(h >= 24){
+                big d=h/24;
+                h %= 24;
+                res += to_string(d)+"d ";
+            }
+            res += to_string(h)+"h ";
+        }
+        res += to_string(m)+"m ";
+    }
+    res += to_string(s)+"s ";
+    return res;
+}
+
 vector<string> fens;
 int idFen;
 int nbGamesPerIter;
@@ -122,22 +143,20 @@ public:
 HelperThread *threads;
 class stateIter{
 public:
-    int penta[5];
     internalState* parameters;
     int idSPSA;
-    int idPair;
     int nbFinished;
     int nbLaunched;
-    vector<pair<int, string>> pairs;
+    vector<string> pairs;
     vector<float> randoms;
     map<int, int> M;
+    int score;
     void init(int id, internalState* globParams){
         randoms.clear();
         M.clear();
         pairs.clear();
-        idPair = 0;
         idSPSA = id;
-        memset(penta, 0, sizeof(penta));
+        score = 0;
         parameters = globParams;
         pairs.resize(nbGamesPerIter/2);
         nbLaunched = nbFinished = 0;
@@ -149,20 +168,14 @@ public:
 
     string init_players(int id, bool& lastGame){
         M[id] = nbLaunched;
-        nbLaunched++;
-        lastGame = nbLaunched == nbGamesPerIter;
         string fen;
-        bool isfirst = false;
-        if(pairs[idPair].first&1){
-            fen = pairs[idPair].second;
-            idPair++;
+        if(nbLaunched&1){
+            fen = pairs[nbLaunched/2];
         }else{
-            pairs[idPair].first ^= 1;
-            isfirst = true;
-            fen = pairs[idPair].second = fens[idFen++];
+            fen = pairs[nbLaunched/2] = fens[idFen++];
         }
-        int idPlayer = !isfirst;
-        for(int _=0; _<2; _++){
+        int idPlayer = nbLaunched&1;
+        for(int x=0; x<2; x++){
             int sign = idPlayer?-1:1;
             vector<int*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
             for(int i = 0; i<(int)Vs.size(); i++){
@@ -175,30 +188,20 @@ public:
             }
             idPlayer ^= 1;
         }
+        nbLaunched++;
+        lastGame = nbLaunched == nbGamesPerIter;
         return fen;
     }
 
     bool add_result(int result, int id){
-        int curPair = M[id]/2;
         int side = M[id]&1;
         if(side)result = 2-result;
-        if(pairs[curPair].first/2){
-            penta[pairs[curPair].first/2+result-1]++;
-        }else{
-            pairs[curPair].first += (result+1)*2;
-        }
+        score += result-1;
         return (++nbFinished) == nbGamesPerIter;
     }
 
     double diffloss(){
-        //code used from fastchess
-        const int pairs_ = penta[0]+penta[1]+penta[2]+penta[3]+penta[4];
-        const double WW       = double(penta[4]) / pairs_;
-        const double WD       = double(penta[3]) / pairs_;
-        const double WLDD     = double(penta[2]) / pairs_;
-        const double LD       = double(penta[1]) / pairs_;
-        double score = WW + WD*0.75 + WLDD*0.5 + LD*0.25;
-        return (score-0.5)*2;
+        return ((double)score)/nbGamesPerIter;
     }
 
     void apply(float lr){
@@ -254,8 +257,6 @@ void play_games(int id){
             if(nbMoves == 0){
                 if(inCheck){
                     result = (ss.state.enemyColor() == WHITE)*2;
-                }else{
-                    result = 1;
                 }
                 break;
             }
@@ -316,6 +317,7 @@ int main(int argc, char** argv){
     }
     printf("all threads has been launched\n");
     int threadUp = nbThreadsSPSA;
+    auto start = high_resolution_clock::now();
     ofstream logFile("spsaOut.log");
     while(threadUp){
         for(int i=0; i<nbThreadsSPSA; i++){
@@ -325,7 +327,9 @@ int main(int argc, char** argv){
                     Qiters[games[i]].apply(lr);
                     logFile << Qiters[games[i]].diffloss() << '\n';
                     nbPassedIters++;
-                    printf("\r%d/%d iters", nbPassedIters, nbIters);
+                    auto end = high_resolution_clock::now();
+                    int passedTime = duration_cast<milliseconds>(end-start).count();
+                    printf("\r%d/%d iters, time remaining: %s      ", nbPassedIters, nbIters, secondsToStr((nbIters-nbPassedIters)*passedTime/(nbPassedIters*1000)).c_str());
                     fflush(stdout);
                     state.print(logFile);
                 }

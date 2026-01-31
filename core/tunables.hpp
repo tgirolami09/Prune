@@ -29,11 +29,11 @@ public:
         nvalue,
         bvalue,
         rvalue,
-        qvalue;
+        qvalue,
+        lmr_base,
+        lmr_div;
     float
         aw_mul,
-        lmr_base,
-        lmr_div,
         nodetm_base,
         nodetm_mul;
     vector<int*> to_tune_int();

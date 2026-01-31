@@ -4,8 +4,8 @@ tunables::tunables():
     iir_validity_depth(3),
     rfp_improving(120),
     rfp_nimproving(150),
-    nmp_red_depth_div(4),
-    nmp_red_base(3),
+    nmp_red_depth_div(256),
+    nmp_red_base(3072),
     se_validity_depth(3),
     se_min_depth(6),
     se_dext_margin(20),
@@ -24,9 +24,9 @@ tunables::tunables():
     bvalue(300),
     rvalue(500),
     qvalue(900),
+    lmr_base(922),
+    lmr_div(341),
     aw_mul(2.0),
-    lmr_base(0.9),
-    lmr_div(3.0),
     nodetm_base(2.0),
     nodetm_mul(1.6)
 {}
@@ -56,15 +56,15 @@ vector<int*> tunables::to_tune_int(){
         &nvalue,
         &bvalue,
         &rvalue,
-        &qvalue
+        &qvalue,
+        &lmr_base,
+        &lmr_div
     };
 }
 
 vector<float*> tunables::to_tune_float(){
     return {
         &aw_mul,
-        &lmr_base,
-        &lmr_div,
         &nodetm_base,
         &nodetm_mul
     };
