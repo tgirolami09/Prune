@@ -53,26 +53,31 @@ int moveOverhead = 10;
 class internalState{
 public:
     vector<float> state;
-    internalState(int nbParams):state(nbParams, 1){
+    vector<float> firstState;
+    internalState(int nbParams):state(nbParams, 1), firstState(nbParams, 1){
     }
     internalState(tunables tun){
-        state.resize(tun.to_tune_int().size()+tun.to_tune_float().size());
+        int nbParams = tun.to_tune_int().size()+tun.to_tune_float().size();
+        state.resize(nbParams);
+        firstState.resize(nbParams);
         int i = 0;
         for(int *j:tun.to_tune_int()){
-            state[i++] = *j;
+            firstState[i] = state[i] = *j;
+            i++;
         }
         for(float *j:tun.to_tune_float()){
-            state[i++] = *j;
+            firstState[i] = state[i] = *j;
+            i++;
         }
     }
     float getParam(int idx, int precision=1){
         return round(state[idx]*precision)/precision;
     }
     float getUpdate(int idx, float evolution, int precision=1){
-        return round(state[idx]*(1+evolution)*precision)/precision;
+        return round((state[idx]+evolution*firstState[idx]/100)*precision)/precision;
     }
     void updateParam(int idx, float evolution){
-        state[idx] *= (1+evolution);
+        state[idx] += evolution*firstState[idx]/100;
         state[idx] = max(state[idx], 1.0f);
     }
     void print(ofstream& file){
@@ -179,12 +184,12 @@ public:
             int sign = idPlayer?-1:1;
             vector<int*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
             for(int i = 0; i<(int)Vs.size(); i++){
-                *Vs[i] = parameters->getUpdate(i, randoms[i]*sign/100);
+                *Vs[i] = parameters->getUpdate(i, randoms[i]*sign);
             }
             vector<float*> Vfs = threads[id].getPlayer(idPlayer).parameters.to_tune_float();
             int offset = Vs.size();
             for(int i = 0; i<(int)Vfs.size(); i++){
-                *Vfs[i] = parameters->getUpdate(i+offset, randoms[i+offset]*sign/100, 1000);
+                *Vfs[i] = parameters->getUpdate(i+offset, randoms[i+offset]*sign, 1000);
             }
             idPlayer ^= 1;
         }
@@ -207,7 +212,7 @@ public:
     void apply(float lr){
         double loss = diffloss();
         for(int i=0; i<(int)parameters->state.size(); i++)
-            parameters->updateParam(i, loss*randoms[i]*lr/10);
+            parameters->updateParam(i, loss*randoms[i]*lr*10);
     }
 };
 
@@ -224,10 +229,10 @@ void play_games(int id){
         int result = 1;
         ss.state.fromFen(ss.fen);
         ss.eval.init(ss.state);
-        int player = (ss.state.friendlyColor() == BLACK);
         ss.ply = 0;
         while(1){
             auto start = high_resolution_clock::now();
+            int player = ss.state.friendlyColor() == BLACK;
             auto res=ss.getEval(player, TM(moveOverhead, times[0], times[1], increment, increment, ss.state.friendlyColor()));
             auto end = high_resolution_clock::now();
             int used_time = duration_cast<milliseconds>(end - start).count();
@@ -263,7 +268,6 @@ void play_games(int id){
             if(ss.state.rule50_count() >= 100){
                 break;
             }
-            player ^= 1;
         }
         ss.set_result(result);
     }
