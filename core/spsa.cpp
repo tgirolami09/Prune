@@ -49,7 +49,7 @@ int nbThreadsSPSA;
 int baseTime, increment;
 int memory;
 int moveOverhead = 10;
-float alpha = 0.602, _gamma = 0.101, lr=10, grain = 0.05;
+float alpha = 0.602, _gamma = 0.101, lr=0.01, grain = 0.05;
 class internalState{
 public:
     vector<float> state;
@@ -74,10 +74,10 @@ public:
         return round(state[idx]*precision)/precision;
     }
     float getUpdate(int idx, float evolution, int precision=1){
-        return round((state[idx]+evolution*firstState[idx]/100)*precision)/precision;
+        return max(1.0f, round((state[idx]+evolution*firstState[idx])*precision)/precision);
     }
     void updateParam(int idx, float evolution){
-        state[idx] += evolution*firstState[idx]/100;
+        state[idx] += evolution*firstState[idx];
         state[idx] = max(state[idx], 1.0f);
     }
     void print(ofstream& file){
@@ -149,6 +149,7 @@ HelperThread *threads;
 class stateIter{
 public:
     internalState* parameters;
+    internalState frozenParams;
     int idSPSA;
     int nbFinished;
     int nbLaunched;
@@ -157,11 +158,13 @@ public:
     vector<float> randoms;
     map<int, int> M;
     int score;
+    stateIter():frozenParams(0){} // to have a default constructor
     void init(int id, internalState* globParams){
         randoms.clear();
         M.clear();
         pairs.clear();
         idSPSA = id;
+        frozenParams = *globParams;
         score = 0;
         parameters = globParams;
         pairs.resize(nbGamesPerIter/2);
@@ -181,21 +184,22 @@ public:
         M[id] = nbLaunched;
         string fen;
         if(nbLaunched&1){
-            fen = pairs[nbLaunched/2];
+            fen = pairs[nbLaunched/2]; //recup the same fen as the other game of the pair
         }else{
+            frozenParams = *parameters; // we can now update the frozen ones, this is just to assure the base parameters are the sames between the pairs games
             fen = pairs[nbLaunched/2] = fens[idFen++];
         }
-        int idPlayer = nbLaunched&1;
+        int idPlayer = nbLaunched&1; //second game of the pair we switch the players
         for(int x=0; x<2; x++){
             int sign = idPlayer?-1:1;
             vector<int*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
             for(int i = 0; i<(int)Vs.size(); i++){
-                *Vs[i] = parameters->getUpdate(i, randoms[i]*sign);
+                *Vs[i] = frozenParams.getUpdate(i, randoms[i]*sign);
             }
             vector<float*> Vfs = threads[id].getPlayer(idPlayer).parameters.to_tune_float();
             int offset = Vs.size();
             for(int i = 0; i<(int)Vfs.size(); i++){
-                *Vfs[i] = parameters->getUpdate(i+offset, randoms[i+offset]*sign, 1000);
+                *Vfs[i] = frozenParams.getUpdate(i+offset, randoms[i+offset]*sign, 1000);
             }
             idPlayer ^= 1;
         }
@@ -206,19 +210,19 @@ public:
 
     bool add_result(int result, int id){
         int side = M[id]&1;
-        if(side)result = 2-result;
+        if(side)result = 2-result; //because the first player is theta-delta
         score += result-1;
         return (++nbFinished) == nbGamesPerIter;
     }
 
     double diffloss(){
-        return ((double)score)/nbGamesPerIter;
+        return (double)score/nbGamesPerIter;
     }
 
     void apply(){
         double loss = diffloss();
         for(int i=0; i<(int)parameters->state.size(); i++)
-            parameters->updateParam(i, loss*ak/(2*randoms[i]*ck));
+            parameters->updateParam(i, loss*ak/(randoms[i]*ck));
     }
 };
 
@@ -327,17 +331,15 @@ int main(int argc, char** argv){
     int threadUp = nbThreadsSPSA;
     auto start = high_resolution_clock::now();
     ofstream logFile("spsaOut.log");
+    int nbFinishedGames = 0;
     while(threadUp){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
+                nbFinishedGames++;
                 if(Qiters[games[i]].add_result(threads[i].ans, i)){
                     Qiters[games[i]].apply();
                     logFile << Qiters[games[i]].diffloss() << '\n';
                     nbPassedIters++;
-                    auto end = high_resolution_clock::now();
-                    int passedTime = duration_cast<milliseconds>(end-start).count();
-                    printf("\r%d/%d iters, time remaining: %s      ", nbPassedIters, nbIters, secondsToStr((nbIters-nbPassedIters)*passedTime/(nbPassedIters*1000)).c_str());
-                    fflush(stdout);
                     state.print(logFile);
                 }
                 bool islast = false;
@@ -346,7 +348,11 @@ int main(int argc, char** argv){
                     threads[i].launch(fen);
                     games[i] = Qiters.size()-1;
                 }
-                if(islast){
+                auto end = high_resolution_clock::now();
+                int passedTime = duration_cast<milliseconds>(end-start).count();
+                printf("\r%d/%d iters %d/%d games, speed: %.2fg/s time remaining: %s      ", nbPassedIters, nbIters, nbFinishedGames, nbIters*nbGamesPerIter, (nbFinishedGames*1000.0)/passedTime, secondsToStr(((long)nbIters*nbGamesPerIter-nbFinishedGames)*passedTime/(nbFinishedGames*1000)).c_str());
+                fflush(stdout);
+                if(islast || Qiters.back().nbLaunched >= nbGamesPerIter){
                     if(idSPSA >= nbIters){
                         threadUp--;
                         threads[i].bezombie();
