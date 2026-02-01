@@ -49,7 +49,7 @@ int nbThreadsSPSA;
 int baseTime, increment;
 int memory;
 int moveOverhead = 10;
-
+float alpha = 0.602, _gamma = 0.101, lr=10, grain = 0.05;
 class internalState{
 public:
     vector<float> state;
@@ -152,6 +152,7 @@ public:
     int idSPSA;
     int nbFinished;
     int nbLaunched;
+    double ak, ck;
     vector<string> pairs;
     vector<float> randoms;
     map<int, int> M;
@@ -166,9 +167,14 @@ public:
         pairs.resize(nbGamesPerIter/2);
         nbLaunched = nbFinished = 0;
         std::mt19937 gen(idSPSA);
-        std::normal_distribution<double> d(0, 1);
+        std::uniform_int_distribution d(0, 1);
+        const double A = 0.1*nbIters;
+        const double a = pow(nbIters+A, alpha)*lr*grain*grain;
+        const double c = grain*pow(nbIters, _gamma);
+        ak = a / pow(idSPSA + 1 + A, alpha);
+        ck = c / pow(idSPSA + 1, _gamma);
         for(int i=0; i<(int)parameters->state.size(); i++)
-            randoms.push_back(d(gen));
+            randoms.push_back((d(gen)*2-1)*ck);
     }
 
     string init_players(int id, bool& lastGame){
@@ -209,10 +215,10 @@ public:
         return ((double)score)/nbGamesPerIter;
     }
 
-    void apply(float lr){
+    void apply(){
         double loss = diffloss();
         for(int i=0; i<(int)parameters->state.size(); i++)
-            parameters->updateParam(i, loss*randoms[i]*lr*10);
+            parameters->updateParam(i, loss*ak/(2*randoms[i]*ck));
     }
 };
 
@@ -303,8 +309,6 @@ int main(int argc, char** argv){
     Qiters.push_back(S);
     vector<int> games(nbThreadsSPSA, -1);
     threads = new HelperThread[nbThreadsSPSA];
-    float lr_min = 0.0001;
-    float lr_max = 1;
     int nbPassedIters = 0;
     printf("start tuning with %ld parameters %d threads tc=%.1f+%.1f memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
     for(int i=0; i<nbThreadsSPSA; i++){
@@ -327,8 +331,7 @@ int main(int argc, char** argv){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
                 if(Qiters[games[i]].add_result(threads[i].ans, i)){
-                    float lr = lr_min + 0.5*(lr_max - lr_min)*(1 + cos(M_PI * nbPassedIters / nbIters));
-                    Qiters[games[i]].apply(lr);
+                    Qiters[games[i]].apply();
                     logFile << Qiters[games[i]].diffloss() << '\n';
                     nbPassedIters++;
                     auto end = high_resolution_clock::now();
