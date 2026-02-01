@@ -703,7 +703,7 @@ big Perft::_perft(GameState& state, ubyte depth){
     big dangerPositions = 0;
     generator.initDangers(state);
     int nbMoves=generator.generateLegalMoves(state, inCheck, stack[depth], dangerPositions);
-    if(depth == 1)return nbMoves;
+    //if(depth == 1)return nbMoves;
     big count=0;
     for(int i=0; i<nbMoves; i++){
         state.playMove(stack[depth][i]);
@@ -726,7 +726,7 @@ big Perft::perft(GameState& state, ubyte depth, bool verbose){
     big count=0;
     for(int i=0; i<nbMoves; i++){
         clock_t startMove=clock();
-        int startVisitedNodes = visitedNodes;
+        big startVisitedNodes = visitedNodes;
         state.playMove(moves[i]);
         big nbNodes=_perft(state, depth-1);
         state.undoLastMove();
