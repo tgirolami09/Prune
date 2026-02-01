@@ -171,11 +171,13 @@ public:
         nbLaunched = nbFinished = 0;
         std::mt19937 gen(idSPSA);
         std::uniform_int_distribution d(0, 1);
-        const double A = 0.1*nbIters;
-        const double a = pow(nbIters+A, alpha)*lr*grain*grain;
-        const double c = grain*pow(nbIters, _gamma);
-        ak = a / pow(idSPSA + 1 + A, alpha);
-        ck = c / pow(idSPSA + 1, _gamma);
+        const int n = nbIters*nbGamesPerIter;
+        const double A = 0.1*n;
+        const double a = pow(n+A, alpha)*lr*grain*grain;
+        const double c = grain*pow(n, _gamma);
+        const int k=idSPSA*nbGamesPerIter;
+        ak = a / pow(k + 1 + A, alpha);
+        ck = c / pow(k + 1, _gamma);
         for(int i=0; i<(int)parameters->state.size(); i++)
             randoms.push_back((d(gen)*2-1)*ck);
     }
