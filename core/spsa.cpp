@@ -17,6 +17,8 @@ int nbThreads=1;
 #include <cmath>
 #include <vector>
 #include <cassert>
+#include <sstream>
+#include <set>
 using namespace std;
 using namespace std::chrono;
 
@@ -86,6 +88,16 @@ public:
         }
         file << "\n";
         file.flush();
+    }
+    void print(){
+        for(float i:state){
+            printf("%.4f\t", i);
+        }
+        printf("\n");
+        fflush(stdout);
+    }
+    void moveToFirst(){
+        firstState = state;
     }
 };
 
@@ -287,11 +299,24 @@ void play_games(int id){
 
 int main(int argc, char** argv){
     if(argc == 1){
-        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:) <memory> <baseTime> <increment>\n", argv[0]);
+        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:)( <memory> <baseTime> <increment>) (another optional)<logFile> <added params>(to continue)\n", argv[0]);
+        printf("book: a file name that contains a list of fens\n");
+        printf("nbGames Per Iter: number of games per SPSA iters\n");
+        printf("nbIter: number of SPSA iters\n");
+        printf("nbThreads: number of threads (each thread will run one game at the time)\n");
+        printf("memory: memory per player in MB\n");
+        printf("baseTime: base time on the clock in milliseconds\n");
+        printf("increment: increment per move in milliseconds\n");
+        printf("logFile: to continue from a stopped spsa\n");
+        printf("added params: in case of restarted spsa, take in account in the reading of the file that paramaters were added in place x1 x2 etc. all the x1... should be between \" \" (like \"1 2 3\")\n");
         return 0;
     }
     string book(argv[1]);
     ifstream file(book);
+    if(!file.is_open()){
+        printf("book doesn't open\n");
+        return 1;
+    }
     idFen = 0;
     string curFen;
     while(getline(file, curFen))
@@ -301,21 +326,51 @@ int main(int argc, char** argv){
     nbThreadsSPSA = atoi(argv[4]);
     memory = 16;
     baseTime = 10000, increment = 100;
+    int idSPSA = 0;
+    internalState state((tunables()));
+    int nbPassedIters = 0;
+    int nbFinishedGames = 0;
     if(argc > 5){
         memory = atoi(argv[5]);
         baseTime = atoi(argv[6]);
         increment = atoi(argv[7]);
+        if(argc > 8){
+            string line;
+            ifstream oldLog(argv[8]);
+            set<int> S;
+            if(argc > 9){
+                stringstream addedparams(argv[9]);
+                int x;
+                while(addedparams >> x)S.insert(x);
+            }
+            bool iseven = true;
+            while(getline(oldLog, line)){
+                if(!iseven){
+                    stringstream ss(line);
+                    int idParam = 0;
+                    while(S.count(idParam))idParam++;
+                    while(ss >> state.state[idParam++]){
+                        while(S.count(idParam))idParam++;
+                    }
+                    idSPSA++;
+                }
+                iseven = !iseven;
+            }
+            state.print();
+            nbPassedIters = idSPSA;
+            nbFinishedGames = idSPSA*nbGamesPerIter;
+            idSPSA++;
+            printf("%d\n", idSPSA);
+        }
     }
+    int alreadyMadeGames = nbFinishedGames;
     memory *= hashMul;
-    internalState state((tunables()));
-    int idSPSA = 0;
     stateIter S;
     S.init(idSPSA++, &state);
     vector<stateIter> Qiters;
     Qiters.push_back(S);
     vector<int> games(nbThreadsSPSA, -1);
     threads = new HelperThread[nbThreadsSPSA];
-    int nbPassedIters = 0;
     printf("start tuning with %ld parameters %d threads tc=%.1f+%.1f memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
     for(int i=0; i<nbThreadsSPSA; i++){
         threads[i].t = thread(play_games, i);
@@ -333,7 +388,6 @@ int main(int argc, char** argv){
     int threadUp = nbThreadsSPSA;
     auto start = high_resolution_clock::now();
     ofstream logFile("spsaOut.log");
-    int nbFinishedGames = 0;
     while(threadUp){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
@@ -352,7 +406,7 @@ int main(int argc, char** argv){
                 }
                 auto end = high_resolution_clock::now();
                 int passedTime = duration_cast<milliseconds>(end-start).count();
-                printf("\r%d/%d iters %d/%d games, speed: %.2fg/s time remaining: %s      ", nbPassedIters, nbIters, nbFinishedGames, nbIters*nbGamesPerIter, (nbFinishedGames*1000.0)/passedTime, secondsToStr(((long)nbIters*nbGamesPerIter-nbFinishedGames)*passedTime/(nbFinishedGames*1000)).c_str());
+                printf("\r%d/%d iters %d/%d games, speed: %.2fg/s time remaining: %s      ", nbPassedIters, nbIters, nbFinishedGames, nbIters*nbGamesPerIter, ((nbFinishedGames-alreadyMadeGames)*1000.0)/passedTime, secondsToStr(((long)nbIters*nbGamesPerIter-nbFinishedGames+alreadyMadeGames)*passedTime/(nbFinishedGames*1000)).c_str());
                 fflush(stdout);
                 if(islast || Qiters.back().nbLaunched >= nbGamesPerIter){
                     if(idSPSA >= nbIters){
