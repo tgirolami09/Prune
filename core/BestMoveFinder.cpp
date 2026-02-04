@@ -511,7 +511,7 @@ void BestMoveFinder::launchSMP(int idThread){
 }
 
 template <int limitWay>
-bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool _verbose, bool mateHardBound){
+bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool _verbose){
     this->verbose = _verbose;
     startSearch = timeMesure::now();
     int actDepth=0;
@@ -522,14 +522,14 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         for(int i=0; i<nbThreads-1; i++)helperThreads[i].localState.playPartialMove(move);
         actDepth++;
     }
-    bestMoveResponse res=goState<limitWay>(state, tm, verbose, mateHardBound, actDepth);
+    bestMoveResponse res=goState<limitWay>(state, tm, verbose, actDepth);
     for(unsigned long i=0; i<movesFromRoot.size(); i++)
         state.undoLastMove();
     return res;
 }
 
 template<int limitWay>
-bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, bool mateHardBound, int actDepth){
+bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth){
     verbose = _verbose;
     hardBoundTime = chrono::milliseconds{tm.hardBound*1000};
     startSearch = timeMesure::now();
@@ -650,10 +650,6 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         }
         if(running)
             allInfos.push_back({localSS.nodes, (int)(tcpu*1000), (int)(speed), depth, localSS.seldepth-startRelDepth, bestScore});
-        if(abs(bestScore) > MAXIMUM-maxDepth && mateHardBound){
-            tm.softBound = hardBound;
-            softBoundTime = hardBoundTime;
-        }
         softBoundTime = chrono::milliseconds{tm.updateSoft(localSS.bestMoveNodes, lastUsedNodes, parameters, verbose)};
         this->hardBound = tm.hardBound;
         hardBoundTime = chrono::milliseconds{tm.hardBound};
@@ -663,12 +659,12 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     return make_tuple(bestMove, ponderMove, lastScore, allInfos);
 }
 
-template bestMoveResponse BestMoveFinder::bestMove<0>(GameState&, TM, vector<Move>, bool, bool);
-template bestMoveResponse BestMoveFinder::bestMove<1>(GameState&, TM, vector<Move>, bool, bool);
-template bestMoveResponse BestMoveFinder::bestMove<2>(GameState&, TM, vector<Move>, bool, bool);
-template bestMoveResponse BestMoveFinder::goState<0>(GameState&, TM, bool, bool, int);
-template bestMoveResponse BestMoveFinder::goState<1>(GameState&, TM, bool, bool, int);
-template bestMoveResponse BestMoveFinder::goState<2>(GameState&, TM, bool, bool, int);
+template bestMoveResponse BestMoveFinder::bestMove<0>(GameState&, TM, vector<Move>, bool);
+template bestMoveResponse BestMoveFinder::bestMove<1>(GameState&, TM, vector<Move>, bool);
+template bestMoveResponse BestMoveFinder::bestMove<2>(GameState&, TM, vector<Move>, bool);
+template bestMoveResponse BestMoveFinder::goState<0>(GameState&, TM, bool, int);
+template bestMoveResponse BestMoveFinder::goState<1>(GameState&, TM, bool, int);
+template bestMoveResponse BestMoveFinder::goState<2>(GameState&, TM, bool, int);
 int BestMoveFinder::testQuiescenceSearch(GameState& state){
     localSS.reinit(state);
     clock_t start=clock();
