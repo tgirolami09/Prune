@@ -200,6 +200,7 @@ public:
     bool isOnlyPawns() const;
     int getScore(bool c, const corrhists& ch, const GameState& state) const;
     int getRaw(bool c) const;
+    int correctEval(int eval, const corrhists& ch, const GameState& state) const;
     template<int f=1>
     void playMove(Move move, bool c);
     void playNoBack(Move move, bool c);

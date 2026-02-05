@@ -6,12 +6,15 @@
 
 class __attribute__((packed)) infoScore{
 public:
-    int16_t score;
+    int16_t score,
+            raw_eval;
     ubyte typeNode;
     int16_t bestMoveInfo;
     ubyte depth;
     uint32_t hash;
 };
+static_assert(sizeof(infoScore) == 12, "size of infoScore should be 12");
+
 const int INVALID = INT_MAX;
 class transpositionTable{
 public:
@@ -28,7 +31,7 @@ public:
 
     int16_t getMove(const GameState& state);
 
-    void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth);
+    void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth, int16_t raw_eval);
     void clearRange(big start, big end);
     void prefetch(const GameState& state);
     void clear();

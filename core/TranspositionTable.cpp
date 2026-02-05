@@ -13,7 +13,7 @@ transpositionTable::transpositionTable(size_t count){
 
 pair<big, uint32_t> getIndex(const GameState& state, big modulo){
     __uint128_t tHash = ((__uint128_t)state.zobristHash)*modulo;
-    return {tHash >> 64, tHash};
+    return {tHash >> 64, tHash&~0};
 }
 
 inline int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry){
@@ -54,10 +54,11 @@ infoScore transpositionTable::getEntry(const GameState& state, bool& ttHit){
 
 }
 
-void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth){
+void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth, int16_t raw_eval){
     //if(score == 0)return; //because of the repetition
     infoScore info;
     auto [index, resHash] = getIndex(state, modulo);
+    info.raw_eval = raw_eval;
     info.score = score;
     info.hash = resHash;
     info.bestMoveInfo = move.moveInfo;

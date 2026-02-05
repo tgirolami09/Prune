@@ -40,6 +40,7 @@ class BestMoveFinder{
         struct StackCase{
             Order order;
             int static_score;
+            int raw_eval;
         };
     public:
         LegalMoveGenerator generator;
