@@ -68,7 +68,7 @@ public:
     void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
     void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
     void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);
-    void updateStack(Accumulator stack[maxDepth], int stackIndex);
+    void updateStack(Accumulator* stack, int stackIndex);
     dbyte eval(const Accumulator& accs, bool side, int idB) const;
 };
 

@@ -292,8 +292,9 @@ bool IncrementalEvaluator::isOnlyPawns() const{
     return !mgPhase;
 }
 
-int IncrementalEvaluator::getRaw(bool c) const{
+int IncrementalEvaluator::getRaw(bool c){
 #ifndef HCE
+    globnnue.updateStack(stackAcc, stackIndex);
     return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
 #else
     int clampPhase = min(mgPhase, 24);
@@ -303,7 +304,7 @@ int IncrementalEvaluator::getRaw(bool c) const{
 #endif
 }
 
-int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state) const{
+int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state){
     int raw_eval = getRaw(c);
     return correctEval(raw_eval, ch, state);
 }

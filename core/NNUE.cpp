@@ -234,7 +234,7 @@ void NNUE::move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfr
 
 void NNUE::updateStack(Accumulator* stack, int stackIndex){
     int startUpdate = 0;
-    for(startUpdate=stackIndex-1; startUpdate >= 0; startUpdate--){
+    for(startUpdate=stackIndex-1; startUpdate >= 1; startUpdate--){
         if(!stack[startUpdate].update.dirty){
             startUpdate++;
             break;
