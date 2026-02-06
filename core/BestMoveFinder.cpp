@@ -175,20 +175,20 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(ss.eval.isInsufficientMaterial())return 0;
     ss.nodes++;
     if(relDepth > ss.seldepth)ss.seldepth = relDepth;
-    dbyte hint;
+    //dbyte hint;
     const int rootDist = relDepth-startRelDepth;
-    if(isPV)
-        hint = transposition.getMove(state);
-    else{
-        int lastEval=transposition.get_eval(state, alpha, beta, 0, hint);
-        if(lastEval != INVALID)
-            return fromTT(lastEval, rootDist);
+    bool ttHit=false;
+    infoScore& ttEntry = transposition.getEntry(state, ttHit);
+    if(ttHit){
+        if(!isPV){
+            int lastEval=transposition.get_eval(ttEntry, alpha, beta, 0);
+            if(lastEval != INVALID)
+                return fromTT(lastEval, rootDist);
+        }
+        //hint = transposition.getMove(ttEntry);
     }
-    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
-    bool ttHit=false;
-    infoScore ttEntry = transposition.getEntry(state, ttHit);
     if(!isCalc){
         if(ttHit)
             raw_eval = ttEntry.raw_eval;
@@ -196,6 +196,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             raw_eval = ss.eval.getRaw(state.friendlyColor());
         staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
     }
+    if(rootDist >= maxDepth)return staticEval;
     int typeNode = UPPERBOUND;
     bool testCheck = ss.generator.initDangers(state);
     int bestEval = MINIMUM;
@@ -275,7 +276,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     int& static_eval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
     bool ttHit=false;
-    infoScore ttEntry = transposition.getEntry(state, ttHit);
+    infoScore& ttEntry = transposition.getEntry(state, ttHit);
     if(ttHit)
         raw_eval = ttEntry.raw_eval;
     else
@@ -287,14 +288,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     ss.nodes++;
     int16_t lastBest = nullMove.moveInfo;
-    if(excludedMove == nullMove.moveInfo){
+    if(excludedMove == nullMove.moveInfo && ttHit){
         if constexpr(nodeType != PVNode){
-            int lastEval = transposition.get_eval(state, alpha, beta, depth, lastBest);
+            int lastEval = transposition.get_eval(ttEntry, alpha, beta, depth);
             if(lastEval != INVALID)
                 return fromTT(lastEval, rootDist);
-        }else{
-            lastBest = transposition.getMove(state);
         }
+        lastBest = transposition.getMove(ttEntry);
     }
     ubyte typeNode = UPPERBOUND;
     Order& order = ss.stack[rootDist].order;

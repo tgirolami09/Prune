@@ -16,7 +16,7 @@ pair<big, uint32_t> getIndex(const GameState& state, big modulo){
     return {tHash >> 64, tHash&~0};
 }
 
-inline int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry){
+inline int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry) const{
     if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
         if(entry.typeNode == EXACT)
             return entry.score;
@@ -28,24 +28,17 @@ inline int transpositionTable::storedScore(int alpha, int beta, int depth, const
     return INVALID;
 }
 
-int transpositionTable::get_eval(const GameState& state, int alpha, int beta, ubyte depth, int16_t& best){
-    auto [index, resHash] = getIndex(state, modulo);
-    if(table[index].hash == resHash){
-        int score = storedScore(alpha, beta, depth, table[index]);
-        if(score != INVALID)return score;
-        best = table[index].bestMoveInfo; //probably a good move
-    }
+int transpositionTable::get_eval(const infoScore& entry, int alpha, int beta, ubyte depth) const{
+    int score = storedScore(alpha, beta, depth, entry);
+    if(score != INVALID)return score;
     return INVALID;
 }
 
-int16_t transpositionTable::getMove(const GameState& state){
-    auto [index, resHash] = getIndex(state, modulo);
-    if(table[index].hash == resHash)
-        return table[index].bestMoveInfo; //probably a good move
-    return nullMove.moveInfo;
+int16_t transpositionTable::getMove(const infoScore& entry) const{
+    return entry.bestMoveInfo; //probably a good move
 }
 
-infoScore transpositionTable::getEntry(const GameState& state, bool& ttHit){
+infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit){
     ttHit = false;
     auto [index, resHash] = getIndex(state, modulo);
     if(table[index].hash == resHash)
