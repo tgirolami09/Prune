@@ -383,9 +383,9 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         changePiece<-f, false>(posCapture, pieceCapture, !c);
 #ifndef HCE
         if(f == 1)
-            globnnue.move3(stackAcc[stackIndex], stackAcc[stackIndex+1],
-                globnnue.get_index(move.piece, c, move.from()),
+            stackAcc[stackIndex+1].update = updateBuffer(
                 globnnue.get_index(toPiece, c, move.to()),
+                globnnue.get_index(move.piece, c, move.from()),
                 globnnue.get_index(pieceCapture, !c, posCapture)
             );
 #endif
@@ -404,16 +404,16 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         changePiece<f, false>(rookEnd, ROOK, c);
 #else
         if(f == 1)
-            globnnue.move4(stackAcc[stackIndex], stackAcc[stackIndex+1],
-                globnnue.get_index(move.piece, c, move.from()),
+            stackAcc[stackIndex+1].update = updateBuffer(
                 globnnue.get_index(toPiece, c, move.to()),
-                globnnue.get_index(ROOK, c, rookStart), 
-                globnnue.get_index(ROOK, c, rookEnd)
+                globnnue.get_index(ROOK, c, rookEnd),
+                globnnue.get_index(move.piece, c, move.from()),
+                globnnue.get_index(ROOK, c, rookStart)
             );
     }else if(f == 1){
-        globnnue.move2(stackAcc[stackIndex], stackAcc[stackIndex+1],
-            globnnue.get_index(move.piece, c, move.from()),
-            globnnue.get_index(toPiece, c, move.to())
+        stackAcc[stackIndex+1].update = updateBuffer(
+            globnnue.get_index(toPiece, c, move.to()),
+            globnnue.get_index(move.piece, c, move.from())
         );
 #endif
     }
