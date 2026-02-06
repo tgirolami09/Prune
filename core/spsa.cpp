@@ -138,7 +138,7 @@ public:
         return idPlayer?player0:player1;
     }
     bestMoveResponse getEval(int idPlayer, TM tm){
-        return getPlayer(idPlayer).goState<0>(state, tm, false, true, ply);
+        return getPlayer(idPlayer).goState<0>(state, tm, false, ply);
     }
     void set_result(int result){
         ans = result;

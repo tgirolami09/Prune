@@ -72,7 +72,7 @@ public:
         else return player1;
     }
     bestMoveResponse getEval(TM tm){
-        return getPlayer().goState<1>(state, tm, false, false, game.game.size());
+        return getPlayer().goState<1>(state, tm, false, game.game.size());
     }
     void reset(string fen){
         state.fromFen(fen);
