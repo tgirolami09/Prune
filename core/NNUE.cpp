@@ -1,5 +1,6 @@
 #include "NNUE.hpp"
 #include "Const.hpp"
+#include <cassert>
 #include <cstring>
 #include <fstream>
 #include "embeder.hpp"
@@ -22,7 +23,7 @@ updateBuffer::updateBuffer(int _add1, int _add2, int _sub1, int _sub2):dirty(tru
     sub2[1] = turn(_sub2);
 }
 
-updateBuffer::updateBuffer(int _add1, int _sub1):dirty(true), type(1){
+updateBuffer::updateBuffer(int _add1, int _sub1):dirty(true), type(0){
     add1[0] = _add1;
     add1[1] = turn(_add1);
     add2[0] = -1;
@@ -32,7 +33,7 @@ updateBuffer::updateBuffer(int _add1, int _sub1):dirty(true), type(1){
     sub2[0] = -1;
     sub2[1] = -1;
 }
-updateBuffer::updateBuffer(int _add1, int _sub1, int _sub2):dirty(true), type(0){
+updateBuffer::updateBuffer(int _add1, int _sub1, int _sub2):dirty(true), type(1){
     add1[0] = _add1;
     add1[1] = turn(_add1);
     add2[0] = -1;
@@ -49,14 +50,14 @@ Accumulator::Accumulator(int add1, int sub1):update(add1, sub1){}
 
 void Accumulator::updateSelf(Accumulator& accIn){
     if(update.type == 0){
-        globnnue.move2(WHITE, accIn, *this, update.add1[0], update.sub1[0]);
-        globnnue.move2(BLACK, accIn, *this, update.add1[1], update.sub1[1]);
+        globnnue.move2(WHITE, accIn, *this, update.sub1[0], update.add1[0]);
+        globnnue.move2(BLACK, accIn, *this, update.sub1[1], update.add1[1]);
     }else if(update.type == 1){
-        globnnue.move3(WHITE, accIn, *this, update.add1[0], update.sub1[0], update.sub2[0]);
-        globnnue.move3(BLACK, accIn, *this, update.add1[1], update.sub1[1], update.sub2[1]);
+        globnnue.move3(WHITE, accIn, *this, update.sub1[0], update.add1[0], update.sub2[0]);
+        globnnue.move3(BLACK, accIn, *this, update.sub1[1], update.add1[1], update.sub2[1]);
     }else{
-        globnnue.move4(WHITE, accIn, *this, update.add1[0], update.sub1[0], update.add2[0], update.sub2[0]);
-        globnnue.move4(BLACK, accIn, *this, update.add1[1], update.sub1[1], update.add2[1], update.sub2[1]);
+        globnnue.move4(WHITE, accIn, *this, update.sub1[0], update.add1[0], update.sub2[0], update.add2[0]);
+        globnnue.move4(BLACK, accIn, *this, update.sub1[1], update.add1[1], update.sub2[1], update.add2[1]);
     }
     update.dirty = false;
 }
@@ -233,15 +234,11 @@ void NNUE::move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfr
 }
 
 void NNUE::updateStack(Accumulator* stack, int stackIndex){
-    int startUpdate = 0;
-    for(startUpdate=stackIndex-1; startUpdate >= 1; startUpdate--){
-        if(!stack[startUpdate].update.dirty){
-            startUpdate++;
-            break;
-        }
-    }
-    for(int i=startUpdate; i<stackIndex; i++){
-        stack[startUpdate].updateSelf(stack[i-1]);
+    int startUpdate;
+    for(startUpdate=stackIndex; startUpdate >= 1 && stack[startUpdate].update.dirty; startUpdate--);
+    startUpdate++;
+    for(int i=startUpdate; i<=stackIndex; i++){
+        stack[i].updateSelf(stack[i-1]);
     }
 }
 

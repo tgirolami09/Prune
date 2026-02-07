@@ -267,6 +267,7 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     stackIndex = 0;
 #ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
+    stackAcc[stackIndex].update.dirty = false;
 #else
     egScore = 0;
     mgScore = 0;
