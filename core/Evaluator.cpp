@@ -268,6 +268,8 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
 #ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
     stackAcc[stackIndex].update.dirty = false;
+    Kside[WHITE] = __builtin_ctzll(state.boardRepresentation[WHITE][KING]);
+    Kside[BLACK] = __builtin_ctzll(state.boardRepresentation[BLACK][KING]);
 #else
     egScore = 0;
     mgScore = 0;
@@ -323,14 +325,17 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const G
 #endif
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
-    playMove<-1>(move, c);
+    playMove<-1>(move, c, NULL);
 }
 
 template<int f, bool updateNNUE>
-void IncrementalEvaluator::changePiece(int pos, int piece, bool c){
+void IncrementalEvaluator::changePiece(int pos, int piece, bool c, bool updateNNUE2){
 #ifndef HCE
     if(updateNNUE)
-        globnnue.change2<f>(stackAcc[stackIndex], piece, c, pos);
+        if(updateNNUE2){
+            globnnue.change1<f>(stackAcc[stackIndex], WHITE, piece, c, mirrorSquare(pos, Kside[WHITE]));
+            globnnue.change1<f>(stackAcc[stackIndex], BLACK, piece, c, mirrorSquare(pos, Kside[BLACK]));
+        }
 #else
     mgScore += f*mg_table[c][piece][pos];
     egScore += f*eg_table[c][piece][pos];
@@ -427,10 +432,13 @@ void IncrementalEvaluator::backStack(){
     stackIndex--;
 }
 
-void IncrementalEvaluator::playNoBack(Move move, bool c){
+void IncrementalEvaluator::playNoBack(const GameState& state, Move move, bool c){
     int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
-    changePiece<-1, true>(move.from(), move.piece, c);
-    changePiece<1, true>(move.to(), toPiece, c);
+    bool mirror = false;
+    if(move.piece == KING && (col(move.from()) > 3) != (col(move.to()) > 3))
+        mirror = true;
+    changePiece<-1, true>(move.from(), move.piece, c, !mirror);
+    changePiece<1, true>(move.to(), toPiece, c, !mirror);
     if(move.capture != -2){
         int posCapture = move.to();
         int pieceCapture = move.capture;
@@ -439,7 +447,7 @@ void IncrementalEvaluator::playNoBack(Move move, bool c){
             else posCapture += 8;
             pieceCapture = PAWN;
         }
-        changePiece<-1, true>(posCapture, pieceCapture, !c);
+        changePiece<-1, true>(posCapture, pieceCapture, !c, !mirror);
     }
     if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
         int rookStart = move.from();
@@ -451,10 +459,14 @@ void IncrementalEvaluator::playNoBack(Move move, bool c){
             rookStart |= 7;
             rookEnd--;
         }
-        changePiece<-1, true>(rookStart, ROOK, c);
-        changePiece<1, true>(rookEnd, ROOK, c);
+        changePiece<-1, true>(rookStart, ROOK, c, !mirror);
+        changePiece<1, true>(rookEnd, ROOK, c, !mirror);
     }
 
+    if(mirror){
+        Kside[state.enemyColor()] ^= 1;
+        init(state);
+    }
 }
 
 template void IncrementalEvaluator::playMove<-1>(Move, bool, const GameState*);

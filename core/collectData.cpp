@@ -198,7 +198,7 @@ int main(int argc, char** argv){
                 MoveInfo curProc;
                 curProc.move = curMove;
                 curProc.score = state->state.friendlyColor() == BLACK ? -score : score;
-                state->eval.playNoBack(curMove, state->state.friendlyColor());
+                state->eval.playNoBack(state->state, curMove, state->state.friendlyColor());
                 state->state.playMove(curMove);
                 if(state->state.threefold()){
                     result = 1;

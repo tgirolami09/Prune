@@ -181,6 +181,7 @@ class IncrementalEvaluator{
     int presentPieces[2][6]; //keep trace of number of pieces by side
 #ifndef HCE
     Accumulator stackAcc[maxDepth];
+    bool Kside[2];
 #else
     int egScore;
     int mgScore;
@@ -189,7 +190,7 @@ class IncrementalEvaluator{
     int nbMan;
 public:
     template<int f, bool updateNNUE>
-    void changePiece(int pos, int piece, bool c);
+    void changePiece(int pos, int piece, bool c, bool updateNNUE2=true);
     template<int f, bool updateNNUE>
     void changePiece2(int pos, int piece, bool c);
     void backStack();
@@ -202,8 +203,8 @@ public:
     int getRaw(bool c);
     int correctEval(int eval, const corrhists& ch, const GameState& state) const;
     template<int f=1>
-    void playMove(Move move, bool c, const GameState* state=NULL);
-    void playNoBack(Move move, bool c);
+    void playMove(Move move, bool c, const GameState* state);
+    void playNoBack(const GameState& state, Move move, bool c);
     void undoMove(Move move, bool c);
 };
 

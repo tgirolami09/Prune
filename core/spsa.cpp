@@ -272,8 +272,8 @@ void play_games(int id){
                 break;
             }
             times[player] += increment;
-            ss.eval.playNoBack(bm, ss.state.friendlyColor());
             ss.state.playMove(bm);
+            ss.eval.playNoBack(ss.state, bm, ss.state.friendlyColor());
             ss.ply++;
             if(ss.state.threefold()){
                 break;

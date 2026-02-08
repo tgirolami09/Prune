@@ -17,6 +17,8 @@ const int DIVISOR=(31+BUCKET)/BUCKET;
 
 static_assert(HL_SIZE%nb16 == 0);
 
+int mirrorSquare(int square, bool mirror);
+
 class updateBuffer{
 public:
     int add1[2], add2[2];
