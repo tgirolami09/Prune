@@ -2,7 +2,7 @@ CC=g++
 ADDOPTION?=
 DEBUGOPT?=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 $(ADDOPTION)
-OPT=-O3 -flto
+OPT?=-O3 -flto
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
@@ -100,9 +100,6 @@ spsa: spsa.cpp $(OBJECTS)
 
 embeder.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
-
-pruneDebug: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(ARCHCOM) $(CFLAGSALL) -g -o $@ $^ $(VERSIONNING)
 
 clean:
 	rm $(OBJECTS) $(DEPENDS)
