@@ -62,8 +62,8 @@ public:
         MoveInfo curProc;
         curProc.move = move;
         curProc.score = 0;
-        eval.playNoBack(move, state.friendlyColor());
         state.playMove(move);
+        eval.playNoBack(state, move, state.friendlyColor());
         game.game.push_back(curProc);
     }
     BestMoveFinder& getPlayer(){
