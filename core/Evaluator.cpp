@@ -421,8 +421,8 @@ void IncrementalEvaluator::playMove(Move move, bool c, const GameState* state){
             changePiece<f, false>(rookEnd, ROOK, c);
 #else
             if(f == 1)
-                sub2 = Index(ROOK, rookStart, c),
-                add2 = Index(ROOK, rookEnd, c);
+                sub2 = Index(rookStart, ROOK, c),
+                add2 = Index(rookEnd, ROOK, c);
 #endif
         }
     }

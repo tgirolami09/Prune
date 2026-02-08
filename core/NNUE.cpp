@@ -38,7 +38,7 @@ Index::operator int(){
     return ((6*color+piece)<<6)|(square^7);
 }
 bool Index::isnull(){
-    return piece >= 6;
+    return piece == 6;
 }
 
 updateBuffer::updateBuffer():dirty(true){}
