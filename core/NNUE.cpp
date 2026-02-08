@@ -46,15 +46,16 @@ updateBuffer::updateBuffer(int _add1, int _sub1, int _sub2):dirty(true), type(1)
 }
 
 void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, int sub1, int add1, int sub2, int add2){
-    if(sub1 == -1)
+    if(mirror){
+        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
+        update = updateBuffer();
+    }else if(sub2 == -1)
         update = updateBuffer(add1, sub1);
     else if(add2 == -1)
         update = updateBuffer(add1, sub1, sub2);
     else
         update = updateBuffer(add1, add2, sub1, sub2);
     mustmirror = mirror;
-    if(mirror)
-        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
     Kside[0] = prevAcc.Kside[0];
     Kside[1] = prevAcc.Kside[1];
     Kside[side] ^= mirror;
@@ -69,15 +70,17 @@ void Accumulator::updateSelf(Accumulator& accIn){
         globnnue.initAcc(*this);
         ubyte pos[8];
         for(int C=0; C<2; C++){
+            const int povChange = C?56:0;
             for(int c=0; c<2; c++)
                 for(int piece=0; piece<nbPieces; piece++){
                     int nbp = places(bitboards[c][piece], pos);
                     for(int i=0; i<nbp; i++)
-                        globnnue.change1<1>(*this, C, piece, c, mirrorSquare(pos[i]^(56*C), Kside[C])); //56*C: pov change
+                        globnnue.change1<1>(*this, C, piece, c^C, mirrorSquare(pos[i]^povChange, Kside[C]));
                 }
         }
         return;
     }
+    assert(update.sub1[0] != update.sub1[1]);
     if(update.type == 0){
         globnnue.move2(WHITE, accIn, *this, update.sub1[0], update.add1[0]);
         globnnue.move2(BLACK, accIn, *this, update.sub1[1], update.add1[1]);
@@ -230,7 +233,7 @@ void NNUE::change2(Accumulator& accs, int piece, int c, int square){
     }
 }
 template<int f>
-void NNUE::change1(Accumulator& accs, int C, int piece, int c, int square){
+void NNUE::change1(Accumulator& accs, bool C, int piece, int c, int square){
     int index = get_index(piece, c, square);
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
@@ -241,16 +244,13 @@ void NNUE::change1(Accumulator& accs, int C, int piece, int c, int square){
     }
 }
 template<int f>
-void NNUE::change2(Accumulator& accIn, Accumulator& accOut, int piece, int c, int square){
+void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool C, int piece, int c, int square){
     int index = get_index(piece, c, square);
-    int index2 = turn(index); // point of view change
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
-            accOut[WHITE][i] = simd16_add(accIn[WHITE][i], hlWeights[index][i]);
-            accOut[BLACK][i] = simd16_add(accIn[BLACK][i], hlWeights[index2][i]);
+            accOut[C][i] = simd16_add(accIn[C][i], hlWeights[index][i]);
         } else {
-            accOut[WHITE][i] = simd16_sub(accIn[WHITE][i], hlWeights[index][i]);
-            accOut[BLACK][i] = simd16_sub(accIn[BLACK][i], hlWeights[index2][i]);
+            accOut[C][i] = simd16_sub(accIn[C][i], hlWeights[index][i]);
         }
     }
 }
@@ -284,7 +284,9 @@ void NNUE::updateStack(Accumulator* stack, int stackIndex){
 
 template void NNUE::change2<-1>(Accumulator&, int, int, int);
 template void NNUE::change2<1>(Accumulator&, int, int, int);
-template void NNUE::change2<-1>(Accumulator&, Accumulator&, int, int, int);
-template void NNUE::change2<1>(Accumulator&, Accumulator&, int, int, int);
+template void NNUE::change1<-1>(Accumulator&, bool, int, int, int);
+template void NNUE::change1<1>(Accumulator&, bool, int, int, int);
+template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int, int, int);
+template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int, int, int);
 
 NNUE globnnue = NNUE();

@@ -68,9 +68,9 @@ public:
     template<int f>
     void change2(Accumulator& accIn, int piece, int c, int square);
     template<int f>
-    void change1(Accumulator& accIn, int C, int piece, int c, int square);
+    void change1(Accumulator& accIn, bool C, int piece, int c, int square);
     template<int f>
-    void change2(Accumulator& accIn, Accumulator& accOut, int piece, int c, int square);
+    void change2(Accumulator& accIn, Accumulator& accOut, bool C, int piece, int c, int square);
     void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
     void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
     void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);

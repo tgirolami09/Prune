@@ -181,7 +181,6 @@ class IncrementalEvaluator{
     int presentPieces[2][6]; //keep trace of number of pieces by side
 #ifndef HCE
     Accumulator stackAcc[maxDepth];
-    bool Kside[2];
 #else
     int egScore;
     int mgScore;
