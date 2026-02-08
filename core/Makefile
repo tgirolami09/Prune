@@ -2,7 +2,7 @@ CC=g++
 ADDOPTION?=
 DEBUGOPT?=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 $(ADDOPTION)
-OPT=
+OPT=-O3 -flto
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
