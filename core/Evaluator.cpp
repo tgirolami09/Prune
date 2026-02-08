@@ -361,7 +361,7 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 
 
 template<int f>
-void IncrementalEvaluator::playMove(Move move, bool c){
+void IncrementalEvaluator::playMove(Move move, bool c, const GameState* state){
     int toPiece = move.piece;
     if(move.promotion() != -1){
         toPiece = move.promotion();
@@ -417,7 +417,7 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         }
     }
     if(f == 1){
-        stackAcc[stackIndex+1].reinit(stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
+        stackAcc[stackIndex+1].reinit(state, stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
         stackIndex++;
     }else
         stackIndex--;
@@ -457,8 +457,8 @@ void IncrementalEvaluator::playNoBack(Move move, bool c){
 
 }
 
-template void IncrementalEvaluator::playMove<-1>(Move, bool);
-template void IncrementalEvaluator::playMove<1>(Move, bool);
+template void IncrementalEvaluator::playMove<-1>(Move, bool, const GameState*);
+template void IncrementalEvaluator::playMove<1>(Move, bool, const GameState*);
 template void IncrementalEvaluator::changePiece2<-1, true>(int, int, bool);
 template void IncrementalEvaluator::changePiece2<1, true>(int, int, bool);
 template void IncrementalEvaluator::changePiece2<-1, false>(int, int, bool);

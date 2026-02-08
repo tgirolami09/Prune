@@ -2,6 +2,7 @@
 #define NNUE_CPP
 #include "Const.hpp"
 #include "simd_definitions.hpp"
+#include "GameState.hpp"
 #include <fstream>
 
 using namespace std;
@@ -33,9 +34,10 @@ public:
     simd16 accs[2][HL_SIZE/nb16];
     bool Kside[2];
     bool mustmirror;
+    big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
-    void reinit(Accumulator& prevAcc, bool side, bool mirror, int sub1, int add1, int sub2=-1, int add2=-1);
+    void reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, int sub1, int add1, int sub2=-1, int add2=-1);
     const simd16* operator[](int idx) const{
         return accs[idx];
     }
@@ -63,6 +65,8 @@ public:
     int get_index(int piece, int c, int square) const;
     template<int f>
     void change2(Accumulator& accIn, int piece, int c, int square);
+    template<int f>
+    void change1(Accumulator& accIn, int C, int piece, int c, int square);
     template<int f>
     void change2(Accumulator& accIn, Accumulator& accOut, int piece, int c, int square);
     void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);

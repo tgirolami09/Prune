@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <fstream>
+#include "GameState.hpp"
 #include "embeder.hpp"
 #include "simd_definitions.hpp"
 
@@ -44,7 +45,7 @@ updateBuffer::updateBuffer(int _add1, int _sub1, int _sub2):dirty(true), type(1)
     sub2[1] = turn(_sub2);
 }
 
-void Accumulator::reinit(Accumulator& prevAcc, bool side, bool mirror, int sub1, int add1, int sub2, int add2){
+void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, int sub1, int add1, int sub2, int add2){
     if(sub1 == -1)
         update = updateBuffer(add1, sub1);
     else if(add2 == -1)
@@ -52,12 +53,31 @@ void Accumulator::reinit(Accumulator& prevAcc, bool side, bool mirror, int sub1,
     else
         update = updateBuffer(add1, add2, sub1, sub2);
     mustmirror = mirror;
+    if(mirror)
+        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
     Kside[0] = prevAcc.Kside[0];
     Kside[1] = prevAcc.Kside[1];
     Kside[side] ^= mirror;
 }
 
+int mirrorSquare(int square, bool mirror){
+    return mirror?square^7:square;
+}
+
 void Accumulator::updateSelf(Accumulator& accIn){
+    if(mustmirror){
+        globnnue.initAcc(*this);
+        ubyte pos[8];
+        for(int C=0; C<2; C++){
+            for(int c=0; c<2; c++)
+                for(int piece=0; piece<nbPieces; piece++){
+                    int nbp = places(bitboards[c][piece], pos);
+                    for(int i=0; i<nbp; i++)
+                        globnnue.change1<1>(*this, C, piece, c, mirrorSquare(pos[i]^(56*C), Kside[C])); //56*C: pov change
+                }
+        }
+        return;
+    }
     if(update.type == 0){
         globnnue.move2(WHITE, accIn, *this, update.sub1[0], update.add1[0]);
         globnnue.move2(BLACK, accIn, *this, update.sub1[1], update.add1[1]);
@@ -206,6 +226,17 @@ void NNUE::change2(Accumulator& accs, int piece, int c, int square){
         } else {
             accs[WHITE][i] = simd16_sub(accs[WHITE][i], hlWeights[index][i]);
             accs[BLACK][i] = simd16_sub(accs[BLACK][i], hlWeights[index2][i]);
+        }
+    }
+}
+template<int f>
+void NNUE::change1(Accumulator& accs, int C, int piece, int c, int square){
+    int index = get_index(piece, c, square);
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        if constexpr (f == 1) {
+            accs[C][i] = simd16_add(accs[C][i], hlWeights[index][i]);
+        } else {
+            accs[C][i] = simd16_sub(accs[C][i], hlWeights[index][i]);
         }
     }
 }

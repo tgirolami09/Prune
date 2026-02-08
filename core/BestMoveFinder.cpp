@@ -227,7 +227,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             else if(!capture.isTactical())continue;
         }
         state.playMove(capture);//don't care about repetition
-        ss.eval.playMove(capture, !state.friendlyColor());
+        ss.eval.playMove(capture, !state.friendlyColor(), &state);
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(capture, !state.friendlyColor());
         state.undoLastMove();
@@ -378,7 +378,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if constexpr(nodeType == PVNode)ss.beginLineMove(rootDist, order.moves[0]);
             return MIDDLE;
         }
-        ss.eval.playMove(order.moves[0], !state.friendlyColor());
+        ss.eval.playMove(order.moves[0], !state.friendlyColor(), &state);
         ss.generator.initDangers(state);
         int sc = -negamax<-nodeType, limitWay, mateSearch>(ss, depth, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(order.moves[0], !state.friendlyColor());
@@ -415,7 +415,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             score = MIDDLE;
             isDraw = true;
         }else{
-            ss.eval.playMove(curMove, !state.friendlyColor());
+            ss.eval.playMove(curMove, !state.friendlyColor(), &state);
             bool inCheckPos = ss.generator.initDangers(state);
             int reductionDepth = 1;
             if(inCheckPos && firstMoveExtension == 0){
