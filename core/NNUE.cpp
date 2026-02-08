@@ -44,9 +44,18 @@ updateBuffer::updateBuffer(int _add1, int _sub1, int _sub2):dirty(true), type(1)
     sub2[1] = turn(_sub2);
 }
 
-Accumulator::Accumulator(int add1, int add2, int sub1, int sub2):update(add1, add2, sub1, sub2){}
-Accumulator::Accumulator(int add1, int sub1, int sub2):update(add1, sub1, sub2){}
-Accumulator::Accumulator(int add1, int sub1):update(add1, sub1){}
+void Accumulator::reinit(Accumulator& prevAcc, bool side, bool mirror, int sub1, int add1, int sub2, int add2){
+    if(sub1 == -1)
+        update = updateBuffer(add1, sub1);
+    else if(add2 == -1)
+        update = updateBuffer(add1, sub1, sub2);
+    else
+        update = updateBuffer(add1, add2, sub1, sub2);
+    mustmirror = mirror;
+    Kside[0] = prevAcc.Kside[0];
+    Kside[1] = prevAcc.Kside[1];
+    Kside[side] ^= mirror;
+}
 
 void Accumulator::updateSelf(Accumulator& accIn){
     if(update.type == 0){

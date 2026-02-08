@@ -373,6 +373,12 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         changePiece<-f, false>(move.from(), move.piece, c);
         changePiece<f, false>(move.to(), toPiece, c);
     }
+#else
+    int sub1=globnnue.get_index(move.piece, c, move.from()),
+        add1=globnnue.get_index(toPiece, c, move.to()),
+        sub2=-1,
+        add2=-1;
+    bool mirror=false;
 #endif
     if(move.capture != -2){
         int posCapture = move.to();
@@ -385,43 +391,35 @@ void IncrementalEvaluator::playMove(Move move, bool c){
         changePiece<-f, false>(posCapture, pieceCapture, !c);
 #ifndef HCE
         if(f == 1)
-            stackAcc[stackIndex+1].update = updateBuffer(
-                globnnue.get_index(toPiece, c, move.to()),
-                globnnue.get_index(move.piece, c, move.from()),
-                globnnue.get_index(pieceCapture, !c, posCapture)
-            );
+            sub2 = globnnue.get_index(pieceCapture, !c, posCapture);
 #endif
-    }else if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
-        int rookStart = move.from();
-        int rookEnd = move.to();
-        if(move.from() > move.to()){//queen side
-            rookStart &= ~7;
-            rookEnd++;
-        }else{//king side
-            rookStart |= 7;
-            rookEnd--;
-        }
+    }else if(move.piece == KING){
+        if((col(move.from()) > 3) != (col(move.to()) > 3))
+            mirror = true;
+        if(abs(move.from()-move.to()) == 2){ //castling
+            int rookStart = move.from();
+            int rookEnd = move.to();
+            if(move.from() > move.to()){//queen side
+                rookStart &= ~7;
+                rookEnd++;
+            }else{//king side
+                rookStart |= 7;
+                rookEnd--;
+            }
 #ifdef HCE // when not HCE, no need to update the numbers of pieces
-        changePiece<-f, false>(rookStart, ROOK, c);
-        changePiece<f, false>(rookEnd, ROOK, c);
+            changePiece<-f, false>(rookStart, ROOK, c);
+            changePiece<f, false>(rookEnd, ROOK, c);
 #else
-        if(f == 1)
-            stackAcc[stackIndex+1].update = updateBuffer(
-                globnnue.get_index(toPiece, c, move.to()),
-                globnnue.get_index(ROOK, c, rookEnd),
-                globnnue.get_index(move.piece, c, move.from()),
-                globnnue.get_index(ROOK, c, rookStart)
-            );
-    }else if(f == 1){
-        stackAcc[stackIndex+1].update = updateBuffer(
-            globnnue.get_index(toPiece, c, move.to()),
-            globnnue.get_index(move.piece, c, move.from())
-        );
+            if(f == 1)
+                sub2 = globnnue.get_index(ROOK, c, rookStart),
+                add2 = globnnue.get_index(ROOK, c, rookEnd);
 #endif
+        }
     }
-    if(f == 1)
+    if(f == 1){
+        stackAcc[stackIndex+1].reinit(stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
         stackIndex++;
-    else
+    }else
         stackIndex--;
 }
 

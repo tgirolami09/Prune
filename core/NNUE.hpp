@@ -31,11 +31,11 @@ public:
 class Accumulator{
 public:
     simd16 accs[2][HL_SIZE/nb16];
+    bool Kside[2];
+    bool mustmirror;
     updateBuffer update;
     Accumulator(){}
-    Accumulator(int add1, int add2, int sub1, int sub2);
-    Accumulator(int add1, int sub1, int sub2);
-    Accumulator(int add1, int sub1);
+    void reinit(Accumulator& prevAcc, bool side, bool mirror, int sub1, int add1, int sub2=-1, int add2=-1);
     const simd16* operator[](int idx) const{
         return accs[idx];
     }
