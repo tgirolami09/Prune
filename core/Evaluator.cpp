@@ -401,7 +401,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, const GameState* state){
         if(f == 1)
             sub2 = Index(posCapture, pieceCapture, !c);
 #endif
-    }else if(move.piece == KING){
+    }if(move.piece == KING){
 #ifndef HCE
         if((col(move.from()) > 3) != (col(move.to()) > 3))
             mirror = true;
