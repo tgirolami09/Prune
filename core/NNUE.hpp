@@ -29,7 +29,7 @@ public:
     Index changepov();
     Index changepov(bool needs);
     void schangepov();
-    int operator()();
+    operator int();
     bool isnull();
 };
 
@@ -43,6 +43,7 @@ public:
     int type;
     updateBuffer();
     updateBuffer(Index sub1, Index add1, Index sub2, Index add2);
+    void print();
 };
 
 class Accumulator{

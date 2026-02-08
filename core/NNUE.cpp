@@ -13,7 +13,7 @@ int turn(int index){
     return ((index^56)+384)%768;
 }
 
-Index::Index():square(0), piece(7), color(false){}
+Index::Index():square(0), piece(6), color(false){}
 Index::Index(int _square, int _piece, bool _color):square(_square), piece(_piece), color(_color){}
 void Index::smirror(bool needs){
     square ^= 7*needs;
@@ -34,24 +34,33 @@ Index Index::changepov(bool needs){
     else
         return *this;
 }
-int Index::operator()(){
+Index::operator int(){
     return ((6*color+piece)<<6)|(square^7);
 }
 bool Index::isnull(){
-    return piece == 7;
+    return piece >= 6;
 }
 
-updateBuffer::updateBuffer():dirty(false){}
+updateBuffer::updateBuffer():dirty(true){}
 updateBuffer::updateBuffer(Index _add1, Index _add2, Index _sub1, Index _sub2):dirty(true){
     add1[0] = _add1;
-    add1[1] = _add1.changepov();
     add2[0] = _add2;
-    add2[1] = _add2.changepov();
     sub1[0] = _sub1;
-    sub1[1] = _sub1.changepov();
     sub2[0] = _sub2;
+    add1[1] = _add1.changepov();
+    add2[1] = _add2.changepov();
+    sub1[1] = _sub1.changepov();
     sub2[1] = _sub2.changepov();
     type = !_sub2.isnull()+!_add2.isnull();
+}
+
+void updateBuffer::print(){
+    printf("%d %d %d; %d %d %d", add1[0].square, add1[0].piece, add1[0].color, sub1[0].square, sub1[0].piece, sub1[0].color);
+    if(type >= 1)
+        printf("; %d %d %d", sub2[0].square, sub2[0].piece, sub2[0].color);
+    if(type == 2)
+        printf("; %d %d %d", add2[0].square, add2[0].piece, add2[0].color);
+    printf("\n");
 }
 
 void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
@@ -70,25 +79,26 @@ void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool side
 void Accumulator::updateSelf(Accumulator& accIn){
     if(mustmirror){
         globnnue.initAcc(*this);
-        ubyte pos[8];
+        ubyte pos[10];
         for(int c=0; c<2; c++)
             for(int piece=0; piece<nbPieces; piece++){
                 int nbp = places(bitboards[c][piece], pos);
                 for(int i=0; i<nbp; i++)
                     for(int pov=0; pov<2; pov++)
-                        globnnue.change1<1>(*this, pov, Index(pos[i], piece, c).mirror(Kside[pov]).changepov(pov)());
+                        globnnue.change1<1>(*this, pov, Index(pos[i], piece, c).mirror(Kside[pov]).changepov(pov));
             }
+        update.dirty = false;
         return;
     }
     if(update.type == 0){
-        globnnue.move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE])(), update.add1[0].mirror(Kside[WHITE])());
-        globnnue.move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK])(), update.add1[1].mirror(Kside[BLACK])());
+        globnnue.move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]));
+        globnnue.move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]));
     }else if(update.type == 1){
-        globnnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE])(), update.add1[0].mirror(Kside[WHITE])(), update.sub2[0].mirror(Kside[WHITE])());
-        globnnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK])(), update.add1[1].mirror(Kside[BLACK])(), update.sub2[1].mirror(Kside[BLACK])());
+        globnnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]));
+        globnnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]));
     }else{
-        globnnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE])(), update.add1[0].mirror(Kside[WHITE])(), update.sub2[0].mirror(Kside[WHITE])(), update.add2[0].mirror(Kside[WHITE])());
-        globnnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK])(), update.add1[1].mirror(Kside[BLACK])(), update.sub2[1].mirror(Kside[BLACK])(), update.add2[1].mirror(Kside[BLACK])());
+        globnnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]));
+        globnnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]));
     }
     update.dirty = false;
 }
