@@ -17,18 +17,32 @@ const int DIVISOR=(31+BUCKET)/BUCKET;
 
 static_assert(HL_SIZE%nb16 == 0);
 
+class Index{
+public:
+    int square;
+    int piece;
+    bool color;
+    Index();
+    Index(int square, int piece, bool color);
+    void smirror(bool needmirror);
+    Index mirror(bool needmirror);
+    Index changepov();
+    Index changepov(bool needs);
+    void schangepov();
+    int operator()();
+    bool isnull();
+};
+
 int mirrorSquare(int square, bool mirror);
 
 class updateBuffer{
 public:
-    int add1[2], add2[2];
-    int sub1[2], sub2[2]; //each pieces provoque a change in black and white pov
+    Index add1[2], add2[2];
+    Index sub1[2], sub2[2]; //each pieces provoque a change in black and white pov
     bool dirty;
     int type;
     updateBuffer();
-    updateBuffer(int _add1, int _add2, int _sub1, int _sub2);
-    updateBuffer(int _add1, int _sub1, int _sub2);
-    updateBuffer(int _add1, int _sub1);
+    updateBuffer(Index sub1, Index add1, Index sub2, Index add2);
 };
 
 class Accumulator{
@@ -39,7 +53,7 @@ public:
     big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
-    void reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, int sub1, int add1, int sub2=-1, int add2=-1);
+    void reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
     const simd16* operator[](int idx) const{
         return accs[idx];
     }
@@ -66,11 +80,9 @@ public:
     void initAcc(Accumulator& accs);
     int get_index(int piece, int c, int square) const;
     template<int f>
-    void change2(Accumulator& accIn, int piece, int c, int square);
+    void change1(Accumulator& accIn, bool pov, int index);
     template<int f>
-    void change1(Accumulator& accIn, bool C, int piece, int c, int square);
-    template<int f>
-    void change2(Accumulator& accIn, Accumulator& accOut, bool C, int piece, int c, int square);
+    void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index);
     void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
     void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
     void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);

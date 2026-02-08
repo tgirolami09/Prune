@@ -268,8 +268,8 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
 #ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
     stackAcc[stackIndex].update.dirty = false;
-    stackAcc[stackIndex].Kside[WHITE] = __builtin_ctzll(state.boardRepresentation[WHITE][KING]);
-    stackAcc[stackIndex].Kside[BLACK] = __builtin_ctzll(state.boardRepresentation[BLACK][KING]);
+    stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.boardRepresentation[WHITE][KING])) <= 3;
+    stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.boardRepresentation[BLACK][KING])) <= 3;
 #else
     egScore = 0;
     mgScore = 0;
@@ -333,8 +333,9 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c, bool updateNN
 #ifndef HCE
     if(updateNNUE)
         if(updateNNUE2){
-            globnnue.change1<f>(stackAcc[stackIndex], WHITE, piece, c, mirrorSquare(pos, stackAcc[stackIndex].Kside[WHITE]));
-            globnnue.change1<f>(stackAcc[stackIndex], BLACK, piece, !c, mirrorSquare(pos^56, stackAcc[stackIndex].Kside[BLACK]));
+            Index index(pos, piece, c);
+            globnnue.change1<f>(stackAcc[stackIndex], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE])());
+            globnnue.change1<f>(stackAcc[stackIndex], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov()());
         }
 #else
     mgScore += f*mg_table[c][piece][pos];
@@ -350,8 +351,9 @@ template<int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 #ifndef HCE
     if(updateNNUE){
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], WHITE, piece, c, mirrorSquare(pos, stackAcc[stackIndex].Kside[WHITE]));
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], BLACK, piece, !c, mirrorSquare(pos^56, stackAcc[stackIndex].Kside[BLACK]));
+        Index index(pos, piece, c);
+        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE])());
+        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov()());
         stackIndex++;
     }else{
         stackIndex--;
@@ -380,10 +382,10 @@ void IncrementalEvaluator::playMove(Move move, bool c, const GameState* state){
         changePiece<f, false>(move.to(), toPiece, c);
     }
 #else
-    int sub1=globnnue.get_index(move.piece, c, move.from()),
-        add1=globnnue.get_index(toPiece, c, move.to()),
-        sub2=-1,
-        add2=-1;
+    Index sub1(move.piece, c, move.from()),
+        add1(toPiece, c, move.to()),
+        sub2,
+        add2;
     bool mirror=false;
 #endif
     if(move.capture != -2){
@@ -397,7 +399,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, const GameState* state){
         changePiece<-f, false>(posCapture, pieceCapture, !c);
 #ifndef HCE
         if(f == 1)
-            sub2 = globnnue.get_index(pieceCapture, !c, posCapture);
+            sub2 = Index(pieceCapture, !c, posCapture);
 #endif
     }else if(move.piece == KING){
 #ifndef HCE
@@ -419,8 +421,8 @@ void IncrementalEvaluator::playMove(Move move, bool c, const GameState* state){
             changePiece<f, false>(rookEnd, ROOK, c);
 #else
             if(f == 1)
-                sub2 = globnnue.get_index(ROOK, c, rookStart),
-                add2 = globnnue.get_index(ROOK, c, rookEnd);
+                sub2 = Index(ROOK, c, rookStart),
+                add2 = Index(ROOK, c, rookEnd);
 #endif
         }
     }
