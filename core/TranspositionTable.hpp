@@ -15,6 +15,13 @@ public:
 };
 static_assert(sizeof(infoScore) == 12, "size of infoScore should be 12");
 
+
+#ifdef DEBUG_MACRO
+extern double sumpref;
+extern double sumsquarepref;
+extern int nbpref;
+#endif
+
 const int INVALID = INT_MAX;
 class transpositionTable{
 public:

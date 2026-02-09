@@ -4,12 +4,33 @@
 #include "Move.hpp"
 #include <cstring>
 #include <thread>
+#include <cmath>
+
+int LOG[maxDepth+1];
+__attribute__((constructor(101))) void calculate_logs(){
+    for(int i=0; i<=maxDepth; i++){
+        LOG[i] = static_cast<int>(log(i+1)*10);
+    }
+}
 
 transpositionTable::transpositionTable(size_t count){
     count /= sizeof(infoScore);
     table = (infoScore*)calloc(count, sizeof(infoScore));
     modulo=count;
 }
+inline int absEntryScore(const infoScore& entry){
+    return LOG[entry.depth]-entry.typeNode*3;
+}
+
+inline int preference(const infoScore& newentry, const infoScore& oldentry){
+    return max(newentry.depth-oldentry.depth, oldentry.typeNode-newentry.typeNode);
+}
+
+#ifdef DEBUG_MACRO
+double sumpref=0;
+double sumsquarepref=0;
+int nbpref = 0;
+#endif
 
 pair<big, uint32_t> getIndex(const GameState& state, big modulo){
     __uint128_t tHash = ((__uint128_t)state.zobristHash)*modulo;
@@ -58,7 +79,13 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.depth = depth;
     info.typeNode = typeNode;
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
-    if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND)))
+    const int pref = preference(info, table[index]);
+#ifdef DEBUG_MACRO
+    sumpref += pref;
+    sumsquarepref += pref*pref;
+    nbpref++;
+#endif
+    if(table[index].hash == 0 || pref >= 0)
         table[index] = info;
 }
 
