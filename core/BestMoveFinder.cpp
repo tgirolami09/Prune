@@ -184,6 +184,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
                 return fromTT(lastEval, rootDist);
         }
         //hint = transposition.getMove(ttEntry);
+#ifdef TBSEARCH
     // Tablebase probe in quiescence
     if (tbProbe.canProbe(state)) {
         int wdl = tbProbe.probeWDL(state);
@@ -191,6 +192,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             return TablebaseProbe::wdlToScore(wdl, rootDist);
         }
     }
+#endif
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
     if(!isCalc){
@@ -298,7 +300,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     else
         raw_eval = ss.eval.getRaw(state.friendlyColor());
     static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
-    // Tablebase probe in search (this part seems to be causing problems in the PV)
+#ifdef TBSEARCH
+    // Tablebase probe in search
     if (!isRoot && tbProbe.canProbe(state)) {
         int wdl = tbProbe.probeWDL(state);
         if (wdl != TB_RESULT_INVALID) {
@@ -321,6 +324,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
         }
     }
+#endif
     if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
         if constexpr(isPV)ss.beginLine(rootDist);
         return Evaluate<isPV, limitWay>(ss, state, alpha, beta, relDepth);
@@ -736,7 +740,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor())).c_str());
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
-    // Tablebase probe at root
+    // Tablebase probe at root (always do this)
     Move tbMove = nullMove;
     int tbWdl = TB_RESULT_INVALID;
     if (tbProbe.canProbe(state)) {

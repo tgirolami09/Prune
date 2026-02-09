@@ -83,6 +83,9 @@ unittest: unittest.cpp $(OBJECTS)
 prune: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) $(LDFLAGS)
 
+pruneTB: engine.cpp $(OBJECTS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) -DTBSEARCH
+
 netScale: netScale.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS)
 
