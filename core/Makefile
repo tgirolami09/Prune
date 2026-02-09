@@ -20,6 +20,7 @@ SOURCES := $(filter-out spsa.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
+OBJECTSTB := $(SOURCES:%.cpp=%TB.o) $(FATHOM_OBJ)
 ifeq ($(OS), Windows_NT)
 	OS = Windows
 	CC=clang++
@@ -83,8 +84,11 @@ unittest: unittest.cpp $(OBJECTS)
 prune: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) $(LDFLAGS)
 
-pruneTB: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) -DTBSEARCH
+pruneTB: engine.cpp $(OBJECTSTB)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneTB$(REC) $^ $(VERSIONNING) -DTBSEARCH
+
+TB: engine.cpp $(OBJECTSTB)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneTB-$(OS)-$(REC)$(EXTENSION) $^ $(VERSIONNING) -DTBSEARCH
 
 netScale: netScale.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS)
@@ -109,6 +113,9 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 
 %HCE.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
+
+%TB.o: %.cpp
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DTBSEARCH
 
 embeder.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
