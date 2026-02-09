@@ -185,18 +185,11 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         }
         //hint = transposition.getMove(ttEntry);
     // Tablebase probe in quiescence
-    if (tbProbe.isAvailable()) {
-        int pieceCount = TablebaseProbe::countPieces(state);
-        if (pieceCount <= tbProbe.maxPieces() && pieceCount <= tbProbe.getProbeLimit()) {
-            if (!state.castlingRights[WHITE][0] && !state.castlingRights[WHITE][1] &&
-                !state.castlingRights[BLACK][0] && !state.castlingRights[BLACK][1]) {
-                int wdl = tbProbe.probeWDL(state);
-                if (wdl != TB_RESULT_INVALID) {
-                    return TablebaseProbe::wdlToScore(wdl, rootDist);
-                }
-            }
+    if (tbProbe.canProbe(state)) {
+        int wdl = tbProbe.probeWDL(state);
+        if (wdl != TB_RESULT_INVALID) {
+            return TablebaseProbe::wdlToScore(wdl, rootDist);
         }
-    }
     }
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
@@ -305,28 +298,25 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     else
         raw_eval = ss.eval.getRaw(state.friendlyColor());
     static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
-    // Tablebase probe in search
-    if (!isRoot && tbProbe.isAvailable() && depth >= tbProbe.getProbeDepth()) {
-        int pieceCount = TablebaseProbe::countPieces(state);
-        if (pieceCount <= tbProbe.maxPieces() && pieceCount <= tbProbe.getProbeLimit()) {
-            if (!state.castlingRights[WHITE][0] && !state.castlingRights[WHITE][1] &&
-                !state.castlingRights[BLACK][0] && !state.castlingRights[BLACK][1]) {
-                int wdl = tbProbe.probeWDL(state);
-                if (wdl != TB_RESULT_INVALID) {
-                    int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
-                    // For wins/losses, cut off immediately
-                    if (wdl == TB_RESULT_WIN || wdl == TB_RESULT_LOSS) {
-                        // if constexpr(nodeType == PVNode) ss.beginLine(rootDist);
-                        return tbScore;
-                    }
-                    // For draws, use as bounds
-                    if (wdl == TB_RESULT_DRAW) {
-                        if (tbScore >= beta) {
-                            // if constexpr(nodeType == PVNode) ss.beginLine(rootDist);
-                            return tbScore;
-                        }
-                        if (tbScore > alpha) alpha = tbScore;
-                    }
+    // Tablebase probe in search (this part seems to be causing problems in the PV)
+    if (!isRoot && tbProbe.canProbe(state)) {
+        int wdl = tbProbe.probeWDL(state);
+        if (wdl != TB_RESULT_INVALID) {
+            int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
+            // For wins/losses, cut off immediately
+            if (wdl == TB_RESULT_WIN || wdl == TB_RESULT_LOSS) {
+                if constexpr(nodeType == PVNode) ss.beginLine(rootDist);
+                return tbScore;
+            }
+            // Here we can only have DRAW, BLESSED_LOSS and CURSED_WIN. All are treated as a draw.
+            // For draws at non-PV nodes, return immediately. At PV nodes, only use beta cutoff.
+            else {
+                if constexpr(nodeType != PVNode) {
+                    return tbScore;  // No PV concern at non-PV nodes
+                }
+                if (tbScore >= beta) {
+                    ss.beginLine(rootDist);
+                    return tbScore;
                 }
             }
         }
@@ -749,10 +739,10 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     // Tablebase probe at root
     Move tbMove = nullMove;
     int tbWdl = TB_RESULT_INVALID;
-    if (tbProbe.isAvailable() && tbProbe.canProbe(state)) {
+    if (tbProbe.canProbe(state)) {
         tbWdl = tbProbe.probeRoot(state, tbMove);
         if (tbWdl != TB_RESULT_INVALID) {
-            if (true) {
+            if (verbose) {
                 printf("info string Tablebase hit: ");
                 switch (tbWdl) {
                     case TB_RESULT_WIN: printf("Win"); break;
@@ -764,8 +754,18 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
                 printf("\n");
                 fflush(stdout);
             }
-            // In drawn positions, return immediately
-            if (tbWdl == TB_RESULT_DRAW) {
+            // In all positions return  perfect move from egtb
+            if (tbWdl == TB_RESULT_WIN){
+                running = false;
+                return make_tuple(tbMove, nullMove, MAXIMUM, vector<depthInfo>());
+            }
+            else if (tbWdl == TB_RESULT_LOSS){
+                running = false;
+                return make_tuple(tbMove, nullMove, MINIMUM, vector<depthInfo>());
+            }
+            // Only possibilities are : TB_RESULT_DRAW, TB_RESULT_CURSED_WIN and TB_RESULT_BLESSED_LOSS. All are treated as draw
+            else{
+                running = false;
                 return make_tuple(tbMove, nullMove, 0, vector<depthInfo>());
             }
         }

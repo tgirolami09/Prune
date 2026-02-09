@@ -473,6 +473,8 @@ void manageSearch(){
                             tbProbe.init(parsed[i+1].second);
                             if(tbProbe.isAvailable())
                                 printf("info string Syzygy tablebases loaded, max %d pieces\n", tbProbe.maxPieces());
+                            else
+                                printf("info string Could not find any tablebases at '%s'\n",parsed[i+1].second.c_str());
                         }
                         else if(parsed[i].second == "SyzygyProbeDepth"){
                             tbProbe.setProbeDepth(stoi(parsed[i+1].second));
