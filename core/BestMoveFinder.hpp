@@ -119,6 +119,7 @@ public:
     void clear();
     void reinit(size_t count);
     void setThreads(int nbThreads);
+    void aging();
 };
 
 

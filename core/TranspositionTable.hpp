@@ -8,10 +8,12 @@ class __attribute__((packed)) infoScore{
 public:
     int16_t score,
             raw_eval;
-    ubyte typeNode;
+    ubyte flag;
     int16_t bestMoveInfo;
     ubyte depth;
     uint32_t hash;
+    int typeNode() const;
+    int age() const;
 };
 static_assert(sizeof(infoScore) == 12, "size of infoScore should be 12");
 
@@ -22,6 +24,7 @@ public:
     big modulo;
     int rewrite=0;
     int place=0;
+    int age;
     transpositionTable(size_t count);
 
     inline int storedScore(int alpha, int beta, int depth, const infoScore& entry) const;
@@ -36,6 +39,7 @@ public:
     void prefetch(const GameState& state);
     void clear();
     void reinit(size_t count);
+    void aging();
 };
 
 class perftMem{

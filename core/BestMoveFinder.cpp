@@ -349,7 +349,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
     }
     int firstMoveExtension = 0;
-    if(!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= depth && ttEntry.typeNode != UPPERBOUND && depth >= parameters.se_min_depth && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
+    if(!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= depth && ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - depth;
         int score = negamax<false, limitWay, mateSearch>(ss, (depth-1)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMoveInfo);
         if(score < goal){
@@ -675,6 +675,10 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
     }
     return make_tuple(bestMove, ponderMove, lastScore, allInfos);
+}
+
+void BestMoveFinder::aging(){
+    transposition.aging();
 }
 
 template bestMoveResponse BestMoveFinder::bestMove<0>(GameState&, TM, vector<Move>, bool);

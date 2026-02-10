@@ -9,6 +9,7 @@ transpositionTable::transpositionTable(size_t count){
     count /= sizeof(infoScore);
     table = (infoScore*)calloc(count, sizeof(infoScore));
     modulo=count;
+    age = 0;
 }
 
 pair<big, uint32_t> getIndex(const GameState& state, big modulo){
@@ -16,13 +17,29 @@ pair<big, uint32_t> getIndex(const GameState& state, big modulo){
     return {tHash >> 64, tHash&~(uint32_t)0};
 }
 
+int infoScore::typeNode() const{
+    return 3-(flag&0b11);
+}
+
+int infoScore::age() const{
+    return flag >> 2;
+}
+
+int absEntryScore(const infoScore& entry){
+    return entry.depth-entry.age();
+}
+
+int preference(const infoScore& newentry, const infoScore& oldentry){
+    return absEntryScore(newentry)-absEntryScore(oldentry);
+}
+
 inline int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry) const{
     if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
-        if(entry.typeNode == EXACT)
+        if(entry.typeNode() == EXACT)
             return entry.score;
-        if(entry.score >= beta && entry.typeNode == LOWERBOUND)
+        if(entry.score >= beta && entry.typeNode() == LOWERBOUND)
             return entry.score;
-        if(entry.score <= alpha && entry.typeNode == UPPERBOUND)
+        if(entry.score <= alpha && entry.typeNode() == UPPERBOUND)
             return entry.score;
     }
     return INVALID;
@@ -56,9 +73,9 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.hash = resHash;
     info.bestMoveInfo = move.moveInfo;
     info.depth = depth;
-    info.typeNode = typeNode;
+    info.flag = (3-typeNode)|(age << 2);
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
-    if(info.depth >= table[index].depth || info.typeNode < table[index].typeNode)
+    if(table[index].typeNode() == 0 || preference(info, table[index]) >= 0)
         table[index] = info;
 }
 
@@ -71,6 +88,7 @@ void transpositionTable::clearRange(big start, big end){
 }
 
 void transpositionTable::clear(){
+    age = 0;
     if(nbThreads == 1){
         clearRange(0, modulo);
     }else{
@@ -94,7 +112,12 @@ void transpositionTable::reinit(size_t count){
     clear();
     place = 0;
     rewrite = 0;
+    age=0;
 }
+void transpositionTable::aging(){
+    age++;
+}
+
 TTperft::TTperft(int alloted_mem):mem(alloted_mem/sizeof(perftMem)), modulo(alloted_mem/sizeof(perftMem)){}
 void TTperft::push(perftMem eval){
     int index = eval.hash%modulo;

@@ -418,6 +418,7 @@ void manageSearch(){
                 else
                     printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
                 lastMove = ponder;
+                bestMoveFinder.aging();
             }else if(command == "uci"){
 #ifdef VERSION
                 string v=VERSION;
