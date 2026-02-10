@@ -58,7 +58,7 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.depth = depth;
     info.typeNode = typeNode;
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;
-    if(info.depth >= table[index].depth || (info.typeNode != table[index].typeNode && (info.typeNode == EXACT || table[index].typeNode == UPPERBOUND)))
+    if(info.depth >= table[index].depth || info.typeNode < table[index].typeNode)
         table[index] = info;
 }
 
