@@ -8,7 +8,7 @@
 using namespace std;
 
 const int INPUT_SIZE = 12*64;
-const int HL_SIZE = 512;
+const int HL_SIZE = 1024;
 const int SCALE = 400;
 const int QA = 255;
 const int QB = 64;
