@@ -2,8 +2,10 @@
 #define TRANSPOSITION_TABLE_HPP
 #include "GameState.hpp"
 #include <climits>
+#include <cstdint>
 #include <vector>
-
+const int maxAge = 0b11111;
+using resHash=uint16_t;
 class __attribute__((packed)) infoScore{
 public:
     int16_t score,
@@ -11,16 +13,26 @@ public:
     ubyte flag;
     int16_t bestMoveInfo;
     ubyte depth;
-    uint32_t hash;
+    resHash hash;
     int typeNode() const;
     int age() const;
 };
-static_assert(sizeof(infoScore) == 12, "size of infoScore should be 12");
+static_assert(sizeof(infoScore) == 10, "size of infoScore should be 10");
+const int clusterByte=32;
+const int clusterSize=clusterByte/sizeof(infoScore);
+class Cluster{
+public:
+    infoScore entries[clusterSize];
+    ubyte padding[clusterByte-clusterSize*sizeof(infoScore)];
+    infoScore& probe(resHash hash, bool& ttHit);
+    void push(infoScore& entry, int curAge);
+};
+static_assert(sizeof(Cluster) == clusterByte, "size of cluster should be 32");
 
 const int INVALID = INT_MAX;
 class transpositionTable{
 public:
-    infoScore* table;
+    Cluster* table;
     big modulo;
     int rewrite=0;
     int place=0;
