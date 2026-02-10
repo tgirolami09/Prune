@@ -102,12 +102,11 @@ private:
     template<int limitWay, bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    enum{PVNode=0, CutNode=1, AllNode=-1};
-    template<int nodeType, int limitWay, bool mateSearch>
+    template<bool isPV, int limitWay, bool mateSearch>
     inline int Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
-    template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
+    template <bool isPV, int limitWay, bool mateSearch, bool isRoot=false>
+    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove=nullMove.moveInfo);
     template<bool mateSearch>
     int launchSearch(int limitWay, HelperThread& ss);
     void launchSMP(int idThread);
