@@ -40,7 +40,12 @@ infoScore& Cluster::probe(resHash hash, bool& ttHit){
 }
 
 int absEntryScore(const infoScore& entry, int curAge){
-    return entry.depth-((curAge-entry.age())&maxAge);
+    return entry.depth-((curAge-entry.age())&maxAge)*4;
+}
+
+int advancedScore(const infoScore& entry, int curAge){
+    int distAge = (curAge-entry.age())&maxAge;
+    return entry.depth-entry.typeNode()-distAge;
 }
 
 int preference(const infoScore& newentry, const infoScore& oldentry, int curAge){
@@ -62,7 +67,9 @@ void Cluster::push(infoScore& entry, int curAge){
             bestID = i;
         }
     }
-    entries[bestID] = entry;
+    if(entries[bestID].hash != entry.hash ||
+        advancedScore(entry, curAge)*3 > advancedScore(entries[bestID], curAge)*2)
+        entries[bestID] = entry;
 }
 
 pair<big, resHash> getIndex(const GameState& state, big modulo){
