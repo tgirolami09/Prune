@@ -75,8 +75,8 @@ class BestMoveFinder{
         mutex mtx;
         condition_variable cv;
         int ans;
-        int depth, alpha, beta, relDepth, limitWay;
-        void launch(int depth, int alpha, int beta, int relDepth, int limitWay);
+        int relDepth, limitWay;
+        void launch(int relDepth, int limitWay);
         void wait_thread();
     };
     unordered_map<uint64_t,PolyglotEntry> book;
@@ -107,10 +107,10 @@ private:
     bool verbose;
     template <bool isPV, int limitWay, bool mateSearch, bool isRoot=false>
     int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove=nullMove.moveInfo);
-    template<bool mateSearch>
-    int launchSearch(int limitWay, HelperThread& ss);
     void launchSMP(int idThread);
 public:
+    template<int limitWay>
+    bestMoveResponse iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth);
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true);
     template <int limitWay=0>

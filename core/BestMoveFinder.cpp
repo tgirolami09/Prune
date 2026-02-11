@@ -84,7 +84,7 @@ void BestMoveFinder::clear_helpers(){
     if(helperThreads == NULL)return;
     smp_end = true;
     for(int i=0; i<nbThreads-1; i++){
-        helperThreads[i].launch(0, 0, 0, 0, 0);
+        helperThreads[i].launch(-1, -1);
         helperThreads[i].t.join();
     }
     delete[] helperThreads;
@@ -149,10 +149,7 @@ void BestMoveFinder::usefull::resetLines(){
     }
 }
 
-void BestMoveFinder::HelperThread::launch(int _depth, int _alpha, int _beta, int _relDepth, int _limitWay){
-    depth = _depth;
-    alpha = _alpha;
-    beta = _beta;
+void BestMoveFinder::HelperThread::launch(int _relDepth, int _limitWay){
     relDepth = _relDepth;
     limitWay = _limitWay;
     ans = 0;
@@ -491,16 +488,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     return bestScore;
 }
 
-template<bool mateSearch>
-int BestMoveFinder::launchSearch(int limitWay, HelperThread& ss){
-    if(limitWay == 0)
-        return negamax<true, 0, mateSearch, true>(ss.local, ss.depth, ss.localState, ss.alpha, ss.beta, ss.relDepth, false);
-    if(limitWay == 1)
-        return negamax<true, 1, mateSearch, true>(ss.local, ss.depth, ss.localState, ss.alpha, ss.beta, ss.relDepth, false);
-    else
-        return negamax<true, 2, mateSearch, true>(ss.local, ss.depth, ss.localState, ss.alpha, ss.beta, ss.relDepth, false);
-}
-
 void BestMoveFinder::launchSMP(int idThread){
     /*HelperThread& ss = helperThreads[idThread-1];
     ss.local.reinit(ss.localState);
@@ -516,10 +503,9 @@ void BestMoveFinder::launchSMP(int idThread){
         if(smp_end)return;
         ss.local.reinit(ss.localState);
         ss.local.mainThread = false;
-        if(abs(ss.alpha) > MAXIMUM-maxDepth) //is a mate score ?
-            ss.ans = launchSearch<true>(ss.limitWay, ss);
-        else
-            ss.ans = launchSearch<false>(ss.limitWay, ss);
+        if(ss.limitWay == 0)iterativeDeepening<0>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
+        if(ss.limitWay == 1)iterativeDeepening<1>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
+        if(ss.limitWay == 2)iterativeDeepening<2>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
         {
             lock_guard<mutex> lock(ss.mtx);
             ss.running = false;
@@ -544,6 +530,89 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     for(unsigned long i=0; i<movesFromRoot.size(); i++)
         state.undoLastMove();
     return res;
+}
+
+template<int limitWay>
+bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth){
+    vector<depthInfo> allInfos;
+    chrono::milliseconds softBoundTime{tm.softBound};
+    Move bestMove=nullMove;
+    int depthMax = maxDepth;
+    if(ss.mainThread && limitWay == 2){
+        depthMax = tm.hardBound;
+    }
+    int lastScore = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
+    Move ponderMove=nullMove;
+    startRelDepth = actDepth-1;
+    for(int depth=1; depth<=depthMax && running; depth++){
+        int deltaUp = parameters.aw_base;
+        int deltaDown = parameters.aw_base;
+        ss.seldepth = 0;
+        if(abs(lastScore) > MAXIMUM-maxDepth)
+            deltaDown = 1;
+        int bestScore;
+        Move finalBestMove=bestMove;
+        sbig lastUsedNodes = 0;
+        string PV;
+        do{
+            int alpha = lastScore-deltaDown;
+            int beta = lastScore+deltaUp;
+            ss.generator.initDangers(state);
+            lastUsedNodes = ss.nodes;
+            smp_abort = false;
+            if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
+                bestScore = negamax<true, limitWay, true , true>(ss, depth, state, alpha, beta, actDepth, false);
+            else
+                bestScore = negamax<true, limitWay, false, true>(ss, depth, state, alpha, beta, actDepth, false);
+            lastUsedNodes = ss.nodes-lastUsedNodes;
+            bestMove = bestScore != -INF ? ss.rootBest : finalBestMove;
+            string limit;
+            if(bestScore <= alpha){
+                deltaDown = max<int>(deltaDown*parameters.aw_mul, lastScore-bestScore+1);
+                limit = "upperbound";
+            }else if(bestScore >= beta){
+                deltaUp = max<int>(deltaUp*parameters.aw_mul, bestScore-lastScore+1);
+                finalBestMove = bestMove;
+                limit = "lowerbound";
+                ponderMove = nullMove;
+            }else{
+                finalBestMove = bestMove;
+                PV = ss.PVprint(ss.PVlines[0]);
+                if(ss.PVlines[0].cmove > 1)ponderMove.moveInfo = ss.PVlines[0].argMoves[1];
+                else ponderMove = nullMove;
+                break;
+            }
+            if(ss.mainThread && verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
+                sbig totNodes = ss.nodes;
+                double tcpu = getElapsedTime().count()/1'000'000'000.0;
+                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
+                fflush(stdout);
+            }
+        }while(running);
+        bestMove = finalBestMove;
+        if(bestScore != -INF)
+            lastScore = bestScore;
+        if(ss.mainThread){
+            double tcpu = getElapsedTime().count()/1'000'000'000.0;
+            sbig totNodes = ss.nodes;
+            double speed=0;
+            if(tcpu != 0)speed = totNodes/tcpu;
+            if(verbose && bestScore != -INF){
+                printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
+                fflush(stdout);
+            }
+            if(running)
+                allInfos.push_back({ss.nodes, (int)(tcpu*1000), (int)(speed), depth, ss.seldepth-startRelDepth, bestScore});
+            softBoundTime = chrono::milliseconds{tm.updateSoft(ss.bestMoveNodes, lastUsedNodes, parameters, verbose)};
+            this->hardBound = tm.hardBound;
+            hardBoundTime = chrono::milliseconds{tm.hardBound};
+            if(limitWay == 1 && ss.nodes > tm.softBound)break;
+            if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
+        }
+    }
+    if(ss.mainThread)
+        smp_abort = true;
+    return make_tuple(bestMove, ponderMove, lastScore, allInfos);
 }
 
 template<int limitWay>
@@ -584,11 +653,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         }
     }
     running = true;
-    int depthMax = maxDepth;
     this->hardBound = INT64_MAX;
-    if(limitWay == 2){
-        depthMax = tm.hardBound;
-    }
     if(order.nbMoves == 1 && limitWay == 0){
         running = false;
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
@@ -596,85 +661,15 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if(verbose){
         printf("info string use a tt of %" PRId64 "entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));
     }
-    Move bestMove=nullMove;
-    int lastScore = localSS.eval.getScore(state.friendlyColor(), localSS.correctionHistory, state);
-    Move ponderMove=nullMove;
-    startRelDepth = actDepth-1;
-    for(int depth=1; depth<=depthMax && running; depth++){
-        int deltaUp = parameters.aw_base;
-        int deltaDown = parameters.aw_base;
-        localSS.seldepth = 0;
-        if(abs(lastScore) > MAXIMUM-maxDepth)
-            deltaDown = 1;
-        int bestScore;
-        Move finalBestMove=bestMove;
-        sbig lastUsedNodes = 0;
-        string PV;
-        do{
-            int alpha = lastScore-deltaDown;
-            int beta = lastScore+deltaUp;
-            localSS.generator.initDangers(state);
-            lastUsedNodes = localSS.nodes;
-            smp_abort = false;
-            for(int i=0; i<nbThreads-1; i++){
-                helperThreads[i].launch(depth, alpha, beta, actDepth, limitWay);
-            }
-            if(abs(lastScore) > MAXIMUM-maxDepth) //is a mate score ?
-                bestScore = negamax<true, limitWay, true , true>(localSS, depth, state, alpha, beta, actDepth, false);
-            else
-                bestScore = negamax<true, limitWay, false, true>(localSS, depth, state, alpha, beta, actDepth, false);
-            smp_abort = true;
-            for(int i=0; i<nbThreads-1; i++){
-                helperThreads[i].wait_thread();
-                localSS.nodes += helperThreads[i].local.nodes;
-                localSS.nbFirstCutoff += helperThreads[i].local.nbFirstCutoff;
-                localSS.nbCutoff += helperThreads[i].local.nbCutoff;
-            }
-            lastUsedNodes = localSS.nodes-lastUsedNodes;
-            bestMove = bestScore != -INF ? localSS.rootBest : finalBestMove;
-            string limit;
-            if(bestScore <= alpha){
-                deltaDown = max<int>(deltaDown*parameters.aw_mul, lastScore-bestScore+1);
-                limit = "upperbound";
-            }else if(bestScore >= beta){
-                deltaUp = max<int>(deltaUp*parameters.aw_mul, bestScore-lastScore+1);
-                finalBestMove = bestMove;
-                limit = "lowerbound";
-                ponderMove = nullMove;
-            }else{
-                finalBestMove = bestMove;
-                PV = localSS.PVprint(localSS.PVlines[0]);
-                if(localSS.PVlines[0].cmove > 1)ponderMove.moveInfo = localSS.PVlines[0].argMoves[1];
-                else ponderMove = nullMove;
-                break;
-            }
-            if(verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
-                sbig totNodes = localSS.nodes;
-                double tcpu = getElapsedTime().count()/1'000'000'000.0;
-                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
-                fflush(stdout);
-            }
-        }while(running);
-        bestMove = finalBestMove;
-        if(bestScore != -INF)
-            lastScore = bestScore;
-        double tcpu = getElapsedTime().count()/1'000'000'000.0;
-        sbig totNodes = localSS.nodes;
-        double speed=0;
-        if(tcpu != 0)speed = totNodes/tcpu;
-        if(verbose && bestScore != -INF){
-            printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, localSS.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), pow(totNodes, 1.0/depth), (double)localSS.nbFirstCutoff/localSS.nbCutoff);
-            fflush(stdout);
-        }
-        if(running)
-            allInfos.push_back({localSS.nodes, (int)(tcpu*1000), (int)(speed), depth, localSS.seldepth-startRelDepth, bestScore});
-        softBoundTime = chrono::milliseconds{tm.updateSoft(localSS.bestMoveNodes, lastUsedNodes, parameters, verbose)};
-        this->hardBound = tm.hardBound;
-        hardBoundTime = chrono::milliseconds{tm.hardBound};
-        if(limitWay == 1 && localSS.nodes > tm.softBound)break;
-        if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
+    for(int i=0; i<nbThreads-1; i++){
+        helperThreads[i].launch(actDepth, limitWay);
     }
-    return make_tuple(bestMove, ponderMove, lastScore, allInfos);
+    auto res=iterativeDeepening<limitWay>(localSS, state, tm, actDepth);
+    smp_abort = true;
+    for(int i=0; i<nbThreads-1; i++){
+        helperThreads[i].wait_thread();
+    }
+    return res;
 }
 
 void BestMoveFinder::aging(){
