@@ -108,6 +108,7 @@ private:
     template <bool isPV, int limitWay, bool mateSearch, bool isRoot=false>
     int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove=nullMove.moveInfo);
     void launchSMP(int idThread);
+    void updatemainSS(usefull& ss);
 public:
     template<int limitWay>
     bestMoveResponse iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth);
