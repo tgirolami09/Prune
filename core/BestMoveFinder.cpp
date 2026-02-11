@@ -514,13 +514,20 @@ void BestMoveFinder::launchSMP(int idThread){
     }
 }
 
-void BestMoveFinder::updatemainSS(usefull& ss){
+void BestMoveFinder::updatemainSS(usefull& ss, Record& oldss){
+    ss.nodes -= oldss.nodes;
+    ss.nbFirstCutoff -= oldss.nbFirstCutoff;
+    ss.nbCutoff -= oldss.nbCutoff;
+    oldss.nbFirstCutoff = oldss.nbCutoff = oldss.nodes = 0;
     for(int i=0; i<nbThreads-1; i++){
-        ss.nodes += helperThreads[i].local.nodes;
-        ss.nbFirstCutoff += helperThreads[i].local.nbFirstCutoff;
-        ss.nbCutoff += helperThreads[i].local.nbCutoff;
+        oldss.nodes += helperThreads[i].local.nodes;
+        oldss.nbFirstCutoff += helperThreads[i].local.nbFirstCutoff;
+        oldss.nbCutoff += helperThreads[i].local.nbCutoff;
         ss.seldepth = max(ss.seldepth, helperThreads[i].local.seldepth);
     }
+    ss.nodes += oldss.nodes;
+    ss.nbFirstCutoff += oldss.nbFirstCutoff;
+    ss.nbCutoff += oldss.nbCutoff;
 }
 
 template <int limitWay>
@@ -550,6 +557,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
     if(ss.mainThread && limitWay == 2){
         depthMax = tm.hardBound;
     }
+    Record rec={0, 0, 0};
     int lastScore = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
@@ -594,7 +602,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             if(ss.mainThread && verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
                 sbig totNodes = ss.nodes;
                 double tcpu = getElapsedTime().count()/1'000'000'000.0;
-                updatemainSS(ss);
+                updatemainSS(ss, rec);
                 printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
                 fflush(stdout);
             }
@@ -608,7 +616,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             double speed=0;
             if(tcpu != 0)speed = totNodes/tcpu;
             if(verbose && bestScore != -INF){
-                updatemainSS(ss);
+                updatemainSS(ss, rec);
                 printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
                 fflush(stdout);
             }

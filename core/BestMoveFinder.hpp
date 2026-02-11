@@ -50,7 +50,7 @@ class BestMoveFinder{
         sbig nodes;
         sbig bestMoveNodes;
         int seldepth;
-        int nbCutoff, nbFirstCutoff;
+        sbig nbCutoff, nbFirstCutoff;
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
@@ -64,6 +64,12 @@ class BestMoveFinder{
         void beginLine(int relDepth);
         void beginLineMove(int relDepth, Move move);
         void resetLines();
+    };
+
+    struct Record{
+        sbig nodes;
+        sbig nbFirstCutoff;
+        sbig nbCutoff;
     };
 
     class HelperThread{
@@ -108,7 +114,7 @@ private:
     template <bool isPV, int limitWay, bool mateSearch, bool isRoot=false>
     int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove=nullMove.moveInfo);
     void launchSMP(int idThread);
-    void updatemainSS(usefull& ss);
+    void updatemainSS(usefull& ss, Record& oldss);
 public:
     template<int limitWay>
     bestMoveResponse iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth);
