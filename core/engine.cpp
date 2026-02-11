@@ -139,9 +139,6 @@ const Option Options[] = {
     Option("Hash", "spin", "64", 1, 2147483647),
     Option("Move Overhead", "spin", "10", 0, 5000),
     Option("Clear Hash", "button"),
-#ifndef HCE
-    Option("nnueFile", "string", "embed"),
-#endif
     Option("Threads", "spin", "1", 1, 512)
 };
 
@@ -447,14 +444,6 @@ void manageSearch(){
                             bestMoveFinder.clear();
                             incr = false;
                         }
-#ifndef HCE
-                        else if(parsed[i].second == "nnueFile"){
-                            if(parsed[i+1].second == "embed")
-                                globnnue = NNUE();
-                            else
-                                globnnue = NNUE(parsed[i+1].second);
-                        }
-#endif
                         else if(parsed[i].second == "Threads"){
                             int newT = stoi(parsed[i+1].second);
                             bestMoveFinder.setThreads(newT);
