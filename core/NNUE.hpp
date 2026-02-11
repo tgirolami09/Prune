@@ -76,8 +76,6 @@ public:
     // Helper to set individual elements in SIMD vectors
     void set_simd16_element(simd16& vec, int index, dbyte value);
     void set_simdint_element(simdint& vec, int index, int value);
-    NNUE(string name);
-    NNUE();
     void initAcc(Accumulator& accs) const;
     int get_index(int piece, int c, int square) const;
     template<int f>

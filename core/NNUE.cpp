@@ -136,7 +136,7 @@ big genRandom(big& state){
     return z ^ (z >> 31);
 }
 
-NNUE::NNUE(string name){
+/*NNUE::NNUE(string name){
     if(name == "random"){
         big state = 42;
         for(int i=0; i<INPUT_SIZE; i++) {
@@ -174,23 +174,12 @@ NNUE::NNUE(string name){
         file.read(reinterpret_cast<char*>(outWeights), sizeof(outWeights));
         file.read(reinterpret_cast<char*>(outbias), sizeof(outbias));
     }
-}
+}*/
 template<typename T>
 T get_int(const unsigned char* source, int length){
     T res;
     memcpy(&res, source, length);
     return res;
-}
-
-NNUE::NNUE(){
-    int pointer = 0;
-    memcpy(hlWeights, baseModel, sizeof(hlWeights));
-    pointer += sizeof(hlWeights);
-    memcpy(hlBiases, &baseModel[pointer], sizeof(hlBiases));
-    pointer += sizeof(hlBiases);
-    memcpy(outWeights, &baseModel[pointer], sizeof(outWeights));
-    pointer += sizeof(outWeights);
-    memcpy(outbias, &baseModel[pointer], sizeof(outbias));
 }
 
 void NNUE::initAcc(Accumulator& accs) const{
@@ -278,4 +267,4 @@ template void NNUE::change1<1>(Accumulator&, bool, int) const;
 template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int) const;
 template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int) const;
 
-const NNUE *globnnue = (const NNUE*)baseModel;
+const NNUE *globnnue = reinterpret_cast<const NNUE*>(baseModel);
