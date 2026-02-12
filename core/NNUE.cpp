@@ -4,7 +4,6 @@
 #include <cstring>
 #include <fstream>
 #include "GameState.hpp"
-#include "embeder.hpp"
 #include "simd_definitions.hpp"
 
 using namespace std;
@@ -78,27 +77,27 @@ void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool side
 
 void Accumulator::updateSelf(Accumulator& accIn){
     if(mustmirror){
-        globnnue->initAcc(*this);
+        globnnue.initAcc(*this);
         ubyte pos[10];
         for(int c=0; c<2; c++)
             for(int piece=0; piece<nbPieces; piece++){
                 int nbp = places(bitboards[c][piece], pos);
                 for(int i=0; i<nbp; i++)
                     for(int pov=0; pov<2; pov++)
-                        globnnue->change1<1>(*this, pov, Index(pos[i], piece, c).mirror(Kside[pov]).changepov(pov));
+                        globnnue.change1<1>(*this, pov, Index(pos[i], piece, c).mirror(Kside[pov]).changepov(pov));
             }
         update.dirty = false;
         return;
     }
     if(update.type == 0){
-        globnnue->move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]));
-        globnnue->move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]));
+        globnnue.move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]));
+        globnnue.move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]));
     }else if(update.type == 1){
-        globnnue->move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]));
-        globnnue->move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]));
+        globnnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]));
+        globnnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]));
     }else{
-        globnnue->move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]));
-        globnnue->move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]));
+        globnnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]));
+        globnnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]));
     }
     update.dirty = false;
 }
@@ -253,4 +252,3 @@ template void NNUE::change1<1>(Accumulator&, bool, int) const;
 template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int) const;
 template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int) const;
 
-const NNUE *globnnue = reinterpret_cast<const NNUE*>(baseModel);

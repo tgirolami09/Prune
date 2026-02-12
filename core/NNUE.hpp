@@ -3,7 +3,7 @@
 #include "Const.hpp"
 #include "simd_definitions.hpp"
 #include "GameState.hpp"
-#include <fstream>
+#include "embeder.hpp"
 
 using namespace std;
 
@@ -83,5 +83,5 @@ public:
     dbyte eval(const Accumulator& accs, bool side, int idB) const;
 };
 
-extern const NNUE* globnnue;
+inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
 #endif
