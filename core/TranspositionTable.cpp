@@ -43,9 +43,8 @@ int absEntryScore(const infoScore& entry, int curAge){
     return entry.depth-((curAge-entry.age())&maxAge)*4;
 }
 
-int advancedScore(const infoScore& entry, int curAge){
-    int distAge = (curAge-entry.age())&maxAge;
-    return entry.depth-entry.typeNode()-distAge;
+int advancedScore(const infoScore& entry){
+    return entry.depth-entry.typeNode();
 }
 
 int preference(const infoScore& newentry, const infoScore& oldentry, int curAge){
@@ -61,14 +60,14 @@ void Cluster::push(infoScore& entry, int curAge){
             break;
         }
         int score = preference(entry, entries[i], curAge);
-        //if(entries[i].hash == entry.hash && score < 0)return; //if we already have a better entry for the same hash, do not put the new one in the cluster
         if(score > bestScore){
             bestScore = score;
             bestID = i;
         }
     }
     if(entries[bestID].hash != entry.hash ||
-        advancedScore(entry, curAge)*3 > advancedScore(entries[bestID], curAge)*2)
+        entries[bestID].age() != entry.age() ||
+        advancedScore(entry)*3 > advancedScore(entries[bestID])*2)
         entries[bestID] = entry;
 }
 

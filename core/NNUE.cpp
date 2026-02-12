@@ -78,37 +78,29 @@ void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool side
 
 void Accumulator::updateSelf(Accumulator& accIn){
     if(mustmirror){
-        globnnue.initAcc(*this);
+        globnnue->initAcc(*this);
         ubyte pos[10];
         for(int c=0; c<2; c++)
             for(int piece=0; piece<nbPieces; piece++){
                 int nbp = places(bitboards[c][piece], pos);
                 for(int i=0; i<nbp; i++)
                     for(int pov=0; pov<2; pov++)
-                        globnnue.change1<1>(*this, pov, Index(pos[i], piece, c).mirror(Kside[pov]).changepov(pov));
+                        globnnue->change1<1>(*this, pov, Index(pos[i], piece, c).mirror(Kside[pov]).changepov(pov));
             }
         update.dirty = false;
         return;
     }
     if(update.type == 0){
-        globnnue.move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]));
-        globnnue.move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]));
+        globnnue->move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]));
+        globnnue->move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]));
     }else if(update.type == 1){
-        globnnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]));
-        globnnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]));
+        globnnue->move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]));
+        globnnue->move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]));
     }else{
-        globnnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]));
-        globnnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]));
+        globnnue->move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]));
+        globnnue->move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]));
     }
     update.dirty = false;
-}
-
-
-template<typename T>
-dbyte NNUE::read_bytes(ifstream& file){
-    T ret;
-    file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
-    return ret;
 }
 
 dbyte read_i16(ifstream& file){
@@ -123,12 +115,6 @@ dbyte read_i16(const unsigned char* file){
     return ret;
 }
 
-// Helper to set individual elements in SIMD vectors
-void NNUE::set_simd16_element(simd16& vec, int index, dbyte value) {
-    dbyte* ptr = reinterpret_cast<dbyte*>(&vec);
-    ptr[index] = value;
-}
-
 big genRandom(big& state){
     big z = (state += 0x9E3779B97F4A7C15ULL);
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
@@ -136,7 +122,7 @@ big genRandom(big& state){
     return z ^ (z >> 31);
 }
 
-NNUE::NNUE(string name){
+/*NNUE::NNUE(string name){
     if(name == "random"){
         big state = 42;
         for(int i=0; i<INPUT_SIZE; i++) {
@@ -174,7 +160,7 @@ NNUE::NNUE(string name){
         file.read(reinterpret_cast<char*>(outWeights), sizeof(outWeights));
         file.read(reinterpret_cast<char*>(outbias), sizeof(outbias));
     }
-}
+}*/
 template<typename T>
 T get_int(const unsigned char* source, int length){
     T res;
@@ -182,18 +168,7 @@ T get_int(const unsigned char* source, int length){
     return res;
 }
 
-NNUE::NNUE(){
-    int pointer = 0;
-    memcpy(hlWeights, baseModel, sizeof(hlWeights));
-    pointer += sizeof(hlWeights);
-    memcpy(hlBiases, &baseModel[pointer], sizeof(hlBiases));
-    pointer += sizeof(hlBiases);
-    memcpy(outWeights, &baseModel[pointer], sizeof(outWeights));
-    pointer += sizeof(outWeights);
-    memcpy(outbias, &baseModel[pointer], sizeof(outbias));
-}
-
-void NNUE::initAcc(Accumulator& accs){
+void NNUE::initAcc(Accumulator& accs) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
@@ -226,7 +201,7 @@ dbyte NNUE::eval(const Accumulator& accs, bool side, int idB) const{
     return finRes;
 }
 template<int f>
-void NNUE::change1(Accumulator& accs, bool pov, int index){
+void NNUE::change1(Accumulator& accs, bool pov, int index) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
             accs[pov][i] = simd16_add(accs[pov][i], hlWeights[index][i]);
@@ -236,7 +211,7 @@ void NNUE::change1(Accumulator& accs, bool pov, int index){
     }
 }
 template<int f>
-void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index){
+void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
             accOut[pov][i] = simd16_add(accIn[pov][i], hlWeights[index][i]);
@@ -245,26 +220,26 @@ void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index)
         }
     }
 }
-void NNUE::move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap){
+void NNUE::move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 update = simd16_sub(hlWeights[indexto][i], simd16_add(hlWeights[indexfrom][i], hlWeights[indexcap][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
-void NNUE::move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto){
+void NNUE::move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 update = simd16_sub(hlWeights[indexto][i], hlWeights[indexfrom][i]);
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
-void NNUE::move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2){
+void NNUE::move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 update = simd16_sub(simd16_add(hlWeights[indexto1][i], hlWeights[indexto2][i]), simd16_add(hlWeights[indexfrom1][i], hlWeights[indexfrom2][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
 
-void NNUE::updateStack(Accumulator* stack, int stackIndex){
+void NNUE::updateStack(Accumulator* stack, int stackIndex) const{
     int startUpdate;
     for(startUpdate=stackIndex; startUpdate >= 1 && stack[startUpdate].update.dirty; startUpdate--);
     startUpdate++;
@@ -273,9 +248,9 @@ void NNUE::updateStack(Accumulator* stack, int stackIndex){
     }
 }
 
-template void NNUE::change1<-1>(Accumulator&, bool, int);
-template void NNUE::change1<1>(Accumulator&, bool, int);
-template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int);
-template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int);
+template void NNUE::change1<-1>(Accumulator&, bool, int) const;
+template void NNUE::change1<1>(Accumulator&, bool, int) const;
+template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int) const;
+template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int) const;
 
-NNUE globnnue = NNUE();
+const NNUE *globnnue = reinterpret_cast<const NNUE*>(baseModel);

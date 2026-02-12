@@ -266,7 +266,7 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     nbMan = 0;
     stackIndex = 0;
 #ifndef HCE
-    globnnue.initAcc(stackAcc[stackIndex]);
+    globnnue->initAcc(stackAcc[stackIndex]);
     stackAcc[stackIndex].update.dirty = false;
     stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.boardRepresentation[WHITE][KING])) <= 3;
     stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.boardRepresentation[BLACK][KING])) <= 3;
@@ -297,8 +297,8 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 
 int IncrementalEvaluator::getRaw(bool c){
 #ifndef HCE
-    globnnue.updateStack(stackAcc, stackIndex);
-    return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
+    globnnue->updateStack(stackAcc, stackIndex);
+    return globnnue->eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
 #else
     int clampPhase = min(mgPhase, 24);
     int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
@@ -334,8 +334,8 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c, bool updateNN
     if(updateNNUE)
         if(updateNNUE2){
             Index index(pos, piece, c);
-            globnnue.change1<f>(stackAcc[stackIndex], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]));
-            globnnue.change1<f>(stackAcc[stackIndex], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov());
+            globnnue->change1<f>(stackAcc[stackIndex], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]));
+            globnnue->change1<f>(stackAcc[stackIndex], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov());
         }
 #else
     mgScore += f*mg_table[c][piece][pos];
@@ -352,8 +352,8 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 #ifndef HCE
     if(updateNNUE){
         Index index(pos, piece, c);
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]));
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov());
+        globnnue->change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]));
+        globnnue->change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov());
         stackIndex++;
     }else{
         stackIndex--;
