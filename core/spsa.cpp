@@ -2,11 +2,11 @@ bool DEBUG = false;
 int nbThreads=1;
 #include "BestMoveFinder.hpp"
 #include "Const.hpp"
-#include "Evaluator.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "Move.hpp"
 #include "tunables.hpp"
+#include "Functions.hpp"
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -113,7 +113,6 @@ public:
     condition_variable cv;
     BestMoveFinder player0, player1;
     GameState state;
-    IncrementalEvaluator eval;
     HelperThread():player0(memory, true), player1(memory, true){}
     int ans;
     bool zombie;
@@ -252,7 +251,20 @@ void play_games(int id){
         int times[2] = {baseTime, baseTime};
         int result = 1;
         ss.state.fromFen(ss.fen);
-        ss.eval.init(ss.state);
+        int phase = countbit(
+            ss.state.boardRepresentation[WHITE][PAWN] |
+            ss.state.boardRepresentation[BLACK][PAWN] |
+            ss.state.boardRepresentation[WHITE][ROOK] |
+            ss.state.boardRepresentation[BLACK][ROOK] |
+            ss.state.boardRepresentation[WHITE][QUEEN] |
+            ss.state.boardRepresentation[BLACK][QUEEN]
+        )*2;
+        phase += countbit(
+            ss.state.boardRepresentation[WHITE][BISHOP] |
+            ss.state.boardRepresentation[BLACK][BISHOP] |
+            ss.state.boardRepresentation[WHITE][KNIGHT] |
+            ss.state.boardRepresentation[BLACK][KNIGHT]
+        );
         ss.ply = 0;
         while(1){
             auto start = high_resolution_clock::now();
@@ -271,14 +283,16 @@ void play_games(int id){
                 result = (ss.state.enemyColor() == WHITE)*2;
                 break;
             }
+            if(bm.capture != -2){
+                phase -= (bm.capture != BISHOP && bm.capture != KNIGHT)+1;
+            }
             times[player] += increment;
             ss.state.playMove(bm);
-            ss.eval.playNoBack(ss.state, bm, ss.state.friendlyColor());
             ss.ply++;
             if(ss.state.threefold()){
                 break;
             }
-            if(ss.eval.isInsufficientMaterial()){
+            if(phase <= 1){
                 break;
             }
             generator.initDangers(ss.state);
