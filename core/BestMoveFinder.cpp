@@ -312,6 +312,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 margin = parameters.rfp_nimproving*depth;
             if(static_eval >= beta+margin)
                 return Evaluate<false, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
+            int razmargin = 300;
+            if(static_eval + razmargin*depth < alpha && depth < 5 && alpha < MAXIMUM-maxDepth){
+                int razscore = Evaluate<false, limitWay, mateSearch>(ss, state, alpha, alpha+1, relDepth);
+                if(razscore <= alpha)return razscore;
+                ss.generator.initDangers(state);
+            }
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
