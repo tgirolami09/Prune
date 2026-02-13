@@ -329,7 +329,7 @@ void IncrementalEvaluator::undoMove(Move move, bool c){
 }
 
 template<int f, bool updateNNUE>
-void IncrementalEvaluator::changePiece(int pos, int piece, bool c, bool updateNNUE2){
+void IncrementalEvaluator::changePiece(int pos, int piece, bool c, __attribute__((unused)) bool updateNNUE2){
 #ifndef HCE
     if(updateNNUE)
         if(updateNNUE2){
@@ -369,7 +369,7 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 
 
 template<int f>
-void IncrementalEvaluator::playMove(Move move, bool c, const GameState* state){
+void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const GameState* state){
     int toPiece = move.piece;
     if(move.promotion() != -1){
         toPiece = move.promotion();
@@ -426,18 +426,20 @@ void IncrementalEvaluator::playMove(Move move, bool c, const GameState* state){
 #endif
         }
     }
+#ifndef HCE
     if(f == 1){
         stackAcc[stackIndex+1].reinit(state, stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
         stackIndex++;
     }else
         stackIndex--;
+#endif
 }
 
 void IncrementalEvaluator::backStack(){
     stackIndex--;
 }
 
-void IncrementalEvaluator::playNoBack(const GameState& state, Move move, bool c){
+void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& state, Move move, bool c){
     int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
     bool mirror = false;
     if(move.piece == KING && (col(move.from()) > 3) != (col(move.to()) > 3))
@@ -468,10 +470,12 @@ void IncrementalEvaluator::playNoBack(const GameState& state, Move move, bool c)
         changePiece<1, true>(rookEnd, ROOK, c, !mirror);
     }
 
+#ifndef HCE
     if(mirror){
         stackAcc[stackIndex].Kside[state.enemyColor()] ^= 1;
         init(state);
     }
+#endif
 }
 
 template void IncrementalEvaluator::playMove<-1>(Move, bool, const GameState*);
