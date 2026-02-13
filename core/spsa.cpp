@@ -274,6 +274,12 @@ void play_games(int id){
             int used_time = duration_cast<milliseconds>(end - start).count();
             Move bm=get<0>(res);
             if(bm.moveInfo == nullMove.moveInfo){
+                int score = get<2>(res);
+                if(score == 0)break;
+                if(score == -INF){
+                    result = (ss.state.enemyColor() == WHITE)*2;
+                    break;
+                }
                 printf("score: %d fen: %s ply: %d times: %d %d\n", get<2>(res), ss.state.toFen().c_str(), ss.ply, times[player], times[player^1]);
                 assert(false);
             }
