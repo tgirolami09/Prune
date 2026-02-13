@@ -63,30 +63,34 @@ void updateBuffer::print(){
     printf("\n");
 }
 
-void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
+void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
     Kside[0] = prevAcc.Kside[0];
     Kside[1] = prevAcc.Kside[1];
     if(mirror){
         memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
-        update = updateBuffer();
-        Kside[side] ^= 1;
-    }else{
-        update = updateBuffer(add1, add2, sub1, sub2);
+        Kside[_side] ^= 1;
     }
+    update = updateBuffer(add1, add2, sub1, sub2);
+    side = _side;
     mustmirror = mirror;
 }
 
 void Accumulator::updateSelf(Accumulator& accIn){
     if(mustmirror){
-        globnnue.initAcc(*this);
+        globnnue.initAcc(*this, side);
         ubyte pos[10];
         for(int c=0; c<2; c++)
             for(int piece=0; piece<nbPieces; piece++){
                 int nbp = places(bitboards[c][piece], pos);
                 for(int i=0; i<nbp; i++)
-                    for(int pov=0; pov<2; pov++)
-                        globnnue.change1<1>(*this, pov, Index(pos[i], piece, c).mirror(Kside[pov]).changepov(pov));
+                    globnnue.change1<1>(*this, side, Index(pos[i], piece, c).mirror(Kside[side]).changepov(side));
             }
+        if(update.type == 0)
+            globnnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]));
+        else if(update.type == 1)
+            globnnue.move3(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]));
+        else if(update.type == 2)
+            globnnue.move4(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]), update.add2[!side].mirror(Kside[!side]));
         update.dirty = false;
         return;
     }
@@ -197,6 +201,12 @@ void NNUE::initAcc(Accumulator& accs){
     for(int i=0; i<HL_SIZE/nb16; i++){
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
+    }
+}
+
+void NNUE::initAcc(Accumulator& accs, bool color){
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        accs[color][i] = hlBiases[i];
     }
 }
 

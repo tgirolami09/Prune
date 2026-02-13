@@ -50,6 +50,7 @@ class Accumulator{
 public:
     simd16 accs[2][HL_SIZE/nb16];
     bool Kside[2];
+    bool side;
     bool mustmirror;
     big bitboards[2][6];
     updateBuffer update;
@@ -79,6 +80,7 @@ public:
     NNUE(string name);
     NNUE();
     void initAcc(Accumulator& accs);
+    void initAcc(Accumulator& accs, bool color);
     int get_index(int piece, int c, int square) const;
     template<int f>
     void change1(Accumulator& accIn, bool pov, int index);
