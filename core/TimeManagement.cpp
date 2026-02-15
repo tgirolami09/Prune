@@ -9,14 +9,17 @@ TM::TM(int _softBound, int _hardBound):softBound(_softBound), hardBound(_hardBou
 TM::TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color):enableUpdate(true), lastbestMove(nullMove.moveInfo), nbInARow(0){
     int time = (color == WHITE) ? wtime : btime;
     int inc = (color == WHITE) ? winc : binc;
-    hardBound = time/10+inc*2/3-moveOverhead;
-    originLowerBound = softBound = hardBound/3;
+    hardBound = time/8+inc*2/3-moveOverhead;
+    originLowerBound = softBound = time/30+inc*2/3;
 }
 
 sbig TM::updateSoft(sbig bestMoveNodes, sbig totalNodes, int16_t bestmove, tunables& parameters, bool verbose){
     if(!enableUpdate)return softBound;
     if(lastbestMove == bestmove)nbInARow++;
-    else lastbestMove = bestmove, nbInARow=0;
+    else{
+        lastbestMove = bestmove;
+        nbInARow=0;
+    }
     double frac = ((double)bestMoveNodes)/totalNodes;
     double scalenode = parameters.nodetm_base-parameters.nodetm_mul*frac;
     double scalebm = bestMoveStabScaling[min(4, nbInARow)];
