@@ -11,11 +11,12 @@ TM::TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color):e
     originLowerBound = softBound = hardBound/3;
 }
 
-sbig TM::updateSoft(sbig bestMoveNodes, sbig totalNodes){
+sbig TM::updateSoft(sbig bestMoveNodes, sbig totalNodes, tunables& parameters, bool verbose){
     if(!enableUpdate)return softBound;
     double frac = ((double)bestMoveNodes)/totalNodes;
-    double scale = 2.00-1.600*frac;
+    double scale = parameters.nodetm_base-parameters.nodetm_mul*frac;
     sbig newSoft = originLowerBound*scale;
-    printf("info string newSoft %" PRId64 " hard %" PRId64 " frac %.2f scale %.2f\n", newSoft, hardBound, frac, scale);
+    if(verbose)
+        printf("info string newSoft %" PRId64 " hard %" PRId64 " frac %.2f scale %.2f\n", newSoft, hardBound, frac, scale);
     return softBound = min(hardBound, newSoft);
 }

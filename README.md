@@ -8,8 +8,9 @@ this is a hobby project made by two passionate about informatic.
 currently, the engine includes:
 - Evaluation:
     - nnue
-        - 128 HL
+        - 1024 HL
         - 8 output buckets
+        - horizontal mirroring
         - 10 iterations from random net
     - trained on self-gen data using [bullet](https://github.com/jw1912/bullet) (if you want the data used to train it, you can directly ask one of us)
     - correction history :
@@ -26,21 +27,23 @@ currently, the engine includes:
         - late move reduction
     - pruning:
         - null move pruning
-        - reverse futility pruning
+        - reverse futility pruning (improving and not improving)
         - razoring at depth 1
     - transposition table
+        - buckets of 3 entries
     - move ordering:
         - killer move
         - PV move
-        - SEE ordering for depth > 5
-        - MVV-LVA otherwise
-        - root move ordering based on node count
+        - SEE
+        - MVV-LVA
         - history heuristic
-    - singulare extension :
+    - singular extension :
         - singular
         - double
         - negative
+        - cutnode negext
     - IIR
+- most of the search parameters has been tuned over 2k iterations of 16 40+0.4 games
 - movegen
     - use bitboards
     - fully legal movegen
@@ -58,7 +61,7 @@ currently, the engine includes:
         - random will init a random net
         - embed will use the embeded one
     the other ones should be known, refer to the stockfish readme
-- support multithreading
+- support multithreading (lazy smp)
 - don't support yet frc, planed for v4
 
 to compile, just run 
@@ -83,4 +86,4 @@ for the version naming, we currently use the following :
 - chessprogramming wiki
     - warn for new dev, can be outdated, so don't forget to sprt every changes
 - especially to :
-    - swedishchef (the dev from pawnocchio and vine) for helping me debugging the viriformat writer
+    - swedishchef (the dev from pawnocchio and vine) for helping me debugging the viriformat writer, and giving me some search ideas

@@ -62,8 +62,8 @@ public:
         MoveInfo curProc;
         curProc.move = move;
         curProc.score = 0;
-        eval.playNoBack(move, state.friendlyColor());
         state.playMove(move);
+        eval.playNoBack(state, move, state.friendlyColor());
         game.game.push_back(curProc);
     }
     BestMoveFinder& getPlayer(){
@@ -72,7 +72,7 @@ public:
         else return player1;
     }
     bestMoveResponse getEval(TM tm){
-        return getPlayer().goState<1>(state, tm, false, false, game.game.size());
+        return getPlayer().goState<1>(state, tm, false, game.game.size());
     }
     void reset(string fen){
         state.fromFen(fen);
@@ -198,7 +198,7 @@ int main(int argc, char** argv){
                 MoveInfo curProc;
                 curProc.move = curMove;
                 curProc.score = state->state.friendlyColor() == BLACK ? -score : score;
-                state->eval.playNoBack(curMove, state->state.friendlyColor());
+                state->eval.playNoBack(state->state, curMove, state->state.friendlyColor());
                 state->state.playMove(curMove);
                 if(state->state.threefold()){
                     result = 1;

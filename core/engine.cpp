@@ -418,6 +418,7 @@ void manageSearch(){
                 else
                     printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
                 lastMove = ponder;
+                bestMoveFinder.aging();
             }else if(command == "uci"){
 #ifdef VERSION
                 string v=VERSION;
@@ -482,12 +483,13 @@ void manageSearch(){
                     if(move.capture == -2 && move.piece == PAWN && abs(move.from()-move.to()) != 8 && abs(move.from()-move.to()) != 16)
                         move.capture = -1;
                     int res;
+                    const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
                     if(isExact){
-                        res = -fastSEE(move, state->root);
+                        res = -fastSEE(move, state->root, value_pieces);
                         if(move.capture != -2)
                             res += value_pieces[max(0, cap)];
                     }else
-                        res = see_ge(bb, 0, move, state->root);
+                        res = see_ge(bb, 0, move, state->root, value_pieces);
                     printf("%s : %d\n", move.to_str().c_str(), res);
                 }
                 for(unsigned long i=0; i<state->movesFromRoot.size(); i++)

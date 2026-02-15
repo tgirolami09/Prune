@@ -9,6 +9,7 @@
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
 #include "loadpolyglot.hpp"
+#include "tunables.hpp"
 #include <chrono>
 #include <atomic>
 #include <condition_variable>
@@ -26,6 +27,7 @@ extern int
     nmpVerifPassAllNode;
 #endif
 
+using timeMesure=chrono::high_resolution_clock;
 //Class to find the best in a situation
 class BestMoveFinder{
     class usefull{
@@ -38,6 +40,7 @@ class BestMoveFinder{
         struct StackCase{
             Order order;
             int static_score;
+            int raw_eval;
         };
     public:
         LegalMoveGenerator generator;
@@ -47,13 +50,13 @@ class BestMoveFinder{
         sbig nodes;
         sbig bestMoveNodes;
         int seldepth;
-        int nbCutoff, nbFirstCutoff;
+        sbig nbCutoff, nbFirstCutoff;
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
         corrhists correctionHistory;
         int min_nmp_ply=0;
-        usefull(const GameState& state);
+        usefull(const GameState& state, tunables& parameters);
         usefull();
         void reinit(const GameState& state);
         string PVprint(LINE pvLine);
@@ -61,6 +64,12 @@ class BestMoveFinder{
         void beginLine(int relDepth);
         void beginLineMove(int relDepth, Move move);
         void resetLines();
+    };
+
+    struct Record{
+        sbig nodes;
+        sbig nbFirstCutoff;
+        sbig nbCutoff;
     };
 
     class HelperThread{
@@ -72,8 +81,8 @@ class BestMoveFinder{
         mutex mtx;
         condition_variable cv;
         int ans;
-        int depth, alpha, beta, relDepth, limitWay;
-        void launch(int depth, int alpha, int beta, int relDepth, int limitWay);
+        int relDepth, limitWay;
+        void launch(int relDepth, int limitWay);
         void wait_thread();
     };
     unordered_map<uint64_t,PolyglotEntry> book;
@@ -83,13 +92,13 @@ class BestMoveFinder{
 public:
     std::atomic<bool> running;
     BestMoveFinder(int memory, bool mute=false);
-
+    BestMoveFinder();
     sbig hardBound;
-    using timeMesure=chrono::high_resolution_clock;
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
     ~BestMoveFinder();
     void stop();
+    tunables parameters;
 private:
     usefull localSS;
     HelperThread* helperThreads;
@@ -99,24 +108,25 @@ private:
     template<int limitWay, bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    enum{PVNode=0, CutNode=1, AllNode=-1};
-    template<int nodeType, int limitWay, bool mateSearch>
+    template<bool isPV, int limitWay, bool mateSearch>
     inline int Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
-    template <int nodeType, int limitWay, bool mateSearch, bool isRoot=false>
-    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, const int16_t excludedMove=nullMove.moveInfo);
-    template<bool mateSearch>
-    int launchSearch(int limitWay, HelperThread& ss);
+    template <bool isPV, int limitWay, bool mateSearch, bool isRoot=false>
+    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove=nullMove.moveInfo);
     void launchSMP(int idThread);
+    void updatemainSS(usefull& ss, Record& oldss);
 public:
+    template<int limitWay>
+    bestMoveResponse iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth);
     template <int limitWay=0>
-    bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true, bool mateHardBound=true);
+    bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true);
     template <int limitWay=0>
-    bestMoveResponse goState(GameState& state, TM tm, bool verbose, bool mateHardBound, int actDepth);
+    bestMoveResponse goState(GameState& state, TM tm, bool verbose, int actDepth);
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);
     void setThreads(int nbThreads);
+    void aging();
 };
 
 

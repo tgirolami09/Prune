@@ -169,10 +169,10 @@ public:
     big Ks;
 };
 
-int SEE(int square, GameState& state, LegalMoveGenerator& generator);
-int fastSEE(const Move& move, const GameState& state);
-bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state);
-int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state);
+int SEE(int square, GameState& state, LegalMoveGenerator& generator, const int* value_pieces);
+int fastSEE(const Move& move, const GameState& state, const int* value_pieces);
+bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state, const int* value_pieces);
+int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, const int* value_pieces);
 
 const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory
 
@@ -189,7 +189,7 @@ class IncrementalEvaluator{
     int nbMan;
 public:
     template<int f, bool updateNNUE>
-    void changePiece(int pos, int piece, bool c);
+    void changePiece(int pos, int piece, bool c, bool updateNNUE2=true);
     template<int f, bool updateNNUE>
     void changePiece2(int pos, int piece, bool c);
     void backStack();
@@ -198,11 +198,12 @@ public:
     void init(const GameState& state);
     bool isInsufficientMaterial() const;
     bool isOnlyPawns() const;
-    int getScore(bool c, const corrhists& ch, const GameState& state) const;
-    int getRaw(bool c) const;
+    int getScore(bool c, const corrhists& ch, const GameState& state);
+    int getRaw(bool c);
+    int correctEval(int eval, const corrhists& ch, const GameState& state) const;
     template<int f=1>
-    void playMove(Move move, bool c);
-    void playNoBack(Move move, bool c);
+    void playMove(Move move, bool c, const GameState* state);
+    void playNoBack(const GameState& state, Move move, bool c);
     void undoMove(Move move, bool c);
 };
 

@@ -2,12 +2,13 @@
 #define NNUE_CPP
 #include "Const.hpp"
 #include "simd_definitions.hpp"
+#include "GameState.hpp"
 #include <fstream>
 
 using namespace std;
 
 const int INPUT_SIZE = 12*64;
-const int HL_SIZE = 512;
+const int HL_SIZE = 1024;
 const int SCALE = 400;
 const int QA = 255;
 const int QB = 64;
@@ -16,7 +17,53 @@ const int DIVISOR=(31+BUCKET)/BUCKET;
 
 static_assert(HL_SIZE%nb16 == 0);
 
-using Accumulator=simd16[2][HL_SIZE/nb16];
+class Index{
+public:
+    int square;
+    int piece;
+    bool color;
+    Index();
+    Index(int square, int piece, bool color);
+    void smirror(bool needmirror);
+    Index mirror(bool needmirror);
+    Index changepov();
+    Index changepov(bool needs);
+    void schangepov();
+    operator int();
+    bool isnull();
+};
+
+int mirrorSquare(int square, bool mirror);
+
+class updateBuffer{
+public:
+    Index add1[2], add2[2];
+    Index sub1[2], sub2[2]; //each pieces provoque a change in black and white pov
+    bool dirty;
+    int type;
+    updateBuffer();
+    updateBuffer(Index sub1, Index add1, Index sub2, Index add2);
+    void print();
+};
+
+class Accumulator{
+public:
+    simd16 accs[2][HL_SIZE/nb16];
+    bool Kside[2];
+    bool side;
+    bool mustmirror;
+    big bitboards[2][6];
+    updateBuffer update;
+    Accumulator(){}
+    void reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
+    const simd16* operator[](int idx) const{
+        return accs[idx];
+    }
+    simd16* operator[](int idx){
+        return accs[idx];
+    }
+    void updateSelf(Accumulator& accIn);
+};
 
 class NNUE{
 public:
@@ -33,14 +80,16 @@ public:
     NNUE(string name);
     NNUE();
     void initAcc(Accumulator& accs);
+    void initAcc(Accumulator& accs, bool color);
     int get_index(int piece, int c, int square) const;
     template<int f>
-    void change2(Accumulator& accIn, int piece, int c, int square);
+    void change1(Accumulator& accIn, bool pov, int index);
     template<int f>
-    void change2(Accumulator& accIn, Accumulator& accOut, int piece, int c, int square);
-    void move3(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
-    void move2(Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
-    void move4(Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);
+    void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index);
+    void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
+    void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
+    void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);
+    void updateStack(Accumulator* stack, int stackIndex);
     dbyte eval(const Accumulator& accs, bool side, int idB) const;
 };
 

@@ -2,7 +2,7 @@ CC=g++
 ADDOPTION?=
 DEBUGOPT?=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 $(ADDOPTION)
-OPT=-O3 -flto
+OPT?=-O3 -flto
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
@@ -12,6 +12,7 @@ SOURCES := $(filter-out collectData.cpp,$(SOURCES))
 SOURCES := $(filter-out engine.cpp,$(SOURCES))
 SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 SOURCES := $(filter-out netScale.cpp,$(SOURCES))
+SOURCES := $(filter-out spsa.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
@@ -88,6 +89,9 @@ HCE: engine.cpp $(OBJECTSHCE)
 coreGen: collectData.cpp $(OBJECTS)
 	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
 
+spsa: spsa.cpp $(OBJECTS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING)
+
 %.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
@@ -96,9 +100,6 @@ coreGen: collectData.cpp $(OBJECTS)
 
 embeder.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
-
-pruneDebug: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(ARCHCOM) $(CFLAGSALL) -g -o $@ $^ $(VERSIONNING)
 
 clean:
 	rm $(OBJECTS) $(DEPENDS)

@@ -4,6 +4,7 @@
 #include "GameState.hpp"
 #include "Move.hpp"
 #include "simd_definitions.hpp"
+#include "tunables.hpp"
 
 class HelpOrdering{
     Move killers[maxDepth][2];
@@ -11,7 +12,8 @@ class HelpOrdering{
     int& getIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;
 public:
-    void init();
+    tunables parameters;
+    void init(tunables& parameters);
     void addKiller(Move move, int depth, int relDepth, bool c);
     bool isKiller(Move move, int relDepth) const;
     int getHistoryScore(Move move, bool c) const;
