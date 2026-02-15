@@ -199,7 +199,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     int bestEval = MINIMUM;
     if(!testCheck){
         if(staticEval >= beta){
-            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval);
+            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval, isPV);
             return staticEval;
         }
         if(staticEval > alpha){
@@ -232,7 +232,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         if(score >= beta){
             ss.nbCutoff++;
             if(i == 0)ss.nbFirstCutoff++;
-            transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, capture, 0, raw_eval);
+            transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, capture, 0, raw_eval, isPV);
             return score;
         }
         if(score > bestEval){
@@ -244,7 +244,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             }
         }
     }
-    transposition.push(state, absoluteScore(bestEval, rootDist), typeNode, bestCapture, 0, raw_eval);
+    transposition.push(state, absoluteScore(bestEval, rootDist), typeNode, bestCapture, 0, raw_eval, isPV);
     return bestEval;
 }
 
@@ -451,7 +451,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         state.undoLastMove();
         if(!running || smp_abort)return bestScore;
         if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
-            transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval);
+            transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval, isPV);
             ss.nbCutoff++;
             if(isRoot)ss.rootBest=curMove;
             if(rankMove == 0)ss.nbFirstCutoff++;
@@ -481,7 +481,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(cutnode && bestScore == alpha)
         return bestScore;
     if((!isRoot || typeNode != UPPERBOUND) && excludedMove == nullMove.moveInfo){
-        transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth, raw_eval);
+        transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth, raw_eval, isPV);
     }
     if(!inCheck && (!bestMove.isTactical()) && abs(bestScore) < MAXIMUM-maxDepth &&
         (typeNode != UPPERBOUND || bestScore < static_eval)){
