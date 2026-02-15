@@ -622,7 +622,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             }
             if(running)
                 allInfos.push_back({ss.nodes, (int)(tcpu*1000), (int)(speed), depth, ss.seldepth-startRelDepth, bestScore});
-            softBoundTime = chrono::milliseconds{tm.updateSoft(ss.bestMoveNodes, lastUsedNodes, parameters, verbose)};
+            softBoundTime = chrono::milliseconds{tm.updateSoft(ss.bestMoveNodes, lastUsedNodes, bestMove.moveInfo, parameters, verbose)};
             this->hardBound = tm.hardBound;
             hardBoundTime = chrono::milliseconds{tm.hardBound};
             if(limitWay == 1 && ss.nodes > tm.softBound)break;
