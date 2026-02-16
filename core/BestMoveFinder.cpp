@@ -232,7 +232,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         if(score >= beta){
             ss.nbCutoff++;
             if(i == 0)ss.nbFirstCutoff++;
-            transposition.push(state, score, LOWERBOUND, capture, 0, raw_eval);
+            transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, capture, 0, raw_eval);
             return score;
         }
         if(score > bestEval){
@@ -265,7 +265,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     ss.seldepth = max(ss.seldepth, relDepth);
     transposition.prefetch(state);
-    if(rootDist >= MAXIMUM-alpha)return MAXIMUM-maxDepth;
+    if(MAXIMUM-rootDist <= alpha)return MAXIMUM-rootDist;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
     if constexpr(limitWay == 0)if((ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
     if(!running || smp_abort)return 0;
@@ -311,7 +311,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             else
                 margin = parameters.rfp_nimproving*depth;
             if(static_eval >= beta+margin)
-                return Evaluate<false, limitWay, mateSearch>(ss, state, alpha, beta, relDepth);
+                return static_eval;
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
@@ -319,8 +319,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 int v = -negamax<false, limitWay, mateSearch>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
                 state.undoNullMove();
                 if(v >= beta){
-                    if(depth <= 10 || ss.min_nmp_ply != 0)
+                    if(depth <= 10 || ss.min_nmp_ply != 0){
+                        if(abs(v) > MAXIMUM-maxDepth)return beta;
                         return v;
+                    }
 #ifdef DEBUG_MACRO
                     if(nodeType == CutNode)
                         nmpVerifCutNode++;
@@ -401,7 +403,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
         if(!curMove.isTactical() && triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base && bestScore >= MINIMUM+maxDepth)continue;
         int moveHistory = curMove.isTactical() ? 0 : (order.scores[rankMove]>=KILLER_ADVANTAGE-maxHistory ? maxHistory : order.scores[rankMove]);
-        if(moveHistory < -parameters.mhp_mul*depth && triedMove > 1 && bestScore >= MINIMUM+maxDepth)
+        if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1 && bestScore >= MINIMUM+maxDepth)
             continue;
         int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth;
         if(!isPV && !curMove.isTactical() && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha && bestScore >= MINIMUM+maxDepth){
