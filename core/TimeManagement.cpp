@@ -5,7 +5,7 @@
 //I took some starting TM constants from his repo : https://github.com/nocturn9x/heimdall/blob/master/src/heimdall/util/limits.nim#L84-L98
 
 const float bestMoveStabScaling[] = {2.50, 1.20, 0.90, 0.80, 0.75};
-const float evalStabScaling[] = {2.50, 1.20, 0.90, 0.80, 0.75};
+const float evalStabScaling[] = {1.60, 1.15, 0.90, 0.80, 0.75};
 TM::TM(int _softBound, int _hardBound):softBound(_softBound), hardBound(_hardBound), enableUpdate(false), lastbestMove(nullMove.moveInfo), nbInARow_bm(0){}
 TM::TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color):enableUpdate(true), lastbestMove(nullMove.moveInfo), nbInARow_bm(0){
     int time = (color == WHITE) ? wtime : btime;
