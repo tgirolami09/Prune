@@ -8,10 +8,12 @@ public:
     sbig softBound, hardBound, originLowerBound;
     bool enableUpdate;
     int16_t lastbestMove;
-    int nbInARow;
+    int nbInARow_bm;
+    int last_eval;
+    int nbInARow_eval;
     TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color);
     TM(int softBound, int hardBound);
-    sbig updateSoft(sbig bestMoveNodes, sbig totalNodes, int16_t bestmove, tunables& parameters, bool verbose);
+    sbig updateSoft(sbig bestMoveNodes, sbig totalNodes, int16_t bestmove, int eval, tunables& parameters, bool verbose);
 };
 
 #endif
