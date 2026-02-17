@@ -499,6 +499,12 @@ void manageSearch(){
                     DEBUG = false;
                 else
                     DEBUG = true;
+            }else if(command == "print"){
+                for(Move move:state->movesFromRoot)
+                    state->root.playPartialMove(move);
+                state->root.print();
+                for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
+                    state->root.undoLastMove();
             }
             fflush(stdout);
             {

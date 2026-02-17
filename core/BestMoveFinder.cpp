@@ -169,9 +169,9 @@ template<int limitWay, bool isPV, bool isCalc>
 int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth){
     if(!running || smp_abort)return 0;
     if(limitWay == 0 && (ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
-    if(ss.eval.isInsufficientMaterial())return 0;
+    if(ss.eval.isInsufficientMaterial() || state.rule50_count() > 100)return 0;
     ss.nodes++;
-    if(relDepth > ss.seldepth)ss.seldepth = relDepth;
+    if(isPV && relDepth > ss.seldepth)ss.seldepth = relDepth;
     //dbyte hint;
     const int rootDist = relDepth-startRelDepth;
     bool ttHit=false;
@@ -263,13 +263,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     bool allnode = !cutnode && !isPV;
     const int rootDist = relDepth-startRelDepth;
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
-    ss.seldepth = max(ss.seldepth, relDepth);
+    if(isPV)ss.seldepth = max(ss.seldepth, relDepth);
     transposition.prefetch(state);
     if(MAXIMUM-rootDist <= alpha)return MAXIMUM-rootDist;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
     if constexpr(limitWay == 0)if((ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
     if(!running || smp_abort)return 0;
-    if(state.rule50_count() >= 100 || ss.eval.isInsufficientMaterial()){
+    if(state.rule50_count() > 100 || ss.eval.isInsufficientMaterial()){
         if constexpr (isPV)ss.beginLine(rootDist);
         return 0;
     }

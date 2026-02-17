@@ -2,6 +2,7 @@
 #include "Const.hpp"
 #include "Functions.hpp"
 #include <cassert>
+#include <string>
 using namespace std;
 
 big zobrist[nbZobrist];
@@ -126,8 +127,13 @@ void GameState::fromFen(string fen){
     if(lastDoublePawnPush != -1)
         zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
     id += 2;
+    int move50 = 0;
+    while(id < (int)fen.size() && fen[id] != ' '){
+        move50 = move50*10+fen[id]-'0';
+        id++;
+    }
     repHist[turnNumber] = zobristHash;
-    rule50[turnNumber] = 0;
+    rule50[turnNumber] = move50;
     startEnPassant = lastDoublePawnPush;
 }
 
@@ -178,6 +184,9 @@ string GameState::toFen() const{
         fen += '0'+ (lastDoublePawnPush / 8 + 1);
     }else fen += "-";
     fen += " ";
+    fen += to_string(rule50[turnNumber]);
+    fen += " ";
+    fen += to_string(turnNumber);
     return fen;
 }
 
