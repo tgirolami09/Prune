@@ -237,7 +237,6 @@ int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameS
         if(cap == -1)cap = 0;
         if(cap != -2)
             score += cap*6;
-        score += 6-move.piece;
         if(move.promotion() != -1)score += move.promotion();
         score *= maxHistory*2;
         if(see_ge(bb, 0, move, state, value_pieces))
