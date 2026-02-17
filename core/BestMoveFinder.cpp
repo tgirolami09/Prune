@@ -401,14 +401,27 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
-        if(!curMove.isTactical() && triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base && bestScore >= MINIMUM+maxDepth)continue;
-        int moveHistory = curMove.isTactical() ? 0 : (order.scores[rankMove]>=KILLER_ADVANTAGE-maxHistory ? maxHistory : order.scores[rankMove]);
-        if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1 && bestScore >= MINIMUM+maxDepth)
-            continue;
-        int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth;
-        if(!isPV && !curMove.isTactical() && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha && bestScore >= MINIMUM+maxDepth){
-            continue;
+        int moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor());
+        if(!curMove.isTactical() && bestScore >= MINIMUM+maxDepth){
+            if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
+            if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
+                continue;
+            int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth;
+            if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
+                continue;
+            }
         }
+#ifdef DEBUG_MACRO
+        if(curMove.isTactical()){
+            capthistSum += moveHistory;
+            capthistSquare += moveHistory*moveHistory;
+            nbCaptHist++;
+        }else{
+            quiethistSum += moveHistory;
+            quiethistSquare += moveHistory*moveHistory;
+            nbquietHist++;
+        }
+#endif
         int score;
         state.playMove(curMove);
         bool isDraw = false;
@@ -456,8 +469,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(isRoot)ss.rootBest=curMove;
             if(rankMove == 0)ss.nbFirstCutoff++;
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor());
+            ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
             if(!curMove.isTactical()){
-                ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
             }
