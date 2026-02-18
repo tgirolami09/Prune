@@ -401,7 +401,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes, flag);
             fflush(stdout);
         }
-        int moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor());
+        int moveHistory;
+        if(ss.history.isKiller(curMove, rootDist))
+            moveHistory = maxHistory;
+        else
+            moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor());
         if(!curMove.isTactical() && bestScore >= MINIMUM+maxDepth){
             if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
             if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
