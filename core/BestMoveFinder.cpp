@@ -72,14 +72,21 @@ string scoreToStr(int score){
 
 //Class to find the best in a situation
 
-BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory){
+BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory)
+#ifdef NUMA_BUILD
+,numaHelper()
+#endif
+{
     book = load_book("book.bin", mute);
     helperThreads = NULL;
 }
-BestMoveFinder::BestMoveFinder():transposition(hashMul){
+BestMoveFinder::BestMoveFinder():transposition(hashMul)
+#ifdef NUMA_BUILD
+,numaHelper()
+#endif
+{
     helperThreads = NULL;
 }
-
 void BestMoveFinder::clear_helpers(){
     if(helperThreads == NULL)return;
     smp_end = true;
@@ -497,6 +504,9 @@ void BestMoveFinder::launchSMP(int idThread){
     negamax<PVNode, limitWay, mateSearch, true>(ss.local, depth, ss.localState, alpha, beta, relDepth);*/
     HelperThread& ss = helperThreads[idThread];
     ss.running = false;
+#ifdef NUMA_BUILD
+    numaHelper.pinThread(idThread);
+#endif
     while(!smp_end){
         {
             unique_lock<mutex> lock(ss.mtx);
