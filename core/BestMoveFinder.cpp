@@ -314,10 +314,17 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 return static_eval;
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
-                state.playNullMove();
+                bool playMove = (ttHit && ttEntry.bestMoveInfo != nullMove.moveInfo && ttEntry.depth + r < depth && ttEntry.depth+r+5 >= depth);
+                if(playMove)
+                    state.playPartialMove(Move{0, -2, ttEntry.bestMoveInfo});
+                else
+                    state.playNullMove();
                 ss.generator.initDangers(state);
                 int v = -negamax<false, limitWay, mateSearch>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
-                state.undoNullMove();
+                if(playMove)
+                    state.undoLastMove();
+                else
+                    state.undoNullMove();
                 if(v >= beta){
                     if(depth <= 10 || ss.min_nmp_ply != 0){
                         if(abs(v) > MAXIMUM-maxDepth)return beta;
