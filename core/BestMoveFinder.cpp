@@ -406,13 +406,18 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             moveHistory = maxHistory;
         else
             moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor());
-        if(!curMove.isTactical() && bestScore >= MINIMUM+maxDepth){
-            if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
-            if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
-                continue;
-            int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth;
-            if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
-                continue;
+        if(bestScore >= MINIMUM+maxDepth){
+            if(!curMove.isTactical()){
+                if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
+                if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
+                    continue;
+                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth;
+                if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
+                    continue;
+                }
+            }else{
+                if(!isPV && moveHistory < -100*depth*depth && depth <= 4)
+                    continue;
             }
         }
 #ifdef DEBUG_MACRO
