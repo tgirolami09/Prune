@@ -269,8 +269,19 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
     if constexpr(limitWay == 0)if((ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
     if(!running || smp_abort)return 0;
-    if(state.rule50_count() > 100 || ss.eval.isInsufficientMaterial()){
+    if(state.rule50_count() >= 100 || ss.eval.isInsufficientMaterial()){
         if constexpr (isPV)ss.beginLine(rootDist);
+        if(state.rule50_count() == 100){
+            if(ss.generator.isCheck()){
+                bool inCheck;
+                Order& order = ss.stack[rootDist].order;
+                order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+                if(order.nbMoves == 0){
+                    return MINIMUM+rootDist;
+                }
+
+            }
+        }
         return 0;
     }
     int& static_eval = ss.stack[rootDist].static_score;
@@ -680,23 +691,26 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         }
         if(moveInTable){
             if(verbose)
-                printf("Found book move for fen : %s\n",state.toFen().c_str());
+                printf("info string Found book move for fen : %s\n",state.toFen().c_str());
             return make_tuple(bookMove, nullMove, INF, vector<depthInfo>());
         }else if(verbose){
-            printf("bad move find in table %s (in %s)\n", bookMove.to_str().c_str(), state.toFen().c_str());
+            printf("info string bad move find in table %s (in %s)\n", bookMove.to_str().c_str(), state.toFen().c_str());
         }
     }
     if(order.nbMoves == 0){
-        if(inCheck){
-            return make_tuple(nullMove, nullMove, MINIMUM, vector<depthInfo>());
-        }else{
-            return make_tuple(nullMove, nullMove, 0, vector<depthInfo>());
-        }
+        int score;
+        if(inCheck)score = MINIMUM;
+        else score = 0;
+        if(verbose)
+            printf("info depth 1 seldepth 0 score %s nodes 0\n", scoreToStr(score).c_str());
+        return make_tuple(nullMove, nullMove, score, vector<depthInfo>());
     }
     running = true;
     this->hardBound = INT64_MAX;
     if(order.nbMoves == 1 && limitWay == 0){
         running = false;
+        if(verbose)
+            printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor())).c_str());
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
     if(verbose){
