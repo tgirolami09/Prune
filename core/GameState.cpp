@@ -291,7 +291,8 @@ int GameState::rule50_count() const{
     return rule50[turnNumber];
 }
 bool GameState::twofold(){
-    for(int i=turnNumber-4; i >= turnNumber-rule50_count(); i--){
+    const int minposs = max(0, turnNumber-rule50_count());
+    for(int i=turnNumber-4; i >= minposs; i--){
         if(repHist[i] == repHist[turnNumber])
             return true;
     }
@@ -300,7 +301,8 @@ bool GameState::twofold(){
 
 bool GameState::threefold(){
     bool alreadyRep=false;
-    for(int i=turnNumber-4; i >= turnNumber-rule50_count(); i--){
+    const int minposs = max(0, turnNumber-rule50_count());
+    for(int i=turnNumber-4; i >= minposs; i--){
         if(repHist[i] == repHist[turnNumber]){
             if(alreadyRep)
                 return true;

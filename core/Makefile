@@ -104,6 +104,9 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 embeder.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
+embederHCE.o: embeder.cpp
+	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+
 clean:
 	rm $(OBJECTS) $(DEPENDS)
 
