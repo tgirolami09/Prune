@@ -58,6 +58,8 @@ public:
     static int countPieces(const GameState& state);
 
     // Check if position can be probed (piece count, no castling)
+    // Overload accepting precomputed piece count (from IncrementalEvaluator::getNbMan)
+    bool canProbe(const GameState& state, int nbMan) const;
     bool canProbe(const GameState& state) const;
 };
 

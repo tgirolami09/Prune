@@ -20,19 +20,30 @@ int nmpVerifAllNode=0,
     nmpVerifPassAllNode=0;
 #endif
 
-BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){
+BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),
+#ifdef TBSEARCH
+tbHits(0),
+#endif
+rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
     history.init(parameters);
     correctionHistory.reset();
 }
-BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){}
+BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),
+#ifdef TBSEARCH
+tbHits(0),
+#endif
+rootBest(nullMove), mainThread(true){}
 void BestMoveFinder::usefull::reinit(const GameState& state){
     nodes = 0;
     bestMoveNodes = 0;
     seldepth = 0;
     nbCutoff = 0;
     nbFirstCutoff = 0;
+#ifdef TBSEARCH
+    tbHits = 0;
+#endif
     rootBest = nullMove;
     mainThread = true;
     eval.init(state);
@@ -186,9 +197,10 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         //hint = transposition.getMove(ttEntry);
 #ifdef TBSEARCH
     // Tablebase probe in quiescence
-    if (tbProbe.canProbe(state)) {
+    if (tbProbe.canProbe(state, ss.eval.getNbMan())) {
         int wdl = tbProbe.probeWDL(state);
         if (wdl != TB_RESULT_INVALID) {
+            ss.tbHits++;
             return TablebaseProbe::wdlToScore(wdl, rootDist);
         }
     }
@@ -302,9 +314,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
 #ifdef TBSEARCH
     // Tablebase probe in search
-    if (!isRoot && tbProbe.canProbe(state)) {
+    if (!isRoot && tbProbe.canProbe(state, ss.eval.getNbMan())) {
         int wdl = tbProbe.probeWDL(state);
         if (wdl != TB_RESULT_INVALID) {
+            ss.tbHits++;
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
             // For wins/losses, cut off immediately
             if (wdl == TB_RESULT_WIN || wdl == TB_RESULT_LOSS) {
@@ -743,7 +756,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     // Tablebase probe at root (always do this)
     Move tbMove = nullMove;
     int tbWdl = TB_RESULT_INVALID;
-    if (tbProbe.canProbe(state)) {
+    if (tbProbe.canProbe(state, localSS.eval.getNbMan())) {
         tbWdl = tbProbe.probeRoot(state, tbMove);
         if (tbWdl != TB_RESULT_INVALID) {
             if (verbose) {

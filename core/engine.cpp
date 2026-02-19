@@ -146,7 +146,9 @@ const Option Options[] = {
 #endif
     Option("Threads", "spin", "1", 1, 512),
     Option("SyzygyPath", "string", "<empty>"),
+#ifdef TBSEARCH
     Option("SyzygyProbeDepth", "spin", "1", 1, 100),
+#endif
     Option("SyzygyProbeLimit", "spin", "7", 0, 7)
 };
 
@@ -476,9 +478,11 @@ void manageSearch(){
                             else
                                 printf("info string Could not find any tablebases at '%s'\n",parsed[i+1].second.c_str());
                         }
+#ifdef TBSEARCH
                         else if(parsed[i].second == "SyzygyProbeDepth"){
                             tbProbe.setProbeDepth(stoi(parsed[i+1].second));
                         }
+#endif
                         else if(parsed[i].second == "SyzygyProbeLimit"){
                             tbProbe.setProbeLimit(stoi(parsed[i+1].second));
                         }

@@ -66,11 +66,10 @@ int TablebaseProbe::countPieces(const GameState& state) {
     return count;
 }
 
-bool TablebaseProbe::canProbe(const GameState& state) const {
+bool TablebaseProbe::canProbe(const GameState& state, int nbMan) const {
     if (!initialized || tbLargest == 0) return false;
 
-    int pieceCount = countPieces(state);
-    if (pieceCount > (int)tbLargest || pieceCount > probeLimit) return false;
+    if (nbMan > (int)tbLargest || nbMan > probeLimit) return false;
 
     // Cannot probe with castling rights
     if (state.castlingRights[WHITE][0] || state.castlingRights[WHITE][1] ||
@@ -79,6 +78,10 @@ bool TablebaseProbe::canProbe(const GameState& state) const {
     }
 
     return true;
+}
+
+bool TablebaseProbe::canProbe(const GameState& state) const {
+    return canProbe(state, countPieces(state));
 }
 
 // Helper function to convert GameState to Fathom format

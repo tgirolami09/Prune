@@ -52,6 +52,9 @@ class BestMoveFinder{
         sbig bestMoveNodes;
         int seldepth;
         sbig nbCutoff, nbFirstCutoff;
+#ifdef TBSEARCH
+        sbig tbHits;
+#endif
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
