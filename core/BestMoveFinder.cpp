@@ -174,6 +174,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(isPV && relDepth > ss.seldepth)ss.seldepth = relDepth;
     //dbyte hint;
     const int rootDist = relDepth-startRelDepth;
+    if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor()), ss.correctionHistory, state);
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
     if(ttHit){
@@ -193,7 +194,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             raw_eval = ss.eval.getRaw(state.friendlyColor());
         staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
     }
-    if(rootDist >= maxDepth)return staticEval;
     int typeNode = UPPERBOUND;
     bool testCheck = ss.generator.initDangers(state);
     int bestEval = MINIMUM;

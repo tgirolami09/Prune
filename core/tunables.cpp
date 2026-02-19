@@ -59,7 +59,8 @@ vector<int*> tunables::to_tune_int(){
         &rvalue,
         &qvalue,
         &lmr_base,
-        &lmr_div
+        &lmr_div,
+        &mchp_mul
     };
 }
 

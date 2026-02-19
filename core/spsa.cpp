@@ -1,3 +1,4 @@
+#include <fstream>
 bool DEBUG = false;
 int nbThreads=1;
 #include "BestMoveFinder.hpp"

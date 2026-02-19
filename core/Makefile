@@ -92,6 +92,9 @@ coreGen: collectData.cpp $(OBJECTS)
 spsa: spsa.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING)
 
+spsaHCE: spsa.cpp $(OBJECTSHCE)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsaHCE $^ $(VERSIONNING) -DHCE
+
 %.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
