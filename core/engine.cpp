@@ -419,7 +419,7 @@ void manageSearch(){
                 Move bm = get<0>(res);
                 Move ponder=get<1>(res);
                 if(ponder.moveInfo == nullMove.moveInfo)
-                    printf("bestmove %s\n", bm.to_str().c_str());
+                    printf("bestmove %s\n", bm.moveInfo == nullMove.moveInfo ? "0000" : bm.to_str().c_str());
                 else
                     printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
                 lastMove = ponder;
