@@ -416,7 +416,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     continue;
                 }
             }else{
-                if(!isPV && moveHistory < -100*depth*depth && depth <= 4)
+                if(!isPV && moveHistory < -parameters.mchp_mul*depth*depth && depth <= 4)
                     continue;
             }
         }
@@ -448,16 +448,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove > 0){
                 int addRedDepth = 0;
                 if(rankMove > 3 && depth > 3){
-                    if(curMove.isTactical()){
-                        addRedDepth += depth > 4 && rankMove > 4;
-                    }else{
-                        addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
-                        if(mateSearch && inCheckPos)
-                            addRedDepth -= 1024;
-                        addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
-                        addRedDepth /= 1024;
-                        addRedDepth = max(addRedDepth, 0);
-                    }
+                    addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
+                    if(mateSearch && inCheckPos)
+                        addRedDepth -= 1024;
+                    addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
+                    addRedDepth /= 1024;
+                    addRedDepth = max(addRedDepth, 0);
                 }
                 score = -negamax<false, limitWay, mateSearch>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 bool fullSearch = false;
