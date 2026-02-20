@@ -69,7 +69,13 @@ currently, the engine includes:
         - for bullet format quantised
         - random will init a random net
         - embed will use the embeded one
-    the other ones should be known, refer to the stockfish readme
+    - SyzygyPath: path to Syzygy tablebase files
+    - SyzygyProbeDepth *(TBSEARCH build only)*: minimum search depth to probe tablebases
+    - SyzygyProbeLimit: maximum piece count to probe (0–7)
+    - TB scoring: WIN = 20000 - ply, LOSS = -20000 + ply, DRAW = 0; ply adjustment prefers faster wins and slower losses; cursed win/blessed loss are treated as draws since the 50-move rule makes them unachievable in practice
+    - the other ones should be known, refer to the stockfish readme
+- syzygy probing is done thanks to a copy of Fathom from : https://github.com/jdart1/Fathom
+
 - support multithreading (lazy smp)
 - don't support yet frc, planed for v4
 
