@@ -79,8 +79,15 @@ void Cluster::push(infoScore& entry, int curAge){
         entry.depth+2*entry.tt_pv() >= entries[bestID].depth+entries[bestID].tt_pv() ||
         entries[bestID].typeNode() == UPPERBOUND ||
         entries[bestID].age() != entry.age()
-    )
-        entries[bestID] = entry;
+    ){
+        if(entry.bestMoveInfo != nullMove.moveInfo || entry.hash != entries[bestID].hash)
+            entries[bestID].bestMoveInfo = entry.bestMoveInfo;
+        entries[bestID].flag = entry.flag;
+        entries[bestID].depth = entry.depth;
+        entries[bestID].hash = entry.hash;
+        entries[bestID].raw_eval = entry.raw_eval;
+        entries[bestID].score = entry.score;
+    }
 }
 
 pair<big, resHash> getIndex(const GameState& state, big modulo){
