@@ -195,6 +195,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
                 return fromTT(lastEval, rootDist);
         }
         //hint = transposition.getMove(ttEntry);
+    }
 #ifdef TBSEARCH
     // Tablebase probe in quiescence
     if (tbProbe.canProbe(state, ss.eval.getNbMan())) {
@@ -321,13 +322,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
             // For wins/losses, cut off immediately
             if (wdl == TB_RESULT_WIN || wdl == TB_RESULT_LOSS) {
-                if constexpr(nodeType == PVNode) ss.beginLine(rootDist);
+                if constexpr(isPV) ss.beginLine(rootDist);
                 return tbScore;
             }
             // Here we can only have DRAW, BLESSED_LOSS and CURSED_WIN. All are treated as a draw.
             // For draws at non-PV nodes, return immediately. At PV nodes, only use beta cutoff.
             else {
-                if constexpr(nodeType != PVNode) {
+                if constexpr(!isPV) {
                     return tbScore;  // No PV concern at non-PV nodes
                 }
                 if (tbScore >= beta) {
