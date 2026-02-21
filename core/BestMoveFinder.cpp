@@ -335,7 +335,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                         return v;
                     }
 #ifdef DEBUG_MACRO
-                    if(nodeType == CutNode)
+                    if(cutnode)
                         nmpVerifCutNode++;
                     else
                         nmpVerifAllNode++;
@@ -346,7 +346,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     ss.min_nmp_ply = 0;
                     if(v >= beta){
 #ifdef DEBUG_MACRO
-                    if(nodeType == CutNode)
+                    if(cutnode)
                         nmpVerifPassCutNode++;
                     else
                         nmpVerifPassAllNode++;
