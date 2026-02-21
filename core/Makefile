@@ -132,4 +132,4 @@ re:
 
 # Compile Fathom tablebase library (C code)
 $(FATHOM_OBJ): $(FATHOM_DIR)/tbprobe.c
-	$(CC) -c -O3 -std=c++17 -I$(FATHOM_DIR) -o $@ $<
+	$(CC) -c -O3 -std=c++17 $(ARCHCOM) -D_CRT_SECURE_NO_WARNINGS -I$(FATHOM_DIR) -o $@ $<
