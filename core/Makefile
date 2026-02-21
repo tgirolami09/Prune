@@ -21,9 +21,11 @@ ifeq ($(OS), Windows_NT)
 	CC=clang++
 	CFLAGS := $(CFLAGS) -static
 	OPT := $(OPT) -fuse-ld=lld
+	LDFLAGS=
 else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
+	LDFLAGS=-lpthread
 endif
 CFLAGSALL=$(CFLAGS) $(DEBUGOPT)
 ifneq ($(ARCH), unknow)
@@ -69,31 +71,31 @@ else
 endif
 
 all: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
 
 unittest: unittest.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
 
 prune: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) $(LDFLAGS)
 
 netScale: netScale.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS)
 
 pruneHCE: engine.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE $(LDFLAGS)
 
 HCE: engine.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE-$(OS)-$(REC)$(EXTENSION) $^ $(VERSIONNING) -DHCE
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE-$(OS)-$(REC)$(EXTENSION) $^ $(VERSIONNING) -DHCE $(LDFLAGS)
 
 coreGen: collectData.cpp $(OBJECTS)
-	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^
+	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^ $(LDFLAGS)
 
 spsa: spsa.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS)
 
 spsaHCE: spsa.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsaHCE $^ $(VERSIONNING) -DHCE
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsaHCE $^ $(VERSIONNING) -DHCE $(LDFLAGS)
 
 %.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
