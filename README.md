@@ -24,11 +24,19 @@ currently, the engine includes:
     - aspiration window
     - enhanced forward pruning
     - Reduction:
-        - late move reduction
+        - late move reduction :
+            - log base
+            - history
+            - tactical moves
     - pruning:
         - null move pruning
         - reverse futility pruning (improving and not improving)
         - razoring at depth 1
+        - late move pruning
+        - history pruning
+        - capture history pruning
+        - futility pruning
+        - SEE pruning in QS
     - transposition table
         - buckets of 3 entries
     - move ordering:
@@ -37,6 +45,7 @@ currently, the engine includes:
         - SEE
         - MVV-LVA
         - history heuristic
+        - capthist
     - singular extension :
         - singular
         - double
@@ -51,9 +60,9 @@ currently, the engine includes:
     - fancy commands:
         - version (give the commit's hash when it was compiled)
         - arch (give the arch used to compile)
-        - bench (test of 48 positions, which give the node count/depth sum to compare search, also give mean nps)
+        - bench (test of 48 positions, which give the node count/depth sum to compare search, also give average nps)
         - runQ (run quiescnce search on the given position)
-        - d (print the current position [after the moves])
+        - print (print the current position [after the moves])
         - position kiwipete (set kiwipete's position)
 - option :
     - nnueFile

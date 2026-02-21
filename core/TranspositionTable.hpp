@@ -16,6 +16,8 @@ public:
     resHash hash;
     int typeNode() const;
     int age() const;
+    void setFlag(int typeNode, int age, bool pv);
+    bool tt_pv() const;
 };
 static_assert(sizeof(infoScore) == 10, "size of infoScore should be 10");
 const int clusterByte=32;
@@ -46,7 +48,7 @@ public:
 
     int16_t getMove(const infoScore& entry) const;
 
-    void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth, int16_t raw_eval);
+    void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth, int16_t raw_eval, bool is_pv);
     void clearRange(big start, big end);
     void prefetch(const GameState& state);
     void clear();

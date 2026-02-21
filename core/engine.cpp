@@ -16,6 +16,7 @@
 #include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
+#include <cmath>
 int nbThreads = 1;
 bool DEBUG = false;
 using namespace std;
@@ -371,6 +372,10 @@ void manageSearch(){
                 printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
                 printf("nmp in allnodes stats : %d/%d = %.2f%%\n", nmpVerifPassAllNode, nmpVerifAllNode, nmpVerifPassAllNode*100.0/nmpVerifAllNode);
                 printf("nmp in curnodes stats : %d/%d = %.2f%%\n", nmpVerifPassCutNode, nmpVerifCutNode, nmpVerifPassCutNode*100.0/nmpVerifCutNode);
+                double meanQuiet = ((double)quiethistSum)/nbquietHist;
+                printf("quiethist=%.2f ± %.2f\n", meanQuiet, sqrt(quiethistSquare/nbquietHist-meanQuiet*meanQuiet));
+                double meanCapt = ((double)capthistSum)/nbCaptHist;
+                printf("capthist=%.2f ± %.2f\n", meanCapt, sqrt(capthistSquare/nbCaptHist-meanCapt*meanCapt));
 #endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
@@ -414,7 +419,7 @@ void manageSearch(){
                 Move bm = get<0>(res);
                 Move ponder=get<1>(res);
                 if(ponder.moveInfo == nullMove.moveInfo)
-                    printf("bestmove %s\n", bm.to_str().c_str());
+                    printf("bestmove %s\n", bm.moveInfo == nullMove.moveInfo ? "0000" : bm.to_str().c_str());
                 else
                     printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
                 lastMove = ponder;
@@ -499,6 +504,12 @@ void manageSearch(){
                     DEBUG = false;
                 else
                     DEBUG = true;
+            }else if(command == "print"){
+                for(Move move:state->movesFromRoot)
+                    state->root.playPartialMove(move);
+                state->root.print();
+                for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
+                    state->root.undoLastMove();
             }
             fflush(stdout);
             {

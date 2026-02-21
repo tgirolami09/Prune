@@ -6,9 +6,19 @@
 #include "simd_definitions.hpp"
 #include "tunables.hpp"
 
+#ifdef DEBUG_MACRO
+extern int quiethistSum;
+extern double quiethistSquare;
+extern int nbquietHist;
+extern int capthistSum;
+extern double capthistSquare;
+extern int nbCaptHist;
+#endif
+
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
+    int captHist[2][nbPieces+4][6][64];
     int& getIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;
 public:
@@ -17,7 +27,7 @@ public:
     void addKiller(Move move, int depth, int relDepth, bool c);
     bool isKiller(Move move, int relDepth) const;
     int getHistoryScore(Move move, bool c) const;
-    void updateHistory(Move move, bool c, int bonus);
+    void updateHistory(int bonus, int& hist);
     void negUpdate(Move[maxMoves], int upto, bool c, int depth);
 
     int getMoveScore(Move move, bool c, int relDepths) const;

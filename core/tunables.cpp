@@ -26,6 +26,7 @@ tunables::tunables():
     qvalue(990),
     lmr_base(851),
     lmr_div(335),
+    mchp_mul(100),
     aw_mul(1.9495),
     nodetm_base(2.13688),
     nodetm_mul(1.37487)
@@ -58,7 +59,8 @@ vector<int*> tunables::to_tune_int(){
         &rvalue,
         &qvalue,
         &lmr_base,
-        &lmr_div
+        &lmr_div,
+        &mchp_mul
     };
 }
 

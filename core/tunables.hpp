@@ -31,7 +31,8 @@ public:
         rvalue,
         qvalue,
         lmr_base,
-        lmr_div;
+        lmr_div,
+        mchp_mul;
     float
         aw_mul,
         nodetm_base,
