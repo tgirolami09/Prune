@@ -787,6 +787,20 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
                 return make_tuple(tbMove, nullMove, 0, vector<depthInfo>());
             }
         }
+        // DTZ probe failed (no DTZ files) - try WDL-only fallback to filter root moves
+        int wdlFallback = tbProbe.probeRootWDLFallback(state, order.moves, order.nbMoves);
+        if (wdlFallback != TB_RESULT_INVALID && verbose) {
+            printf("info string Tablebase WDL fallback: ");
+            switch (wdlFallback) {
+                case TB_RESULT_WIN:          printf("Win"); break;
+                case TB_RESULT_CURSED_WIN:   printf("Cursed Win"); break;
+                case TB_RESULT_DRAW:         printf("Draw"); break;
+                case TB_RESULT_BLESSED_LOSS: printf("Blessed Loss"); break;
+                case TB_RESULT_LOSS:         printf("Loss"); break;
+            }
+            printf(" (%d moves kept)\n", order.nbMoves);
+            fflush(stdout);
+        }
     }
     if(verbose){
         printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));

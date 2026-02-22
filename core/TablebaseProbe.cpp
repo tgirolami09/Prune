@@ -230,6 +230,72 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     return TB_GET_WDL(result);
 }
 
+int TablebaseProbe::probeRootWDLFallback(const GameState& state, Move* moves, int& nbMoves) const {
+    if (!initialized) return TB_RESULT_INVALID;
+
+    uint64_t white, black, kings, queens, rooks, bishops, knights, pawns;
+    unsigned ep;
+    bool turn;
+    stateToFathom(state, white, black, kings, queens, rooks, bishops, knights, pawns, ep, turn);
+
+    TbRootMoves results;
+    int ok = tb_probe_root_wdl(white, black, kings, queens, rooks, bishops,
+                                knights, pawns, state.rule50_count(),
+                                0, ep, turn, true, &results);
+    if (!ok || results.size == 0) return TB_RESULT_INVALID;
+
+    // Find the best (highest) rank across all moves.
+    // WdlToRank[] in Fathom: LOSS=-1000, BLESSED_LOSS=-899, DRAW=0, CURSED_WIN=899, WIN=1000
+    int32_t bestRank = results.moves[0].tbRank;
+    for (unsigned i = 1; i < results.size; i++) {
+        if (results.moves[i].tbRank > bestRank)
+            bestRank = results.moves[i].tbRank;
+    }
+
+    // Map best rank back to TB_RESULT_* constant
+    int wdl;
+    if      (bestRank >= 1000) wdl = TB_RESULT_WIN;
+    else if (bestRank >= 899)  wdl = TB_RESULT_CURSED_WIN;
+    else if (bestRank > -899)  wdl = TB_RESULT_DRAW;
+    else if (bestRank > -1000) wdl = TB_RESULT_BLESSED_LOSS;
+    else                       wdl = TB_RESULT_LOSS;
+
+    // Promotion mapping: Fathom (NONE=0,Q=1,R=2,B=3,N=4) -> engine piece type
+    const int promoMap[] = {-1, QUEEN, ROOK, BISHOP, KNIGHT};
+
+    // Filter moves[] in-place: keep only moves matching a best-rank TbRootMove
+    int newNb = 0;
+    for (int i = 0; i < nbMoves; i++) {
+        int engineFrom = moves[i].from();
+        int engineTo   = moves[i].to();
+        int engineProm = moves[i].promotion();
+
+        bool keep = false;
+        for (unsigned j = 0; j < results.size; j++) {
+            if (results.moves[j].tbRank != bestRank) continue;
+
+            unsigned fathomFrom = TB_MOVE_FROM(results.moves[j].move);
+            unsigned fathomTo   = TB_MOVE_TO(results.moves[j].move);
+            unsigned fathomProm = TB_MOVE_PROMOTES(results.moves[j].move);
+
+            if ((int)(fathomFrom ^ 7) != engineFrom) continue;
+            if ((int)(fathomTo   ^ 7) != engineTo)   continue;
+            if (promoMap[fathomProm]   != engineProm) continue;
+
+            keep = true;
+            break;
+        }
+        if (keep)
+            moves[newNb++] = moves[i];
+    }
+
+    // Safety: if nothing matched (encoding mismatch), leave moves unchanged
+    if (newNb == 0) return TB_RESULT_INVALID;
+
+    nbMoves = newNb;
+    return wdl;
+}
+
 int TablebaseProbe::wdlToScore(int wdl, int ply) {
     switch (wdl) {
         case TB_RESULT_WIN:
