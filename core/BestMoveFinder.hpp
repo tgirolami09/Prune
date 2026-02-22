@@ -108,10 +108,10 @@ private:
     template<int limitWay, bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    template<bool isPV, int limitWay, bool mateSearch>
+    template<bool isPV, int limitWay>
     inline int Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
-    template <bool isPV, int limitWay, bool mateSearch, bool isRoot=false>
+    template <bool isPV, int limitWay, bool isRoot=false>
     int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove=nullMove.moveInfo);
     void launchSMP(int idThread);
     void updatemainSS(usefull& ss, Record& oldss);
