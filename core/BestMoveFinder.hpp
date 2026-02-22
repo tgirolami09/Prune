@@ -74,6 +74,9 @@ class BestMoveFinder{
         sbig nodes;
         sbig nbFirstCutoff;
         sbig nbCutoff;
+#ifdef TBSEARCH
+        sbig tbHits;
+#endif
     };
 
     class HelperThread{
