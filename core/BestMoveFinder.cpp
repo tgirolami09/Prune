@@ -420,6 +420,21 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         ss.generator.initDangers(state);
     }
     order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+    if constexpr(isRoot) {
+        if (wdlFilterNb > 0) {
+            int newNb = 0;
+            for (int i = 0; i < order.nbMoves; i++) {
+                for (int j = 0; j < wdlFilterNb; j++) {
+                    if (order.moves[i].moveInfo == wdlFilterMoveInfos[j]) {
+                        order.moves[newNb++] = order.moves[i];
+                        break;
+                    }
+                }
+            }
+            if (newNb > 0)
+                order.nbMoves = newNb;
+        }
+    }
     if(order.nbMoves == 0){
         int score;
         if(inCheck)
@@ -711,6 +726,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
 template<int limitWay>
 bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth){
     verbose = _verbose;
+    wdlFilterNb = 0;
     hardBoundTime = chrono::milliseconds{tm.hardBound*1000};
     startSearch = timeMesure::now();
     chrono::milliseconds softBoundTime{tm.softBound};
@@ -789,17 +805,22 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         }
         // DTZ probe failed (no DTZ files) - try WDL-only fallback to filter root moves
         int wdlFallback = tbProbe.probeRootWDLFallback(state, order.moves, order.nbMoves);
-        if (wdlFallback != TB_RESULT_INVALID && verbose) {
-            printf("info string Tablebase WDL fallback: ");
-            switch (wdlFallback) {
-                case TB_RESULT_WIN:          printf("Win"); break;
-                case TB_RESULT_CURSED_WIN:   printf("Cursed Win"); break;
-                case TB_RESULT_DRAW:         printf("Draw"); break;
-                case TB_RESULT_BLESSED_LOSS: printf("Blessed Loss"); break;
-                case TB_RESULT_LOSS:         printf("Loss"); break;
+        if (wdlFallback != TB_RESULT_INVALID) {
+            wdlFilterNb = order.nbMoves;
+            for (int i = 0; i < order.nbMoves; i++)
+                wdlFilterMoveInfos[i] = order.moves[i].moveInfo;
+            if (verbose) {
+                printf("info string Tablebase WDL fallback: ");
+                switch (wdlFallback) {
+                    case TB_RESULT_WIN:          printf("Win"); break;
+                    case TB_RESULT_CURSED_WIN:   printf("Cursed Win"); break;
+                    case TB_RESULT_DRAW:         printf("Draw"); break;
+                    case TB_RESULT_BLESSED_LOSS: printf("Blessed Loss"); break;
+                    case TB_RESULT_LOSS:         printf("Loss"); break;
+                }
+                printf(" (%d moves kept)\n", order.nbMoves);
+                fflush(stdout);
             }
-            printf(" (%d moves kept)\n", order.nbMoves);
-            fflush(stdout);
         }
     }
     if(verbose){
