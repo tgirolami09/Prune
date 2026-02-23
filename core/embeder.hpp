@@ -23,12 +23,12 @@ extern "C"{\
 #define BINARY_ASM_INCLUDE(filename, buffername) \
     __asm__(".section __TEXT,__const\n" \
     ".globl _" #buffername "\n" \
-    ".align 32\n" \
+    ".align 5\n" \
     "_" #buffername":\n" \
     ".incbin " #filename "\n" \
     "_" #buffername"_end:\n" \
     ".globl _" #buffername"_size\n" \
-    ".align 32\n" \
+    ".align 5\n" \
     "_" #buffername"_size:\n" \
     ".long _" #buffername"_end - _" #buffername "\n"\
     );
