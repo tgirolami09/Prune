@@ -15,8 +15,8 @@
     );
 #define BINARY_INCLUDE(buffername) \
 extern "C"{\
-    extern const unsigned char buffername[]; \
-    extern const unsigned char* buffername##_end; \
+    alignas(64) extern const unsigned char buffername[]; \
+    alignas(64) extern const unsigned char* buffername##_end; \
     extern const int buffername##_size; \
 }
 #elif defined(__APPLE__)
@@ -34,8 +34,8 @@ extern "C"{\
     );
 #define BINARY_INCLUDE(buffername) \
 extern "C"{\
-    extern const unsigned char buffername[]; \
-    extern const unsigned char* buffername##_end; \
+    alignas(64) extern const unsigned char buffername[]; \
+    alignas(64) extern const unsigned char* buffername##_end; \
     extern const int buffername##_size; \
 }
 #else
@@ -52,8 +52,8 @@ extern "C"{\
     );
 #define BINARY_INCLUDE(buffername) \
 extern "C"{\
-    extern const unsigned char buffername[]; \
-    extern const unsigned char* buffername##_end; \
+    alignas(64) extern const unsigned char buffername[]; \
+    alignas(64) extern const unsigned char* buffername##_end; \
     extern const int buffername##_size; \
 }
 #endif

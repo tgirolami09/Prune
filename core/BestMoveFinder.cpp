@@ -72,22 +72,19 @@ string scoreToStr(int score){
 
 //Class to find the best in a situation
 
-BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory){
+BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory), helperThreads(0){
     book = load_book("book.bin", mute);
-    helperThreads = NULL;
 }
-BestMoveFinder::BestMoveFinder():transposition(hashMul){
-    helperThreads = NULL;
+BestMoveFinder::BestMoveFinder():transposition(hashMul), helperThreads(0){
 }
 
 void BestMoveFinder::clear_helpers(){
-    if(helperThreads == NULL)return;
+    if(helperThreads.size() == 0)return;
     smp_end = true;
     for(int i=0; i<nbThreads-1; i++){
         helperThreads[i].launch(-1, -1);
         helperThreads[i].t.join();
     }
-    delete[] helperThreads;
 }
 
 BestMoveFinder::~BestMoveFinder(){
@@ -99,12 +96,11 @@ void BestMoveFinder::setThreads(int nT){
     if(nbThreads > 1){
         clear_helpers();
     }
-    delete[] helperThreads;
     if(nT == 1){
-        helperThreads = NULL;
+        helperThreads.clear();
     }else{
         smp_end = false;
-        helperThreads = new HelperThread[nT-1];
+        helperThreads = vector<HelperThread>(nT-1);
         for(int i=0; i<nT-1; i++){
             helperThreads[i].t = thread(&BestMoveFinder::launchSMP, this, i);
         }

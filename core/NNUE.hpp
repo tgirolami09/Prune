@@ -4,7 +4,7 @@
 #include "simd_definitions.hpp"
 #include "GameState.hpp"
 #include <fstream>
-
+#include "embeder.hpp"
 using namespace std;
 
 const int INPUT_SIZE = 12*64;
@@ -67,10 +67,10 @@ public:
 
 class NNUE{
 public:
-    simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
-    simd16 hlBiases[HL_SIZE/nb16];
-    simd16 outWeights[BUCKET][2][HL_SIZE/nb16];
-    dbyte outbias[BUCKET];
+    alignas(64) simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
+    alignas(64) simd16 hlBiases[HL_SIZE/nb16];
+    alignas(64) simd16 outWeights[BUCKET][2][HL_SIZE/nb16];
+    alignas(64) dbyte outbias[BUCKET];
 
     template<typename T=char>
     dbyte read_bytes(ifstream& file);
@@ -79,19 +79,19 @@ public:
     void set_simdint_element(simdint& vec, int index, int value);
     NNUE(string name);
     NNUE();
-    void initAcc(Accumulator& accs);
-    void initAcc(Accumulator& accs, bool color);
+    void initAcc(Accumulator& accs) const;
+    void initAcc(Accumulator& accs, bool color) const;
     int get_index(int piece, int c, int square) const;
     template<int f>
-    void change1(Accumulator& accIn, bool pov, int index);
+    void change1(Accumulator& accIn, bool pov, int index) const;
     template<int f>
-    void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index);
-    void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap);
-    void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto);
-    void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2);
-    void updateStack(Accumulator* stack, int stackIndex);
+    void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index) const;
+    void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap) const;
+    void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto) const;
+    void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2) const;
+    void updateStack(Accumulator* stack, int stackIndex) const;
     dbyte eval(const Accumulator& accs, bool side, int idB) const;
 };
 
-extern NNUE globnnue;
+alignas(64) inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
 #endif
