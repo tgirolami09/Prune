@@ -289,7 +289,7 @@ void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMo
         //There is a capture
         if(_mask&allEnemies)
             for(int i=0; i<6; i++)
-                if(enemyPieces[i]&_mask)base.capture = i;
+                if(enemyPieces[i]&_mask){ base.capture = i; break; }
         if(isPawn && (row(bit) == 7 || row(bit) == 0)){
             int8_t piecesPromot[4] = {KNIGHT, BISHOP, ROOK, QUEEN};
             int _start=0;
@@ -328,14 +328,6 @@ inline big LegalMoveGenerator::pseudoLegalRookMoves(int rookPosition, big Pieces
     return moves_table(rookPosition+64, Pieces&mask_empty_rook(rookPosition));
 }
 
-inline big LegalMoveGenerator::pseudoLegalQueenMoves(int queenPositions, big Pieces){
-    // big bishopMovesFromQueen = pseudoLegalBishopMoves(queenPositions, allPieces);
-    // big rookMovesFromQueen = pseudoLegalRookMoves(queenPositions ,allPieces);
-    
-    // return bishopMovesFromQueen | rookMovesFromQueen;
-
-    return pseudoLegalBishopMoves(queenPositions, Pieces) | pseudoLegalRookMoves(queenPositions, Pieces);
-}
 
 inline big LegalMoveGenerator::pseudoLegalKnightMoves(int knightPosition){
     // big knightEndMask = KnightMoves[knightPosition];
@@ -343,48 +335,38 @@ inline big LegalMoveGenerator::pseudoLegalKnightMoves(int knightPosition){
     return KnightMoves[knightPosition];
 }
 
-big LegalMoveGenerator::pseudoLegalPawnMoves(int pawnPosition, bool color, big Pieces, int friendKingPos, big moveMask, big captureMask, big enPieces, int enPassant, big enemyRooks){
-    big finalMoveMask;
-    
-    //If color == 0 -> white (add to move)
-    //If color == 1 -> black (subtract to move)
-
-    //Should be if color is 1 (true) then moveFactor is -1
-    int moveFactor = color ? -1 : 1;
-
-    // int leftLimit = color ?  7 : 0;
-    // int rightLimit = leftLimit^7;
-    // int rowPassant = color ? 3 : 4;
-
+template<bool IsWhite>
+big LegalMoveGenerator::pseudoLegalPawnMoves(int pawnPosition, big Pieces, int friendKingPos, big moveMask, big captureMask, big enPieces, int enPassant, big enemyRooks){
     big pawnMoveMask = 0;
     big pawnAttackMask = 0;
 
     if (moveMask != 0){
         int pieceRow = row(pawnPosition);
-        int startRow = color ? 6 : 1;
+        constexpr int startRow = IsWhite ? 1 : 6;
 
         //Single pawn push (check there are no pieces on target square)
-        big pushMask = 1ULL << (pawnPosition+8*moveFactor);
-        pawnMoveMask |= (pushMask) & (~Pieces);
+        big pushMask = IsWhite ? (1ULL << (pawnPosition + 8)) : (1ULL << (pawnPosition - 8));
+        pawnMoveMask |= pushMask & (~Pieces);
 
         //Double pawn push
         if (pieceRow == startRow && pawnMoveMask){
-            if(color)pushMask >>= 8;
-            else pushMask <<= 8;
+            if constexpr (IsWhite) pushMask <<= 8;
+            else pushMask >>= 8;
             pawnMoveMask |= pushMask & (~Pieces);
         }
     }
 
     //Just dangers created by pawns (no filtering by actual pieces that could be taken)
-    pawnAttackMask = attackPawns[color * 64 + pawnPosition];
+    constexpr int colorIdx = IsWhite ? 0 : 1;
+    pawnAttackMask = attackPawns[colorIdx * 64 + pawnPosition];
 
-    finalMoveMask = (pawnMoveMask & moveMask) | (pawnAttackMask & captureMask & enPieces);
+    big finalMoveMask = (pawnMoveMask & moveMask) | (pawnAttackMask & captureMask & enPieces);
 
-    if (enPassant != -1 && ((pawnAttackMask & (1ull << enPassant)) != 0) && ((captureMask & (1ull << (enPassant + (-1 * 8 * moveFactor)))) != 0)){
-        //This means en-passant actually captures the pawn that is causing check
-
-        big kingAsRook = pseudoLegalRookMoves(friendKingPos, Pieces ^ ((1ull << pawnPosition) | (1ull << (enPassant + (-1 * 8 * moveFactor)))));
-        if((row(friendKingPos) != row(enPassant + (8 * moveFactor * -1))) | ((kingAsRook&enemyRooks) == 0)){
+    // En passant: the captured pawn is one rank behind the EP square
+    constexpr int epCapturedOffset = IsWhite ? -8 : 8;
+    if (enPassant != -1 && ((pawnAttackMask & (1ull << enPassant)) != 0) && ((captureMask & (1ull << (enPassant + epCapturedOffset))) != 0)){
+        big kingAsRook = pseudoLegalRookMoves(friendKingPos, Pieces ^ ((1ull << pawnPosition) | (1ull << (enPassant + epCapturedOffset))));
+        if((row(friendKingPos) != row(enPassant + epCapturedOffset)) | ((kingAsRook&enemyRooks) == 0)){
             finalMoveMask |= (1ull << enPassant);
         }
     }
@@ -392,58 +374,58 @@ big LegalMoveGenerator::pseudoLegalPawnMoves(int pawnPosition, bool color, big P
     return finalMoveMask;
 }  
 
-big LegalMoveGenerator::pseudoLegalKingMoves(int kingPosition,const big Pieces, bool color, bool kingCastling, bool queenCastling){
-    big kingEndMask = 0;
-    kingEndMask = normalKingMoves[kingPosition];
-    
+template<bool IsWhite>
+big LegalMoveGenerator::pseudoLegalKingMoves(int kingPosition, big Pieces, bool kingCastling, bool queenCastling){
+    constexpr int color = IsWhite ? 0 : 1;
+    big kingEndMask = normalKingMoves[kingPosition];
+
     if(kingCastling && !(pieceCastlingMasks[color][1]&(Pieces)) && !(attackCastlingMasks[color][1] & allDangerSquares)){
-        int posKingSideCastle=color*56+1;
+        constexpr int posKingSideCastle = color * 56 + 1;
         kingEndMask |= 1ULL << posKingSideCastle;
     }
-    
-    if(queenCastling  && !(pieceCastlingMasks[color][0]&(Pieces)) && !(attackCastlingMasks[color][0] & allDangerSquares)){
-        int posQueenSideCastle = color*56+5;
+
+    if(queenCastling && !(pieceCastlingMasks[color][0]&(Pieces)) && !(attackCastlingMasks[color][0] & allDangerSquares)){
+        constexpr int posQueenSideCastle = color * 56 + 5;
         kingEndMask |= 1ULL << posQueenSideCastle;
     }
     return kingEndMask;
 }
 
-int LegalMoveGenerator::dealWithEnemyPawns(big enemyPawnPositions, int friendKingPos, int enemyColor){
-    int moveFactor = enemyColor ? -1 : 1;
-
+template<bool IsWhite>
+int LegalMoveGenerator::dealWithEnemyPawns(big enemyPawnPositions, int friendKingPos){
+    // IsWhite means friendly is white, so enemy is black
+    // Bit layout: bit 0 = a1, bit 7 = h1, bit 8 = a2, etc.
+    // White pawns: +7 = up-left, +9 = up-right
+    // Black pawns: -7 = down-right, -9 = down-left
+    constexpr big FileA = 0x0101010101010101ULL;  // col 0
+    constexpr big FileH = 0x8080808080808080ULL;  // col 7
     checkerPos = -1;
 
-    //Attacks to the left
-    const big col1 = (1ull << 7) + (1ull << 15) + (1ull << 23) + (1ull << 31) + (1ull << 39) + (1ull << 47) + (1ull << 55) + (1ull << 63);
-    big possibleToTheLeft = enemyPawnPositions & (~col1);
-    big attacksToTheLeft;
-    if (moveFactor == 1){
-        attacksToTheLeft = possibleToTheLeft << (8);
+    // Single diagonal shift instead of vertical + horizontal
+    big attacks7;  // the +7/-7 attack direction
+    big attacks9;  // the +9/-9 attack direction
+    if constexpr (IsWhite){
+        // Enemy is black: attacks via sq-7 (down-right) and sq-9 (down-left)
+        attacks7 = (enemyPawnPositions & ~FileH) >> 7;  // down-right, clip H file source
+        attacks9 = (enemyPawnPositions & ~FileA) >> 9;  // down-left, clip A file source
+    } else {
+        // Enemy is white: attacks via sq+7 (up-left) and sq+9 (up-right)
+        attacks7 = (enemyPawnPositions & ~FileA) << 7;  // up-left, clip A file source
+        attacks9 = (enemyPawnPositions & ~FileH) << 9;  // up-right, clip H file source
     }
-    else{
-        attacksToTheLeft = possibleToTheLeft >> (8);
-    }
-    attacksToTheLeft <<= 1;
-    allDangerSquares |= attacksToTheLeft;
+    allDangerSquares |= attacks7 | attacks9;
 
-    if (attacksToTheLeft & (1ull << friendKingPos)){
-        checkerPos = friendKingPos + (8 * moveFactor * -1) - 1;
+    if (attacks7 & (1ull << friendKingPos)){
+        if constexpr (IsWhite)
+            checkerPos = friendKingPos + 7;   // checker is 7 above (the black pawn)
+        else
+            checkerPos = friendKingPos - 7;   // checker is 7 below (the white pawn)
     }
-
-    //Attacks to the right
-    const big col8 = col1 >> 7;
-    big possibleToTheRight = enemyPawnPositions & (~col8);
-    big attacksToTheRight;
-    if (moveFactor == 1){
-        attacksToTheRight = possibleToTheRight << (8);
-    }
-    else{
-        attacksToTheRight = possibleToTheRight >> (8);
-    }
-    attacksToTheRight >>= 1;
-    allDangerSquares |= attacksToTheRight;
-    if (attacksToTheRight & (1ull << friendKingPos)){
-        checkerPos = friendKingPos + (8 * moveFactor * -1) + 1;
+    if (attacks9 & (1ull << friendKingPos)){
+        if constexpr (IsWhite)
+            checkerPos = friendKingPos + 9;
+        else
+            checkerPos = friendKingPos - 9;
     }
 
     return checkerPos;
@@ -451,10 +433,8 @@ int LegalMoveGenerator::dealWithEnemyPawns(big enemyPawnPositions, int friendKin
 
 int LegalMoveGenerator::dealWithEnemyKnights(big enemyKnightPositions, int friendKingPos){
     int checkerK = -1;
-    ubyte positions[10];
-    int nbPositions = places(enemyKnightPositions, positions);
-    for (int i = 0; i < nbPositions; ++i){
-        int currentKnightPos = positions[i];
+    for (big bb = enemyKnightPositions; bb; bb &= bb - 1){
+        int currentKnightPos = __builtin_ctzll(bb);
         big dangerSquares = pseudoLegalKnightMoves(currentKnightPos);
 
         allDangerSquares |= dangerSquares;
@@ -469,10 +449,8 @@ int LegalMoveGenerator::dealWithEnemyKnights(big enemyKnightPositions, int frien
 
 int LegalMoveGenerator::dealWithEnemyBishops(big enemyBishopPositions, big Pieces, int friendKingPos){
     int checkerB = -1;
-    ubyte positions[11];
-    int nbPositions = places(enemyBishopPositions, positions);
-    for (int i = 0; i < nbPositions; ++i){
-        int currentBishopPos = positions[i];
+    for (big bb = enemyBishopPositions; bb; bb &= bb - 1){
+        int currentBishopPos = __builtin_ctzll(bb);
         big dangerSquares = pseudoLegalBishopMoves(currentBishopPos, Pieces ^ (1ull << friendKingPos));
 
         allDangerSquares |= dangerSquares;
@@ -497,10 +475,7 @@ int LegalMoveGenerator::dealWithEnemyBishops(big enemyBishopPositions, big Piece
             big pinnedPieceMask = (ray ^ (1ull << currentBishopPos)) & Pieces;
             //There is a pinned piece;
             if (countbit(pinnedPieceMask) == 1){
-                int pinnedPiecePos = __builtin_ctzll(pinnedPieceMask);
-                // printf("Bishop pin ray is (bishop excluded) :\n");
-                // print_mask(ray);
-                pinnedMasks[pinnedPiecePos] = ray;
+                pinD12 |= ray;
             }
         }
     }
@@ -509,10 +484,8 @@ int LegalMoveGenerator::dealWithEnemyBishops(big enemyBishopPositions, big Piece
 
 int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, int friendKingPos){
     int checkerR = -1;
-    ubyte positions[11];
-    int nbPositions = places(enemyRookPositions, positions);
-    for (int i = 0; i < nbPositions; ++i){
-        int currentRookPos = positions[i];
+    for (big bb = enemyRookPositions; bb; bb &= bb - 1){
+        int currentRookPos = __builtin_ctzll(bb);
         big dangerSquares = pseudoLegalRookMoves(currentRookPos, Pieces ^ (1ull << friendKingPos));
 
         allDangerSquares |= dangerSquares;
@@ -537,8 +510,7 @@ int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, i
             big pinnedPieceMask = (ray ^ (1ull << currentRookPos)) & Pieces;
             //There is a pinned piece;
             if (countbit(pinnedPieceMask) == 1){
-                int pinnedPiecePos = __builtin_ctzll(pinnedPieceMask);
-                pinnedMasks[pinnedPiecePos] = ray;  
+                pinHV |= ray;
             }
         }
     }
@@ -546,102 +518,101 @@ int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, i
 }
 
 void LegalMoveGenerator::dealWithEnemyKing(int enemyKingPos){
-    //The 4 0's are to prevent from generating castling
-    big dangerSquares = pseudoLegalKingMoves(enemyKingPos,0,0,0,0);
+    //Castling args are false so template param is irrelevant
+    big dangerSquares = pseudoLegalKingMoves<false>(enemyKingPos, 0, false, false);
     allDangerSquares |= dangerSquares;
 }
 
+template<bool IsWhite>
 void LegalMoveGenerator::legalKingMoves(const GameState& state, Move* moves, int& nbMoves, big Pieces, big captureMask){
-    big kingMask = state.friendlyPieces()[KING];
-    int kingPos = __builtin_ctzll(kingMask);
-    bool curColor = state.friendlyColor();
-    big kingEndMask = pseudoLegalKingMoves(kingPos, Pieces, curColor, state.castlingRights[curColor][1], state.castlingRights[curColor][0]);
-    // printf("King wants to go here :\n");
-    // print_mask(kingEndMask);
+    constexpr int color = IsWhite ? 0 : 1;
+    int kingPos = __builtin_ctzll(state.friendlyPieces()[KING]);
+    big kingEndMask = pseudoLegalKingMoves<IsWhite>(kingPos, Pieces, state.castlingRights[color][1], state.castlingRights[color][0]);
     kingEndMask &= (~allFriends);
     kingEndMask &= (~allDangerSquares);
     //In case only captures need to be generated
     kingEndMask &= (captureMask);
-    // printf("After ands :\n");
-    // print_mask(kingEndMask);
 
-    maskToMoves<false>(kingPos,kingEndMask, moves, nbMoves, KING);
+    maskToMoves<false>(kingPos, kingEndMask, moves, nbMoves, KING);
 }
 
-void LegalMoveGenerator::legalPawnMoves(big pawnMask, bool friendlyColor, int lastDoublePawnPush, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves, big Pieces, big enemyRooks, bool promotQueen){
-    ubyte pos[8];
-    int nbPos=places(pawnMask, pos);
-    for (int p = 0;p<nbPos;++p){
-        big pawnMoveMask = pseudoLegalPawnMoves(pos[p], friendlyColor, Pieces, friendlyKingPosition, moveMask, captureMask, allEnemies, lastDoublePawnPush, enemyRooks);
-        // printf("Pawn at pos %d wants to move to :\n",pos[p]);
-        // print_mask(pawnMoveMask);
-        pawnMoveMask &= pinnedMasks[pos[p]];
-        // if(pinnedMasks[pos[p]] != -1ull){
-        //     printf("Pinn mask for piece:\n");
-        //     print_mask(pinnedMasks[pos[p]]);
-        //     printf("After pin and:\n");
-        //     print_mask(pawnMoveMask);
-        // }
+template<bool IsWhite>
+void LegalMoveGenerator::legalPawnMoves(big pawnMask, int lastDoublePawnPush, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves, big Pieces, big enemyRooks, bool promotQueen){
+    for (big bb = pawnMask; bb; bb &= bb - 1){
+        int sq = __builtin_ctzll(bb);
+        big sqBit = 1ULL << sq;
+        big pawnMoveMask = pseudoLegalPawnMoves<IsWhite>(sq, Pieces, friendlyKingPosition, moveMask, captureMask, allEnemies, lastDoublePawnPush, enemyRooks);
 
-        maskToMoves<true>(pos[p], pawnMoveMask, pawnMoves, nbMoves, PAWN, promotQueen);
+        // Apply pin restrictions
+        if (sqBit & pinD12)
+            pawnMoveMask &= pinD12;     // diag-pinned: can only capture along pin ray
+        else if (sqBit & pinHV)
+            pawnMoveMask &= pinHV;      // HV-pinned: can only push along pin file
+
+        maskToMoves<true>(sq, pawnMoveMask, pawnMoves, nbMoves, PAWN, promotQueen);
     }
 }
 
 void LegalMoveGenerator::legalKnightMoves(big knightMask, big moveMask, big captureMask, Move* knightMoves, int& nbMoves){
-    ubyte pos[10];
-    int nbPos=places(knightMask, pos);
-    for (int p = 0;p<nbPos;++p){
-        big knightEndMask = pseudoLegalKnightMoves(pos[p]);
-        // printf("Knight at position %d want to go to:\n",pos[p]);
-        // print_mask(knightEndMask);
-
-        knightEndMask &= (moveMask | captureMask);
-        knightEndMask &= pinnedMasks[pos[p]];
-        // printf("After ands : \n");
-        // print_mask(knightEndMask);
-
-
-        maskToMoves<false>(pos[p], knightEndMask, knightMoves, nbMoves, KNIGHT);
+    // Pinned knights can never move (no knight move stays on a pin ray)
+    big movableKnights = knightMask & ~(pinHV | pinD12);
+    big target = moveMask | captureMask;
+    for (big bb = movableKnights; bb; bb &= bb - 1){
+        int sq = __builtin_ctzll(bb);
+        big knightEndMask = pseudoLegalKnightMoves(sq) & target;
+        maskToMoves<false>(sq, knightEndMask, knightMoves, nbMoves, KNIGHT);
     }
 }
 
 void LegalMoveGenerator::legalSlidingMoves(big moveMask, big captureMask, Move* slidingMoves, int& nbMoves, big Pieces){
-    int types[3] = {BISHOP,ROOK,QUEEN};
-    for (int pieceType : types){
-        //Change function
-        big typeMask = friendlyPieces[pieceType];
-        ubyte pos[11];
-        int nbPos=places(typeMask, pos);
-        for (int p = 0;p<nbPos;++p){
-            big typeEndMask = 0;
-            if (pieceType == BISHOP){
-                typeEndMask = pseudoLegalBishopMoves(pos[p], Pieces);
-                // printf("Bishop at pos %d wants to go to :\n",pos[p]);
-                // print_mask(typeEndMask);
-            }
-            else if (pieceType == ROOK){
-                typeEndMask = pseudoLegalRookMoves(pos[p], Pieces);
-            }
-            else if (pieceType == QUEEN){
-                typeEndMask = pseudoLegalQueenMoves(pos[p], Pieces);
-            }
+    big target = moveMask | captureMask;
+    big pinned = pinHV | pinD12;
 
-            typeEndMask &= (moveMask | captureMask);
-            typeEndMask &= pinnedMasks[pos[p]];
-            // if (pieceType == BISHOP){
-            //     printf("After ands :\n");
-            //     print_mask(typeEndMask);
-            // }
-            
-            maskToMoves<false>(pos[p], typeEndMask, slidingMoves, nbMoves, pieceType);
-        }
+    // --- Bishop-like pieces (bishops + queens using diagonal moves) ---
+    big bishopLike = friendlyPieces[BISHOP] | friendlyPieces[QUEEN];
+
+    // Unpinned bishop-like: full freedom (within target)
+    for (big bb = bishopLike & ~pinned; bb; bb &= bb - 1){
+        int sq = __builtin_ctzll(bb);
+        big moves = pseudoLegalBishopMoves(sq, Pieces) & target;
+        int8_t piece = (friendlyPieces[BISHOP] & (1ULL << sq)) ? BISHOP : QUEEN;
+        maskToMoves<false>(sq, moves, slidingMoves, nbMoves, piece);
     }
+    // Diag-pinned bishop-like: restricted to pinD12 ray
+    for (big bb = bishopLike & pinD12; bb; bb &= bb - 1){
+        int sq = __builtin_ctzll(bb);
+        big moves = pseudoLegalBishopMoves(sq, Pieces) & target & pinD12;
+        int8_t piece = (friendlyPieces[BISHOP] & (1ULL << sq)) ? BISHOP : QUEEN;
+        maskToMoves<false>(sq, moves, slidingMoves, nbMoves, piece);
+    }
+    // HV-pinned bishop-like pieces cannot move diagonally, skip them
+
+    // --- Rook-like pieces (rooks + queens using HV moves) ---
+    big rookLike = friendlyPieces[ROOK] | friendlyPieces[QUEEN];
+
+    // Unpinned rook-like: full freedom (within target)
+    for (big bb = rookLike & ~pinned; bb; bb &= bb - 1){
+        int sq = __builtin_ctzll(bb);
+        big moves = pseudoLegalRookMoves(sq, Pieces) & target;
+        int8_t piece = (friendlyPieces[ROOK] & (1ULL << sq)) ? ROOK : QUEEN;
+        maskToMoves<false>(sq, moves, slidingMoves, nbMoves, piece);
+    }
+    // HV-pinned rook-like: restricted to pinHV ray
+    for (big bb = rookLike & pinHV; bb; bb &= bb - 1){
+        int sq = __builtin_ctzll(bb);
+        big moves = pseudoLegalRookMoves(sq, Pieces) & target & pinHV;
+        int8_t piece = (friendlyPieces[ROOK] & (1ULL << sq)) ? ROOK : QUEEN;
+        maskToMoves<false>(sq, moves, slidingMoves, nbMoves, piece);
+    }
+    // Diag-pinned rook-like pieces cannot move along HV, skip them
 }
 bool LegalMoveGenerator::isCheck() const{
     return nbCheckers >= 1;
 }
-bool LegalMoveGenerator::initDangers(const GameState& state){
-    memset(pinnedMasks, 0xFF, sizeof(pinnedMasks));
+template<bool IsWhite>
+bool LegalMoveGenerator::initDangersImpl(const GameState& state){
+    pinHV = 0;
+    pinD12 = 0;
     nbCheckers = 0;
     checkerPos = -1;
     friendlyPieces = state.friendlyPieces();
@@ -664,14 +635,14 @@ bool LegalMoveGenerator::initDangers(const GameState& state){
     dealWithEnemyKing(enemyKingPosition);
 
     //Updates the danger squares and retrieves the possibe pawn checker
-    int pawnCheckerPos = dealWithEnemyPawns(enemyPieces[PAWN],friendlyKingPosition,state.enemyColor());
+    int pawnCheckerPos = dealWithEnemyPawns<IsWhite>(enemyPieces[PAWN], friendlyKingPosition);
     if (pawnCheckerPos != -1){
         nbCheckers += 1;
         checkerPos = pawnCheckerPos;
     }
 
     //Updates the danger squares and retrieves the possibe knight checker
-    int knightCheckerPos = dealWithEnemyKnights(enemyPieces[KNIGHT],friendlyKingPosition);
+    int knightCheckerPos = dealWithEnemyKnights(enemyPieces[KNIGHT], friendlyKingPosition);
     if (knightCheckerPos != -1){
         nbCheckers += 1;
         checkerPos = knightCheckerPos;
@@ -680,7 +651,7 @@ bool LegalMoveGenerator::initDangers(const GameState& state){
     //Now pieces can pin and have multiple of a type attacking the king
 
     //Add the queen for its bishop rays
-    int bishopCheckerPos = dealWithEnemyBishops(enemyPieces[BISHOP] | enemyPieces[QUEEN], allPieces,friendlyKingPosition);
+    int bishopCheckerPos = dealWithEnemyBishops(enemyPieces[BISHOP] | enemyPieces[QUEEN], allPieces, friendlyKingPosition);
     if (bishopCheckerPos != -1){
         nbCheckers += 1;
         if (bishopCheckerPos == doubleCheckFromSameType){
@@ -705,56 +676,64 @@ bool LegalMoveGenerator::initDangers(const GameState& state){
     return nbCheckers >= 1;
 }
 
-int LegalMoveGenerator::generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves, big& dangerPositions, bool onlyCapture){
-    //Set all pinned masks to -1 (= no pinning)
+bool LegalMoveGenerator::initDangers(const GameState& state){
+    return state.friendlyColor() ? initDangersImpl<false>(state) : initDangersImpl<true>(state);
+}
 
-    //All allowed spots for a piece to move (not allowed if king is in check)
-    big moveMask = -1; //Totaly true
-    //All allowed spots for a piece to capture another one (not allowed if there is a checker)
-    big captureMask = -1; //Totaly false
-    inCheck = false;
+template<bool IsWhite, bool InCheck>
+int LegalMoveGenerator::generateLegalMovesImpl(const GameState& state, bool& inCheck, Move* legalMoves, big& dangerPositions, bool onlyCapture){
+    big moveMask = (~allFriends);
+    big captureMask = allEnemies;
+    inCheck = InCheck;
     int nbMoves = 0;
-    moveMask = (~allFriends);
-    captureMask = allEnemies;
 
     dangerPositions = allDangerSquares;
 
     //From here we have the pinned pieces, the number of checkers, and the danger squares
     if(onlyCapture){
         moveMask = 0;
-        legalKingMoves(state, legalMoves, nbMoves, allPieces, captureMask);
+        legalKingMoves<IsWhite>(state, legalMoves, nbMoves, allPieces, captureMask);
     }
     else{
-        legalKingMoves(state, legalMoves, nbMoves, allPieces);
+        legalKingMoves<IsWhite>(state, legalMoves, nbMoves, allPieces);
     }
     big pawnMoveMask = ~allFriends;
-    if (nbCheckers >= 2){
-        inCheck = true;
-        //Because if there are two checkers than only king moves are interesting
-        return nbMoves;
-    }else if (nbCheckers == 1){
-        inCheck = true;
+
+    if constexpr (InCheck){
+        if (nbCheckers >= 2){
+            //Because if there are two checkers than only king moves are interesting
+            return nbMoves;
+        }
+        // Single check: restrict to ray + checker
         captureMask = (1ull << checkerPos);
-        //If checker is a slider this is perfect logic
-        //If it's a pawn then logic is fine too (because king is already excluded and the pawn is already in the captureMask)
-        //If it's a knight then no valid ray exists so the mask is 0 (which is what we want)
         big rayToChecker = directions[friendlyKingPosition][checkerPos];
         moveMask &= rayToChecker;
         pawnMoveMask &= rayToChecker;
     }
+
     pawnMoveMask = (onlyCapture?0:pawnMoveMask)|(pawnMoveMask&(~clipped_brow));
-    legalPawnMoves(friendlyPieces[PAWN], state.friendlyColor(), state.lastDoublePawnPush, pawnMoveMask, captureMask, legalMoves, nbMoves, allPieces, enemyPieces[ROOK] | enemyPieces[QUEEN], onlyCapture);
+    legalPawnMoves<IsWhite>(friendlyPieces[PAWN], state.lastDoublePawnPush, pawnMoveMask, captureMask, legalMoves, nbMoves, allPieces, enemyPieces[ROOK] | enemyPieces[QUEEN], onlyCapture);
     legalKnightMoves(friendlyPieces[KNIGHT], moveMask, captureMask, legalMoves, nbMoves);
     legalSlidingMoves(moveMask, captureMask, legalMoves, nbMoves, allPieces);
     return nbMoves;
 }
 
-Move LegalMoveGenerator::getLVA(int posCapture, GameState& state){
-    memset(pinnedMasks, 0xFF, sizeof(pinnedMasks));
+int LegalMoveGenerator::generateLegalMoves(const GameState& state, bool& inCheck, Move* legalMoves, big& dangerPositions, bool onlyCapture){
+    bool check = nbCheckers >= 1;
+    if (state.friendlyColor())
+        return check ? generateLegalMovesImpl<false, true>(state, inCheck, legalMoves, dangerPositions, onlyCapture)
+                     : generateLegalMovesImpl<false, false>(state, inCheck, legalMoves, dangerPositions, onlyCapture);
+    else
+        return check ? generateLegalMovesImpl<true, true>(state, inCheck, legalMoves, dangerPositions, onlyCapture)
+                     : generateLegalMovesImpl<true, false>(state, inCheck, legalMoves, dangerPositions, onlyCapture);
+}
+
+template<bool IsWhite>
+Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
+    pinHV = 0;
+    pinD12 = 0;
     Move LVAmove;
-    //All allowed spots for a piece to move (not allowed if king is in check)
-    //All allowed spots for a piece to capture another one (not allowed if there is a checker)
-    big captureMask = -1; //Totaly false
+    big captureMask = -1;
 
     nbCheckers = 0;
     checkerPos = -1;
@@ -783,7 +762,7 @@ Move LegalMoveGenerator::getLVA(int posCapture, GameState& state){
     dealWithEnemyKing(enemyKingPosition);
 
     //Updates the danger squares and retrieves the possibe pawn checker
-    int pawnCheckerPos = dealWithEnemyPawns(enemyPieces[PAWN],friendlyKingPosition,state.enemyColor());
+    int pawnCheckerPos = dealWithEnemyPawns<IsWhite>(enemyPieces[PAWN], friendlyKingPosition);
     if (pawnCheckerPos != -1){
         nbCheckers++;
         checkerPos = pawnCheckerPos;
@@ -791,7 +770,7 @@ Move LegalMoveGenerator::getLVA(int posCapture, GameState& state){
     }
 
     //Updates the danger squares and retrieves the possibe knight checker
-    int knightCheckerPos = dealWithEnemyKnights(enemyPieces[KNIGHT],friendlyKingPosition);
+    int knightCheckerPos = dealWithEnemyKnights(enemyPieces[KNIGHT], friendlyKingPosition);
     if (knightCheckerPos != -1){
         if(nbCheckers++)return nullMove;
         checkerPos = knightCheckerPos;
@@ -801,7 +780,7 @@ Move LegalMoveGenerator::getLVA(int posCapture, GameState& state){
     //Now pieces can pin and have multiple of a type attacking the king
 
     //Add the queen for its bishop rays
-    int bishopCheckerPos = dealWithEnemyBishops(enemyPieces[BISHOP] | enemyPieces[QUEEN], allPieces,friendlyKingPosition);
+    int bishopCheckerPos = dealWithEnemyBishops(enemyPieces[BISHOP] | enemyPieces[QUEEN], allPieces, friendlyKingPosition);
     if (bishopCheckerPos != -1){
         if(nbCheckers++)return nullMove;
         if (bishopCheckerPos == doubleCheckFromSameType){
@@ -838,45 +817,40 @@ Move LegalMoveGenerator::getLVA(int posCapture, GameState& state){
     LVAmove.capture = capturedPiece;
     LVAmove.updateTo(posCapture);
     //From here we have the pinned pieces, the number of checkers, and the danger squares
-    bool curColor = state.friendlyColor();
-    big kingEndMask = pseudoLegalKingMoves(friendlyKingPosition, allPieces, curColor, false, false);
+    big kingEndMask = pseudoLegalKingMoves<IsWhite>(friendlyKingPosition, allPieces, false, false);
     kingEndMask &= (~allDangerSquares);
-    if(kingEndMask & captureMask){//because this is for SEE, we do not care if we take with a king or a pawn if the opponent cannot retake
+    if(kingEndMask & captureMask){
         LVAmove.updateFrom(friendlyKingPosition);
         LVAmove.piece = KING;
         return LVAmove;
     }
-    /*assert(nbCheckers <= 1);
-    if (nbCheckers >= 2){
-        return nullMove;
-    }else if (nbCheckers == 1){
-        captureMask &= (1ULL << checkerPos);
-        if(!captureMask)return nullMove;
-    }*/
     big fromCaseBishop = moves_table(posCapture, allPieces&mask_empty_bishop(posCapture));
     big fromCaseRook = moves_table(posCapture+64, allPieces&mask_empty_rook(posCapture));
+    big pinned = pinHV | pinD12;
+    constexpr int enemyColorIdx = IsWhite ? 1 : 0;
     big possiblePieces[5] = {
-        friendlyPieces[PAWN]   & attackPawns[state.enemyColor()*64+posCapture],
-        friendlyPieces[KNIGHT] & KnightMoves[posCapture],
+        friendlyPieces[PAWN]   & attackPawns[enemyColorIdx*64+posCapture],
+        friendlyPieces[KNIGHT] & KnightMoves[posCapture] & ~pinned,
         friendlyPieces[BISHOP] & fromCaseBishop,
         friendlyPieces[ROOK]   & fromCaseRook,
         friendlyPieces[QUEEN]  & (fromCaseBishop | fromCaseRook),
     };
     for(int piece=0; piece<KING; piece++){
-        if(possiblePieces[piece]){
-            ubyte pos[8];
-            int nbPiece = places(possiblePieces[piece], pos);
-            for(int p=0; p<nbPiece; p++){
-                if(pinnedMasks[pos[p]] & captureMask){
-                    LVAmove.piece = piece;
-                    LVAmove.updateFrom(pos[p]);
-                    if(piece == PAWN && (row(posCapture) == 0 || row(posCapture) == 7)){
-                        LVAmove.updatePromotion(QUEEN);
-                    }
-                    return LVAmove;
-                }
+        for(big bb = possiblePieces[piece]; bb; bb &= bb - 1){
+            int sq = __builtin_ctzll(bb);
+            big sqBit = 1ULL << sq;
+            if ((sqBit & pinned) && !(pinned & captureMask)) continue;
+            LVAmove.piece = piece;
+            LVAmove.updateFrom(sq);
+            if(piece == PAWN && (row(posCapture) == 0 || row(posCapture) == 7)){
+                LVAmove.updatePromotion(QUEEN);
             }
+            return LVAmove;
         }
     }
     return nullMove;
+}
+
+Move LegalMoveGenerator::getLVA(int posCapture, GameState& state){
+    return state.friendlyColor() ? getLVAImpl<false>(posCapture, state) : getLVAImpl<true>(posCapture, state);
 }

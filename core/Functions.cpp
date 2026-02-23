@@ -23,15 +23,7 @@ int countbit(const big& board){
 int flip(const int& square){
     return square^56;
 }
-int places(big mask, ubyte* positions){
-    int nbBits = countbit(mask);
-    for(ubyte i=0; mask; i++){
-        ubyte bit=__builtin_ctzll(mask);
-        mask &= mask-1; //even if it has a sub, whet it's compiled it will be as the blsr instruction
-        positions[i] = bit;
-    }
-    return nbBits;
-}
+
 
 big reverse(big board){
     board = (board&0xFFFFFFFF00000000) >> 32 | (board&0x00000000FFFFFFFF) << 32;

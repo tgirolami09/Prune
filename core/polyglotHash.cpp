@@ -10,19 +10,16 @@ uint64_t piece_hash(const GameState& state){
     const uint64_t* whitePieces = state.friendlyColor() == WHITE ? state.friendlyPieces() : state.enemyPieces();
     const uint64_t* blackPieces = state.friendlyColor() == BLACK ? state.friendlyPieces() : state.enemyPieces();
     for (int id = 0; id < 6; ++ id){
-        ubyte positions[11];
-        int nbWhitePieces = places(whitePieces[id],positions);
-        for (int i = 0; i < nbWhitePieces; ++ i){
-            int pos = positions[i];
+        for (big bb = whitePieces[id]; bb; bb &= bb - 1){
+            int pos = __builtin_ctzll(bb);
             //+1 because white
             //Not sure that we have the right orientation with columns
             int offset_piece = (64 * (2 * id + 1)) + (8 * (row(pos))) + (7-col(pos));
             piece ^= Random64[offset_piece];
         }
 
-        int nbBlackPieces = places(blackPieces[id],positions);
-        for (int i = 0; i < nbBlackPieces; ++ i){
-            int pos = positions[i];
+        for (big bb = blackPieces[id]; bb; bb &= bb - 1){
+            int pos = __builtin_ctzll(bb);
             //Not sure that we have the right orientation with columns
             int offset_piece = (64 * (2 * id)) + (8 * (row(pos))) + (7-col(pos));
             piece ^= Random64[offset_piece];

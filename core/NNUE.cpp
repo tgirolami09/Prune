@@ -77,13 +77,10 @@ void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool _sid
 void Accumulator::updateSelf(Accumulator& accIn){
     if(mustmirror){
         globnnue.initAcc(*this, side);
-        ubyte pos[10];
         for(int c=0; c<2; c++)
-            for(int piece=0; piece<nbPieces; piece++){
-                int nbp = places(bitboards[c][piece], pos);
-                for(int i=0; i<nbp; i++)
-                    globnnue.change1<1>(*this, side, Index(pos[i], piece, c).mirror(Kside[side]).changepov(side));
-            }
+            for(int piece=0; piece<nbPieces; piece++)
+                for(big bb = bitboards[c][piece]; bb; bb &= bb - 1)
+                    globnnue.change1<1>(*this, side, Index(__builtin_ctzll(bb), piece, c).mirror(Kside[side]).changepov(side));
         if(update.type == 0)
             globnnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]));
         else if(update.type == 1)
