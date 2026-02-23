@@ -9,6 +9,7 @@
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
 #include "loadpolyglot.hpp"
+#include <vector>
 #include "tunables.hpp"
 #include <chrono>
 #include <atomic>
@@ -101,7 +102,7 @@ public:
     tunables parameters;
 private:
     usefull localSS;
-    HelperThread* helperThreads;
+    vector<HelperThread> helperThreads;
     atomic<bool> smp_abort, smp_end;
     void clear_helpers();
     chrono::nanoseconds getElapsedTime();

@@ -5,7 +5,6 @@ on:
       - '*'  # Pour tous les nouveaux tags 
   pull_request:
     branches: [ main ]
-
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -20,27 +19,97 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      
+
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y g++ make
-      
+
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
           choco install make
-      
+
       - name: Build project
         working-directory: ./core
         run: |
-          make
-      
+          make ARCH=haswell
+
       - name: Build HCE version
         working-directory: ./core
         run: |
-          make HCE
+          make HCE ARCH=haswell
+
+      - name: Test bench (Linux/macOS)
+        if: runner.os != 'Windows'
+        working-directory: ./core
+        run: |
+          # Find the prune executable (excludes HCE and .o files)
+          PRUNE_EXE=$(find . -maxdepth 1 -name 'prune-*' ! -name '*HCE*' -type f | head -n 1)
+          if [ -z "$PRUNE_EXE" ]; then
+            echo "ERROR: prune executable not found!"
+            exit 1
+          fi
+          echo "Found executable: $PRUNE_EXE"
+          chmod +x "$PRUNE_EXE"
+
+          # Run bench and capture output + exit code
+          OUTPUT=$("$PRUNE_EXE" bench 2>&1)
+          EXIT_CODE=$?
+          echo "$OUTPUT"
+
+          # Check exit code
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "ERROR: bench exited with signal/code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Exit code: OK (0)"
+
+          # Check last line format: <nbnodes> nodes <nps> nps
+          LAST_LINE=$(echo "$OUTPUT" | tail -n 1)
+          echo "Last line: $LAST_LINE"
+          if echo "$LAST_LINE" | grep -qE '^[0-9]+ nodes [0-9]+ nps$'; then
+            echo "Last line format: OK"
+          else
+            echo "ERROR: last line does not match expected format '<nbnodes> nodes <nps> nps'"
+            exit 1
+          fi
+
+      - name: Test bench (Windows)
+        if: runner.os == 'Windows'
+        working-directory: ./core
+        shell: pwsh
+        run: |
+          # Find the prune executable
+          $PRUNE_EXE = Get-ChildItem -Path . -Filter "prune-*.exe" -File | Where-Object { $_.Name -notlike "*HCE*" } | Select-Object -First 1
+          if (-not $PRUNE_EXE) {
+            Write-Error "ERROR: prune executable not found!"
+            exit 1
+          }
+          Write-Host "Found executable: $($PRUNE_EXE.Name)"
+
+          # Run bench and capture output + exit code
+          $OUTPUT = & ".\$($PRUNE_EXE.Name)" bench 2>&1
+          $EXIT_CODE = $LASTEXITCODE
+          Write-Host $OUTPUT
+
+          # Check exit code
+          if ($EXIT_CODE -ne 0) {
+            Write-Error "ERROR: bench exited with code $EXIT_CODE"
+            exit 1
+          }
+          Write-Host "Exit code: OK (0)"
+
+          # Check last line format: <nbnodes> nodes <nps> nps
+          $LAST_LINE = ($OUTPUT | Select-Object -Last 1).ToString().Trim()
+          Write-Host "Last line: $LAST_LINE"
+          if ($LAST_LINE -match '^\d+ nodes \d+ nps$') {
+            Write-Host "Last line format: OK"
+          } else {
+            Write-Error "ERROR: last line does not match expected format '<nbnodes> nodes <nps> nps'"
+            exit 1
+          }
 
       - name: Upload binaries
         if: success()

@@ -4,7 +4,6 @@
 #include <cstring>
 #include <fstream>
 #include "GameState.hpp"
-#include "embeder.hpp"
 #include "simd_definitions.hpp"
 
 using namespace std;
@@ -197,14 +196,14 @@ NNUE::NNUE(){
     memcpy(outbias, &baseModel[pointer], sizeof(outbias));
 }
 
-void NNUE::initAcc(Accumulator& accs){
+void NNUE::initAcc(Accumulator& accs) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
     }
 }
 
-void NNUE::initAcc(Accumulator& accs, bool color){
+void NNUE::initAcc(Accumulator& accs, bool color) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         accs[color][i] = hlBiases[i];
     }
@@ -236,7 +235,7 @@ dbyte NNUE::eval(const Accumulator& accs, bool side, int idB) const{
     return finRes;
 }
 template<int f>
-void NNUE::change1(Accumulator& accs, bool pov, int index){
+void NNUE::change1(Accumulator& accs, bool pov, int index) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
             accs[pov][i] = simd16_add(accs[pov][i], hlWeights[index][i]);
@@ -246,7 +245,7 @@ void NNUE::change1(Accumulator& accs, bool pov, int index){
     }
 }
 template<int f>
-void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index){
+void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
             accOut[pov][i] = simd16_add(accIn[pov][i], hlWeights[index][i]);
@@ -255,26 +254,26 @@ void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index)
         }
     }
 }
-void NNUE::move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap){
+void NNUE::move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 update = simd16_sub(hlWeights[indexto][i], simd16_add(hlWeights[indexfrom][i], hlWeights[indexcap][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
-void NNUE::move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto){
+void NNUE::move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 update = simd16_sub(hlWeights[indexto][i], hlWeights[indexfrom][i]);
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
-void NNUE::move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2){
+void NNUE::move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 update = simd16_sub(simd16_add(hlWeights[indexto1][i], hlWeights[indexto2][i]), simd16_add(hlWeights[indexfrom1][i], hlWeights[indexfrom2][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
 
-void NNUE::updateStack(Accumulator* stack, int stackIndex){
+void NNUE::updateStack(Accumulator* stack, int stackIndex) const{
     int startUpdate;
     for(startUpdate=stackIndex; startUpdate >= 1 && stack[startUpdate].update.dirty; startUpdate--);
     startUpdate++;
@@ -283,9 +282,7 @@ void NNUE::updateStack(Accumulator* stack, int stackIndex){
     }
 }
 
-template void NNUE::change1<-1>(Accumulator&, bool, int);
-template void NNUE::change1<1>(Accumulator&, bool, int);
-template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int);
-template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int);
-
-NNUE globnnue = NNUE();
+template void NNUE::change1<-1>(Accumulator&, bool, int) const;
+template void NNUE::change1<1>(Accumulator&, bool, int) const;
+template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int) const;
+template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int) const;
