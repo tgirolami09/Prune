@@ -34,12 +34,12 @@ jobs:
       - name: Build project
         working-directory: ./core
         run: |
-          make ARCH=avx2
+          make ARCH=haswell
 
       - name: Build HCE version
         working-directory: ./core
         run: |
-          make HCE ARCH=avx2
+          make HCE ARCH=haswell
 
       - name: Test bench (Linux/macOS)
         if: runner.os != 'Windows'
