@@ -198,6 +198,7 @@ NNUE::NNUE(){
 
 void NNUE::initAcc(Accumulator& accs) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
+        printf("%d\n", i);
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
     }

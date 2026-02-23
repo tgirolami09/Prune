@@ -67,10 +67,10 @@ public:
 
 class NNUE{
 public:
-    alignas(64) simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
-    alignas(64) simd16 hlBiases[HL_SIZE/nb16];
-    alignas(64) simd16 outWeights[BUCKET][2][HL_SIZE/nb16];
-    alignas(64) dbyte outbias[BUCKET];
+    simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
+    simd16 hlBiases[HL_SIZE/nb16];
+    simd16 outWeights[BUCKET][2][HL_SIZE/nb16];
+    dbyte outbias[BUCKET];
 
     template<typename T=char>
     dbyte read_bytes(ifstream& file);
@@ -93,5 +93,5 @@ public:
     dbyte eval(const Accumulator& accs, bool side, int idB) const;
 };
 
-alignas(64) inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
+inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
 #endif

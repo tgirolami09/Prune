@@ -15,8 +15,8 @@
     );
 #define BINARY_INCLUDE(buffername) \
 extern "C"{\
-    alignas(64) extern const unsigned char buffername[]; \
-    alignas(64) extern const unsigned char* buffername##_end; \
+    extern const unsigned char buffername[]; \
+    extern const unsigned char* buffername##_end; \
     extern const int buffername##_size; \
 }
 #elif defined(__APPLE__)
@@ -34,26 +34,27 @@ extern "C"{\
     );
 #define BINARY_INCLUDE(buffername) \
 extern "C"{\
-    alignas(64) extern const unsigned char buffername[]; \
-    alignas(64) extern const unsigned char* buffername##_end; \
+    extern const unsigned char buffername[]; \
+    extern const unsigned char* buffername##_end; \
     extern const int buffername##_size; \
 }
 #else
 #define BINARY_ASM_INCLUDE(filename, buffername) \
     __asm__(".section .rdata\n" \
     ".global " #buffername "\n" \
-    ".global " #buffername "_end\n" \
+    ".align 4\n" \
     "" #buffername":\n" \
     ".incbin " #filename "\n" \
     "" #buffername"_end:\n" \
     ".globl " #buffername"_size\n" \
+    ".align 4\n" \
     "" #buffername"_size:\n" \
     ".long " #buffername"_end - " #buffername "\n"\
     );
 #define BINARY_INCLUDE(buffername) \
 extern "C"{\
-    alignas(64) extern const unsigned char buffername[]; \
-    alignas(64) extern const unsigned char* buffername##_end; \
+    extern const unsigned char buffername[]; \
+    extern const unsigned char* buffername##_end; \
     extern const int buffername##_size; \
 }
 #endif
