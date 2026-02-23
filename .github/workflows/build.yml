@@ -82,7 +82,7 @@ jobs:
         shell: pwsh
         run: |
           # Find the prune executable
-          $PRUNE_EXE = Get-ChildItem -Path . -MaxDepth 1 -Filter "prune-*.exe" | Where-Object { $_.Name -notlike "*HCE*" } | Select-Object -First 1
+          $PRUNE_EXE = Get-ChildItem -Path . -Filter "prune-*.exe" -File | Where-Object { $_.Name -notlike "*HCE*" } | Select-Object -First 1
           if (-not $PRUNE_EXE) {
             Write-Error "ERROR: prune executable not found!"
             exit 1
@@ -102,7 +102,7 @@ jobs:
           Write-Host "Exit code: OK (0)"
 
           # Check last line format: <nbnodes> nodes <nps> nps
-          $LAST_LINE = ($OUTPUT | Select-Object -Last 1).Trim()
+          $LAST_LINE = ($OUTPUT | Select-Object -Last 1).ToString().Trim()
           Write-Host "Last line: $LAST_LINE"
           if ($LAST_LINE -match '^\d+ nodes \d+ nps$') {
             Write-Host "Last line format: OK"
