@@ -192,7 +192,6 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
 }
 
 void manageSearch(){
-    printf("in manage search\n");
     auto state = make_unique<Chess>();
     state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     Move lastMove = nullMove;
