@@ -50,10 +50,10 @@ class BestMoveFinder{
         StackCase stack[maxDepth];
         LINE PVlines[maxDepth];
         IncrementalEvaluator eval;
-        sbig nodes;
-        sbig bestMoveNodes;
-        int seldepth;
-        sbig nbCutoff, nbFirstCutoff;
+        atomic<sbig> nodes;
+        atomic<sbig> bestMoveNodes;
+        atomic<int> seldepth;
+        atomic<sbig> nbCutoff, nbFirstCutoff;
         sbig tbHits;
         Move rootBest;
         bool mainThread;
