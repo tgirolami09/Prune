@@ -64,10 +64,18 @@ string scoreToStr(int score){
 
 //Class to find the best in a situation
 
-BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory), helperThreads(0){
+BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory), helperThreads(0)
+#ifdef NUMA_BUILD
+,numaHelper()
+#endif
+{
     book = load_book("book.bin", mute);
 }
-BestMoveFinder::BestMoveFinder():transposition(hashMul), helperThreads(0){
+BestMoveFinder::BestMoveFinder():transposition(hashMul), helperThreads(0)
+#ifdef NUMA_BUILD
+,numaHelper()
+#endif
+{
 }
 
 void BestMoveFinder::clear_helpers(){
@@ -515,6 +523,9 @@ void BestMoveFinder::launchSMP(int idThread){
     negamax<PVNode, limitWay, int, true>(ss.local, depth, ss.localState, alpha, beta, relDepth);*/
     HelperThread& ss = helperThreads[idThread];
     ss.running = false;
+#ifdef NUMA_BUILD
+    numaHelper.pinThread(idThread);
+#endif
     while(!smp_end){
         {
             unique_lock<mutex> lock(ss.mtx);

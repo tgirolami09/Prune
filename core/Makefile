@@ -1,6 +1,8 @@
 CC=g++
 ADDOPTION?=
 DEBUGOPT?=
+NUMABUILD?=off
+INCLUDES=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 $(ADDOPTION)
 OPT?=-O3 -flto
 COM=$(shell git rev-parse HEAD)
@@ -13,6 +15,11 @@ SOURCES := $(filter-out engine.cpp,$(SOURCES))
 SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 SOURCES := $(filter-out netScale.cpp,$(SOURCES))
 SOURCES := $(filter-out spsa.cpp,$(SOURCES))
+ifeq ($(NUMABUILD), on)
+       INCLUDES := $(INCLUDES) -lnuma -DNUMA_BUILD
+else
+       SOURCES := $(filter-out helper_numa.cpp,$(SOURCES))
+endif
 OBJECTS := $(SOURCES:%.cpp=%.o)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
@@ -71,43 +78,43 @@ else
 endif
 
 all: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS) $(INCLUDES)
 
 unittest: unittest.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS) $(INCLUDES)
 
 prune: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) $(LDFLAGS) $(INCLUDES)
 
 netScale: netScale.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS) $(INCLUDES)
 
 pruneHCE: engine.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE $(LDFLAGS) $(INCLUDES)
 
 HCE: engine.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE-$(OS)-$(REC)$(EXTENSION) $^ $(VERSIONNING) -DHCE $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE-$(OS)-$(REC)$(EXTENSION) $^ $(VERSIONNING) -DHCE $(LDFLAGS) $(INCLUDES)
 
 coreGen: collectData.cpp $(OBJECTS)
-	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^ $(LDFLAGS) $(INCLUDES)
 
 spsa: spsa.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS) $(INCLUDES)
 
 spsaHCE: spsa.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsaHCE $^ $(VERSIONNING) -DHCE $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsaHCE $^ $(VERSIONNING) -DHCE $(LDFLAGS) $(INCLUDES)
 
 %.o: %.cpp
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ $(INCLUDES)
 
 %HCE.o: %.cpp
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE $(INCLUDES)
 
 embeder.o: embeder.cpp
-	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ $(INCLUDES)
 
 embederHCE.o: embeder.cpp
-	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ $(INCLUDES)
 
 clean:
 	rm $(OBJECTS) $(DEPENDS)

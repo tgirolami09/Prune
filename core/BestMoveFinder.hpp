@@ -17,6 +17,9 @@
 #include <string>
 #include <vector>
 #include <thread>
+#ifdef NUMA_BUILD
+#include "helper_numa.hpp"
+#endif
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
@@ -103,6 +106,9 @@ public:
 private:
     usefull localSS;
     vector<HelperThread> helperThreads;
+#ifdef NUMA_BUILD
+    numa numaHelper;
+#endif
     atomic<bool> smp_abort, smp_end;
     void clear_helpers();
     chrono::nanoseconds getElapsedTime();
