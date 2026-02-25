@@ -1,8 +1,12 @@
 CC=g++
 ADDOPTION?=
 DEBUGOPT?=
-CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 $(ADDOPTION)
+CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 -I../Fathom/src $(ADDOPTION)
 OPT?=-O3 -flto
+
+# Fathom tablebase library
+FATHOM_DIR = ../Fathom/src
+FATHOM_OBJ = tbprobe.o
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
 CPUSET?=unknow
@@ -13,8 +17,8 @@ SOURCES := $(filter-out engine.cpp,$(SOURCES))
 SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 SOURCES := $(filter-out netScale.cpp,$(SOURCES))
 SOURCES := $(filter-out spsa.cpp,$(SOURCES))
-OBJECTS := $(SOURCES:%.cpp=%.o)
-OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o)
+OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
+OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
 ifeq ($(OS), Windows_NT)
 	OS = Windows
@@ -115,3 +119,7 @@ clean:
 re:
 	$(MAKE) clean
 	$(MAKE) all
+
+# Compile Fathom tablebase library (C code)
+$(FATHOM_OBJ): $(FATHOM_DIR)/tbprobe.c
+	$(CC) -c -O3 -std=c++17 $(ARCHCOM) -D_CRT_SECURE_NO_WARNINGS -I$(FATHOM_DIR) -o $@ $<

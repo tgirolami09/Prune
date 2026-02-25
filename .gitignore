@@ -21,3 +21,5 @@ build
 !Makefile
 !magics.out
 prune*
+!Fathom/
+!Fathom/**

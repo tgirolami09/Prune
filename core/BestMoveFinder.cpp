@@ -20,19 +20,20 @@ int nmpVerifAllNode=0,
     nmpVerifPassAllNode=0;
 #endif
 
-BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){
+BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
     history.init(parameters);
     correctionHistory.reset();
 }
-BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){}
+BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){}
 void BestMoveFinder::usefull::reinit(const GameState& state){
     nodes = 0;
     bestMoveNodes = 0;
     seldepth = 0;
     nbCutoff = 0;
     nbFirstCutoff = 0;
+    tbHits = 0;
     rootBest = nullMove;
     mainThread = true;
     eval.init(state);
@@ -181,6 +182,14 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         }
         //hint = transposition.getMove(ttEntry);
     }
+    // Tablebase probe in quiescence
+    if (tbProbe.canProbe(state, ss.eval.getNbMan())) {
+        int wdl = tbProbe.probeWDL(state);
+        if (wdl != TB_RESULT_INVALID) {
+            ss.tbHits++;
+            return TablebaseProbe::wdlToScore(wdl, rootDist);
+        }
+    }
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
     if(!isCalc){
@@ -288,6 +297,30 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     else
         raw_eval = ss.eval.getRaw(state.friendlyColor());
     static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
+    // Tablebase probe in search
+    if (!isRoot && tbProbe.canProbe(state, ss.eval.getNbMan(), depth)) {
+        int wdl = tbProbe.probeWDL(state);
+        if (wdl != TB_RESULT_INVALID) {
+            ss.tbHits++;
+            int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
+            // For wins/losses, cut off immediately
+            if (wdl == TB_RESULT_WIN || wdl == TB_RESULT_LOSS) {
+                if constexpr(isPV) ss.beginLine(rootDist);
+                return tbScore;
+            }
+            // Here we can only have DRAW, BLESSED_LOSS and CURSED_WIN. All are treated as a draw.
+            // For draws at non-PV nodes, return immediately. At PV nodes, only use beta cutoff.
+            else {
+                if constexpr(!isPV) {
+                    return tbScore;  // No PV concern at non-PV nodes
+                }
+                if (tbScore >= beta) {
+                    ss.beginLine(rootDist);
+                    return tbScore;
+                }
+            }
+        }
+    }
     if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
         if constexpr(isPV)ss.beginLine(rootDist);
         return Evaluate<isPV, limitWay>(ss, state, alpha, beta, relDepth);
@@ -369,6 +402,21 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         ss.generator.initDangers(state);
     }
     order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+    if constexpr(isRoot) {
+        if (wdlFilterNb > 0) {
+            int newNb = 0;
+            for (int i = 0; i < order.nbMoves; i++) {
+                for (int j = 0; j < wdlFilterNb; j++) {
+                    if (order.moves[i].moveInfo == wdlFilterMoveInfos[j]) {
+                        order.moves[newNb++] = order.moves[i];
+                        break;
+                    }
+                }
+            }
+            if (newNb > 0)
+                order.nbMoves = newNb;
+        }
+    }
     if(order.nbMoves == 0){
         int score;
         if(inCheck)
@@ -546,16 +594,19 @@ void BestMoveFinder::updatemainSS(usefull& ss, Record& oldss){
     ss.nodes -= oldss.nodes;
     ss.nbFirstCutoff -= oldss.nbFirstCutoff;
     ss.nbCutoff -= oldss.nbCutoff;
-    oldss.nbFirstCutoff = oldss.nbCutoff = oldss.nodes = 0;
+    ss.tbHits -= oldss.tbHits;
+    oldss.nbFirstCutoff = oldss.nbCutoff = oldss.nodes = oldss.tbHits = 0;
     for(int i=0; i<nbThreads-1; i++){
         oldss.nodes += helperThreads[i].local.nodes;
         oldss.nbFirstCutoff += helperThreads[i].local.nbFirstCutoff;
         oldss.nbCutoff += helperThreads[i].local.nbCutoff;
         ss.seldepth = max(ss.seldepth, helperThreads[i].local.seldepth);
+        oldss.tbHits += helperThreads[i].local.tbHits;
     }
     ss.nodes += oldss.nodes;
     ss.nbFirstCutoff += oldss.nbFirstCutoff;
     ss.nbCutoff += oldss.nbCutoff;
+    ss.tbHits += oldss.tbHits;
 }
 
 template <int limitWay>
@@ -585,7 +636,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
     if(ss.mainThread && limitWay == 2){
         depthMax = tm.hardBound;
     }
-    Record rec={0, 0, 0};
+    Record rec{};
     int lastScore = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
@@ -628,7 +679,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
                 sbig totNodes = ss.nodes;
                 double tcpu = getElapsedTime().count()/1'000'000'000.0;
                 updatemainSS(ss, rec);
-                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
+                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d tbhits %" PRId64 " pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), ss.tbHits, finalBestMove.to_str().c_str());
                 fflush(stdout);
             }
         }while(running && !smp_abort);
@@ -642,7 +693,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             if(tcpu != 0)speed = totNodes/tcpu;
             if(verbose && bestScore != -INF){
                 updatemainSS(ss, rec);
-                printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
+                printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d tbhits %" PRId64 " pv %s string branching factor %.3f first cutoff %.3f\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), ss.tbHits, PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
                 fflush(stdout);
             }
             if(running)
@@ -660,6 +711,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
 template<int limitWay>
 bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth){
     verbose = _verbose;
+    wdlFilterNb = 0;
     hardBoundTime = chrono::milliseconds{tm.hardBound*1000};
     startSearch = timeMesure::now();
     chrono::milliseconds softBoundTime{tm.softBound};
@@ -702,6 +754,59 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         if(verbose)
             printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor())).c_str());
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
+    }
+    // Tablebase probe at root (always do this)
+    Move tbMove = nullMove;
+    int tbWdl = TB_RESULT_INVALID;
+    if (tbProbe.canProbe(state, localSS.eval.getNbMan())) {
+        tbWdl = tbProbe.probeRoot(state, tbMove);
+        if (tbWdl != TB_RESULT_INVALID) {
+            if (verbose) {
+                printf("info string Tablebase hit: ");
+                switch (tbWdl) {
+                    case TB_RESULT_WIN: printf("Win"); break;
+                    case TB_RESULT_CURSED_WIN: printf("Cursed Win"); break;
+                    case TB_RESULT_DRAW: printf("Draw"); break;
+                    case TB_RESULT_BLESSED_LOSS: printf("Blessed Loss"); break;
+                    case TB_RESULT_LOSS: printf("Loss"); break;
+                }
+                printf("\n");
+                fflush(stdout);
+            }
+            // In all positions return  perfect move from egtb
+            if (tbWdl == TB_RESULT_WIN){
+                running = false;
+                return make_tuple(tbMove, nullMove, MAXIMUM, vector<depthInfo>());
+            }
+            else if (tbWdl == TB_RESULT_LOSS){
+                running = false;
+                return make_tuple(tbMove, nullMove, MINIMUM, vector<depthInfo>());
+            }
+            // Only possibilities are : TB_RESULT_DRAW, TB_RESULT_CURSED_WIN and TB_RESULT_BLESSED_LOSS. All are treated as draw
+            else{
+                running = false;
+                return make_tuple(tbMove, nullMove, 0, vector<depthInfo>());
+            }
+        }
+        // DTZ probe failed (no DTZ files) - try WDL-only fallback to filter root moves
+        int wdlFallback = tbProbe.probeRootWDLFallback(state, order.moves, order.nbMoves);
+        if (wdlFallback != TB_RESULT_INVALID) {
+            wdlFilterNb = order.nbMoves;
+            for (int i = 0; i < order.nbMoves; i++)
+                wdlFilterMoveInfos[i] = order.moves[i].moveInfo;
+            if (verbose) {
+                printf("info string Tablebase WDL fallback: ");
+                switch (wdlFallback) {
+                    case TB_RESULT_WIN:          printf("Win"); break;
+                    case TB_RESULT_CURSED_WIN:   printf("Cursed Win"); break;
+                    case TB_RESULT_DRAW:         printf("Draw"); break;
+                    case TB_RESULT_BLESSED_LOSS: printf("Blessed Loss"); break;
+                    case TB_RESULT_LOSS:         printf("Loss"); break;
+                }
+                printf(" (%d moves kept)\n", order.nbMoves);
+                fflush(stdout);
+            }
+        }
     }
     if(verbose){
         printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));

@@ -9,6 +9,7 @@
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
 #include "loadpolyglot.hpp"
+#include "TablebaseProbe.hpp"
 #include <vector>
 #include "tunables.hpp"
 #include <chrono>
@@ -52,6 +53,7 @@ class BestMoveFinder{
         sbig bestMoveNodes;
         int seldepth;
         sbig nbCutoff, nbFirstCutoff;
+        sbig tbHits;
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
@@ -71,6 +73,7 @@ class BestMoveFinder{
         sbig nodes;
         sbig nbFirstCutoff;
         sbig nbCutoff;
+        sbig tbHits;
     };
 
     class HelperThread{
@@ -106,6 +109,8 @@ private:
     atomic<bool> smp_abort, smp_end;
     void clear_helpers();
     chrono::nanoseconds getElapsedTime();
+    int16_t wdlFilterMoveInfos[maxMoves];
+    int wdlFilterNb;
     template<int limitWay, bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
