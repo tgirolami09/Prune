@@ -529,7 +529,7 @@ void BestMoveFinder::launchSMP(int idThread){
     while(!smp_end){
         {
             unique_lock<mutex> lock(ss.mtx);
-            ss.cv.wait(lock, [&ss]{return ss.running;});
+            ss.cv.wait(lock, [&ss]{return ss.running.load();});
         }
         if(smp_end)return;
         ss.local.reinit(ss.localState);
@@ -712,6 +712,9 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     for(int i=0; i<nbThreads-1; i++){
         helperThreads[i].launch(actDepth, limitWay);
     }
+#ifdef NUMA_BUILD
+    numaHelper.pinThread(nbThreads);
+#endif
     auto res=iterativeDeepening<limitWay>(localSS, state, tm, actDepth);
     smp_abort = true;
     for(int i=0; i<nbThreads-1; i++){

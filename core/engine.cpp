@@ -291,7 +291,7 @@ void manageSearch(){
 #endif
             }else if(command == "bench"){
                 int sumNodes[maxDepth+1];
-                int sumNPS = 0;
+                sbig sumNPS = 0;
                 int sumTime = 0;
                 int histDepth[maxDepth+1];
                 int sumSelDepth[maxDepth+1];
@@ -314,7 +314,7 @@ void manageSearch(){
                     testState->movesFromRoot = {};
                     testState->root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    vector<depthInfo> infos = get<3>(goCommand(parsed, *testState, false));
+                    vector<depthInfo> infos = get<3>(goCommand(parsed, *testState, DEBUG));
                     for(depthInfo info:infos){
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;

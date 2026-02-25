@@ -81,7 +81,7 @@ class BestMoveFinder{
         usefull local;
         GameState localState;
         thread t;
-        bool running;
+        atomic<bool> running;
         mutex mtx;
         condition_variable cv;
         int ans;
