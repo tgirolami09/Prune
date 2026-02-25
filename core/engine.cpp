@@ -148,7 +148,6 @@ const Option Options[] = {
     Option("SyzygyPath", "string", "<empty>"),
     Option("SyzygyProbeDepth", "spin", "1", 1, 100),
     Option("SyzygyProbeLimit", "spin", "7", 0, 7),
-    Option("Threads", "spin", "1", 1, 512)
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
