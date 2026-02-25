@@ -20,17 +20,13 @@ int nmpVerifAllNode=0,
     nmpVerifPassAllNode=0;
 #endif
 
-BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),
-tbHits(0),
-rootBest(nullMove), mainThread(true){
+BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
     history.init(parameters);
     correctionHistory.reset();
 }
-BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),
-tbHits(0),
-rootBest(nullMove), mainThread(true){}
+BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){}
 void BestMoveFinder::usefull::reinit(const GameState& state){
     nodes = 0;
     bestMoveNodes = 0;
