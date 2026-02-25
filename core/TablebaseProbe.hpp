@@ -64,6 +64,8 @@ public:
 
     // Check if position can be probed (piece count, no castling)
     // Overload accepting precomputed piece count (from IncrementalEvaluator::getNbMan)
+    // depth variant also checks depth >= probeDepth (for in-search gating)
+    bool canProbe(const GameState& state, int nbMan, int depth) const;
     bool canProbe(const GameState& state, int nbMan) const;
     bool canProbe(const GameState& state) const;
 };

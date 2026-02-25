@@ -66,6 +66,10 @@ int TablebaseProbe::countPieces(const GameState& state) {
     return count;
 }
 
+bool TablebaseProbe::canProbe(const GameState& state, int nbMan, int depth) const {
+    return depth >= probeDepth && canProbe(state, nbMan);
+}
+
 bool TablebaseProbe::canProbe(const GameState& state, int nbMan) const {
     if (!initialized || tbLargest == 0) return false;
 

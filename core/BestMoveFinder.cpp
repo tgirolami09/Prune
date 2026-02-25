@@ -21,9 +21,7 @@ int nmpVerifAllNode=0,
 #endif
 
 BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),
-#ifdef TBSEARCH
 tbHits(0),
-#endif
 rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
@@ -31,9 +29,7 @@ rootBest(nullMove), mainThread(true){
     correctionHistory.reset();
 }
 BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),
-#ifdef TBSEARCH
 tbHits(0),
-#endif
 rootBest(nullMove), mainThread(true){}
 void BestMoveFinder::usefull::reinit(const GameState& state){
     nodes = 0;
@@ -41,9 +37,7 @@ void BestMoveFinder::usefull::reinit(const GameState& state){
     seldepth = 0;
     nbCutoff = 0;
     nbFirstCutoff = 0;
-#ifdef TBSEARCH
     tbHits = 0;
-#endif
     rootBest = nullMove;
     mainThread = true;
     eval.init(state);
@@ -196,7 +190,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         }
         //hint = transposition.getMove(ttEntry);
     }
-#ifdef TBSEARCH
     // Tablebase probe in quiescence
     if (tbProbe.canProbe(state, ss.eval.getNbMan())) {
         int wdl = tbProbe.probeWDL(state);
@@ -205,7 +198,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             return TablebaseProbe::wdlToScore(wdl, rootDist);
         }
     }
-#endif
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
     if(!isCalc){
@@ -313,9 +305,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     else
         raw_eval = ss.eval.getRaw(state.friendlyColor());
     static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
-#ifdef TBSEARCH
     // Tablebase probe in search
-    if (!isRoot && tbProbe.canProbe(state, ss.eval.getNbMan())) {
+    if (!isRoot && tbProbe.canProbe(state, ss.eval.getNbMan(), depth)) {
         int wdl = tbProbe.probeWDL(state);
         if (wdl != TB_RESULT_INVALID) {
             ss.tbHits++;
@@ -338,7 +329,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
         }
     }
-#endif
     if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
         if constexpr(isPV)ss.beginLine(rootDist);
         return Evaluate<isPV, limitWay>(ss, state, alpha, beta, relDepth);
@@ -612,28 +602,19 @@ void BestMoveFinder::updatemainSS(usefull& ss, Record& oldss){
     ss.nodes -= oldss.nodes;
     ss.nbFirstCutoff -= oldss.nbFirstCutoff;
     ss.nbCutoff -= oldss.nbCutoff;
-#ifdef TBSEARCH
     ss.tbHits -= oldss.tbHits;
-#endif
-    oldss.nbFirstCutoff = oldss.nbCutoff = oldss.nodes = 0;
-#ifdef TBSEARCH
-    oldss.tbHits = 0;
-#endif
+    oldss.nbFirstCutoff = oldss.nbCutoff = oldss.nodes = oldss.tbHits = 0;
     for(int i=0; i<nbThreads-1; i++){
         oldss.nodes += helperThreads[i].local.nodes;
         oldss.nbFirstCutoff += helperThreads[i].local.nbFirstCutoff;
         oldss.nbCutoff += helperThreads[i].local.nbCutoff;
         ss.seldepth = max(ss.seldepth, helperThreads[i].local.seldepth);
-#ifdef TBSEARCH
         oldss.tbHits += helperThreads[i].local.tbHits;
-#endif
     }
     ss.nodes += oldss.nodes;
     ss.nbFirstCutoff += oldss.nbFirstCutoff;
     ss.nbCutoff += oldss.nbCutoff;
-#ifdef TBSEARCH
     ss.tbHits += oldss.tbHits;
-#endif
 }
 
 template <int limitWay>
@@ -706,11 +687,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
                 sbig totNodes = ss.nodes;
                 double tcpu = getElapsedTime().count()/1'000'000'000.0;
                 updatemainSS(ss, rec);
-#ifdef TBSEARCH
                 printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d tbhits %" PRId64 " pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), ss.tbHits, finalBestMove.to_str().c_str());
-#else
-                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d time %d pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), (int)(tcpu*1000), finalBestMove.to_str().c_str());
-#endif
                 fflush(stdout);
             }
         }while(running && !smp_abort);
@@ -724,11 +701,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             if(tcpu != 0)speed = totNodes/tcpu;
             if(verbose && bestScore != -INF){
                 updatemainSS(ss, rec);
-#ifdef TBSEARCH
                 printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d tbhits %" PRId64 " pv %s string branching factor %.3f first cutoff %.3f\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), ss.tbHits, PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
-#else
-                printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d time %d pv %s string branching factor %.3f first cutoff %.3f\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), (int)(tcpu*1000), PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
-#endif
                 fflush(stdout);
             }
             if(running)
