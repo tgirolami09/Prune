@@ -127,7 +127,7 @@ int main(int argc, char** argv){
 #endif
     realThread = min(omp_get_num_threads(), sizeGame);
     if(argc > 5)realThread = atoi(argv[5]);
-    globnnue = NNUE(argv[2]);
+    //globnnue = NNUE(argv[2]);
     big nodesSearched = 0;
 #ifndef DEBUG
     #pragma omp parallel for shared(gamesMade, lastGamesMade, nodesSearched)
@@ -188,7 +188,15 @@ int main(int argc, char** argv){
                     localNodes += infos.back().node;
                 int score = get<2>(res);
                 Move curMove = get<0>(res);
-                assert(curMove.moveInfo != nullMove.moveInfo);
+                if(curMove.moveInfo == nullMove.moveInfo){
+                    if(score == 0)break;
+                    if(score == -INF){
+                        result = (state->state.enemyColor() == WHITE)*2;
+                        break;
+                    }
+                    printf("score: %d fen: %s\n", get<2>(res), state->state.toFen().c_str());
+                    assert(false);
+                }
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
                     if(state->state.friendlyColor() == BLACK)
