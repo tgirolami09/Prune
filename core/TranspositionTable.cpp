@@ -20,6 +20,14 @@ __attribute__((constructor(101))) void init_log_table(){
     }
 }
 
+int fromTT(int score, int rootDist){
+    if(score < MINIMUM+maxDepth)
+        return score + rootDist;
+    else if(score > MAXIMUM-maxDepth)
+        return score - rootDist;
+    return score;
+}
+
 int infoScore::typeNode() const{
     return 3-(flag&0b11);
 }
@@ -90,21 +98,16 @@ pair<big, resHash> getIndex(const GameState& state, big modulo){
     return {tHash >> dec, tHash&((1ULL << dec)-1)};
 }
 
-inline int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry) const{
+int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry, int rootDist) const{
     if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
+        const int score = fromTT(entry.score, rootDist);
         if(entry.typeNode() == EXACT)
-            return entry.score;
-        if(entry.score >= beta && entry.typeNode() == LOWERBOUND)
-            return entry.score;
-        if(entry.score <= alpha && entry.typeNode() == UPPERBOUND)
-            return entry.score;
+            return score;
+        if(score >= beta && entry.typeNode() == LOWERBOUND)
+            return score;
+        if(score <= alpha && entry.typeNode() == UPPERBOUND)
+            return score;
     }
-    return INVALID;
-}
-
-int transpositionTable::get_eval(const infoScore& entry, int alpha, int beta, ubyte depth) const{
-    int score = storedScore(alpha, beta, depth, entry);
-    if(score != INVALID)return score;
     return INVALID;
 }
 
