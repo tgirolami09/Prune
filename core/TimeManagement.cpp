@@ -9,7 +9,7 @@ TM::TM(int _softBound, int _hardBound):softBound(_softBound), hardBound(_hardBou
 TM::TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color):enableUpdate(true), lastbestMove(nullMove.moveInfo), nbInARow(0){
     int time = (color == WHITE) ? wtime : btime;
     int inc = (color == WHITE) ? winc : binc;
-    hardBound = min(time/8+inc*2/3, time-moveOverhead);
+    hardBound = max(min(time/8+inc*2/3, time-moveOverhead), 10);
     originLowerBound = softBound = time/30+inc*2/3;
 }
 
