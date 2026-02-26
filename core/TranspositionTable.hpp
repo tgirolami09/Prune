@@ -41,9 +41,7 @@ public:
     int age;
     transpositionTable(size_t count);
 
-    inline int storedScore(int alpha, int beta, int depth, const infoScore& entry) const;
-
-    int get_eval(const infoScore& entry, int alpha, int beta, ubyte depth) const;
+    int storedScore(int alpha, int beta, int depth, const infoScore& entry, const int rootDist) const;
     infoScore& getEntry(const GameState& state, bool& ttHit);
 
     int16_t getMove(const infoScore& entry) const;

@@ -45,14 +45,6 @@ int compScoreMove(const void* a, const void*b){
     return second-first; //https://stackoverflow.com/questions/8115624/using-quick-sort-in-c-to-sort-in-reverse-direction-descending
 }
 
-int fromTT(int score, int rootDist){
-    if(score < MINIMUM+maxDepth)
-        return score + rootDist;
-    else if(score > MAXIMUM-maxDepth)
-        return score - rootDist;
-    return score;
-}
-
 int absoluteScore(int score, int rootDist){
     if(score < MINIMUM+maxDepth)
         return score - rootDist;
@@ -175,9 +167,9 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
     if(ttHit){
         if(!isPV){
-            int lastEval=transposition.get_eval(ttEntry, alpha, beta, 0);
+            int lastEval=transposition.storedScore(alpha, beta, 0, ttEntry, rootDist);
             if(lastEval != INVALID)
-                return fromTT(lastEval, rootDist);
+                return lastEval;
         }
         //hint = transposition.getMove(ttEntry);
     }
@@ -296,9 +288,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     int16_t lastBest = nullMove.moveInfo;
     if(excludedMove == nullMove.moveInfo && ttHit){
         if constexpr(!isPV){
-            int lastEval = transposition.get_eval(ttEntry, alpha, beta, depth);
+            int lastEval = transposition.storedScore(alpha, beta, depth, ttEntry, rootDist);
             if(lastEval != INVALID)
-                return fromTT(lastEval, rootDist);
+                return lastEval;
         }
         lastBest = transposition.getMove(ttEntry);
     }
