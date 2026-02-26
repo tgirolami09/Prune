@@ -21,3 +21,4 @@ build
 !Makefile
 !magics.out
 prune*
+*.json
