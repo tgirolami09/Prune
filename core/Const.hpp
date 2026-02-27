@@ -54,6 +54,9 @@ const ubyte UPPERBOUND = 2;
 const int KILLER_ADVANTAGE = 1<<20;
 //const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
 const int maxHistory=1165;
+const int granularDepth=128;
+const int granularDepth2 = granularDepth*granularDepth;
+static_assert(granularDepth < INT32_MAX/maxDepth, "granularDepth or maxDepth to big");
 
 class pawnStruct{
 public:
