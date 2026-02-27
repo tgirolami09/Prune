@@ -17,7 +17,7 @@
 #ifdef __AVX512F__
     using simd16 = __m512i;
     const int nb16=32;
-    using simdint = _m512i;
+    using simdint = __m512i;
     const int nbint=16;
     #define MM _mm512
     #define SIZE 512
