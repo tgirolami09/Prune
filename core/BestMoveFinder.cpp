@@ -348,7 +348,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     int firstMoveExtension = 0;
     if(!isRoot && ttHit && ttEntry.depth*granularDepth + parameters.se_validity_depth >= depth && ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - depth/granularDepth;
-        int score = negamax<false, limitWay>(ss, (depth-1)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMoveInfo);
+        int score = negamax<false, limitWay>(ss, (depth-granularDepth)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMoveInfo);
         if(score < goal){
             firstMoveExtension++;
             if(!isPV && score <= goal-parameters.se_dext_margin)
@@ -447,7 +447,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove > 0){
                 int addRedDepth = 0;
                 if(rankMove > 3 && depth > 3*granularDepth){
-                    addRedDepth = static_cast<int>((parameters.lmr_base + (log(depth)-log(granularDepth)) * log(rankMove) * parameters.lmr_div)*granularDepth);
+                    addRedDepth = static_cast<int>(parameters.lmr_base + (log(depth)-log(granularDepth)) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
