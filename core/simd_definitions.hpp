@@ -14,7 +14,7 @@
 
 #define dbyte int16_t
 // Manual SIMD wrapper for cross-platform compatibility
-#ifdef __AVX512__
+#ifdef __AVX512F__
     using simd16 = __m512i;
     const int nb16=32;
     using simdint = _m512i;
