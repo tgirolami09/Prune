@@ -2,11 +2,7 @@
 
 // SIMD utility functions
 simd16 simd16_zero() {
-#if defined(__AVX2__)
-    return _mm256_setzero_si256();
-#else
-    return _mm_setzero_si128();
-#endif
+    return ADDSIZE(ADDMM(setzero_si))();
 }
 
 simdint simdint_zero() {
@@ -14,51 +10,27 @@ simdint simdint_zero() {
 }
 
 simd16 simd16_set1(dbyte value) {
-#if defined(__AVX2__)
-    return _mm256_set1_epi16(value);
-#else
-    return _mm_set1_epi16(value);
-#endif
+    return ADDMM(set1_epi16)(value);
 }
 
 simdint simdint_add(simdint a, simdint b) {
-#if defined(__AVX2__)
-    return _mm256_add_epi32(a, b);
-#else
-    return _mm_add_epi32(a, b);
-#endif
+    return ADDMM(add_epi32)(a, b);
 }
 
 simd16 simd16_mullo(simd16 a, simd16 b) {
-#if defined(__AVX2__)
-    return _mm256_mullo_epi16(a, b);
-#else
-    return _mm_mullo_epi16(a, b);
-#endif
+    return ADDMM(mullo_epi16(a, b));
 }
 
 simd16 simd16_clamp(simd16 value, simd16 min_val, simd16 max_val) {
-#if defined(__AVX2__)
-    return _mm256_min_epi16(_mm256_max_epi16(value, min_val), max_val);
-#else
-    return _mm_min_epi16(_mm_max_epi16(value, min_val), max_val);
-#endif
+    return ADDMM(min_epi16)(ADDMM(max_epi16)(value, min_val), max_val);
 }
 
 simdint simdint_mullo(simdint a, simdint b) {
-#if defined(__AVX2__)
-    return _mm256_mullo_epi32(a, b);
-#else
-    return _mm_mullo_epi32(a, b);
-#endif
+    return ADDMM(mullo_epi32)(a, b);
 }
 
 simdint mull_add(simd16 a, simd16 b){
-#ifdef __AVX2__
-    return _mm256_madd_epi16(a, b);
-#else
-    return _mm_madd_epi16(a, b);
-#endif
+    return ADDMM(madd_epi16(a, b));
 }
 
 int mysum(simdint x){
@@ -88,17 +60,9 @@ int mysum(simdint x){
 }
 
 simd16 simd16_add(simd16 a, simd16 b) {
-#if defined(__AVX2__)
-    return _mm256_add_epi16(a, b);
-#else
-    return _mm_add_epi16(a, b);
-#endif
+    return ADDMM(add_epi16)(a, b);
 }
 
 simd16 simd16_sub(simd16 a, simd16 b) {
-#if defined(__AVX2__)
-    return _mm256_sub_epi16(a, b);
-#else
-    return _mm_sub_epi16(a, b);
-#endif
+    return ADDMM(sub_epi16)(a, b);
 }
