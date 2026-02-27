@@ -18,7 +18,7 @@ simdint simdint_add(simdint a, simdint b) {
 }
 
 simd16 simd16_mullo(simd16 a, simd16 b) {
-    return ADDMM(mullo_epi16(a, b));
+    return ADDMM(mullo_epi16)(a, b);
 }
 
 simd16 simd16_clamp(simd16 value, simd16 min_val, simd16 max_val) {
@@ -30,11 +30,13 @@ simdint simdint_mullo(simdint a, simdint b) {
 }
 
 simdint mull_add(simd16 a, simd16 b){
-    return ADDMM(madd_epi16(a, b));
+    return ADDMM(madd_epi16)(a, b);
 }
 
 int mysum(simdint x){
-#if defined(__AVX2__)
+#ifdef __AVX512F__
+    return _mm512_reduce_add_epi32(x);
+#elif defined(__AVX2__)
     const auto high128 = _mm256_extracti128_si256(x, 1);
     const auto low128 = _mm256_castsi256_si128(x);
 
