@@ -102,11 +102,15 @@ void manageInput(){
         if(!getline(cin, com))
             com = "quit";
         if(com == "stop"){
+            {
+                unique_lock<mutex> lock(mtx_command);
+                cv_command.wait(lock, [&]{return (!exec_command && endQ == startQ) || bestMoveFinder.running;});
+            }
             bestMoveFinder.running = false;
         }else if(com == "isready"){
             {
                 unique_lock<mutex> lock(mtx_command);
-                cv_command.wait(lock, [&]{return !exec_command || bestMoveFinder.running;});
+                cv_command.wait(lock, [&]{return (!exec_command && endQ == startQ) || bestMoveFinder.running;});
             }
             printf("readyok\n");
         }else if(com == "quit"){
@@ -411,6 +415,11 @@ void manageSearch(){
                     }
                 }
             }else if(command == "go"){
+                {
+                    lock_guard<mutex> lock(mtx_command);
+                    bestMoveFinder.running = true;
+                }
+                cv_command.notify_one();
                 bestMoveResponse res=goCommand(parsed, *state, true);
                 Move bm = get<0>(res);
                 Move ponder=get<1>(res);
@@ -420,6 +429,11 @@ void manageSearch(){
                     printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
                 lastMove = ponder;
                 bestMoveFinder.aging();
+                {
+                    lock_guard<mutex> lock(mtx_command);
+                    bestMoveFinder.running = false;
+                }
+                cv_command.notify_one();
             }else if(command == "uci"){
 #ifdef VERSION
                 string v=VERSION;

@@ -766,7 +766,6 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             printf("info depth 1 seldepth 0 score %s nodes 0\n", scoreToStr(score).c_str());
         return make_tuple(nullMove, nullMove, score, vector<depthInfo>());
     }
-    running = true;
     this->hardBound = INT64_MAX;
     if(order.nbMoves == 1 && limitWay == 0){
         running = false;

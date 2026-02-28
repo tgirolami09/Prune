@@ -1,0 +1,7 @@
+position fen kr6/b1q2p2/2pN2r1/p1n1p2p/P1N1PpnB/2P2Q1P/3R2P1/3R3K w - - 17 44
+print
+go infinite
+stop
+print
+quit
+
