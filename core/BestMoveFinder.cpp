@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <mutex>
+#include <numa.h>
 #include <thread>
 #include <cassert>
 #include <vector>
@@ -66,6 +67,9 @@ string scoreToStr(int score){
 
 threadGroup::threadGroup(int x):helperThreads(x){}
 threadGroup::threadGroup():helperThreads(){}
+void threadGroup::init(int x){
+    helperThreads = vector<HelperThread>(x);
+}
 int threadGroup::size() const{
     return helperThreads.size();
 }
@@ -88,8 +92,9 @@ HelperThread& threadGroup::operator[](int idx){
 }
 
 #ifdef NUMA_BUILD
-numaNode::numaNode():helperThreads(0){}
-numaNode::numaNode(int x):helperThreads(x){}
+void numaNode::init(int x){
+    helperThreads.init(x);
+}
 int numaNode::size(){
     return helperThreads.size();
 }
@@ -110,35 +115,37 @@ HelperThread& numaNode::operator[](int idx){
 
 numaGroup::numaGroup(int x):numaHelper(){
     numnode = numaHelper.numnode;
-    nodes = vector<numaNode>(numnode);
+    nodes = vector<numaNode*>(numnode);
     nbTperN = vector<int>(numnode);
     for(int i=0; i<numnode; i++)
-        nbTperN[i] = (nT+i)/numnode;
-    for(int i=0; i<numnode; i++)
-        nodes[i] = numaNode(nbTperN[i]);
+        nbTperN[i] = (x+i)/numnode;
+    for(int i=0; i<numnode; i++){
+        nodes[i] = (numaNode*)numa_alloc_onnode(sizeof(numaNode)+sizeof(threadGroup(nbTperN[i])), i);
+        nodes[i]->init(nbTperN[i]);
+    }
 }
 int numaGroup::size(){
     int size = 0;
     for(auto& node:nodes)
-        size += node.size();
+        size += node->size();
     return size;
 }
 void numaGroup::clear_helpers(){
     for(auto& node:nodes)
-        node.clear_helpers();
+        node->clear_helpers();
 }
 int numaGroup::idnode(int idThread){
-    return idx%numnode;
+    return idThread%numnode;
 }
 void numaGroup::reset(int nT, BestMoveFinder* addr){
     for(int i=0; i<numnode; i++)
         nbTperN[i] = (nT+i)/numnode;
     for(int idn=0; idn<numnode; idn++)
-        nodes[idn].reset(nbTperN[idn], addr);
+        nodes[idn]->reset(nbTperN[idn], addr);
 }
 
 HelperThread& numaGroup::operator[](int idx){
-    return nodes[idx%numnode][idx/numnode];
+    return nodes[idx%numnode]->helperThreads[idx/numnode];
 }
 
 #endif

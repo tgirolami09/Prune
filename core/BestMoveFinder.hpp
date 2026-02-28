@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+//#define NUMA_BUILD
 #ifdef NUMA_BUILD
 #include "helper_numa.hpp"
 #endif
@@ -95,6 +96,7 @@ public:
     threadGroup(int nb);
     threadGroup();
     int size() const;
+    void init(int nbThreads);
     void clear_helpers();
     void reset(int nT, BestMoveFinder* addr);
     HelperThread& operator[](int idx);
@@ -104,12 +106,11 @@ public:
 class numaNode{
 public:
     threadGroup helperThreads;
-    numaNode();
-    numaNode(int x);
     int size();
     void reset(int nT, BestMoveFinder* addr);
     void clear_helpers();
     void clear();
+    void init(int nT);
     HelperThread& operator[](int idx);
 };
 
@@ -118,7 +119,7 @@ public:
     numa numaHelper;
     int numnode;
     vector<int> nbTperN;
-    vector<numaNode> nodes;
+    vector<numaNode*> nodes;
     numaGroup(int nb);
     void reset(int nT, BestMoveFinder* addr);
     int size();
