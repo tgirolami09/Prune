@@ -25,12 +25,7 @@ numa::numa(){
     }
 }
 
-void numa::pinThread(int idThread) const{
+void numa::pinThread(int node) const{
     if(isavailable)
-        pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpumasks[getNode(idThread)]);
-}
-
-int numa::getNode(int idThread) const{
-    if(!isavailable)return 0;
-    return idThread%numnode;
+        pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpumasks[node]);
 }

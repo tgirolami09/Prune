@@ -12,6 +12,5 @@ public:
     vector<cpu_set_t> cpumasks;
     const int nbcpu = thread::hardware_concurrency();;
     numa();
-    void pinThread(int idThread) const;
-    int getNode(int idThread) const;
+    void pinThread(int node) const;
 };

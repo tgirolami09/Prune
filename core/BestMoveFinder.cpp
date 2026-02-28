@@ -12,6 +12,7 @@
 #include <mutex>
 #include <thread>
 #include <cassert>
+#include <vector>
 
 #ifdef DEBUG_MACRO
 int nmpVerifAllNode=0,
@@ -20,14 +21,14 @@ int nmpVerifAllNode=0,
     nmpVerifPassAllNode=0;
 #endif
 
-BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){
+usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
     history.init(parameters);
     correctionHistory.reset();
 }
-BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){}
-void BestMoveFinder::usefull::reinit(const GameState& state){
+usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0), rootBest(nullMove), mainThread(true){}
+void usefull::reinit(const GameState& state){
     nodes = 0;
     bestMoveNodes = 0;
     seldepth = 0;
@@ -62,29 +63,96 @@ string scoreToStr(int score){
     return "cp "+to_string(score);
 }
 
-//Class to find the best in a situation
 
-BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory), helperThreads(0)
-#ifdef NUMA_BUILD
-,numaHelper()
-#endif
-{
-    book = load_book("book.bin", mute);
+threadGroup::threadGroup(int x):helperThreads(x){}
+threadGroup::threadGroup():helperThreads(){}
+int threadGroup::size() const{
+    return helperThreads.size();
 }
-BestMoveFinder::BestMoveFinder():transposition(hashMul), helperThreads(0)
-#ifdef NUMA_BUILD
-,numaHelper()
-#endif
-{
-}
-
-void BestMoveFinder::clear_helpers(){
-    if(helperThreads.size() == 0)return;
-    smp_end = true;
+void threadGroup::clear_helpers(){
     for(int i=0; i<nbThreads-1; i++){
         helperThreads[i].launch(-1, -1);
         helperThreads[i].t.join();
     }
+}
+
+void threadGroup::reset(int nT, BestMoveFinder* addr){
+    helperThreads = vector<HelperThread>(nT);
+    for(int i=0; i<nT; i++){
+        helperThreads[i].t = thread(&BestMoveFinder::launchSMP, addr, i);
+    }
+}
+
+HelperThread& threadGroup::operator[](int idx){
+    return helperThreads[idx];
+}
+
+#ifdef NUMA_BUILD
+numaNode::numaNode():helperThreads(0){}
+numaNode::numaNode(int x):helperThreads(x){}
+int numaNode::size(){
+    return helperThreads.size();
+}
+void numaNode::clear_helpers(){
+    for(int i=0; i<nbThreads-1; i++){
+        helperThreads[i].launch(-1, -1);
+        helperThreads[i].t.join();
+    }
+}
+
+void numaNode::reset(int nT, BestMoveFinder* addr){
+    helperThreads.reset(nT, addr);
+}
+
+HelperThread& numaNode::operator[](int idx){
+    return helperThreads[idx];
+}
+
+numaGroup::numaGroup(int x):numaHelper(){
+    numnode = numaHelper.numnode;
+    nodes = vector<numaNode>(numnode);
+    nbTperN = vector<int>(numnode);
+    for(int i=0; i<numnode; i++)
+        nbTperN[i] = (nT+i)/numnode;
+    for(int i=0; i<numnode; i++)
+        nodes[i] = numaNode(nbTperN[i]);
+}
+int numaGroup::size(){
+    int size = 0;
+    for(auto& node:nodes)
+        size += node.size();
+    return size;
+}
+void numaGroup::clear_helpers(){
+    for(auto& node:nodes)
+        node.clear_helpers();
+}
+int numaGroup::idnode(int idThread){
+    return idx%numnode;
+}
+void numaGroup::reset(int nT, BestMoveFinder* addr){
+    for(int i=0; i<numnode; i++)
+        nbTperN[i] = (nT+i)/numnode;
+    for(int idn=0; idn<numnode; idn++)
+        nodes[idn].reset(nbTperN[idn], addr);
+}
+
+HelperThread& numaGroup::operator[](int idx){
+    return nodes[idx%numnode][idx/numnode];
+}
+
+#endif
+//Class to find the best in a situation
+
+BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory), helperThreads(0){
+    book = load_book("book.bin", mute);
+}
+BestMoveFinder::BestMoveFinder():transposition(hashMul), helperThreads(0){
+}
+
+void BestMoveFinder::clear_helpers(){
+    if(helperThreads.size() == 0)return;
+    helperThreads.clear_helpers();
 }
 
 BestMoveFinder::~BestMoveFinder(){
@@ -96,15 +164,8 @@ void BestMoveFinder::setThreads(int nT){
     if(nbThreads > 1){
         clear_helpers();
     }
-    if(nT == 1){
-        helperThreads.clear();
-    }else{
-        smp_end = false;
-        helperThreads = vector<HelperThread>(nT-1);
-        for(int i=0; i<nT-1; i++){
-            helperThreads[i].t = thread(&BestMoveFinder::launchSMP, this, i);
-        }
-    }
+    smp_end = false;
+    helperThreads.reset(nT-1, this);
 }
 
 void BestMoveFinder::stop(){
@@ -114,7 +175,7 @@ chrono::nanoseconds BestMoveFinder::getElapsedTime(){
     return timeMesure::now()-startSearch;
 }
 
-string BestMoveFinder::usefull::PVprint(LINE pvLine){
+string usefull::PVprint(LINE pvLine){
     string resLine = "";
     for(int i=0; i<pvLine.cmove; i++){
         Move mv;
@@ -125,27 +186,27 @@ string BestMoveFinder::usefull::PVprint(LINE pvLine){
     return resLine;
 }
 
-void BestMoveFinder::usefull::transfer(int relDepth, Move move){
+void usefull::transfer(int relDepth, Move move){
     PVlines[relDepth-1].argMoves[0] = move.moveInfo;
     memcpy(&PVlines[relDepth-1].argMoves[1], PVlines[relDepth].argMoves, PVlines[relDepth].cmove * sizeof(int16_t));
     PVlines[relDepth-1].cmove = PVlines[relDepth].cmove+1;
 }
-void BestMoveFinder::usefull::beginLine(int relDepth){
+void usefull::beginLine(int relDepth){
     PVlines[relDepth-1].cmove = 0;
 }
 
-void BestMoveFinder::usefull::beginLineMove(int relDepth, Move move){
+void usefull::beginLineMove(int relDepth, Move move){
     PVlines[relDepth-1].argMoves[0] = move.moveInfo;
     PVlines[relDepth-1].cmove = 1;
 }
 
-void BestMoveFinder::usefull::resetLines(){
+void usefull::resetLines(){
     for(int i=0; i<maxDepth; i++){
         PVlines[i].cmove = 0;
     }
 }
 
-void BestMoveFinder::HelperThread::launch(int _relDepth, int _limitWay){
+void HelperThread::launch(int _relDepth, int _limitWay){
     relDepth = _relDepth;
     limitWay = _limitWay;
     ans = 0;
@@ -156,7 +217,7 @@ void BestMoveFinder::HelperThread::launch(int _relDepth, int _limitWay){
     cv.notify_one();
 }
 
-void BestMoveFinder::HelperThread::wait_thread(){
+void HelperThread::wait_thread(){
     unique_lock<mutex> lock(mtx);
     cv.wait(lock, [this]{return !running;});
 }
@@ -524,7 +585,7 @@ void BestMoveFinder::launchSMP(int idThread){
     HelperThread& ss = helperThreads[idThread];
     ss.running = false;
 #ifdef NUMA_BUILD
-    numaHelper.pinThread(idThread);
+    helperThreads.numaHelper.pinThread(helperThreads.idnode(idThread));
 #endif
     while(!smp_end){
         {
@@ -713,7 +774,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         helperThreads[i].launch(actDepth, limitWay);
     }
 #ifdef NUMA_BUILD
-    numaHelper.pinThread(nbThreads);
+    helperThreads.numaHelper.pinThread(helperThreads.idnode(nbThreads-1));
 #endif
     auto res=iterativeDeepening<limitWay>(localSS, state, tm, actDepth);
     smp_abort = true;
