@@ -66,7 +66,7 @@ public:
         int material=0;
         for(int i=0; i<2; i++)
             for(int j=0; j<5; j++)
-                material += value_pieces[j]*countbit(state.boardRepresentation[i][j])*(i == WHITE?1:-1);
+                material += value_pieces[j]*countbit(state.boardRepresentation[i][j]);
         if(material < material_min || material > material_max)return true;
         if(random_fen_skipping && dist(randomGen) > random_fen_skip_probability)return true;
         return false;
@@ -88,9 +88,9 @@ int main(int argc, char** argv){
             GamePlayed game = readGame(file);
             //movegen.initDangers(game.startPos);
             for(MoveInfo move:game.game){
+                bool inCheck = movegen.initDangers(game.startPos);
                 game.startPos.initMove(move.move);
                 game.startPos.playMove(move.move);
-                bool inCheck = movegen.initDangers(game.startPos);
                 if(filter.filter(game.startPos, move, inCheck))countFiltered++;
                 else countUnfiltered++;
             }
