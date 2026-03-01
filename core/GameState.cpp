@@ -184,6 +184,15 @@ big GameState::castlingMask(){
     return res;
 }
 
+void GameState::castlingFromMask(big mask){
+    for(int c=0; c<2; c++){
+        for(int side=0; side<2; side++){
+            castlingRights[c][side] = bool(mask & (1ULL << (56*c+7*!side)));
+        }
+    }
+
+}
+
 int GameState::friendlyColor() const{
     //Turn 1 is white (so friend on odd is white)
     return (turnNumber%2)?WHITE:BLACK;
