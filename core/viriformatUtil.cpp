@@ -149,19 +149,17 @@ GamePlayed readGame(FILE* file){
         isSec ^= 1;
     }
     ubyte info;
-    fastRead(info, file);
+    uint64_t infoGame;
+    fastRead(infoGame, file);
+    info = infoGame;
+    infoGame >>= 8;
     game.startPos.turnNumber = (info >> 7) == WHITE?1:0;
     info &= 0b1111111;
     game.startPos.lastDoublePawnPush = info == 64?-1:info^0x07;
-    ubyte halfmove;
-    dbyte fullmove;
-    dbyte score;
-    ubyte extra;
-    fastRead(halfmove, file);
-    fastRead(fullmove, file);
-    fastRead(score, file);
-    fastRead(game.result, file);
-    fastRead(extra, file);
+    infoGame >>= 8;//halfmove = infoGame;
+    infoGame >>= 16;//fullmove = infoGame;
+    infoGame >>= 16;//score = infoGame;
+    game.result=infoGame;   infoGame >>= 8;
     game.startPos.castlingFromMask(castle);
     uint32_t moveInfo;
     while(fastRead(moveInfo, file) != 0){
