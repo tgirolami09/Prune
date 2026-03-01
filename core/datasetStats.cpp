@@ -96,9 +96,9 @@ int main(int argc, char** argv){
             for(MoveInfo move:game.game){
                 bool inCheck = movegen.initDangers(game.startPos);
                 game.startPos.initMove(move.move);
-                game.startPos.playMove(move.move);
                 if(filter.filter(game.startPos, move, inCheck, game.result))countFiltered++;
                 else countUnfiltered++;
+                game.startPos.playMove(move.move);
             }
             big nbPos = countFiltered+countUnfiltered;
             printf("\r%s %s/%s : %.2f %.2f                   ", niceNumber(countFiltered).c_str(), niceNumber(countUnfiltered).c_str(), niceNumber(nbPos).c_str(), (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
