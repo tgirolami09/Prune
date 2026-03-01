@@ -51,7 +51,7 @@ public:
         dist(0, 1)
     {}
 
-    bool filter(const GameState& state, MoveInfo move, bool inCheck){
+    bool filter(const GameState& state, MoveInfo move, bool inCheck, int result){
         if(state.turnNumber < min_ply) return true;
         if(filter_check && inCheck)return true;
         if(abs(move.score) > max_eval)return true;
@@ -69,6 +69,9 @@ public:
                 material += value_pieces[j]*countbit(state.boardRepresentation[i][j]);
         if(material < material_min || material > material_max)return true;
         if(random_fen_skipping && dist(randomGen) > random_fen_skip_probability)return true;
+        if(result == 1 && abs(move.score) > max_eval_incorrectness)return true; // draw
+        if(result == 2 && -move.score > max_eval_incorrectness)return true; // white win
+        if(result == 0 && move.score > max_eval_incorrectness)return true;  // black win
         return false;
     }
 };
@@ -84,14 +87,17 @@ int main(int argc, char** argv){
     LegalMoveGenerator movegen;
     for(int idFile=1; idFile<argc; idFile++){
         FILE* file=fopen(argv[idFile], "r");
-        while(!feof(file)){
+        fseek(file, 0, SEEK_END);
+        long file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+        while(ftell(file) < file_size){
             GamePlayed game = readGame(file);
             //movegen.initDangers(game.startPos);
             for(MoveInfo move:game.game){
                 bool inCheck = movegen.initDangers(game.startPos);
                 game.startPos.initMove(move.move);
                 game.startPos.playMove(move.move);
-                if(filter.filter(game.startPos, move, inCheck))countFiltered++;
+                if(filter.filter(game.startPos, move, inCheck, game.result))countFiltered++;
                 else countUnfiltered++;
             }
             big nbPos = countFiltered+countUnfiltered;
