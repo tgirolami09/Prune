@@ -17,17 +17,17 @@ class GameState{
     big repHist[maxPly];
     int rule50[maxPly];
 
-    //To determine whose turn it is to play AND rules that involve turn count
-    int turnNumber;
 
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
     short nbMoves[2][3];
     short posRook[2][2];
     short deathRook[2][2];
     int startEnPassant;
-    void updateZobrists(int piece, bool color, int square);
     void testPawnZobr();
 public : 
+    void updateZobrists(int piece, bool color, int square);
+    //To determine whose turn it is to play
+    int turnNumber;
     big zobristHash;
     big pawnZobrist;
     big minorZobrist;
@@ -72,6 +72,7 @@ public :
     void print() const;
     void initMove(Move& move);
     big castlingMask();
+    void castlingFromMask(big mask);
 };
 
 const string startpos="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

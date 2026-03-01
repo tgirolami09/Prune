@@ -13,6 +13,7 @@ SOURCES := $(filter-out engine.cpp,$(SOURCES))
 SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 SOURCES := $(filter-out netScale.cpp,$(SOURCES))
 SOURCES := $(filter-out spsa.cpp,$(SOURCES))
+SOURCES := $(filter-out datasetStats.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
@@ -81,6 +82,9 @@ prune: engine.cpp $(OBJECTS)
 
 netScale: netScale.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS)
+
+datastat: datasetStats.cpp $(OBJECTS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $^ $(VERSIONNING) $(LDFLAGS)
 
 pruneHCE: engine.cpp $(OBJECTSHCE)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE $(LDFLAGS)
