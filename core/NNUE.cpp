@@ -7,6 +7,11 @@
 #include "simd_definitions.hpp"
 
 using namespace std;
+int getInputBucket(int Kpos, bool side, bool mirror){
+    if(side)Kpos ^= 56;
+    if(!mirror)Kpos ^= 7;
+    return inputBuckets[(col(Kpos)) | (row(Kpos) << 2)];
+}
 
 int turn(int index){
     return ((index^56)+384)%768;
@@ -65,43 +70,51 @@ void updateBuffer::print(){
 void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
     Kside[0] = prevAcc.Kside[0];
     Kside[1] = prevAcc.Kside[1];
+    idInputBucket[0] = prevAcc.idInputBucket[0];
+    idInputBucket[1] = prevAcc.idInputBucket[1];
+    mustrefresh = false;
     if(mirror){
-        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
+        mustrefresh = true;
         Kside[_side] ^= 1;
     }
+    if(add1.piece == KING && getInputBucket(add1.square, _side, Kside[_side]) != idInputBucket[_side]){ //king moves are always represented in sub1/add1
+        idInputBucket[_side] = getInputBucket(add1.square, _side, Kside[_side]);
+        mustrefresh = true;
+    }
+    if(mustrefresh)
+        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
     update = updateBuffer(add1, add2, sub1, sub2);
     side = _side;
-    mustmirror = mirror;
 }
 
 void Accumulator::updateSelf(Accumulator& accIn){
-    if(mustmirror){
+    if(mustrefresh){
         globnnue.initAcc(*this, side);
         ubyte pos[10];
         for(int c=0; c<2; c++)
             for(int piece=0; piece<nbPieces; piece++){
                 int nbp = places(bitboards[c][piece], pos);
                 for(int i=0; i<nbp; i++)
-                    globnnue.change1<1>(*this, side, Index(pos[i], piece, c).mirror(Kside[side]).changepov(side));
+                    globnnue.change1<1>(*this, side, Index(pos[i], piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
             }
         if(update.type == 0)
-            globnnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]));
+            globnnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), idInputBucket[!side]);
         else if(update.type == 1)
-            globnnue.move3(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]));
+            globnnue.move3(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]), idInputBucket[!side]);
         else if(update.type == 2)
-            globnnue.move4(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]), update.add2[!side].mirror(Kside[!side]));
+            globnnue.move4(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]), update.add2[!side].mirror(Kside[!side]), idInputBucket[!side]);
         update.dirty = false;
         return;
     }
     if(update.type == 0){
-        globnnue.move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]));
-        globnnue.move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]));
+        globnnue.move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
+        globnnue.move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
     }else if(update.type == 1){
-        globnnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]));
-        globnnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]));
+        globnnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
+        globnnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
     }else{
-        globnnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]));
-        globnnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]));
+        globnnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
+        globnnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
     }
     update.dirty = false;
 }
@@ -142,11 +155,13 @@ big genRandom(big& state){
 NNUE::NNUE(string name){
     if(name == "random"){
         big state = 42;
-        for(int i=0; i<INPUT_SIZE; i++) {
-            for(int j=0; j<HL_SIZE/nb16; j++) {
-                hlWeights[i][j] = simd16_zero();
-                for(int k=0; k<nb16; k++) {
-                    set_simd16_element(hlWeights[i][j], k, genRandom(state)%256-128);
+        for(int idInputBucket=0; idInputBucket<nbInputBuckets; idInputBucket++){
+            for(int i=0; i<INPUT_SIZE; i++) {
+                for(int j=0; j<HL_SIZE/nb16; j++) {
+                    hlWeights[idInputBucket][i][j] = simd16_zero();
+                    for(int k=0; k<nb16; k++) {
+                        set_simd16_element(hlWeights[idInputBucket][i][j], k, genRandom(state)%256-128);
+                    }
                 }
             }
         }
@@ -235,40 +250,40 @@ dbyte NNUE::eval(const Accumulator& accs, bool side, int idB) const{
     return finRes;
 }
 template<int f>
-void NNUE::change1(Accumulator& accs, bool pov, int index) const{
+void NNUE::change1(Accumulator& accs, bool pov, int index, int idInputBucket) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
-            accs[pov][i] = simd16_add(accs[pov][i], hlWeights[index][i]);
+            accs[pov][i] = simd16_add(accs[pov][i], hlWeights[idInputBucket][index][i]);
         } else {
-            accs[pov][i] = simd16_sub(accs[pov][i], hlWeights[index][i]);
+            accs[pov][i] = simd16_sub(accs[pov][i], hlWeights[idInputBucket][index][i]);
         }
     }
 }
 template<int f>
-void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index) const{
+void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
-            accOut[pov][i] = simd16_add(accIn[pov][i], hlWeights[index][i]);
+            accOut[pov][i] = simd16_add(accIn[pov][i], hlWeights[idInputBucket][index][i]);
         } else {
-            accOut[pov][i] = simd16_sub(accIn[pov][i], hlWeights[index][i]);
+            accOut[pov][i] = simd16_sub(accIn[pov][i], hlWeights[idInputBucket][index][i]);
         }
     }
 }
-void NNUE::move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap) const{
+void NNUE::move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 update = simd16_sub(hlWeights[indexto][i], simd16_add(hlWeights[indexfrom][i], hlWeights[indexcap][i]));
+        simd16 update = simd16_sub(hlWeights[idInputBucket][indexto][i], simd16_add(hlWeights[idInputBucket][indexfrom][i], hlWeights[idInputBucket][indexcap][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
-void NNUE::move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto) const{
+void NNUE::move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 update = simd16_sub(hlWeights[indexto][i], hlWeights[indexfrom][i]);
+        simd16 update = simd16_sub(hlWeights[idInputBucket][indexto][i], hlWeights[idInputBucket][indexfrom][i]);
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
-void NNUE::move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2) const{
+void NNUE::move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 update = simd16_sub(simd16_add(hlWeights[indexto1][i], hlWeights[indexto2][i]), simd16_add(hlWeights[indexfrom1][i], hlWeights[indexfrom2][i]));
+        simd16 update = simd16_sub(simd16_add(hlWeights[idInputBucket][indexto1][i], hlWeights[idInputBucket][indexto2][i]), simd16_add(hlWeights[idInputBucket][indexfrom1][i], hlWeights[idInputBucket][indexfrom2][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
@@ -282,7 +297,7 @@ void NNUE::updateStack(Accumulator* stack, int stackIndex) const{
     }
 }
 
-template void NNUE::change1<-1>(Accumulator&, bool, int) const;
-template void NNUE::change1<1>(Accumulator&, bool, int) const;
-template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int) const;
-template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int) const;
+template void NNUE::change1<-1>(Accumulator&, bool, int, int) const;
+template void NNUE::change1<1>(Accumulator&, bool, int, int) const;
+template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int, int) const;
+template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int, int) const;
