@@ -13,9 +13,22 @@ const int SCALE = 400;
 const int QA = 255;
 const int QB = 64;
 const int BUCKET = 8;
+const int inputBuckets[32] = {
+    0, 0, 1, 1,
+    2, 2, 2, 2,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+    3, 3, 3, 3,
+};
+const int nbInputBuckets = 4;
 const int DIVISOR=(31+BUCKET)/BUCKET;
 
 static_assert(HL_SIZE%nb16 == 0);
+
+int getInputBucket(int Kpos, bool side, bool mirror);
 
 class Index{
 public:
@@ -51,7 +64,8 @@ public:
     simd16 accs[2][HL_SIZE/nb16];
     bool Kside[2];
     bool side;
-    bool mustmirror;
+    bool mustrefresh;
+    int idInputBucket[2];
     big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
@@ -67,7 +81,7 @@ public:
 
 class NNUE{
 public:
-    simd16 hlWeights[INPUT_SIZE][HL_SIZE/nb16];
+    simd16 hlWeights[nbInputBuckets][INPUT_SIZE][HL_SIZE/nb16];
     simd16 hlBiases[HL_SIZE/nb16];
     simd16 outWeights[BUCKET][2][HL_SIZE/nb16];
     dbyte outbias[BUCKET];
@@ -83,12 +97,12 @@ public:
     void initAcc(Accumulator& accs, bool color) const;
     int get_index(int piece, int c, int square) const;
     template<int f>
-    void change1(Accumulator& accIn, bool pov, int index) const;
+    void change1(Accumulator& accIn, bool pov, int index, int idInputBucket) const;
     template<int f>
-    void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index) const;
-    void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap) const;
-    void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto) const;
-    void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2) const;
+    void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const;
+    void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const;
+    void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
+    void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex) const;
     dbyte eval(const Accumulator& accs, bool side, int idB) const;
 };
