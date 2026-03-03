@@ -658,7 +658,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             smp_abort = false;
             bestScore = negamax<true, limitWay, true>(ss, depth, state, alpha, beta, actDepth, false);
             lastUsedNodes = ss.nodes-lastUsedNodes;
-            bestMove = bestScore != -INF ? ss.rootBest : finalBestMove;
+            bestMove = (bestScore != -INF && ss.rootBest.moveInfo != nullMove.moveInfo) ? ss.rootBest : finalBestMove;
             string limit;
             if(bestScore <= alpha){
                 deltaDown = max<int>(deltaDown*parameters.aw_mul, lastScore-bestScore+1);
@@ -820,6 +820,10 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         helperThreads[i].wait_thread();
     }
     smp_abort = false;
+    // Safety: if search was aborted before depth 1 completed (e.g. very low time),
+    // iterativeDeepening may return nullMove. Use the first legal move as fallback.
+    if(get<0>(res).moveInfo == nullMove.moveInfo && order.nbMoves > 0)
+        get<0>(res) = order.moves[0];
     return res;
 }
 
