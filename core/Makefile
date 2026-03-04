@@ -78,6 +78,10 @@ endif
 all: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
 
+model.bin:
+	rm -f model.bin
+	curl -sOL https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin
+
 unittest: unittest.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
 
@@ -112,6 +116,7 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
 
 embeder.o: embeder.cpp
+	$(MAKE) model.bin
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
 embederHCE.o: embeder.cpp
