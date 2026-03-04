@@ -17,7 +17,7 @@ build
 *.so
 */__pycache__*
 */*/*
-!model.bin
+!nn-name.txt
 !Makefile
 !magics.out
 prune*
