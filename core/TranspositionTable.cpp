@@ -98,16 +98,14 @@ pair<big, resHash> getIndex(const GameState& state, big modulo){
     return {tHash >> dec, tHash&((1ULL << dec)-1)};
 }
 
-int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry, int rootDist) const{
-    if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
-        const int score = fromTT(entry.score, rootDist);
-        if(entry.typeNode() == EXACT)
-            return score;
-        if(score >= beta && entry.typeNode() == LOWERBOUND)
-            return score;
-        if(score <= alpha && entry.typeNode() == UPPERBOUND)
-            return score;
-    }
+int transpositionTable::storedScore(int alpha, int beta, const infoScore& entry, int rootDist) const{
+    const int score = fromTT(entry.score, rootDist);
+    if(entry.typeNode() == EXACT)
+        return score;
+    if(score >= beta && entry.typeNode() == LOWERBOUND)
+        return score;
+    if(score <= alpha && entry.typeNode() == UPPERBOUND)
+        return score;
     return INVALID;
 }
 
