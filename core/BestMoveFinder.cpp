@@ -167,7 +167,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
     if(ttHit){
         if(!isPV){
-            int lastEval=transposition.storedScore(alpha, beta, 0, ttEntry, rootDist);
+            int lastEval=transposition.storedScore(alpha, beta, ttEntry, rootDist);
             if(lastEval != INVALID)
                 return lastEval;
         }
@@ -280,17 +280,20 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     else
         raw_eval = ss.eval.getRaw(state.friendlyColor());
     static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
-    if(depth == 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
+    if(depth <= 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
         if constexpr(isPV)ss.beginLine(rootDist);
         return Evaluate<isPV, limitWay>(ss, state, alpha, beta, relDepth);
     }
     ss.nodes++;
     int16_t lastBest = nullMove.moveInfo;
+    int expected_score = static_eval;
     if(excludedMove == nullMove.moveInfo && ttHit){
-        if constexpr(!isPV){
-            int lastEval = transposition.storedScore(alpha, beta, depth, ttEntry, rootDist);
-            if(lastEval != INVALID)
+        int lastEval = transposition.storedScore(alpha, beta, ttEntry, rootDist);
+        if(lastEval != INVALID){
+            if(!isPV && ttEntry.depth >= depth)
                 return lastEval;
+            else
+                expected_score = lastEval;
         }
         lastBest = transposition.getMove(ttEntry);
     }
@@ -308,8 +311,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 margin = parameters.rfp_improving*depth;
             else
                 margin = parameters.rfp_nimproving*depth;
-            if(static_eval >= beta+margin)
-                return static_eval;
+            if(expected_score >= beta+margin)
+                return expected_score;
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 state.playNullMove();
