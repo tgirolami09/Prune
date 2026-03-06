@@ -12,7 +12,7 @@ using namespace std;
 
 uint16_t threatIndex[(nbPieces-1)*2][64][64];
 uint16_t threatoffset[(nbPieces-1)*2];
-const int valid_targets[10] = {6, 6, 10, 10, 8 , 8 , 8 , 8 , 10, 10};
+const int valid_targets[5] = {6, 10, 8, 8, 10};
 static_assert(sizeof(threatIndex)+sizeof(threatoffset) < 1024*1024, "way too big for nothing");
 
 __attribute__((constructor(106))) void initThreatIndices(){
@@ -48,9 +48,14 @@ __attribute__((constructor(106))) void initThreatIndices(){
         }
         int curpiece = index-lastindex;
         threatoffset[atk] = curpiece;
-        index += (valid_targets[atk]-1)*curpiece;
+        index += (valid_targets[type(atk)]-1)*curpiece;
     }
     printf("info string counted %d/%d threats\n", index, THREAT_SIZE);
+}
+
+int getThreatIndex(int atk, int def, int from, int to){
+    if(def >= valid_targets[type(atk)])return -1;
+    return threatIndex[atk][from][to]+threatoffset[atk]*def;
 }
 
 int getInputBucket(int Kpos, bool side, bool mirror){
