@@ -68,3 +68,10 @@ simd16 simd16_add(simd16 a, simd16 b) {
 simd16 simd16_sub(simd16 a, simd16 b) {
     return ADDMM(sub_epi16)(a, b);
 }
+simd16 simd8_add(simd8 a, simd8 b) {
+    return ADDMM(add_epi8)(a, b);
+}
+
+simd16 simd8_sub(simd8 a, simd8 b) {
+    return ADDMM(sub_epi8)(a, b);
+}
