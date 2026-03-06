@@ -463,7 +463,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
                 if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
-                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth;
+                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+moveHistory/64;
                 if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
                 }
