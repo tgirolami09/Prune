@@ -112,7 +112,6 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
 
 embeder.o: embeder.cpp
-	$(MAKE) model.bin
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
 embederHCE.o: embeder.cpp
