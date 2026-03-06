@@ -25,6 +25,7 @@ const int inputBuckets[32] = {
 };
 const int nbInputBuckets = 4;
 const int DIVISOR=(31+BUCKET)/BUCKET;
+const int THREAT_SIZE = 60144;
 
 static_assert(HL_SIZE%nb16 == 0);
 
@@ -82,6 +83,7 @@ public:
 class NNUE{
 public:
     simd16 hlWeights[nbInputBuckets][INPUT_SIZE][HL_SIZE/nb16];
+    simd8 threatWeights[THREAT_SIZE][HL_SIZE/nb8];
     simd16 hlBiases[HL_SIZE/nb16];
     simd16 outWeights[BUCKET][2][HL_SIZE/nb16];
     dbyte outbias[BUCKET];
