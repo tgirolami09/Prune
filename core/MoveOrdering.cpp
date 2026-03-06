@@ -61,7 +61,7 @@ void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c){
             killers[relDepth][0] = move;
         }
     }
-    updateHistory(depth*depth, getIndex(move, c));
+    updateHistory(depth*depth*16, getIndex(move, c));
 }
 
 bool HelpOrdering::isKiller(Move move, int relDepth) const{
