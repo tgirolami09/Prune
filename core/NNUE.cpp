@@ -3,10 +3,56 @@
 #include <cassert>
 #include <cstring>
 #include <fstream>
+#include "Functions.hpp"
 #include "GameState.hpp"
+#include "LegalMoveGenerator.hpp"
 #include "simd_definitions.hpp"
 
 using namespace std;
+
+uint16_t threatIndex[(nbPieces-1)*2][64][64];
+uint16_t threatoffset[(nbPieces-1)*2];
+const int valid_targets[10] = {6, 6, 10, 10, 8 , 8 , 8 , 8 , 10, 10};
+static_assert(sizeof(threatIndex)+sizeof(threatoffset) < 1024*1024, "way too big for nothing");
+
+__attribute__((constructor(106))) void initThreatIndices(){
+    int index=0;
+    for(int atk=0; atk < (nbPieces-1)*2; atk++){
+        int lastindex=index;
+        for(int from=0; from < 64; from++){
+            if(type(atk) == PAWN && (row(from) == 0 || row(from) == 7))continue;
+            big mask=0;
+            switch(type(atk)){
+                case PAWN:
+                    mask = attackPawns[from+color(atk)*64];
+                    break;
+                case KNIGHT:
+                    mask = KnightMoves[from];
+                    break;
+                case BISHOP:
+                    mask = mask_full_bishop(from);
+                    break;
+                case ROOK:
+                    mask = mask_full_rook(from);
+                    break;
+                case QUEEN:
+                    mask = mask_full_rook(from) | mask_full_bishop(from);
+                    break;
+                default:assert(false);
+            }
+            ubyte topos[64];
+            int nbto = places(mask, topos);
+            for(int idto=0; idto < nbto; idto++){
+                threatIndex[atk][from][topos[idto]] = index++;
+            }
+        }
+        int curpiece = index-lastindex;
+        threatoffset[atk] = curpiece;
+        index += (valid_targets[atk]-1)*curpiece;
+    }
+    printf("info string counted %d/%d threats\n", index, THREAT_SIZE);
+}
+
 int getInputBucket(int Kpos, bool side, bool mirror){
     if(side)Kpos ^= 56;
     if(!mirror)Kpos ^= 7;
@@ -237,7 +283,7 @@ simdint doOut(simd16 a, simd16 w){
     return overall;
 } 
 
-dbyte NNUE::eval(const Accumulator& accs, bool side, int idB) const{
+dbyte NNUE::eval(const Accumulator& accs, bool side, int idB, __attribute__((unused)) const GameState& state) const{
     simdint res = simdint_zero();
     for(int i=0; i<HL_SIZE/nb16; i++){
         res = simdint_add(res, doOut(accs[side^1][i], outWeights[idB][1][i]));

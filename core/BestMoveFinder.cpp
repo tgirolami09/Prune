@@ -163,7 +163,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(isPV && relDepth > ss.seldepth)ss.seldepth = relDepth;
     //dbyte hint;
     const int rootDist = relDepth-startRelDepth;
-    if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor()), ss.correctionHistory, state);
+    if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor(), state), ss.correctionHistory, state);
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
     if(ttHit){
@@ -188,7 +188,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         if(ttHit)
             raw_eval = ttEntry.raw_eval;
         else
-            raw_eval = ss.eval.getRaw(state.friendlyColor());
+            raw_eval = ss.eval.getRaw(state.friendlyColor(), state);
         staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
     }
     int typeNode = UPPERBOUND;
@@ -288,7 +288,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(ttHit)
         raw_eval = ttEntry.raw_eval;
     else
-        raw_eval = ss.eval.getRaw(state.friendlyColor());
+        raw_eval = ss.eval.getRaw(state.friendlyColor(), state);
     static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
     // Tablebase probe in search
     if (!isRoot && tbProbe.canProbe(state, ss.eval.getNbMan(), depth)) {
@@ -752,7 +752,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if(order.nbMoves == 1 && limitWay == 0){
         running = false;
         if(verbose)
-            printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor())).c_str());
+            printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor(), state)).c_str());
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
     // Tablebase probe at root (always do this)

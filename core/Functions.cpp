@@ -96,6 +96,13 @@ big mask_empty_bishop(int square){
     int col=square&7, row=square >> 3;
     return clipped_diag[col+row] ^ clipped_idiag[row-col+7];
 }
+big mask_full_rook(int square){
+    return (mask_col[square&7]|mask_row[square >> 3])&(~(1ULL << square));
+}
+big mask_full_bishop(int square){
+    int col=square&7, row=square >> 3;
+    return mask_diag[col+row] ^ mask_idiag[row-col+7];
+}
 
 big maskCol(int square){
     return colH << col(square);

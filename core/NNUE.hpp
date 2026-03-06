@@ -106,7 +106,7 @@ public:
     void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
     void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex) const;
-    dbyte eval(const Accumulator& accs, bool side, int idB) const;
+    dbyte eval(const Accumulator& accs, bool side, int idB, const GameState& state) const;
 };
 
 inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
