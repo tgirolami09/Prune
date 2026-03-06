@@ -10,9 +10,6 @@
 #include "GameState.hpp"
 #include <vector>
 #include "BestMoveFinder.hpp"
-#ifndef HCE
-#include "NNUE.hpp"
-#endif
 #include "TimeManagement.hpp"
 #include <set>
 #include <iostream>
@@ -240,7 +237,7 @@ void manageSearch(){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
                 ieval->init(state->root);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor());
+                int overall_eval = ieval->getRaw(state->root.friendlyColor(), state->root);
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
@@ -249,7 +246,7 @@ void manageSearch(){
                         if(type(piece) != SPACE){
                             ieval->changePiece2<-1, true>(square, type(piece), color(piece));
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor());
+                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor(), state->root);
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
                             ieval->changePiece2<1, false>(square, type(piece), color(piece));
