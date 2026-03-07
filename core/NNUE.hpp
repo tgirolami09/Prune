@@ -46,6 +46,7 @@ public:
     void schangepov();
     operator int();
     bool isnull();
+    void print();
 };
 
 int mirrorSquare(int square, bool mirror);

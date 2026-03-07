@@ -17,7 +17,8 @@ static_assert(sizeof(threatIndex)+sizeof(threatoffset) < 1024*1024, "way too big
 
 __attribute__((constructor(106))) void initThreatIndices(){
     int index=0;
-    for(int atk=0; atk < (nbPieces-1)*2; atk++){
+    for(int _atk=0; _atk < (nbPieces-1)*2; _atk++){
+        int atk = _atk%5*2+_atk/5;
         int lastindex=index;
         for(int from=0; from < 64; from++){
             if(type(atk) == PAWN && (row(from) == 0 || row(from) == 7))continue;
@@ -43,20 +44,23 @@ __attribute__((constructor(106))) void initThreatIndices(){
             ubyte topos[64];
             int nbto = places(mask, topos);
             for(int idto=0; idto < nbto; idto++){
-                threatIndex[atk][from][topos[idto]] = index++;
+                threatIndex[atk][from^7][topos[idto]^7] = index++;
             }
         }
         int curpiece = index-lastindex;
         threatoffset[atk] = curpiece;
         index += (valid_targets[type(atk)]*2-1)*curpiece;
+        printf("%d ends\n", index);
     }
     printf("info string counted %d/%d threats\n", index, THREAT_SIZE);
 }
 
 int getThreatIndex(Index atk, Index def){
     if(def.piece >= valid_targets[atk.piece])return -1;
-    int index = threatIndex[atk.fullpiece()][atk.square][def.square]+threatoffset[atk.fullpiece()]*def.fullpiece();
-    printf("%d\n", index);
+    int index = threatIndex[atk.fullpiece()][atk.square][def.square]+threatoffset[atk.fullpiece()]*(def.piece+def.color*valid_targets[atk.piece]);
+    //atk.print();
+    //def.print();
+    //printf("%d\n", index);
     return index;
 }
 
@@ -86,10 +90,7 @@ Index Index::changepov() const{
     return Index(square^56, piece, !color);
 }
 Index Index::changepov(bool needs) const{
-    if(needs)
-        return Index(square^56, piece, !color);
-    else
-        return *this;
+    return Index(square^(56*needs), piece, color^needs);
 }
 Index::operator int(){
     return ((6*color+piece)<<6)|(square^7);
@@ -99,6 +100,10 @@ bool Index::isnull(){
 }
 int Index::fullpiece() const{
     return piece*2+color;
+}
+
+void Index::print(){
+    printf("%d %d %d\n", piece, color, square);
 }
 
 updateBuffer::updateBuffer():dirty(true){}
@@ -307,7 +312,9 @@ void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
 }
 
 void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) const{
-    memset(accs[pov+2], 0, HL_SIZE*2);
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        accs[pov][i] = simd16_zero();
+    }
     big occupied = 0;
     for(int _c=0; _c<2; _c++)
         for(int p=0; p<nbPieces; p++)
