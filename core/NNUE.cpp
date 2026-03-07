@@ -50,7 +50,6 @@ __attribute__((constructor(106))) void initThreatIndices(){
         int curpiece = index-lastindex;
         threatoffset[atk] = curpiece;
         index += (valid_targets[type(atk)]*2-1)*curpiece;
-        printf("%d ends\n", index);
     }
     printf("info string counted %d/%d threats\n", index, THREAT_SIZE);
 }
@@ -58,9 +57,6 @@ __attribute__((constructor(106))) void initThreatIndices(){
 int getThreatIndex(Index atk, Index def){
     if(def.piece >= valid_targets[atk.piece])return -1;
     int index = threatIndex[atk.fullpiece()][atk.square][def.square]+threatoffset[atk.fullpiece()]*(def.piece+def.color*valid_targets[atk.piece]);
-    //atk.print();
-    //def.print();
-    //printf("%d\n", index);
     return index;
 }
 
