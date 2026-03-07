@@ -1,4 +1,5 @@
 #include "simd_definitions.hpp"
+#include <vector>
 
 // SIMD utility functions
 simd16 simd16_zero() {
@@ -77,21 +78,32 @@ simd8 simd8_sub(simd8 a, simd8 b) {
 }
 #ifdef __AVX512F__
 #elif defined(__AVX2__)
-alignas(64) static const uint8_t shuffle8l[nb8] = {0 , 0x80, 1 , 0x80, 2 , 0x80, 3 , 0x80, 4 , 0x80, 5 , 0x80, 6 , 0x80, 7 , 0x80, 8 , 0x80, 9,  0x80, 10, 0x80, 11, 0x80, 12, 0x80, 13, 0x80, 14, 0x80, 15, 0x80};
-alignas(64) static const uint8_t shuffle8h[nb8] = {16, 0x80, 17, 0x80, 18, 0x80, 19, 0x80, 20, 0x80, 21, 0x80, 22, 0x80, 23, 0x80, 24, 0x80, 25, 0x80, 26, 0x80, 27, 0x80, 28, 0x80, 29, 0x80, 30, 0x80, 31, 0x80};
+alignas(64) static const uint8_t shuffle8[nb8] = {0, 0x80, 1, 0x80, 2, 0x80, 3, 0x80, 4, 0x80, 5, 0x80, 6, 0x80, 7, 0x80, 24, 0x80, 25, 0x80, 26, 0x80, 27, 0x80, 28, 0x80, 29, 0x80, 30, 0x80, 31, 0x80};
+const simd8& shuf8 = *(simd8*)&shuffle8;
 #else
 alignas(64) static const uint8_t shuffle8l[nb8] = {0, 0x80, 1, 0x80, 2 , 0x80, 3 , 0x80, 4 , 0x80, 5 , 0x80, 6 , 0x80, 7 , 0x80};
 alignas(64) static const uint8_t shuffle8h[nb8] = {8, 0x80, 9, 0x80, 10, 0x80, 11, 0x80, 12, 0x80, 13, 0x80, 14, 0x80, 15, 0x80};
-#endif
 static_assert(sizeof(shuffle8h) == sizeof(simd8));
 static_assert(sizeof(shuffle8l) == sizeof(simd8));
-const simd8* shuf8l = (simd8*)&shuffle8l;
-const simd8* shuf8h = (simd8*)&shuffle8l;
+const simd8& shuf8l = *(simd8*)&shuffle8l;
+const simd8& shuf8h = *(simd8*)&shuffle8l;
+#endif
+alignas(64) static const std::vector<int16_t> n128(nb16, 8);
+static const simd8& v128=*(simd16*)&n128;
 
+#ifdef __AVX2__
 simd16 simd8_16l(simd8 v){
-    return ADDMM(shuffle_epi8)(v, *shuf8l);
+    return _mm256_cvtepi8_epi16(_mm256_castsi256_si128(v));
+}
+simd16 simd8_16h(simd8 v){
+    return _mm256_cvtepi8_epi16(_mm256_extracti128_si256(v, 1));
+}
+#else
+simd16 simd8_16l(simd8 v){
+    return ADDMM(shuffle_epi8)(v, shuf8l);
 }
 
 simd16 simd8_16h(simd8 v){
-    return ADDMM(shuffle_epi8)(v, *shuf8h);
+    return ADDMM(shuffle_epi8)(v, shuf8h);
 }
+#endif
