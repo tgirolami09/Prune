@@ -41,6 +41,7 @@ const int nbint = sizeof(simdint)/sizeof(int32_t);
 #define CONCAT2(a, b) a ## b
 #define CONCAT(a, b) CONCAT2(a, b)
 #define ADDMM(func_name) CONCAT(MM, _ ## func_name)
+#define ADDSIZE2(func_name) CONCAT(func_name, SIZE/2)
 #define ADDSIZE(func_name) CONCAT(func_name, SIZE)
 
 // SIMD utility functions
@@ -55,6 +56,8 @@ simdint mull_add(simd16 a, simd16 b);
 int mysum(simdint x);
 simd16 simd16_add(simd16 a, simd16 b);
 simd16 simd16_sub(simd16 a, simd16 b);
-simd16 simd8_add(simd8 a, simd8 b);
-simd16 simd8_sub(simd8 a, simd8 b);
+simd8 simd8_add(simd8 a, simd8 b);
+simd8 simd8_sub(simd8 a, simd8 b);
+simd16 simd8_16l(simd8 v);
+simd16 simd8_16h(simd8 v);
 #endif
