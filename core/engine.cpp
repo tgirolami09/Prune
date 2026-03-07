@@ -277,6 +277,14 @@ void manageSearch(){
                 for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
                     state->root.undoLastMove();
                 printf("static evaluation: %d cp\n", overall_eval);
+            }else if(command == "raweval"){
+                for(Move move:state->movesFromRoot)
+                    state->root.playPartialMove(move);
+                ieval->init(state->root);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor(), state->root);
+                for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
+                    state->root.undoLastMove();
+                printf("%d cp\n", overall_eval);
             }else if(command == "ucinewgame"){
                 bestMoveFinder.clear();
                 lastMove = nullMove;
