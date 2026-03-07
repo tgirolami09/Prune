@@ -298,18 +298,18 @@ template<int f>
 void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
     for(int i=0; i<HL_SIZE*2/nb8; i += 2){
         if constexpr (f == 1) {
-            accs[pov+2][i  ] = simd16_add(accs[pov][i  ], simd8_16l(threatWeights[index][i/2]));
-            accs[pov+2][i+1] = simd16_add(accs[pov][i+1], simd8_16h(threatWeights[index][i/2]));
+            accs[pov+2][i  ] = simd16_add(accs[pov+2][i  ], simd8_16l(threatWeights[index][i/2]));
+            accs[pov+2][i+1] = simd16_add(accs[pov+2][i+1], simd8_16h(threatWeights[index][i/2]));
         } else {
-            accs[pov+2][i  ] = simd16_sub(accs[pov][i  ], simd8_16l(threatWeights[index][i/2]));
-            accs[pov+2][i+1] = simd16_sub(accs[pov][i+1], simd8_16h(threatWeights[index][i/2]));
+            accs[pov+2][i  ] = simd16_sub(accs[pov+2][i  ], simd8_16l(threatWeights[index][i/2]));
+            accs[pov+2][i+1] = simd16_sub(accs[pov+2][i+1], simd8_16h(threatWeights[index][i/2]));
         }
     }
 }
 
 void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
-        accs[pov][i] = simd16_zero();
+        accs[pov+2][i] = simd16_zero();
     }
     big occupied = 0;
     for(int _c=0; _c<2; _c++)
