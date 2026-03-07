@@ -55,7 +55,9 @@ __attribute__((constructor(106))) void initThreatIndices(){
 
 int getThreatIndex(Index atk, Index def){
     if(def.piece >= valid_targets[atk.piece])return -1;
-    return threatIndex[atk.fullpiece()][atk.square][def.square]+threatoffset[atk.fullpiece()]*def;
+    int index = threatIndex[atk.fullpiece()][atk.square][def.square]+threatoffset[atk.fullpiece()]*def.fullpiece();
+    printf("%d\n", index);
+    return index;
 }
 
 int getInputBucket(int Kpos, bool side, bool mirror){
@@ -293,16 +295,19 @@ simdint doOut(simd16 a, simd16 w){
 
 template<int f>
 void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<HL_SIZE*2/nb8; i += 2){
         if constexpr (f == 1) {
-            accs[pov+2][i] = simd16_add(accs[pov][i], threatWeights[index][i]);
+            accs[pov+2][i  ] = simd16_add(accs[pov][i  ], simd8_16l(threatWeights[index][i/2]));
+            accs[pov+2][i+1] = simd16_add(accs[pov][i+1], simd8_16h(threatWeights[index][i/2]));
         } else {
-            accs[pov+2][i] = simd16_sub(accs[pov][i], threatWeights[index][i]);
+            accs[pov+2][i  ] = simd16_sub(accs[pov][i  ], simd8_16l(threatWeights[index][i/2]));
+            accs[pov+2][i+1] = simd16_sub(accs[pov][i+1], simd8_16h(threatWeights[index][i/2]));
         }
     }
 }
 
 void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) const{
+    memset(accs[pov+2], 0, HL_SIZE*2);
     big occupied = 0;
     for(int _c=0; _c<2; _c++)
         for(int p=0; p<nbPieces; p++)
@@ -312,11 +317,10 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
         big mask = state.boardRepresentation[color(idPiece)][type(idPiece)];
         big authMask = 0;
         for(int _c=0; _c<2; _c++)
-            for(int p=0; p<valid_targets[idPiece]; p++)
+            for(int p=0; p<valid_targets[type(idPiece)]; p++)
                 authMask |= state.boardRepresentation[_c][p];
         while(mask){
-            big bit = mask&(mask-1);
-            int pos = __builtin_ctzll(bit);
+            int pos = __builtin_ctzll(mask);
             big atkmask=0;
             Index posatk(pos, type(idPiece), color(idPiece));
             switch (type(idPiece)) {
@@ -327,30 +331,31 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
                     atkmask = KnightMoves[pos];
                     break;
                 case BISHOP:
-                    atkmask = moves_table(pos, occupied);
+                    atkmask = moves_table(pos, occupied&mask_empty_bishop(pos));
                     break;
                 case ROOK:
-                    atkmask = moves_table(pos+64, occupied);
+                    atkmask = moves_table(pos+64, occupied&mask_empty_rook(pos));
                     break;
                 case QUEEN:
-                    atkmask = moves_table(pos, occupied) | moves_table(pos+64, occupied);
+                    atkmask = moves_table(pos, occupied&mask_empty_bishop(pos)) | moves_table(pos+64, occupied&mask_empty_rook(pos));
                     break;
             }
             atkmask &= authMask;
             while(atkmask){
-                big defbit=atkmask&(atkmask-1);
-                int _posdef = __builtin_ctzll(defbit);
+                int _posdef = __builtin_ctzll(atkmask);
                 int piece = state.getfullPiece(_posdef);
                 Index posdef(_posdef, type(piece), color(piece));
                 addThreat<1>(accs, pov, getThreatIndex(posatk.mirror(mirror).changepov(pov), posdef.mirror(mirror).changepov(pov)));
-                atkmask ^= defbit;
+                atkmask &= atkmask-1;
             }
-            mask ^= bit;
+            mask &= mask-1;
         }
     }
 }
 
-dbyte NNUE::eval(const Accumulator& accs, bool side, int idB, __attribute__((unused)) const GameState& state) const{
+dbyte NNUE::eval(Accumulator& accs, bool side, int idB, __attribute__((unused)) const GameState& state) const{
+    calcThreats(accs, WHITE, state);
+    calcThreats(accs, BLACK, state);
     simdint res = simdint_zero();
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 pov = simd16_add(accs[side][i], accs[side+2][i]);

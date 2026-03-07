@@ -11,7 +11,7 @@
     //#include <arm_neon.h>
 
 #endif
-
+//#define __AVX2__
 #define dbyte int16_t
 // Manual SIMD wrapper for cross-platform compatibility
 #ifdef __AVX512F__
@@ -41,7 +41,6 @@ const int nbint = sizeof(simdint)/sizeof(int32_t);
 #define CONCAT2(a, b) a ## b
 #define CONCAT(a, b) CONCAT2(a, b)
 #define ADDMM(func_name) CONCAT(MM, _ ## func_name)
-#define ADDSIZE2(func_name) CONCAT(func_name, SIZE/2)
 #define ADDSIZE(func_name) CONCAT(func_name, SIZE)
 
 // SIMD utility functions

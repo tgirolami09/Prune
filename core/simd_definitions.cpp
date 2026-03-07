@@ -75,11 +75,23 @@ simd8 simd8_add(simd8 a, simd8 b) {
 simd8 simd8_sub(simd8 a, simd8 b) {
     return ADDMM(sub_epi8)(a, b);
 }
+#ifdef __AVX512F__
+#elif defined(__AVX2__)
+alignas(64) static const uint8_t shuffle8l[nb8] = {0 , 0x80, 1 , 0x80, 2 , 0x80, 3 , 0x80, 4 , 0x80, 5 , 0x80, 6 , 0x80, 7 , 0x80, 8 , 0x80, 9,  0x80, 10, 0x80, 11, 0x80, 12, 0x80, 13, 0x80, 14, 0x80, 15, 0x80};
+alignas(64) static const uint8_t shuffle8h[nb8] = {16, 0x80, 17, 0x80, 18, 0x80, 19, 0x80, 20, 0x80, 21, 0x80, 22, 0x80, 23, 0x80, 24, 0x80, 25, 0x80, 26, 0x80, 27, 0x80, 28, 0x80, 29, 0x80, 30, 0x80, 31, 0x80};
+#else
+alignas(64) static const uint8_t shuffle8l[nb8] = {0, 0x80, 1, 0x80, 2 , 0x80, 3 , 0x80, 4 , 0x80, 5 , 0x80, 6 , 0x80, 7 , 0x80};
+alignas(64) static const uint8_t shuffle8h[nb8] = {8, 0x80, 9, 0x80, 10, 0x80, 11, 0x80, 12, 0x80, 13, 0x80, 14, 0x80, 15, 0x80};
+#endif
+static_assert(sizeof(shuffle8h) == sizeof(simd8));
+static_assert(sizeof(shuffle8l) == sizeof(simd8));
+const simd8* shuf8l = (simd8*)&shuffle8l;
+const simd8* shuf8h = (simd8*)&shuffle8l;
 
 simd16 simd8_16l(simd8 v){
-    return ADDMM(cvtepi8_epi16)(v);
+    return ADDMM(shuffle_epi8)(v, *shuf8l);
 }
 
 simd16 simd8_16h(simd8 v){
-    return simd8_16l(ADDSIZE(CONCAT(ADDSIZE2(ADDMM(extracti)), _si))(v, 1));
+    return ADDMM(shuffle_epi8)(v, *shuf8h);
 }

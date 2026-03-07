@@ -110,7 +110,7 @@ public:
     void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex) const;
     void calcThreats(Accumulator& accs, bool color, const GameState& state) const;
-    dbyte eval(const Accumulator& accs, bool side, int idB, const GameState& state) const;
+    dbyte eval(Accumulator& accs, bool side, int idB, const GameState& state) const;
 };
 
 inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
