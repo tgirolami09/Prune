@@ -39,9 +39,10 @@ public:
     Index();
     Index(int square, int piece, bool color);
     void smirror(bool needmirror);
-    Index mirror(bool needmirror);
-    Index changepov();
-    Index changepov(bool needs);
+    Index mirror(bool needmirror) const;
+    Index changepov() const;
+    Index changepov(bool needs) const;
+    int fullpiece() const;
     void schangepov();
     operator int();
     bool isnull();
@@ -62,7 +63,7 @@ public:
 
 class Accumulator{
 public:
-    simd16 accs[2][HL_SIZE/nb16];
+    simd16 accs[4][HL_SIZE/nb16];
     bool Kside[2];
     bool side;
     bool mustrefresh;
@@ -101,11 +102,14 @@ public:
     template<int f>
     void change1(Accumulator& accIn, bool pov, int index, int idInputBucket) const;
     template<int f>
+    void addThreat(Accumulator& accIn, bool pov, int index) const;
+    template<int f>
     void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const;
     void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const;
     void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
     void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex) const;
+    void calcThreats(Accumulator& accs, bool color, const GameState& state) const;
     dbyte eval(const Accumulator& accs, bool side, int idB, const GameState& state) const;
 };
 
