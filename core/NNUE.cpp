@@ -323,12 +323,12 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
             for(int p=0; p<valid_targets[type(idPiece)]; p++)
                 if(p != type(idPiece))
                     authMask |= state.boardRepresentation[_c][p];
-        big semiexcluded;
-        if(type(idPiece) == PAWN){
-            authMask |= state.boardRepresentation[color(idPiece)][PAWN];
-            semiexcluded = state.boardRepresentation[color(idPiece)^1][PAWN];
-        }else
-            semiexcluded = state.boardRepresentation[WHITE][type(idPiece)] | state.boardRepresentation[BLACK][type(idPiece)];
+        big semiexcluded = 0;
+        if(type(idPiece) == PAWN)
+            authMask |= state.boardRepresentation[color(idPiece)][type(idPiece)];
+        else
+            semiexcluded = state.boardRepresentation[color(idPiece)][type(idPiece)];
+        if((color(idPiece)^pov) == BLACK)authMask |= state.boardRepresentation[color(idPiece) ^ 1][type(idPiece)];
 
         while(mask){
             int pos = __builtin_ctzll(mask);
@@ -351,7 +351,7 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
                     atkmask = moves_table(pos, occupied&mask_empty_bishop(pos)) | moves_table(pos+64, occupied&mask_empty_rook(pos));
                     break;
             }
-            atkmask &= authMask|(semiexcluded&(MAX_BIG<<pos));
+            atkmask &= authMask|(semiexcluded&((MAX_BIG<<pos)^mask_row[row(pos)]));
             while(atkmask){
                 int _posdef = __builtin_ctzll(atkmask);
                 int piece = state.getfullPiece(_posdef);
