@@ -55,7 +55,6 @@ __attribute__((constructor(106))) void initThreatIndices(){
 }
 
 int getThreatIndex(Index atk, Index def){
-    if(def.piece >= valid_targets[atk.piece])return -1;
     int index = threatIndex[atk.fullpiece()][atk.square][def.square]+threatoffset[atk.fullpiece()]*(def.piece+def.color*valid_targets[atk.piece]);
     return index;
 }
@@ -82,6 +81,10 @@ void Index::schangepov(){
     square ^= 56;
     color ^= 1;
 }
+void Index::schangepov(bool needs){
+    square ^= 56*needs;
+    color ^= needs;
+}
 Index Index::changepov() const{
     return Index(square^56, piece, !color);
 }
@@ -99,7 +102,7 @@ int Index::fullpiece() const{
 }
 
 void Index::print(){
-    printf("%d %d %d\n", piece, color, square);
+    printf("%d %d %d", piece, color, square^7);
 }
 
 updateBuffer::updateBuffer():dirty(true){}
@@ -328,12 +331,14 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
             authMask |= state.boardRepresentation[color(idPiece)][type(idPiece)];
         else
             semiexcluded = state.boardRepresentation[color(idPiece)][type(idPiece)];
-        if((color(idPiece)^pov) == BLACK)authMask |= state.boardRepresentation[color(idPiece) ^ 1][type(idPiece)];
+        semiexcluded |= state.boardRepresentation[color(idPiece) ^ 1][type(idPiece)];
 
         while(mask){
             int pos = __builtin_ctzll(mask);
             big atkmask=0;
             Index posatk(pos, type(idPiece), color(idPiece));
+            posatk.smirror(mirror);
+            posatk.schangepov(pov);
             switch (type(idPiece)) {
                 case PAWN:
                     atkmask = attackPawns[pos+color(idPiece)*64];
@@ -351,12 +356,17 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
                     atkmask = moves_table(pos, occupied&mask_empty_bishop(pos)) | moves_table(pos+64, occupied&mask_empty_rook(pos));
                     break;
             }
-            atkmask &= authMask|(semiexcluded&((MAX_BIG<<pos)^mask_row[row(pos)]));
+            big semiEmask = (MAX_BIG>>(63-pos))^(mask_row[row(pos)]*(!mirror^pov));
+            if(pov == BLACK)semiEmask = ~semiEmask;
+            atkmask &= authMask|(semiexcluded&semiEmask);
             while(atkmask){
                 int _posdef = __builtin_ctzll(atkmask);
                 int piece = state.getfullPiece(_posdef);
                 Index posdef(_posdef, type(piece), color(piece));
-                addThreat<1>(accs, pov, getThreatIndex(posatk.mirror(mirror).changepov(pov), posdef.mirror(mirror).changepov(pov)));
+                posdef.smirror(mirror);
+                posdef.schangepov(pov);
+                int threatindex = getThreatIndex(posatk, posdef);
+                addThreat<1>(accs, pov, threatindex);
                 atkmask &= atkmask-1;
             }
             mask &= mask-1;
