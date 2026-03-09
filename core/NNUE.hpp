@@ -44,6 +44,7 @@ public:
     Index changepov(bool needs) const;
     int fullpiece() const;
     void schangepov();
+    void schangepov(bool needs);
     operator int();
     bool isnull();
     void print();
