@@ -13,6 +13,14 @@ using namespace std;
 uint16_t threatIndex[(nbPieces-1)*2][64][64];
 uint16_t threatoffset[(nbPieces-1)*2];
 const int valid_targets[5] = {3, 5, 4, 4, 5};
+const int piecesThreat[nbPieces][nbPieces] = {
+    { 0,  1, -1,  2, -1, -1},
+    { 0,  1,  2,  3,  4, -1},
+    { 0,  1,  2,  3, -1, -1},
+    { 0,  1,  2,  3, -1, -1},
+    { 0,  1,  2,  3,  4, -1},
+    {-1, -1, -1, -1, -1, -1},
+};
 static_assert(sizeof(threatIndex)+sizeof(threatoffset) < 1024*1024, "way too big for nothing");
 
 __attribute__((constructor(106))) void initThreatIndices(){
@@ -55,7 +63,7 @@ __attribute__((constructor(106))) void initThreatIndices(){
 }
 
 int getThreatIndex(Index atk, Index def){
-    int index = threatIndex[atk.fullpiece()][atk.square][def.square]+threatoffset[atk.fullpiece()]*(def.piece+def.color*valid_targets[atk.piece]);
+    int index = threatIndex[atk.fullpiece()][atk.square][def.square]+threatoffset[atk.fullpiece()]*(piecesThreat[atk.piece][def.piece]+def.color*valid_targets[atk.piece]);
     return index;
 }
 
@@ -323,8 +331,8 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
         big mask = state.boardRepresentation[color(idPiece)][type(idPiece)];
         big authMask = 0;
         for(int _c=0; _c<2; _c++)
-            for(int p=0; p<valid_targets[type(idPiece)]; p++)
-                if(p != type(idPiece))
+            for(int p=0; p<nbPieces; p++)
+                if(p != type(idPiece) && piecesThreat[type(idPiece)][p] != -1)
                     authMask |= state.boardRepresentation[_c][p];
         big semiexcluded = 0;
         if(type(idPiece) == PAWN)
