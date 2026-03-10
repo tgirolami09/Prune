@@ -244,8 +244,10 @@ void manageSearch(){
             if(command == "runQ"){
                 bestMoveFinder.testQuiescenceSearch(state->root);
             }else if(command == "eval"){
+                PositionSnapshot snap;
+                snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMove(move);
+                    state->root.playPartialMoveForward(move);
                 ieval->init(state->root);
                 int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
@@ -284,8 +286,7 @@ void manageSearch(){
                     printf("+-------");
                 printf("+\n");
 
-                for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
-                    state->root.undoLastMove();
+                snap.restore(state->root);
                 printf("static evaluation: %d cp\n", overall_eval);
             }else if(command == "ucinewgame"){
                 bestMoveFinder.clear();
@@ -477,8 +478,10 @@ void manageSearch(){
                     }
                 }
             }else if(command == "runSEE"){
+                PositionSnapshot snap;
+                snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMove(move);
+                    state->root.playPartialMoveForward(move);
                 istringstream moves(parsed[0].second);
                 string curMove;
                 bool isExact = true;
@@ -505,19 +508,19 @@ void manageSearch(){
                         res = see_ge(bb, 0, move, state->root, value_pieces);
                     printf("%s : %d\n", move.to_str().c_str(), res);
                 }
-                for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
-                    state->root.undoLastMove();
+                snap.restore(state->root);
             }else if(command == "debug"){
                 if(parsed[0].second == "off")
                     DEBUG = false;
                 else
                     DEBUG = true;
             }else if(command == "print"){
+                PositionSnapshot snap;
+                snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMove(move);
+                    state->root.playPartialMoveForward(move);
                 state->root.print();
-                for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
-                    state->root.undoLastMove();
+                snap.restore(state->root);
             }else if(command == "stats"){
 #ifdef DEBUG_MACRO
                 printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);

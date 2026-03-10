@@ -169,7 +169,6 @@ public:
     big Ks;
 };
 
-int SEE(int square, GameState& state, LegalMoveGenerator& generator, const int* value_pieces);
 int fastSEE(const Move& move, const GameState& state, const int* value_pieces);
 bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state, const int* value_pieces);
 int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, const int* value_pieces);

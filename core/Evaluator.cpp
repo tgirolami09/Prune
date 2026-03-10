@@ -53,19 +53,6 @@ __attribute__((constructor(103))) void init_forwards(){
     }
 }
 
-int SEE(int square, GameState& state, LegalMoveGenerator& generator, int* value_pieces){
-    Move goodMove = generator.getLVA(square, state);
-    int value = 0;
-    if(goodMove.moveInfo != nullMove.moveInfo){
-        state.playMove(goodMove);
-        int SEErec = value_pieces[goodMove.capture < 0?0:goodMove.capture]-SEE(square, state, generator, value_pieces);
-        if(goodMove.promotion() != -1)
-            SEErec += value_pieces[goodMove.promotion()];
-        value = max(0, SEErec);
-        state.undoLastMove();
-    }
-    return value;
-}
 
 big get_rook_lines(big occupancy, int square){
     return moves_table(square+64, occupancy);

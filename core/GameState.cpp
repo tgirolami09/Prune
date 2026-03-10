@@ -97,24 +97,8 @@ void GameState::fromFen(string fen){
         }
     }
     for(int c=0; c<2; c++){
-        bool oneOk=false;
         for(int side=0; side<2; side++){
-            if(castlingRights[c][side]){
-                nbMoves[c][side] = 0;
-                deathRook[c][side] = -1;
-                posRook[c][side] = (7-side*7)+c*(8*7);
-                oneOk=true;
-            }else{
-                //simulating a rook who is death at ply 0 to not track this one
-                deathRook[c][side] = -1;
-                posRook[c][side] = -1;
-                nbMoves[c][side] = 1;
-            }
-        }
-        if(oneOk){
-            nbMoves[c][2] = 0;
-        }else{
-            nbMoves[c][2] = 1;
+            posRook[c][side] = castlingRights[c][side] ? (7-side*7)+c*(8*7) : -1;
         }
     }
     id++;
@@ -134,7 +118,6 @@ void GameState::fromFen(string fen){
     }
     repHist[turnNumber] = zobristHash;
     rule50[turnNumber] = move50;
-    startEnPassant = lastDoublePawnPush;
 }
 
 string GameState::toFen() const{
@@ -222,59 +205,6 @@ const big* GameState::enemyPieces() const{
     int enemyIndex = enemyColor();
     return boardRepresentation[enemyIndex];
 }
-template<bool enable, int side>
-void GameState::changeCastlingRights(int c){
-    if(castlingRights[c][side] != enable)
-        zobristHash ^= zobrist[zobrCastle+c*2+side];
-    castlingRights[c][side] = enable;
-}
-template<bool back, int side>
-void GameState::updateCastlingRights(int c, int pos){
-    if(back)nbMoves[c][side]--;
-    else nbMoves[c][side] ++;
-    posRook[c][side] = pos;
-    if(nbMoves[c][side] == 0){
-        if(nbMoves[c][2] == 0)changeCastlingRights<true, side>(c);
-    }else
-        changeCastlingRights<false, side>(c);
-}
-
-template<bool back>
-void GameState::moveKing(int c){
-    if(back)nbMoves[c][2]--;
-    else nbMoves[c][2]++;
-    if(nbMoves[c][2] == 0){
-        if(nbMoves[c][0] == 0)changeCastlingRights<true, 0>(c);
-        if(nbMoves[c][1] == 0)changeCastlingRights<true, 1>(c);
-    }else{
-        changeCastlingRights<false, 0>(c);
-        changeCastlingRights<false, 1>(c);
-    }
-}
-
-void GameState::captureRook(int pos, int c){
-    int side=-1;
-    if(pos == posRook[c][0]){
-        side=0;
-        updateCastlingRights<false, 0>(c, -1);
-    }else if(pos == posRook[c][1]){
-        side = 1;
-        updateCastlingRights<false, 1>(c, -1);
-    }else return;
-    deathRook[c][side] = turnNumber;
-}
-
-void GameState::uncaptureRook(int pos, int c){
-    int side=-1;
-    if(turnNumber == deathRook[c][0]){
-        side = 0;
-        updateCastlingRights<true, 0>(c, pos);
-    }else if(turnNumber == deathRook[c][1]){
-        side = 1;
-        updateCastlingRights<true, 1>(c, pos);
-    }else return;
-    deathRook[c][side] = -1;
-}
 template<bool back>
 inline bool GameState::isEnPassantPossibility(const Move& move){
     big sidePawn=((1ULL << clipped_left(move.to()))|(1ULL << clipped_right(move.to())));
@@ -312,7 +242,6 @@ bool GameState::threefold(){
     return false;
 }
 
-template<bool back>
 int GameState::playMove(Move move){
     if(lastDoublePawnPush != -1)
         zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
@@ -329,10 +258,13 @@ int GameState::playMove(Move move){
     if(move.capture != -2){
         const bool enColor=enemyColor();
         if(move.capture == ROOK){
-            if(back)
-                uncaptureRook(move.to(), enColor);
-            else
-                captureRook(move.to(), enColor);
+            if(move.to() == posRook[enColor][0] && castlingRights[enColor][0]){
+                zobristHash ^= zobrist[zobrCastle + enColor*2];
+                castlingRights[enColor][0] = false;
+            }else if(move.to() == posRook[enColor][1] && castlingRights[enColor][1]){
+                zobristHash ^= zobrist[zobrCastle + enColor*2 + 1];
+                castlingRights[enColor][1] = false;
+            }
         }
         int pieceCapture = move.capture>=0?move.capture:PAWN;
         int posCapture = move.to();
@@ -343,18 +275,22 @@ int GameState::playMove(Move move){
         updateZobrists(pieceCapture, enColor, posCapture);
         boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
     }
-    if(!back){
-        movesSinceBeginning[turnNumber] = move;
-    }
-    if(!back && isEnPassantPossibility<false>(move)){//is there a pawn on his side
-        // printf("There is an en-passant generated for postion %d, 8 * row = %d, col = %d\n",move.from(),((row(move.from()) + row(move.to())) / 2),col(move.from()));
+    movesSinceBeginning[turnNumber] = move;
+    if(isEnPassantPossibility<false>(move)){
         lastDoublePawnPush = 8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
         zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
     }else{
         lastDoublePawnPush = -1;
     }
     if(move.piece == KING){
-        moveKing<back>(curColor);
+        if(castlingRights[curColor][0]){
+            zobristHash ^= zobrist[zobrCastle + curColor*2];
+            castlingRights[curColor][0] = false;
+        }
+        if(castlingRights[curColor][1]){
+            zobristHash ^= zobrist[zobrCastle + curColor*2 + 1];
+            castlingRights[curColor][1] = false;
+        }
         if(abs(move.to()-move.from()) == 2){//castling
             int startRook=move.from(), endRook=move.to();
             if(move.from() > move.to()){//queen side
@@ -364,37 +300,28 @@ int GameState::playMove(Move move){
                 startRook |= 7;
                 endRook--;
             }
-            if(back)swap(startRook, endRook);
-            if(startRook == posRook[curColor][0]){
-                updateCastlingRights<back, 0>(curColor, endRook);
-            }else if(startRook == posRook[curColor][1]){
-                updateCastlingRights<back, 1>(curColor, endRook);
-            }
             updateZobrists(ROOK, curColor, startRook);
             updateZobrists(ROOK, curColor, endRook);
             boardRepresentation[curColor][ROOK] ^= (1ULL << startRook)^(1ULL << endRook);
         }
     }else if(move.piece == ROOK){
-        if(back)move.swapMove();//swap(move.from(), move.to());
-        if(move.from() == posRook[curColor][0])
-            updateCastlingRights<back, 0>(curColor, move.to());
-        else if(move.from() == posRook[curColor][1]){ //otherwise, it's just another rook
-            updateCastlingRights<back, 1>(curColor, move.to());
+        if(move.from() == posRook[curColor][0] && castlingRights[curColor][0]){
+            zobristHash ^= zobrist[zobrCastle + curColor*2];
+            castlingRights[curColor][0] = false;
+        }else if(move.from() == posRook[curColor][1] && castlingRights[curColor][1]){
+            zobristHash ^= zobrist[zobrCastle + curColor*2 + 1];
+            castlingRights[curColor][1] = false;
         }
     }
-    if(!back){
-        turnNumber++;
-        zobristHash ^= zobrist[zobrTurn];
-        repHist[turnNumber] = zobristHash;
-        if(move.isChanger())
-            rule50[turnNumber] = 0;
-        else
-            rule50[turnNumber] = rule50[turnNumber-1]+1;
-    }
+    turnNumber++;
+    zobristHash ^= zobrist[zobrTurn];
+    repHist[turnNumber] = zobristHash;
+    if(move.isChanger())
+        rule50[turnNumber] = 0;
+    else
+        rule50[turnNumber] = rule50[turnNumber-1]+1;
     return 0;
 }
-template int GameState::playMove<true>(Move);
-template int GameState::playMove<false>(Move);
 
 void GameState::playNullMove(){
     movesSinceBeginning[turnNumber] = nullMove;
@@ -406,21 +333,6 @@ void GameState::playNullMove(){
     }
     repHist[turnNumber] = zobristHash;
     rule50[turnNumber] = rule50[turnNumber-1]+1;
-}
-void GameState::undoNullMove(){
-    turnNumber--;
-    zobristHash ^= zobrist[zobrTurn];
-    if(turnNumber > 1){
-        Move nextMove=movesSinceBeginning[turnNumber-1];
-        if(isEnPassantPossibility<true>(nextMove)){
-            // printf("Undoing move and there is en-passant\n");
-            lastDoublePawnPush = 8 * ((row(nextMove.from()) + row(nextMove.to()))/2) + col(nextMove.from());
-            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
-        }
-    }else if(startEnPassant != -1){
-        lastDoublePawnPush = startEnPassant;
-        zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
-    }
 }
 Move GameState::getLastMove() const{
     if(turnNumber > 0 && (movesSinceBeginning[0].moveInfo != nullMove.moveInfo || turnNumber > 1))
@@ -434,23 +346,6 @@ Move GameState::getContMove() const{
     return nullMove;
 }
 
-void GameState::undoLastMove(){
-    turnNumber--;
-    zobristHash ^= zobrist[zobrTurn];
-    Move move=movesSinceBeginning[turnNumber];
-    playMove<true>(move); // playMove should be a lot similar to undoLastMove, so like this we just have to correct the little changements between undo and do
-    if(turnNumber > 0 && (movesSinceBeginning[0].from() != movesSinceBeginning[0].to() || turnNumber > 1)){
-        Move nextMove=movesSinceBeginning[turnNumber-1];
-        if(isEnPassantPossibility<true>(nextMove)){
-            // printf("Undoing move and there is en-passant\n");
-            lastDoublePawnPush = 8 * ((row(nextMove.from()) + row(nextMove.to()))/2) + col(nextMove.from());
-            zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
-        }
-    }else if(startEnPassant != -1){
-        lastDoublePawnPush = startEnPassant;
-        zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
-    }
-}
 
 Move GameState::playPartialMove(Move move){
     int piece=getPiece(move.to(), enemyColor());

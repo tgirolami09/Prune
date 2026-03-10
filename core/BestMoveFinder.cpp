@@ -628,7 +628,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     snap.save(state);
     for(Move move:movesFromRoot){
         state.playPartialMoveForward(move);
-        for(int i=0; i<nbThreads-1; i++)helperThreads[i].localState.playPartialMove(move);
+        for(int i=0; i<nbThreads-1; i++)helperThreads[i].localState.playPartialMoveForward(move);
         actDepth++;
     }
     bestMoveResponse res=goState<limitWay>(state, tm, verbose, actDepth);

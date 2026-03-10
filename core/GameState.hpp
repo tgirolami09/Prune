@@ -25,10 +25,7 @@ class GameState{
     int turnNumber;
 
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
-    short nbMoves[2][3];
     short posRook[2][2];
-    short deathRook[2][2];
-    int startEnPassant;
     void updateZobrists(int piece, bool color, int square);
     void testPawnZobr();
 
@@ -52,26 +49,15 @@ public :
     const big* friendlyPieces() const;
     //Returns the 6 bitboards of the ENEMY pieces on the board
     const big* enemyPieces() const;
-    template<bool enable, int side>
-    void changeCastlingRights(int c);
-    template<bool back, int side>
-    void updateCastlingRights(int c, int pos);
-    template<bool back>
-    void moveKing(int c);
-    void captureRook(int pos, int c);
-    void uncaptureRook(int pos, int c);
     template<bool back>
     bool isEnPassantPossibility(const Move& move);
     int rule50_count() const;
     bool twofold();
     bool threefold();
-    template<bool back=false>
     int playMove(Move move);
     void playNullMove();
-    void undoNullMove();
     Move getLastMove() const;
     Move getContMove() const;
-    void undoLastMove();
     Move playPartialMove(Move move);
     int getPiece(int square, int c);
     int getfullPiece(int square) const;
