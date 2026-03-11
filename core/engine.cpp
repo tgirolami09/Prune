@@ -246,7 +246,7 @@ void manageSearch(){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMoveForward(move);
                 ieval->init(state->root);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor(), state->root);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
@@ -255,7 +255,7 @@ void manageSearch(){
                         if(type(piece) != SPACE){
                             ieval->changePiece2<-1, true>(square, type(piece), color(piece));
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor(), state->root);
+                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor());
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
                             ieval->changePiece2<1, false>(square, type(piece), color(piece));
@@ -289,7 +289,7 @@ void manageSearch(){
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
                 ieval->init(state->root);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor(), state->root);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
                     state->root.undoLastMove();
                 printf("%d cp\n", overall_eval);

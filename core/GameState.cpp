@@ -229,7 +229,7 @@ inline bool GameState::isEnPassantPossibility(const Move& move){
 int GameState::rule50_count() const{
     return rule50[turnNumber];
 }
-bool GameState::twofold(){
+bool GameState::twofold() const{
     const int minposs = max(0, turnNumber-rule50_count());
     for(int i=turnNumber-4; i >= minposs; i--){
         if(repHist[i] == repHist[turnNumber])
@@ -238,7 +238,7 @@ bool GameState::twofold(){
     return false;
 }
 
-bool GameState::threefold(){
+bool GameState::threefold() const{
     bool alreadyRep=false;
     const int minposs = max(0, turnNumber-rule50_count());
     for(int i=turnNumber-4; i >= minposs; i--){
@@ -370,7 +370,7 @@ Move GameState::playPartialMove(Move move){
     return move;
 }
 
-int GameState::getPiece(int square, int c){
+int GameState::getPiece(int square, int c) const{
     big mask=1ULL << square;
     for(int p=0; p<nbPieces; p++){
         if(mask&boardRepresentation[c][p])return p;

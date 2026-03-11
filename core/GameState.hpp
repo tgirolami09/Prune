@@ -54,14 +54,14 @@ public :
     template<bool back>
     bool isEnPassantPossibility(const Move& move);
     int rule50_count() const;
-    bool twofold();
-    bool threefold();
+    bool twofold() const;
+    bool threefold() const;
     int playMove(Move move);
     void playNullMove();
     Move getLastMove() const;
     Move getContMove() const;
     Move playPartialMove(Move move);
-    int getPiece(int square, int c);
+    int getPiece(int square, int c) const;
     int getfullPiece(int square) const;
     pawnStruct getPawnStruct();
     void print() const;

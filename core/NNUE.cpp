@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <fstream>
+#include <utility>
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
@@ -112,9 +113,33 @@ int Index::fullpiece() const{
 void Index::print(){
     printf("%d %d %d", piece, color, square^7);
 }
+ThreatIndex::ThreatIndex(){}
+ThreatIndex::ThreatIndex(Index _from, Index _to, bool _remove):from(_from), to(_to), remove(_remove){}
+ThreatIndex::ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare, int topiece, int tocolor, bool _remove):
+    from(Index(fromsquare, frompiece, fromcolor)),
+    to(Index(tosquare, topiece, tocolor)),
+    remove(_remove){}
 
-updateBuffer::updateBuffer():dirty(true){}
-updateBuffer::updateBuffer(Index _add1, Index _add2, Index _sub1, Index _sub2):dirty(true){
+bool ThreatIndex::isexcluded() const{
+    return piecesThreat[from.piece][to.piece] == -1;
+}
+bool ThreatIndex::issemiexcluded() const{
+    return from.piece == to.piece && from.square > to.square;
+}
+ThreatIndex::operator int() const{
+    return threatIndex[from.fullpiece()][from.square][to.square]+threatoffset[from.fullpiece()]*(piecesThreat[from.piece][to.piece]+to.color*valid_targets[from.piece]);
+}
+void ThreatIndex::changepov(bool needs){
+    from.schangepov(needs);
+    to.schangepov(needs);
+}
+void ThreatIndex::mirror(bool needs){
+    from.smirror(needs);
+    to.smirror(needs);
+}
+
+updateBuffer::updateBuffer():nbThreats(0), dirty(true){}
+updateBuffer::updateBuffer(Index _add1, Index _add2, Index _sub1, Index _sub2):nbThreats(0), dirty(true){
     add1[0] = _add1;
     add2[0] = _add2;
     sub1[0] = _sub1;
@@ -135,28 +160,173 @@ void updateBuffer::print(){
     printf("\n");
 }
 
-void Accumulator::reinit(const GameState* state, Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
+big firstInDirection(int square, int square2, big occupancy){
+    big mask = fullDir[square][square2]&occupancy;
+    if(!mask)return 0;
+    if(square2 > square)
+        return mask&-mask;
+    else
+        return 1ULL << (__builtin_clzll(mask)^63);
+}
+
+void Accumulator::addXrays(const GameState* state, int pos, bool remove){
+    for(auto x:{make_pair(ROOK, moves_table(pos, occupied&mask_empty_rook(pos))), make_pair(BISHOP, moves_table(pos, occupied&mask_empty_bishop(pos)))}){
+        big maskPiece = 0;
+        for(int piece:{x.first, QUEEN})
+            maskPiece |= state->boardRepresentation[WHITE][piece] | state->boardRepresentation[BLACK][piece];
+        big mask = x.second&maskPiece; //only cares about the pieces
+        while(mask){
+            const int posatk = __builtin_ctzll(mask);
+            const big maskdef = firstInDirection(posatk, pos, occupied);
+            if(maskdef){
+                const int posdef = __builtin_ctzll(maskdef);
+                const bool colordef = (maskdef&whitebb)?WHITE:BLACK;
+                const bool coloratk = ((1ULL << posatk)&whitebb)?WHITE:BLACK;
+                if(colordef == BLACK)assert(maskdef&blackbb);
+                const int piecedef = state->getPiece(posdef, colordef);
+                assert(type(state->getfullPiece(posdef)) == piecedef);
+                assert(piecedef != SPACE);
+                const int pieceatk = state->getPiece(posatk, coloratk);
+                if(piecedef != KING){
+                    const ThreatIndex threat(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef), remove);
+                    if(!threat.isexcluded())
+                        update.threatUpdates[update.nbThreats++] = threat;
+                }
+            }
+            mask &= mask-1;
+        }
+    }
+}
+
+void Accumulator::addPiece(int piece, bool colorpiece, int pos, bool remove){
+    Index posatk(pos, piece, colorpiece);
+    big atkmask;
+    switch (piece) {
+        case PAWN:
+            atkmask = attackPawns[pos+colorpiece*64];
+            break;
+        case KNIGHT:
+            atkmask = KnightMoves[pos];
+            break;
+        case BISHOP:
+            atkmask = moves_table(pos, occupied&mask_empty_bishop(pos));
+            break;
+        case ROOK:
+            atkmask = moves_table(pos+64, occupied&mask_empty_rook(pos));
+            break;
+        case QUEEN:
+            atkmask = moves_table(pos, occupied&mask_empty_bishop(pos)) | moves_table(pos+64, occupied&mask_empty_rook(pos));
+            break;
+        default:assert(false);
+    }
+    big authMask = 0;
+    for(int _c=0; _c<2; _c++)
+        for(int p=0; p<nbPieces; p++)
+            if(piecesThreat[piece][p] != -1)
+                authMask |= bitboards[_c][p];
+    atkmask &= authMask;
+    while(atkmask){
+        const int _posdef = __builtin_ctzll(atkmask);
+        const big maskPiece = 1ULL << _posdef;
+        int piecedef = -1;
+        const int colorPiece = (whitebb&maskPiece)?WHITE:BLACK;
+        for(int x=0; x<nbPieces; x++)
+            if(bitboards[colorPiece][x]&maskPiece){
+                piecedef = x;
+                break;
+            }
+        assert(piecedef != -1);
+        Index posdef(_posdef, piecedef, colorPiece);
+        ThreatIndex threat(posatk, posdef, remove);
+        assert(!threat.isexcluded());
+        update.threatUpdates[update.nbThreats++] = threat;
+        atkmask &= atkmask-1;
+    }
+}
+
+void Accumulator::getThreatUpdates(const GameState* state, const Move& move){
+    const int toPiece = move.promotion() == -1 ? move.piece : move.promotion();
+    const bool isCapture = move.capture != -2;
+    const int capture = move.capture;
+    if(move.capture == -1){//en passant
+        threatfullupdate = true;
+    }else if(move.isCastling()){
+        threatfullupdate = true;
+    }else{
+        threatfullupdate = false;
+        if(toPiece != KING){
+            addPiece(toPiece, side, move.to(), false);
+            addPiece(move.piece, side, move.from(), true);
+        }
+        if(isCapture){
+            addPiece(capture, !side, move.to(), true);
+            update.threatUpdates[update.nbThreats++] = ThreatIndex(Index(move.from(), move.piece, side), Index(move.to(), capture, !side), true);
+        }else
+           addXrays(state, move.to(), true);
+        addXrays(state, move.from(), false);
+        //printf("%s %d\n", move.to_str().c_str(), update.nbThreats);
+    }
+}
+
+void Accumulator::reinit(const Move& move, const GameState* state, Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
+    memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
+    update = updateBuffer(add1, add2, sub1, sub2);
+    blackbb = 0;
+    whitebb = 0;
+    for(int p=0; p<nbPieces; p++)
+        whitebb |= bitboards[WHITE][p];
+    for(int p=0; p<nbPieces; p++)
+        blackbb |= bitboards[BLACK][p];
+    occupied = whitebb | blackbb;
+    getThreatUpdates(state, move);
     Kside[0] = prevAcc.Kside[0];
     Kside[1] = prevAcc.Kside[1];
     idInputBucket[0] = prevAcc.idInputBucket[0];
     idInputBucket[1] = prevAcc.idInputBucket[1];
-    mustrefresh = false;
+    pstrefresh = false;
+    threatrefresh = false;
     if(mirror){
-        mustrefresh = true;
+        threatrefresh = true;
+        pstrefresh = true;
         Kside[_side] ^= 1;
     }
     if(add1.piece == KING && getInputBucket(add1.square, _side, Kside[_side]) != idInputBucket[_side]){ //king moves are always represented in sub1/add1
         idInputBucket[_side] = getInputBucket(add1.square, _side, Kside[_side]);
-        mustrefresh = true;
+        pstrefresh = true;
     }
-    if(mustrefresh)
-        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
-    update = updateBuffer(add1, add2, sub1, sub2);
     side = _side;
 }
 
+void Accumulator::applythreatsUpdates(bool pov){
+    if(update.nbThreats < 0 || update.nbThreats > maxThreatUpdates){
+        printf("%d\n", update.nbThreats);
+    }
+    assert(update.nbThreats >= 0);
+    assert(update.nbThreats < maxThreatUpdates);
+    for(int i=0; i<update.nbThreats; i++){
+        ThreatIndex curThreat = update.threatUpdates[i];
+        curThreat.changepov(pov);
+        curThreat.mirror(Kside[pov]);
+        if(curThreat.issemiexcluded())continue;
+        if(curThreat.remove)
+            globnnue.addThreat<-1>(*this, pov, curThreat);
+        else
+            globnnue.addThreat<1>(*this, pov, curThreat);
+    }
+}
+
 void Accumulator::updateSelf(Accumulator& accIn){
-    if(mustrefresh){
+    if(threatrefresh || threatfullupdate){
+        globnnue.calcThreats(*this, side, bitboards);
+        if(threatfullupdate)
+            globnnue.calcThreats(*this, !side, bitboards);
+        else
+            applythreatsUpdates(!side);
+    }else{
+        applythreatsUpdates(WHITE);
+        applythreatsUpdates(BLACK);
+    }
+    if(pstrefresh){
         globnnue.initAcc(*this, side);
         ubyte pos[10];
         for(int c=0; c<2; c++)
@@ -318,28 +488,31 @@ void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
     }
 }
 
-void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) const{
+void NNUE::calcThreats(Accumulator& accs, bool pov, const big bitboards[2][6]) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         accs[pov+2][i] = simd16_zero();
     }
-    big occupied = 0;
-    for(int _c=0; _c<2; _c++)
-        for(int p=0; p<nbPieces; p++)
-            occupied |= state.boardRepresentation[_c][p];
-    bool mirror = col(__builtin_ctzll(state.boardRepresentation[pov][KING])) <= 3;
+    big blackbb = 0;
+    big whitebb = 0;
+    for(int p=0; p<nbPieces; p++)
+        whitebb |= bitboards[WHITE][p];
+    for(int p=0; p<nbPieces; p++)
+        blackbb |= bitboards[BLACK][p];
+    const big occupied = whitebb | blackbb;
+    bool mirror = col(__builtin_ctzll(bitboards[pov][KING])) <= 3;
     for(int idPiece=0; type(idPiece)<nbPieces-1; idPiece++){
-        big mask = state.boardRepresentation[color(idPiece)][type(idPiece)];
+        big mask = bitboards[color(idPiece)][type(idPiece)];
         big authMask = 0;
         for(int _c=0; _c<2; _c++)
             for(int p=0; p<nbPieces; p++)
                 if(p != type(idPiece) && piecesThreat[type(idPiece)][p] != -1)
-                    authMask |= state.boardRepresentation[_c][p];
+                    authMask |= bitboards[_c][p];
         big semiexcluded = 0;
         if(type(idPiece) == PAWN)
-            authMask |= state.boardRepresentation[color(idPiece)][type(idPiece)];
+            authMask |= bitboards[color(idPiece)][type(idPiece)];
         else
-            semiexcluded = state.boardRepresentation[color(idPiece)][type(idPiece)];
-        semiexcluded |= state.boardRepresentation[color(idPiece) ^ 1][type(idPiece)];
+            semiexcluded = bitboards[color(idPiece)][type(idPiece)];
+        semiexcluded |= bitboards[color(idPiece) ^ 1][type(idPiece)];
 
         while(mask){
             int pos = __builtin_ctzll(mask);
@@ -368,9 +541,16 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
             if(pov == BLACK)semiEmask = ~semiEmask;
             atkmask &= authMask|(semiexcluded&semiEmask);
             while(atkmask){
-                int _posdef = __builtin_ctzll(atkmask);
-                int piece = state.getfullPiece(_posdef);
-                Index posdef(_posdef, type(piece), color(piece));
+                const int _posdef = __builtin_ctzll(atkmask);
+                const big maskPiece = 1ULL << _posdef;
+                int piece = -1;
+                const int colorPiece = (whitebb&maskPiece)?WHITE:BLACK;
+                for(int x=0; x<nbPieces; x++)
+                    if(bitboards[colorPiece][x]&maskPiece){
+                        piece = x;
+                        break;
+                    }
+                Index posdef(_posdef, piece, colorPiece);
                 posdef.smirror(mirror);
                 posdef.schangepov(pov);
                 int threatindex = getThreatIndex(posatk, posdef);
@@ -382,9 +562,7 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const GameState& state) cons
     }
 }
 
-dbyte NNUE::eval(Accumulator& accs, bool side, int idB, __attribute__((unused)) const GameState& state) const{
-    calcThreats(accs, WHITE, state);
-    calcThreats(accs, BLACK, state);
+dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     simdint res = simdint_zero();
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 pov = simd16_add(accs[side][i], accs[side+2][i]);
