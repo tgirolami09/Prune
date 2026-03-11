@@ -7,6 +7,7 @@
 #include "embeder.hpp"
 using namespace std;
 
+const int maxThreatUpdates=80;
 const int INPUT_SIZE = 12*64;
 const int HL_SIZE = 384;
 const int SCALE = 400;
@@ -51,11 +52,27 @@ public:
 };
 
 int mirrorSquare(int square, bool mirror);
+class ThreatIndex{
+public:
+    Index from;
+    Index to;
+    bool remove;
+    ThreatIndex(Index _from, Index _to, bool _remove);
+    ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare, int topiece, int tocolor, bool _remove);
+    ThreatIndex();
+    bool isexcluded() const;
+    bool issemiexcluded() const;
+    operator int() const;
+    void changepov(bool needs);
+    void mirror(bool needs);
+};
 
 class updateBuffer{
 public:
     Index add1[2], add2[2];
     Index sub1[2], sub2[2]; //each pieces provoque a change in black and white pov
+    int nbThreats;
+    ThreatIndex threatUpdates[maxThreatUpdates];
     bool dirty;
     int type;
     updateBuffer();
@@ -68,18 +85,25 @@ public:
     simd16 accs[4][HL_SIZE/nb16];
     bool Kside[2];
     bool side;
-    bool mustrefresh;
+    bool pstrefresh;
+    bool threatrefresh;
+    bool threatfullupdate;
+    big occupied, blackbb, whitebb;
     int idInputBucket[2];
     big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
-    void reinit(const GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
+    void reinit(const Move& move, const GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
+    void addPiece(int piece, bool colorpiece, int square, bool remove);
+    void addXrays(const GameState* state, int square, bool remove);
+    void getThreatUpdates(const GameState* state, const Move& move);
     const simd16* operator[](int idx) const{
         return accs[idx];
     }
     simd16* operator[](int idx){
         return accs[idx];
     }
+    void applythreatsUpdates(bool side);
     void updateSelf(Accumulator& accIn);
 };
 
@@ -111,8 +135,8 @@ public:
     void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
     void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex) const;
-    void calcThreats(Accumulator& accs, bool color, const GameState& state) const;
-    dbyte eval(Accumulator& accs, bool side, int idB, const GameState& state) const;
+    void calcThreats(Accumulator& accs, bool color, const big bitboards[2][6]) const;
+    dbyte eval(Accumulator& accs, bool side, int idB) const;
 };
 
 inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);

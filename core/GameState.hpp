@@ -56,8 +56,8 @@ public :
     template<bool back>
     bool isEnPassantPossibility(const Move& move);
     int rule50_count() const;
-    bool twofold();
-    bool threefold();
+    bool twofold() const;
+    bool threefold() const;
     template<bool back=false>
     int playMove(Move move);
     void playNullMove();
@@ -66,7 +66,7 @@ public :
     Move getContMove() const;
     void undoLastMove();
     Move playPartialMove(Move move);
-    int getPiece(int square, int c);
+    int getPiece(int square, int c) const;
     int getfullPiece(int square) const;
     pawnStruct getPawnStruct();
     void print() const;

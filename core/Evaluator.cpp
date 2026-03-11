@@ -266,11 +266,14 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     stackIndex = 0;
 #ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
+    stackAcc[stackIndex].update.nbThreats = 0;
     stackAcc[stackIndex].update.dirty = false;
     stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.boardRepresentation[WHITE][KING])) <= 3;
     stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.boardRepresentation[BLACK][KING])) <= 3;
     stackAcc[stackIndex].idInputBucket[WHITE] = getInputBucket(__builtin_ctzll(state.boardRepresentation[WHITE][KING]), WHITE, stackAcc[stackIndex].Kside[WHITE]);
     stackAcc[stackIndex].idInputBucket[BLACK] = getInputBucket(__builtin_ctzll(state.boardRepresentation[BLACK][KING]), BLACK, stackAcc[stackIndex].Kside[BLACK]);
+    globnnue.calcThreats(stackAcc[stackIndex], WHITE, state.boardRepresentation);
+    globnnue.calcThreats(stackAcc[stackIndex], BLACK, state.boardRepresentation);
     //printf("%d %d\n", stackAcc[stackIndex].idInputBucket[WHITE], stackAcc[stackIndex].idInputBucket[BLACK]);
 #else
     egScore = 0;
@@ -297,10 +300,10 @@ bool IncrementalEvaluator::isOnlyPawns() const{
     return !mgPhase;
 }
 
-int IncrementalEvaluator::getRaw(bool c, const GameState& state){
+int IncrementalEvaluator::getRaw(bool c){
 #ifndef HCE
     globnnue.updateStack(stackAcc, stackIndex);
-    return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR, state);
+    return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
 #else
     int clampPhase = min(mgPhase, 24);
     int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
@@ -310,7 +313,7 @@ int IncrementalEvaluator::getRaw(bool c, const GameState& state){
 }
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state){
-    int raw_eval = getRaw(c, state);
+    int raw_eval = getRaw(c);
     return correctEval(raw_eval, ch, state);
 }
 int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const GameState &state) const{
@@ -430,7 +433,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) c
     }
 #ifndef HCE
     if(f == 1){
-        stackAcc[stackIndex+1].reinit(state, stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
+        stackAcc[stackIndex+1].reinit(move, state, stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
         stackIndex++;
     }else
         stackIndex--;
