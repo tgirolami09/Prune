@@ -202,7 +202,7 @@ public:
     int getRaw(bool c);
     int correctEval(int eval, const corrhists& ch, const GameState& state) const;
     template<int f=1>
-    void playMove(Move move, bool c, const GameState* state);
+    void playMove(Move move, bool c, GameState* state);
     void playNoBack(const GameState& state, Move move, bool c);
     void undoMove(Move move, bool c);
 };
