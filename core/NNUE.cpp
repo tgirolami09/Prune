@@ -24,6 +24,17 @@ const int piecesThreat[nbPieces][nbPieces] = {
 };
 static_assert(sizeof(threatIndex)+sizeof(threatoffset) < 1024*1024, "way too big for nothing");
 
+#define assertEq(a, b) \
+    if(a != b){ \
+        printf("oups %d: %d != %d\n", __LINE__, a, b); \
+        exit(1); \
+    }
+
+#define assertInEq(a, b) \
+    if(a == b){ \
+        printf("oups %d: %d == %d\n", __LINE__, a, b); \
+        exit(1); \
+    }
 __attribute__((constructor(106))) void initThreatIndices(){
     int index=0;
     for(int _atk=0; _atk < (nbPieces-1)*2; _atk++){
@@ -103,6 +114,9 @@ Index Index::changepov(bool needs) const{
 Index::operator int(){
     return ((6*color+piece)<<6)|(square^7);
 }
+bool Index::operator==(const Index a) const{
+    return square == a.square && piece == a.piece && color == a.color;
+}
 bool Index::isnull(){
     return piece == 6;
 }
@@ -110,7 +124,7 @@ int Index::fullpiece() const{
     return piece*2+color;
 }
 
-void Index::print(){
+void Index::print() const{
     printf("%d %d %d", piece, color, square^7);
 }
 ThreatIndex::ThreatIndex(){}
@@ -127,19 +141,21 @@ bool ThreatIndex::issemiexcluded() const{
     return from.piece == to.piece && from.square > to.square;
 }
 ThreatIndex::operator int() const{
+    assertInEq(from.piece, KING);
+    assertInEq(to.piece, KING);
     return threatIndex[from.fullpiece()][from.square][to.square]+threatoffset[from.fullpiece()]*(piecesThreat[from.piece][to.piece]+to.color*valid_targets[from.piece]);
 }
-void ThreatIndex::changepov(bool needs){
-    from.schangepov(needs);
-    to.schangepov(needs);
+ThreatIndex ThreatIndex::changepov(bool needs) const{
+    return ThreatIndex(from.changepov(needs), to.changepov(needs), remove);
 }
-void ThreatIndex::mirror(bool needs){
-    from.smirror(needs);
-    to.smirror(needs);
+ThreatIndex ThreatIndex::mirror(bool needs) const{
+    return ThreatIndex(from.mirror(needs), to.mirror(needs), remove);
 }
 
 updateBuffer::updateBuffer():nbThreats(0), dirty(true){}
-updateBuffer::updateBuffer(Index _add1, Index _add2, Index _sub1, Index _sub2):nbThreats(0), dirty(true){
+void updateBuffer::reset(Index _add1, Index _add2, Index _sub1, Index _sub2){
+    nbThreats = 0;
+    dirty = true;
     add1[0] = _add1;
     add2[0] = _add2;
     sub1[0] = _sub1;
@@ -182,10 +198,10 @@ void Accumulator::addXrays(const GameState* state, int pos, bool remove){
                 const int posdef = __builtin_ctzll(maskdef);
                 const bool colordef = (maskdef&whitebb)?WHITE:BLACK;
                 const bool coloratk = ((1ULL << posatk)&whitebb)?WHITE:BLACK;
-                if(colordef == BLACK)assert(maskdef&blackbb);
+                if(colordef == BLACK)assertEq((bool)(maskdef&blackbb), true);
                 const int piecedef = state->getPiece(posdef, colordef);
-                assert(type(state->getfullPiece(posdef)) == piecedef);
-                assert(piecedef != SPACE);
+                assertEq(type(state->getfullPiece(posdef)), piecedef);
+                assertInEq(piecedef, SPACE);
                 const int pieceatk = state->getPiece(posatk, coloratk);
                 if(piecedef != KING){
                     const ThreatIndex threat(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef), remove);
@@ -201,6 +217,7 @@ void Accumulator::addXrays(const GameState* state, int pos, bool remove){
 void Accumulator::addPiece(int piece, bool colorpiece, int pos, bool remove){
     Index posatk(pos, piece, colorpiece);
     big atkmask;
+    assertInEq(piece, KING);
     switch (piece) {
         case PAWN:
             atkmask = attackPawns[pos+colorpiece*64];
@@ -224,6 +241,7 @@ void Accumulator::addPiece(int piece, bool colorpiece, int pos, bool remove){
         for(int p=0; p<nbPieces; p++)
             if(piecesThreat[piece][p] != -1)
                 authMask |= bitboards[_c][p];
+    authMask ^= 1ULL << pos;
     atkmask &= authMask;
     while(atkmask){
         const int _posdef = __builtin_ctzll(atkmask);
@@ -235,10 +253,10 @@ void Accumulator::addPiece(int piece, bool colorpiece, int pos, bool remove){
                 piecedef = x;
                 break;
             }
-        assert(piecedef != -1);
+        assertInEq(piecedef, -1);
         Index posdef(_posdef, piecedef, colorPiece);
         ThreatIndex threat(posatk, posdef, remove);
-        assert(!threat.isexcluded());
+        assertEq(!threat.isexcluded(), 1);
         update.threatUpdates[update.nbThreats++] = threat;
         atkmask &= atkmask-1;
     }
@@ -254,13 +272,17 @@ void Accumulator::getThreatUpdates(const GameState* state, const Move& move){
         threatfullupdate = true;
     }else{
         threatfullupdate = false;
-        if(toPiece != KING){
+        if(move.piece != KING){
             addPiece(toPiece, side, move.to(), false);
             addPiece(move.piece, side, move.from(), true);
         }
         if(isCapture){
             addPiece(capture, !side, move.to(), true);
-            update.threatUpdates[update.nbThreats++] = ThreatIndex(Index(move.from(), move.piece, side), Index(move.to(), capture, !side), true);
+            if(move.piece != KING){
+                const ThreatIndex threat(Index(move.from(), move.piece, side), Index(move.to(), capture, !side), true);
+                if(!threat.isexcluded())
+                    update.threatUpdates[update.nbThreats++] = threat;
+            }
         }else
            addXrays(state, move.to(), true);
         addXrays(state, move.from(), false);
@@ -270,7 +292,7 @@ void Accumulator::getThreatUpdates(const GameState* state, const Move& move){
 
 void Accumulator::reinit(const Move& move, const GameState* state, Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
     memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
-    update = updateBuffer(add1, add2, sub1, sub2);
+    update.reset(add1, add2, sub1, sub2);
     blackbb = 0;
     whitebb = 0;
     for(int p=0; p<nbPieces; p++)
@@ -304,10 +326,18 @@ void Accumulator::applythreatsUpdates(bool pov){
     assert(update.nbThreats >= 0);
     assert(update.nbThreats < maxThreatUpdates);
     for(int i=0; i<update.nbThreats; i++){
-        ThreatIndex curThreat = update.threatUpdates[i];
-        curThreat.changepov(pov);
-        curThreat.mirror(Kside[pov]);
+        const ThreatIndex curThreat = update.threatUpdates[i].changepov(pov).mirror(Kside[pov]);
+        assertEq(curThreat.isexcluded(), false);
         if(curThreat.issemiexcluded())continue;
+        const int threatind = (int)curThreat;
+        if(threatind < 0){
+
+            printf("%d\n", threatind);
+            curThreat.from.print();printf(" ");
+            curThreat.to.print();
+            printf("\n");
+            exit(1);
+        }
         if(curThreat.remove)
             globnnue.addThreat<-1>(*this, pov, curThreat);
         else

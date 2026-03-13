@@ -47,8 +47,9 @@ public:
     void schangepov();
     void schangepov(bool needs);
     operator int();
+    bool operator==(const Index a) const;
     bool isnull();
-    void print();
+    void print() const;
 };
 
 int mirrorSquare(int square, bool mirror);
@@ -63,8 +64,8 @@ public:
     bool isexcluded() const;
     bool issemiexcluded() const;
     operator int() const;
-    void changepov(bool needs);
-    void mirror(bool needs);
+    ThreatIndex changepov(bool needs) const;
+    ThreatIndex mirror(bool needs) const;
 };
 
 class updateBuffer{
@@ -76,7 +77,7 @@ public:
     bool dirty;
     int type;
     updateBuffer();
-    updateBuffer(Index sub1, Index add1, Index sub2, Index add2);
+    void reset(Index sub1, Index add1, Index sub2, Index add2);
     void print();
 };
 
