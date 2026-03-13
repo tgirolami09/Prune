@@ -361,7 +361,7 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 
 
 template<int f>
-void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const GameState* state){
+void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) GameState* state){
     int toPiece = move.piece;
     if(move.promotion() != -1){
         toPiece = move.promotion();
@@ -470,8 +470,8 @@ void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& s
 #endif
 }
 
-template void IncrementalEvaluator::playMove<-1>(Move, bool, const GameState*);
-template void IncrementalEvaluator::playMove<1>(Move, bool, const GameState*);
+template void IncrementalEvaluator::playMove<-1>(Move, bool, GameState*);
+template void IncrementalEvaluator::playMove<1>(Move, bool, GameState*);
 template void IncrementalEvaluator::changePiece2<-1, true>(int, int, bool);
 template void IncrementalEvaluator::changePiece2<1, true>(int, int, bool);
 template void IncrementalEvaluator::changePiece2<-1, false>(int, int, bool);

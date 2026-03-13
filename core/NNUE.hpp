@@ -94,10 +94,11 @@ public:
     big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
-    void reinit(const Move& move, const GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
+    void defstaterelated(const GameState* state);
+    void reinit(const Move& move, GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
     void addPiece(int piece, bool colorpiece, int square, bool remove);
     void addXrays(const GameState* state, int square, bool remove);
-    void getThreatUpdates(const GameState* state, const Move& move);
+    void getThreatUpdates(GameState* state, const Move& move);
     const simd16* operator[](int idx) const{
         return accs[idx];
     }

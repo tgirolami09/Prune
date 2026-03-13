@@ -432,7 +432,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
             return MIDDLE;
         }
-        ss.eval.playMove(order.moves[0], !state.friendlyColor(), &state);
         ss.generator.initDangers(state);
         int sc = -negamax<isPV, limitWay>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
         ss.eval.undoMove(order.moves[0], !state.friendlyColor());
@@ -492,7 +491,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             score = MIDDLE;
             isDraw = true;
         }else{
-            ss.eval.playMove(curMove, !state.friendlyColor(), &state);
             bool inCheckPos = ss.generator.initDangers(state);
             int reductionDepth = 1;
             if(inCheckPos && firstMoveExtension == 0){
@@ -519,7 +517,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 }
             }else
                 score = -negamax<isPV, limitWay>(ss, depth-reductionDepth+firstMoveExtension, state, -beta, -alpha, relDepth+1, !cutnode);
-            ss.eval.undoMove(curMove, !state.friendlyColor());
         }
         ss.stack[rootDist].snap.restore(state);
         if(!running || smp_abort)return bestScore;
