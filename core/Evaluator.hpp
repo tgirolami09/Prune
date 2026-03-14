@@ -184,9 +184,9 @@ class IncrementalEvaluator{
     int egScore;
     int mgScore;
 #endif
-    int stackIndex;
     int nbMan;
 public:
+    int stackIndex;
     template<int f, bool updateNNUE>
     void changePiece(int pos, int piece, bool c, bool updateNNUE2=true);
     template<int f, bool updateNNUE>

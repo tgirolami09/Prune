@@ -430,6 +430,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(state.twofoldFast()){
             ss.stack[rootDist].snap.restore(state);
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
+            ss.eval.undoMove(order.moves[0], state.friendlyColor());
             return MIDDLE;
         }
         ss.generator.initDangers(state);

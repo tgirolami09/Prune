@@ -63,9 +63,12 @@ public:
     ThreatIndex();
     bool isexcluded() const;
     bool issemiexcluded() const;
+    void swap();
+    ThreatIndex rswap() const;
     operator int() const;
     ThreatIndex changepov(bool needs) const;
     ThreatIndex mirror(bool needs) const;
+    void print() const;
 };
 
 class updateBuffer{
@@ -96,8 +99,8 @@ public:
     Accumulator(){}
     void defstaterelated(const GameState* state);
     void reinit(const Move& move, GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
-    void addPiece(int piece, bool colorpiece, int square, bool remove);
-    void addXrays(const GameState* state, int square, bool remove);
+    void addPiece(int piece, bool colorpiece, int square, bool remove, int removepos);
+    void addXrays(int square, bool remove, int removepos);
     void getThreatUpdates(GameState* state, const Move& move);
     const simd16* operator[](int idx) const{
         return accs[idx];
