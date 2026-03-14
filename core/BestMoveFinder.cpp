@@ -228,11 +228,12 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             if(capture.isTactical() && !(flag&1))continue;
             else if(!capture.isTactical())continue;
         }
-        state.playMove(capture);//don't care about repetition
+        ss.stack[relDepth].snap.save(state);
+        state.playMoveForward(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor(), &state);
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(capture, !state.friendlyColor());
-        state.undoLastMove();
+        ss.stack[relDepth].snap.restore(state);
         if(!running || smp_abort)return 0;
         if(score >= beta){
             ss.nbCutoff++;
@@ -353,10 +354,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 return static_eval;
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
-                state.playNullMove();
+                ss.stack[relDepth].snap.save(state);
+                state.playNullMoveForward();
                 ss.generator.initDangers(state);
                 int v = -negamax<false, limitWay>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
-                state.undoNullMove();
+                ss.stack[relDepth].snap.restore(state);
                 if(v >= beta){
                     if(depth <= 10 || ss.min_nmp_ply != 0){
                         if(abs(v) > MAXIMUM-maxDepth)return beta;
@@ -428,9 +430,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(order.nbMoves == 1){
         if(isRoot)
             ss.rootBest = order.moves[0];
-        state.playMove(order.moves[0]);
-        if(state.twofold()){
-            state.undoLastMove();
+        ss.stack[relDepth].snap.save(state);
+        state.playMoveForward(order.moves[0]);
+        if(state.twofoldFast()){
+            ss.stack[relDepth].snap.restore(state);
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
             return MIDDLE;
         }
@@ -438,7 +441,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         ss.generator.initDangers(state);
         int sc = -negamax<isPV, limitWay>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
         ss.eval.undoMove(order.moves[0], !state.friendlyColor());
-        state.undoLastMove();
+        ss.stack[relDepth].snap.restore(state);
         if (sc > alpha && sc < beta && isPV)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
@@ -486,10 +489,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
 #endif
         int score;
-        state.playMove(curMove);
+        ss.stack[relDepth].snap.save(state);
+        state.playMoveForward(curMove);
         bool isDraw = false;
         triedMove++;
-        if(state.twofold()){
+        if(state.twofoldFast()){
             score = MIDDLE;
             isDraw = true;
         }else{
@@ -522,7 +526,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 score = -negamax<isPV, limitWay>(ss, depth-reductionDepth+firstMoveExtension, state, -beta, -alpha, relDepth+1, !cutnode);
             ss.eval.undoMove(curMove, !state.friendlyColor());
         }
-        state.undoLastMove();
+        ss.stack[relDepth].snap.restore(state);
         if(!running || smp_abort)return bestScore;
         if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval, isPV);
@@ -616,14 +620,15 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     int actDepth=0;
     for(int i=0; i<nbThreads-1; i++)
         helperThreads[i].localState.fromFen(state.toFen());
+    PositionSnapshot snap;
+    snap.save(state);
     for(Move move:movesFromRoot){
-        state.playPartialMove(move);
-        for(int i=0; i<nbThreads-1; i++)helperThreads[i].localState.playPartialMove(move);
+        state.playPartialMoveForward(move);
+        for(int i=0; i<nbThreads-1; i++)helperThreads[i].localState.playPartialMoveForward(move);
         actDepth++;
     }
     bestMoveResponse res=goState<limitWay>(state, tm, verbose, actDepth);
-    for(unsigned long i=0; i<movesFromRoot.size(); i++)
-        state.undoLastMove();
+    snap.restore(state);
     return res;
 }
 
@@ -658,7 +663,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             smp_abort = false;
             bestScore = negamax<true, limitWay, true>(ss, depth, state, alpha, beta, actDepth, false);
             lastUsedNodes = ss.nodes-lastUsedNodes;
-            bestMove = bestScore != -INF ? ss.rootBest : finalBestMove;
+            bestMove = (bestScore != -INF && ss.rootBest.moveInfo != nullMove.moveInfo) ? ss.rootBest : finalBestMove;
             string limit;
             if(bestScore <= alpha){
                 deltaDown = max<int>(deltaDown*parameters.aw_mul, lastScore-bestScore+1);
@@ -820,6 +825,10 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         helperThreads[i].wait_thread();
     }
     smp_abort = false;
+    // Safety: if search was aborted before depth 1 completed (e.g. very low time),
+    // iterativeDeepening may return nullMove. Use the first legal move as fallback.
+    if(get<0>(res).moveInfo == nullMove.moveInfo && order.nbMoves > 0)
+        get<0>(res) = order.moves[0];
     return res;
 }
 
@@ -870,12 +879,13 @@ big Perft::_perft(GameState& state, ubyte depth){
     //if(depth == 1)return nbMoves;
     big count=0;
     for(int i=0; i<nbMoves; i++){
-        state.playMove(stack[depth][i]);
+        PositionSnapshot snap;
+        snap.save(state);
+        state.playMoveForward(stack[depth][i]);
         big nbNodes=_perft(state, depth-1);
-        state.undoLastMove();
+        snap.restore(state);
         count += nbNodes;
     }
-    //tt.push({state.zobristHash, count, depth});
     return count;
 }
 big Perft::perft(GameState& state, ubyte depth, bool verbose){
@@ -891,9 +901,11 @@ big Perft::perft(GameState& state, ubyte depth, bool verbose){
     for(int i=0; i<nbMoves; i++){
         clock_t startMove=clock();
         big startVisitedNodes = visitedNodes;
-        state.playMove(moves[i]);
+        PositionSnapshot snap;
+        snap.save(state);
+        state.playMoveForward(moves[i]);
         big nbNodes=_perft(state, depth-1);
-        state.undoLastMove();
+        snap.restore(state);
         clock_t end=clock();
         double tcpu = double(end-startMove)/CLOCKS_PER_SEC;
         if(verbose){

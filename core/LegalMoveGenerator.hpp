@@ -35,26 +35,38 @@ private:
 
     const int doubleCheckFromSameType = -100;
 
-    //A mask for allowed squares given pins for every piece on the board
-    big pinnedMasks[64];
+    //Pin ray bitboards: union of all pin rays of each type
+    big pinHV;   // horizontal/vertical pin rays (includes pinner + ray + pinned piece)
+    big pinD12;  // diagonal pin rays
 
     template<bool isPawn>
     void maskToMoves(int start, big mask, Move* moves, int& nbMoves, int8_t piece, bool promotQueen=false);
     big pseudoLegalBishopMoves(int bishopPosition, big allPieces);
     big pseudoLegalRookMoves(int rookPosition, big allPieces);
-    big pseudoLegalQueenMoves(int queenPositions, big allPieces);
+
     big pseudoLegalKnightMoves(int knightPosition);
-    big pseudoLegalPawnMoves(int pawnPosition, bool color, big allPieces, int friendKingPos, big moveMask = -1, big captureMask = -1, big enemyPieces = -1, int enPassant = -1, big enemyRooks = 0);
-    big pseudoLegalKingMoves(int kingPosition,const big Pieces, bool color, bool kingCastling, bool queenCastling);
-    int dealWithEnemyPawns(big enemyPawnPositions, int friendKingPos, int enemyColor);
+    template<bool IsWhite>
+    big pseudoLegalPawnMoves(int pawnPosition, big allPieces, int friendKingPos, big moveMask = -1, big captureMask = -1, big enemyPieces = -1, int enPassant = -1, big enemyRooks = 0);
+    template<bool IsWhite>
+    big pseudoLegalKingMoves(int kingPosition, big Pieces, bool kingCastling, bool queenCastling);
+    template<bool IsWhite>
+    int dealWithEnemyPawns(big enemyPawnPositions, int friendKingPos);
     int dealWithEnemyKnights(big enemyKnightPositions, int friendKingPos);
     int dealWithEnemyBishops(big enemyBishopPositions, big Pieces, int friendKingPos);
     int dealWithEnemyRooks(big enemyRookPositions, big allPieces, int friendKingPos);
     void dealWithEnemyKing(int enemyKingPos);
+    template<bool IsWhite>
     void legalKingMoves(const GameState& state, Move* moves, int& nbMoves, big allPieces, big captureMask = -1);
-    void legalPawnMoves(big pawnMask, bool friendlyColor, int lastDoublePawnPush, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves, big allPieces, big enemyRooks, bool promotQueen=false);
+    template<bool IsWhite>
+    void legalPawnMoves(big pawnMask, int lastDoublePawnPush, big moveMask, big captureMask, Move* pawnMoves, int& nbMoves, big allPieces, big enemyRooks, bool promotQueen=false);
     void legalKnightMoves(big knightMask, big moveMask, big captureMask, Move* knightMoves, int& nbMoves);
     void legalSlidingMoves(big moveMask, big captureMask, Move* slidingMoves, int& nbMoves, big allPieces);
+    template<bool IsWhite>
+    bool initDangersImpl(const GameState& state);
+    template<bool IsWhite, bool InCheck>
+    int generateLegalMovesImpl(const GameState& state, bool& inCheck, Move* legalMoves, big& dangerPositions, bool onlyCapture);
+    template<bool IsWhite>
+    Move getLVAImpl(int posCapture, GameState& state);
 
     const big* friendlyPieces;
     const big* enemyPieces;
