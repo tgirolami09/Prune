@@ -9,6 +9,7 @@ int color(const int& piece);
 int type(const int& piece);
 int countbit(const big& board);
 int flip(const int& square);
+int places(big mask, ubyte* positions);
 big reverse(big board);
 big reverse_col(big board);
 void print_mask(big mask);
