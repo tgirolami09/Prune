@@ -43,6 +43,7 @@ class BestMoveFinder{
             Order order;
             int static_score;
             int raw_eval;
+            PositionSnapshot snap;
         };
     public:
         LegalMoveGenerator generator;
