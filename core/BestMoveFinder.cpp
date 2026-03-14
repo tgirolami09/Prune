@@ -211,11 +211,10 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             if(capture.isTactical() && !(flag&1))continue;
             else if(!capture.isTactical())continue;
         }
-        //state.playMove(capture);//don't care about repetition
         ss.eval.playMove(capture, state.friendlyColor(), &state);
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
-        ss.eval.undoMove(capture, !state.friendlyColor());
         state.undoLastMove();
+        ss.eval.undoMove(capture, state.friendlyColor());
         if(!running || smp_abort)return 0;
         if(score >= beta){
             ss.nbCutoff++;
@@ -375,17 +374,17 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(order.nbMoves == 1){
         if(isRoot)
             ss.rootBest = order.moves[0];
-        //state.playMove(order.moves[0]);
         ss.eval.playMove(order.moves[0], state.friendlyColor(), &state);
         if(state.twofold()){
             state.undoLastMove();
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
+            ss.eval.undoMove(order.moves[0], state.friendlyColor());
             return MIDDLE;
         }
         ss.generator.initDangers(state);
         int sc = -negamax<isPV, limitWay>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
-        ss.eval.undoMove(order.moves[0], !state.friendlyColor());
         state.undoLastMove();
+        ss.eval.undoMove(order.moves[0], state.friendlyColor());
         if (sc > alpha && sc < beta && isPV)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
@@ -434,6 +433,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
 #endif
         int score;
         //state.playMove(curMove);
+        int currentStackIndex = ss.eval.stackIndex;
         ss.eval.playMove(curMove, state.friendlyColor(), &state);
         bool isDraw = false;
         triedMove++;
@@ -468,8 +468,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }else
                 score = -negamax<isPV, limitWay>(ss, depth-reductionDepth+firstMoveExtension, state, -beta, -alpha, relDepth+1, !cutnode);
         }
-        ss.eval.undoMove(curMove, !state.friendlyColor());
         state.undoLastMove();
+        ss.eval.undoMove(curMove, state.friendlyColor());
+        if(ss.eval.stackIndex != currentStackIndex){
+            printf("%d %d: %s x %s\n", ss.eval.stackIndex, currentStackIndex, state.toFen().c_str(), curMove.to_str().c_str());
+            assert(false);
+        }
         if(!running || smp_abort)return bestScore;
         if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval, isPV);

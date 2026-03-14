@@ -272,6 +272,7 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.boardRepresentation[BLACK][KING])) <= 3;
     stackAcc[stackIndex].idInputBucket[WHITE] = getInputBucket(__builtin_ctzll(state.boardRepresentation[WHITE][KING]), WHITE, stackAcc[stackIndex].Kside[WHITE]);
     stackAcc[stackIndex].idInputBucket[BLACK] = getInputBucket(__builtin_ctzll(state.boardRepresentation[BLACK][KING]), BLACK, stackAcc[stackIndex].Kside[BLACK]);
+    memcpy(stackAcc[stackIndex].bitboards, state.boardRepresentation, sizeof(stackAcc[stackIndex].bitboards));
     globnnue.calcThreats(stackAcc[stackIndex], WHITE, state.boardRepresentation);
     globnnue.calcThreats(stackAcc[stackIndex], BLACK, state.boardRepresentation);
     //printf("%d %d\n", stackAcc[stackIndex].idInputBucket[WHITE], stackAcc[stackIndex].idInputBucket[BLACK]);
@@ -375,6 +376,7 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 
 template<int f>
 void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) GameState* state){
+    static_assert(f == -1 || f == 1, "f has to be either -1 or 1");
     int toPiece = move.piece;
     if(move.promotion() != -1){
         toPiece = move.promotion();
@@ -437,6 +439,8 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) G
         stackIndex++;
     }else
         stackIndex--;
+#else
+    state->playMove(move);
 #endif
 }
 
@@ -484,8 +488,8 @@ void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& s
 }
 
 template void IncrementalEvaluator::playMove<-1>(Move, bool, GameState*);
-template void IncrementalEvaluator::playMove<1>(Move, bool, GameState*);
+template void IncrementalEvaluator::playMove< 1>(Move, bool, GameState*);
 template void IncrementalEvaluator::changePiece2<-1, true>(int, int, bool);
-template void IncrementalEvaluator::changePiece2<1, true>(int, int, bool);
+template void IncrementalEvaluator::changePiece2< 1, true>(int, int, bool);
 template void IncrementalEvaluator::changePiece2<-1, false>(int, int, bool);
-template void IncrementalEvaluator::changePiece2<1, false>(int, int, bool);
+template void IncrementalEvaluator::changePiece2< 1, false>(int, int, bool);
