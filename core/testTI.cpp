@@ -6,8 +6,21 @@
 #include <cstdio>
 #include <cassert>
 #include <memory>
+#include <string>
 #include <vector>
 using namespace std;
+
+string verbose(int add, int rem){
+    string res = "";
+    if(add+rem > 0)
+        res += " 1 file changed";
+    else res += " 0 files changed";
+    if(add > 0)
+        res += ", "+to_string(add)+" insertion"+(add > 1?"s":"")+"(+)";
+    if(rem > 0)
+        res += ", "+to_string(rem)+" deletion"+(rem > 1?"s":"")+"(-)";
+    return res;
+}
 
 int main(int argc, char** argv){
     unique_ptr<GameState> state=make_unique<GameState>();
@@ -17,7 +30,7 @@ int main(int argc, char** argv){
     vector<int> isUpdated(THREAT_SIZE, -1);
     int upd = 0;
     for(int i=1; i<argc; i++){
-        printf("fen %s\n", argv[i]);
+        //printf("fen %s\n", argv[i]);
         string fen(argv[i]);
         state->fromFen(fen);
         gen->initDangers(*state);
@@ -31,16 +44,21 @@ int main(int argc, char** argv){
             Move& curMove = listMove[idMove];
             eval->playMove(curMove, state->friendlyColor(), &*state);
             const Accumulator& acc=(*eval)[eval->stackIndex];
-            printf("move %d : %s (%d %d %d) : %d threat updates\n", idMove, curMove.to_str().c_str(), curMove.piece, curMove.capture, curMove.promotion(),  acc.update.nbThreats);
+            int countremoved = 0;
+            int countadded = 0;
             for(int idThreat=0; idThreat<acc.update.nbThreats; idThreat++){
                 ThreatIndex curThreat = acc.update.threatUpdates[idThreat].changepov(pov).mirror(mirror);
                 if(curThreat.issemiexcluded())curThreat.swap();
                 if(curThreat.isexcluded())curThreat.swap();
                 assert(!curThreat.isexcluded() && !curThreat.issemiexcluded());
-                if(isUpdated[(int)curThreat] == upd)continue;
+                if(isUpdated[(int)curThreat] == upd)assert(false);
                 curThreat.print();
                 isUpdated[(int)curThreat] = upd;
+                countadded += !curThreat.remove;
+                countremoved += curThreat.remove;
             }
+            int ev=eval->getRaw(state->friendlyColor());
+            printf("%s%s : %d\n", curMove.to_str().c_str(), verbose(countadded, countremoved).c_str(), ev);
             upd++;
             state->undoLastMove();
             eval->undoMove(curMove, state->friendlyColor());

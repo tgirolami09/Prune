@@ -111,7 +111,7 @@ public:
     simd16* operator[](int idx){
         return accs[idx];
     }
-    void applythreatsUpdates(bool side);
+    void applythreatsUpdates(Accumulator& accIn, bool side);
     void updateSelf(Accumulator& accIn);
 };
 
