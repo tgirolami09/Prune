@@ -14,6 +14,7 @@ SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 SOURCES := $(filter-out netScale.cpp,$(SOURCES))
 SOURCES := $(filter-out spsa.cpp,$(SOURCES))
 SOURCES := $(filter-out datasetStats.cpp,$(SOURCES))
+SOURCES := $(filter-out testTI.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
@@ -116,6 +117,9 @@ embeder.o: embeder.cpp
 
 embederHCE.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+
+testTI: $(OBJECTS) testTI.cpp
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
 
 clean:
 	rm $(OBJECTS) $(DEPENDS)
