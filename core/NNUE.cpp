@@ -346,7 +346,6 @@ void Accumulator::getThreatUpdates(GameState* state, const Move& move){
         state->playMove(move);
         defstaterelated(state);
         updatePiece(ROOK, side, update.add2[0].square, false, -1);
-        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
     }else{
         defstaterelated(state);
         threatfullupdate = false;
