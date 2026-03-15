@@ -473,6 +473,9 @@ void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& s
     }
 #endif
 }
+const Accumulator& IncrementalEvaluator::operator[](int idx) const{
+    return stackAcc[idx];
+}
 
 template void IncrementalEvaluator::playMove<-1>(Move, bool, GameState*);
 template void IncrementalEvaluator::playMove< 1>(Move, bool, GameState*);

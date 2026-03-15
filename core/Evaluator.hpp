@@ -205,6 +205,7 @@ public:
     void playMove(Move move, bool c, GameState* state);
     void playNoBack(const GameState& state, Move move, bool c);
     void undoMove(Move move, bool c);
+    const Accumulator& operator[](int idx) const;
 };
 
 #endif
