@@ -449,6 +449,7 @@ int LegalMoveGenerator::dealWithEnemyKnights(big enemyKnightPositions, int frien
 
 int LegalMoveGenerator::dealWithEnemyBishops(big enemyBishopPositions, big Pieces, int friendKingPos){
     int checkerB = -1;
+    big kingAsBishop = pseudoLegalBishopMoves(friendKingPos, 0ull);
     for (big bb = enemyBishopPositions; bb; bb &= bb - 1){
         int currentBishopPos = __builtin_ctzll(bb);
         big dangerSquares = pseudoLegalBishopMoves(currentBishopPos, Pieces ^ (1ull << friendKingPos));
@@ -466,11 +467,9 @@ int LegalMoveGenerator::dealWithEnemyBishops(big enemyBishopPositions, big Piece
             }
         }
 
-        int kingRow = row(friendKingPos), kingCol = col(friendKingPos);
-        int bishopRow = row(currentBishopPos), bishopCol = col(currentBishopPos);
 
         //It makes sense for a bishop to pin a piece if its in the same diagonal as the king
-        if (abs(kingRow - bishopRow) == abs(kingCol - bishopCol)){
+        if (kingAsBishop & (1ull << currentBishopPos)){
             big ray = directions[friendKingPos][currentBishopPos];
             big pinnedPieceMask = (ray ^ (1ull << currentBishopPos)) & Pieces;
             //There is a pinned piece;
@@ -484,6 +483,7 @@ int LegalMoveGenerator::dealWithEnemyBishops(big enemyBishopPositions, big Piece
 
 int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, int friendKingPos){
     int checkerR = -1;
+    big kingAsRook = pseudoLegalRookMoves(friendKingPos, 0ull);
     for (big bb = enemyRookPositions; bb; bb &= bb - 1){
         int currentRookPos = __builtin_ctzll(bb);
         big dangerSquares = pseudoLegalRookMoves(currentRookPos, Pieces ^ (1ull << friendKingPos));
@@ -501,11 +501,9 @@ int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, i
             }
         }
 
-        int kingRow = row(friendKingPos), kingCol = col(friendKingPos);
-        int rookRow = row(currentRookPos), rookCol = col(currentRookPos);
 
         //It makes sense for a rook to pin a piece if its on the same row or column as the king
-        if (kingRow == rookRow || kingCol == rookCol){
+        if (kingAsRook & (1ull << currentRookPos)){
             big ray = directions[friendKingPos][currentRookPos];
             big pinnedPieceMask = (ray ^ (1ull << currentRookPos)) & Pieces;
             //There is a pinned piece;
