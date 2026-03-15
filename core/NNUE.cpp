@@ -225,8 +225,10 @@ void Accumulator::updateXrays(int pos, bool remove, int removepos){
                     if(bitboards[colordef][i]&maskdef)piecedef = i;
                 const int pieceatk = (maskatk&queenbb)?QUEEN:simppiece;
                 const ThreatIndex threat(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef), remove);
-                if(!threat.isexcluded() && !threat.issemiexcluded()) // the non excluded threat will be in the reverse
+                if(!threat.isexcluded() && !threat.issemiexcluded()){ // the non excluded threat will be in the reverse
                     update.threatUpdates[update.nbThreats++] = threat;
+                    mask &= ~maskdef;
+                }
             }
             mask &= mask-1;
         }
