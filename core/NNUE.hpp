@@ -85,6 +85,13 @@ public:
 };
 
 class Accumulator{
+    void defstaterelated(const GameState* state);
+    void updatePieceOutComing(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    void updatePieceIncoming(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    void updatePiece(int piece, bool colorpiece, int square, bool remove, int removepos);
+    void updateXrays(int square, bool remove, int removepos);
+    void getThreatUpdates(GameState* state, const Move& move);
+    void applythreatsUpdates(const Accumulator& accIn, bool side);
 public:
     simd16 accs[4][HL_SIZE/nb16];
     bool Kside[2];
@@ -97,20 +104,13 @@ public:
     big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
-    void defstaterelated(const GameState* state);
     void reinit(const Move& move, GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
-    void updatePieceOutComing(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
-    void updatePieceIncoming(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
-    void updatePiece(int piece, bool colorpiece, int square, bool remove, int removepos);
-    void updateXrays(int square, bool remove, int removepos);
-    void getThreatUpdates(GameState* state, const Move& move);
     const simd16* operator[](int idx) const{
         return accs[idx];
     }
     simd16* operator[](int idx){
         return accs[idx];
     }
-    void applythreatsUpdates(const Accumulator& accIn, bool side);
     void updateSelf(const Accumulator& accIn);
 };
 
