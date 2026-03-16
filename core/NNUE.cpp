@@ -262,8 +262,6 @@ void Accumulator::updatePieceOutComing(const int piece, const bool colorpiece, c
             }
         Index posdef(_posdef, piecedef, colorPiece);
         ThreatIndex threat(posatk, posdef, remove);
-        if(threat.issemiexcluded()) // if it's excluded, then we're interested in the reverse threat
-            threat.swap();
         update.threatUpdates[update.nbThreats++] = threat;
         atkmask &= atkmask-1;
     }
@@ -331,10 +329,6 @@ void Accumulator::updatePiece(const int piece, const bool colorpiece, const int 
 }
 
 void Accumulator::getThreatUpdates(GameState* state, const Move& move){
-    /*threatfullupdate = true;
-    state->playMove(move);
-    memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
-    return;*/
     const int toPiece = move.promotion() == -1 ? move.piece : move.promotion();
     const bool isCapture = move.capture != -2;
     const int capture = move.capture;
