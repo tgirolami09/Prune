@@ -111,8 +111,8 @@ public:
     simd16* operator[](int idx){
         return accs[idx];
     }
-    void applythreatsUpdates(Accumulator& accIn, bool side);
-    void updateSelf(Accumulator& accIn);
+    void applythreatsUpdates(const Accumulator& accIn, bool side);
+    void updateSelf(const Accumulator& accIn);
 };
 
 class NNUE{
@@ -138,10 +138,12 @@ public:
     template<int f>
     void addThreat(Accumulator& accIn, bool pov, int index) const;
     template<int f>
+    void addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const;
+    template<int f>
     void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const;
-    void move3(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const;
-    void move2(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
-    void move4(int color, Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
+    void move3(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const;
+    void move2(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
+    void move4(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex) const;
     void calcThreats(Accumulator& accs, bool color, const big bitboards[2][6]) const;
     dbyte eval(Accumulator& accs, bool side, int idB) const;
