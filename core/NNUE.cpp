@@ -178,7 +178,7 @@ void updateBuffer::print(){
     printf("\n");
 }
 
-big firstInDirection(int square, int square2, big occupancy){
+inline big firstInDirection(int square, int square2, big occupancy){
     big mask = fullDir[square][square2]&occupancy;
     if(!mask)return 0;
     if(square2 > square)
@@ -186,7 +186,7 @@ big firstInDirection(int square, int square2, big occupancy){
     else
         return 1ULL << (__builtin_clzll(mask)^63);
 }
-big firstafter(int square, int square2, big occupancy, big atkmask){
+inline big firstafter(int square, int square2, big occupancy, big atkmask){
     if(!((1ULL << square)&atkmask))return 0;
     big mask = fullDir[square][square2]&occupancy;
     if(!mask)return 0;
@@ -235,19 +235,15 @@ void Accumulator::updateXrays(int pos, bool remove, int removepos){
     }
 }
 
-void Accumulator::updatePieceOutComing(const int piece, const bool colorpiece, const int pos, const bool remove, const int removepos){
+void Accumulator::updatePieceOutComing(const int piece, const bool colorpiece, const int pos, const bool remove, const int removepos, const big sliders[3]){
     const Index posatk(pos, piece, colorpiece);
     big atkmask;
     if(piece == PAWN)
         atkmask = attackPawns[pos+colorpiece*64];
     else if(piece == KNIGHT)
         atkmask = KnightMoves[pos];
-    else if(piece == BISHOP)
-        atkmask = moves_table(pos, occupied&mask_empty_bishop(pos));
-    else if(piece == ROOK)
-        atkmask = moves_table(pos+64, occupied&mask_empty_rook(pos));
     else
-        atkmask = moves_table(pos, occupied&mask_empty_bishop(pos)) | moves_table(pos+64, occupied&mask_empty_rook(pos));
+        atkmask = sliders[piece-BISHOP];
     big authMask = 0;
     for(int x=0; x<nbPieces-1; x++)
         if(piecesThreat[piece][x] != -1)
@@ -273,7 +269,7 @@ void Accumulator::updatePieceOutComing(const int piece, const bool colorpiece, c
     }
 }
 
-void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, const int pos, const bool remove, const int removepos){
+void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, const int pos, const bool remove, const int removepos, const big sliders[3]){
     big atkmask;
     const Index posdef(pos, piece, colorpiece);
     const big maskremove = ~(removepos == -1 ? 0 : (1ULL << removepos));
@@ -306,8 +302,8 @@ void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, co
     // -------------------------- slider pieces (ROOK & BISHOP & QUEEN) ---------------------------
     if(piece != QUEEN){ //otherwise all are either excluded or already added by outcoming
         //they are doing separatly because of bishopatk/rookatk
-        const big bishopatk = maskremove & moves_table(pos   , occupied&mask_empty_bishop(pos));
-        const big rookatk   = maskremove & moves_table(pos+64, occupied&mask_empty_rook  (pos));
+        const big bishopatk = maskremove & sliders[0];
+        const big rookatk   = maskremove & sliders[1];
         for(const int atkpiece:{BISHOP, ROOK, QUEEN}){
             if(piecesThreat[atkpiece][piece] != -1 && atkpiece != piece){
                 atkmask = (bishopatk*(atkpiece != ROOK))|(rookatk*(atkpiece != BISHOP));
@@ -325,8 +321,13 @@ void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, co
 }
 
 void Accumulator::updatePiece(const int piece, const bool colorpiece, const int pos, const bool remove, const int removepos){
-    updatePieceIncoming(piece, colorpiece, pos, remove, removepos);
-    updatePieceOutComing(piece, colorpiece, pos, remove, removepos);
+    big sliders[3] = {
+        moves_table(pos   , occupied&mask_empty_bishop(pos)),
+        moves_table(pos+64, occupied&mask_empty_rook  (pos)),
+    };
+    sliders[2] = sliders[0]|sliders[1];
+    updatePieceIncoming(piece, colorpiece, pos, remove, removepos, sliders);
+    updatePieceOutComing(piece, colorpiece, pos, remove, removepos, sliders);
 }
 
 void Accumulator::getThreatUpdates(GameState* state, const Move& move){

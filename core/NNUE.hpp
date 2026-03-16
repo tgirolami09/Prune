@@ -100,8 +100,8 @@ public:
     Accumulator(){}
     void defstaterelated(const GameState* state);
     void reinit(const Move& move, GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
-    void updatePieceOutComing(int piece, bool colorpiece, int square, bool remove, int removepos);
-    void updatePieceIncoming(int piece, bool colorpiece, int square, bool remove, int removepos);
+    void updatePieceOutComing(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    void updatePieceIncoming(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
     void updatePiece(int piece, bool colorpiece, int square, bool remove, int removepos);
     void updateXrays(int square, bool remove, int removepos);
     void getThreatUpdates(GameState* state, const Move& move);
