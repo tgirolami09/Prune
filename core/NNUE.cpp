@@ -375,7 +375,6 @@ void Accumulator::defstaterelated(const GameState* state){
 }
 
 void Accumulator::reinit(const Move& move, GameState* state, Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
-    _move = move;
     side = _side;
     update.reset(add1, add2, sub1, sub2);
     getThreatUpdates(state, move);
@@ -599,7 +598,7 @@ void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
 template<int f>
 void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const{
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");
-    for(int i=0; i<HL_SIZE*2/nb8; i += 2){
+    for(int i=0; i<HL_SIZE/nb16; i += 2){
         simd16 low=simd8_16l(threatWeights[index][i/2]);
         simd16 high=simd8_16h(threatWeights[index][i/2]);
         if constexpr (f == 1) {

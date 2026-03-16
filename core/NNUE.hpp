@@ -95,7 +95,6 @@ public:
     big occupied, blackbb, whitebb;
     int idInputBucket[2];
     big bitboards[2][6];
-    Move _move;
     updateBuffer update;
     Accumulator(){}
     void defstaterelated(const GameState* state);
