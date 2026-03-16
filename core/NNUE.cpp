@@ -201,7 +201,7 @@ void Accumulator::updateXrays(int pos, bool remove, int removepos){
     const big kingsbb = bitboards[WHITE][KING ] | bitboards[BLACK][KING ];
     const big rookmask =   moves_table(pos+64, occupied&mask_empty_rook  (pos));
     const big bishopmask = moves_table(pos   , occupied&mask_empty_bishop(pos));
-    const big maskremove = removepos != -1?((1ULL << removepos)|firstafter(removepos, pos, occupied, rookmask|bishopmask)):0;
+    const big maskremove = (1ULL << removepos)|firstafter(removepos, pos, occupied, rookmask|bishopmask);
     const big maskFkings = kingsbb|
         firstafter(__builtin_ctzll(bitboards[WHITE][KING]), pos, occupied, rookmask|bishopmask)|
         firstafter(__builtin_ctzll(bitboards[BLACK][KING]), pos, occupied, rookmask|bishopmask);
