@@ -119,11 +119,10 @@ void Index::print() const{
     printf("%d %d %d", piece, color, square^7);
 }
 ThreatIndex::ThreatIndex(){}
-ThreatIndex::ThreatIndex(Index _from, Index _to, bool _remove):from(_from), to(_to), remove(_remove){}
-ThreatIndex::ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare, int topiece, int tocolor, bool _remove):
+ThreatIndex::ThreatIndex(Index _from, Index _to):from(_from), to(_to){}
+ThreatIndex::ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare, int topiece, int tocolor):
     from(Index(fromsquare, frompiece, fromcolor)),
-    to(Index(tosquare, topiece, tocolor)),
-    remove(_remove){}
+    to(Index(tosquare, topiece, tocolor)){}
 
 bool ThreatIndex::isexcluded() const{
     return piecesThreat[from.piece][to.piece] == -1;
@@ -136,27 +135,28 @@ ThreatIndex::operator int() const{
     return index;
 }
 ThreatIndex ThreatIndex::changepov(bool needs) const{
-    return ThreatIndex(from.changepov(needs), to.changepov(needs), remove);
+    return ThreatIndex(from.changepov(needs), to.changepov(needs));
 }
 ThreatIndex ThreatIndex::mirror(bool needs) const{
-    return ThreatIndex(from.mirror(needs), to.mirror(needs), remove);
+    return ThreatIndex(from.mirror(needs), to.mirror(needs));
 }
 void ThreatIndex::swap(){
     std::swap(from, to);
 }
 ThreatIndex ThreatIndex::rswap() const{
-    return ThreatIndex(to, from, remove);
+    return ThreatIndex(to, from);
 }
 void ThreatIndex::print() const{
     from.print();
     printf(" ");
     to.print();
-    printf(" %d => %d\n", remove, (int)*this);
+    printf(" => %d\n", (int)*this);
 }
 
-updateBuffer::updateBuffer():nbThreats(0), dirty(true){}
+updateBuffer::updateBuffer():nbThreats{0, 0}, dirty(true){}
 void updateBuffer::reset(Index _add1, Index _add2, Index _sub1, Index _sub2){
-    nbThreats = 0;
+    nbThreats[0] = 0;
+    nbThreats[1] = 0;
     dirty = true;
     add1[0] = _add1;
     add2[0] = _add2;
@@ -224,9 +224,9 @@ void Accumulator::updateXrays(int pos, bool remove, int removepos){
                 for(int i=0; i<nbPieces-1; i++)
                     if(bitboards[colordef][i]&maskdef)piecedef = i;
                 const int pieceatk = (maskatk&queenbb)?QUEEN:simppiece;
-                const ThreatIndex threat(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef), remove);
+                const ThreatIndex threat(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef));
                 if(!threat.isexcluded() && !threat.issemiexcluded()){ // the non excluded threat will be in the reverse
-                    update.threatUpdates[update.nbThreats++] = threat;
+                    update.threatUpdates[remove][update.nbThreats[remove]++] = threat;
                     mask &= ~maskdef;
                 }
             }
@@ -261,8 +261,8 @@ void Accumulator::updatePieceOutComing(const int piece, const bool colorpiece, c
                 break;
             }
         Index posdef(_posdef, piecedef, colorPiece);
-        ThreatIndex threat(posatk, posdef, remove);
-        update.threatUpdates[update.nbThreats++] = threat;
+        ThreatIndex threat(posatk, posdef);
+        update.threatUpdates[remove][update.nbThreats[remove]++] = threat;
         atkmask &= atkmask-1;
     }
 }
@@ -280,8 +280,8 @@ void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, co
             atkmask &= bitboards[c][PAWN]&maskremove;
             while(atkmask){
                 int atkpos = __builtin_ctzll(atkmask);
-                const ThreatIndex threat(Index(atkpos, PAWN, c), posdef, remove);
-                update.threatUpdates[update.nbThreats++] = threat;
+                const ThreatIndex threat(Index(atkpos, PAWN, c), posdef);
+                update.threatUpdates[remove][update.nbThreats[remove]++] = threat;
                 atkmask &= atkmask-1;
             }
         }
@@ -292,8 +292,8 @@ void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, co
         while(atkmask){
             int atkpos = __builtin_ctzll(atkmask);
             const bool c=((1ULL << atkpos)&whitebb) ? WHITE : BLACK;
-            const ThreatIndex threat(Index(atkpos, KNIGHT, c), posdef, remove);
-            update.threatUpdates[update.nbThreats++] = threat;
+            const ThreatIndex threat(Index(atkpos, KNIGHT, c), posdef);
+            update.threatUpdates[remove][update.nbThreats[remove]++] = threat;
             atkmask &= atkmask-1;
         }
     }
@@ -309,8 +309,8 @@ void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, co
                 while(atkmask){
                     int atkpos = __builtin_ctzll(atkmask);
                     const bool c=((1ULL << atkpos)&whitebb) ? WHITE : BLACK;
-                    const ThreatIndex threat(Index(atkpos, atkpiece, c), posdef, remove);
-                    update.threatUpdates[update.nbThreats++] = threat;
+                    const ThreatIndex threat(Index(atkpos, atkpiece, c), posdef);
+                    update.threatUpdates[remove][update.nbThreats[remove]++] = threat;
                     atkmask &= atkmask-1;
                 }
             }
@@ -396,25 +396,40 @@ void Accumulator::reinit(const Move& move, GameState* state, Accumulator& prevAc
 }
 
 void Accumulator::applythreatsUpdates(const Accumulator& accIn, const bool pov){
-    if(update.nbThreats == 0){
+    if(update.nbThreats[0]+update.nbThreats[1] == 0){
         memcpy(accs[pov+2], accIn.accs[pov+2], sizeof(accs[pov+2]));
         return;
     }
-    ThreatIndex _curThreat = update.threatUpdates[0].changepov(pov).mirror(Kside[pov]);
-    if(_curThreat.issemiexcluded())_curThreat.swap();
-    const int _threatind = (int)_curThreat;
-    if(_curThreat.remove)
-        globnnue.addThreat<-1>(accIn, *this, pov, _threatind);
-    else
-        globnnue.addThreat< 1>(accIn, *this, pov, _threatind);
-    for(int i=1; i<update.nbThreats; i++){
-        ThreatIndex curThreat = update.threatUpdates[i].changepov(pov).mirror(Kside[pov]);
-        if(curThreat.issemiexcluded())curThreat.swap();
-        const int threatind = (int)curThreat;
-        if(curThreat.remove)
-            globnnue.addThreat<-1>(*this, pov, threatind);
+    int maxi = update.nbThreats[0] < update.nbThreats[1];
+    if(!update.nbThreats[maxi^1]){
+        ThreatIndex _curThreat = update.threatUpdates[maxi][0].changepov(pov).mirror(Kside[pov]);
+        if(_curThreat.issemiexcluded())_curThreat.swap();
+        const int _threatind = (int)_curThreat;
+        if(maxi)
+            globnnue.addThreat<-1>(accIn, *this, pov, _threatind);
         else
-            globnnue.addThreat< 1>(*this, pov, threatind);
+            globnnue.addThreat< 1>(accIn, *this, pov, _threatind);
+    }else{
+        ThreatIndex _threatadd = update.threatUpdates[0][0].changepov(pov).mirror(Kside[pov]);
+        ThreatIndex _threatrem = update.threatUpdates[1][0].changepov(pov).mirror(Kside[pov]);
+        if(_threatrem.issemiexcluded())_threatrem.swap();
+        if(_threatadd.issemiexcluded())_threatadd.swap();
+        globnnue.addThreataddsub(accIn, *this, pov, _threatadd, _threatrem);
+        for(int i=1; i<update.nbThreats[maxi^1]; i++){
+            ThreatIndex threatadd = update.threatUpdates[0][i].changepov(pov).mirror(Kside[pov]);
+            if(threatadd.issemiexcluded())threatadd.swap();
+            ThreatIndex threatrem = update.threatUpdates[1][i].changepov(pov).mirror(Kside[pov]);
+            if(threatrem.issemiexcluded())threatrem.swap();
+            globnnue.addThreataddsub(*this, pov, threatadd, threatrem);
+        }
+    }
+    for(int i=max(update.nbThreats[maxi^1], 1); i<update.nbThreats[maxi]; i++){
+        ThreatIndex curThreat = update.threatUpdates[maxi][i].changepov(pov).mirror(Kside[pov]);
+        if(curThreat.issemiexcluded())curThreat.swap();
+        if(maxi)
+            globnnue.addThreat<-1>(*this, pov, curThreat);
+        else
+            globnnue.addThreat< 1>(*this, pov, curThreat);
     }
 }
 
@@ -622,6 +637,33 @@ void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
             accs[pov+2][i  ] = simd16_sub(accs[pov+2][i  ], low);
             accs[pov+2][i+1] = simd16_sub(accs[pov+2][i+1], high);
         }
+    }
+}
+
+void NNUE::addThreataddsub(Accumulator& accs, bool pov, int indexadd, int indexrem) const{
+    for(int i=0; i<HL_SIZE*2/nb8; i += 2){
+        simd16 lowa=simd8_16l(threatWeights[indexadd][i/2]);
+        simd16 higha=simd8_16h(threatWeights[indexadd][i/2]);
+        simd16 lowr=simd8_16l(threatWeights[indexrem][i/2]);
+        simd16 highr=simd8_16h(threatWeights[indexrem][i/2]);
+        simd16 low = simd16_sub(lowa, lowr);
+        simd16 high = simd16_sub(higha, highr);
+        accs[pov+2][i  ] = simd16_add(accs[pov+2][i  ], low);
+        accs[pov+2][i+1] = simd16_add(accs[pov+2][i+1], high);
+    }
+}
+
+
+void NNUE::addThreataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, int indexadd, int indexrem) const{
+    for(int i=0; i<HL_SIZE*2/nb8; i += 2){
+        simd16 lowa=simd8_16l(threatWeights[indexadd][i/2]);
+        simd16 higha=simd8_16h(threatWeights[indexadd][i/2]);
+        simd16 lowr=simd8_16l(threatWeights[indexrem][i/2]);
+        simd16 highr=simd8_16h(threatWeights[indexrem][i/2]);
+        simd16 low = simd16_sub(lowa, lowr);
+        simd16 high = simd16_sub(higha, highr);
+        accs[pov+2][i  ] = simd16_add(accIn[pov+2][i  ], low);
+        accs[pov+2][i+1] = simd16_add(accIn[pov+2][i+1], high);
     }
 }
 

@@ -57,9 +57,8 @@ class ThreatIndex{
 public:
     Index from;
     Index to;
-    bool remove;
-    ThreatIndex(Index _from, Index _to, bool _remove);
-    ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare, int topiece, int tocolor, bool _remove);
+    ThreatIndex(Index _from, Index _to);
+    ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare, int topiece, int tocolor);
     ThreatIndex();
     bool isexcluded() const;
     bool issemiexcluded() const;
@@ -87,8 +86,8 @@ class updateBuffer{
 public:
     Index add1[2], add2[2];
     Index sub1[2], sub2[2]; //each pieces provoque a change in black and white pov
-    int nbThreats;
-    ThreatIndex threatUpdates[maxThreatUpdates];
+    int nbThreats[2];
+    ThreatIndex threatUpdates[2][32];
     bool dirty;
     int type;
     updateBuffer();
@@ -153,6 +152,8 @@ public:
     void addThreat(Accumulator& accIn, bool pov, int index) const;
     template<int f>
     void addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const;
+    void addThreataddsub(Accumulator& accIn, bool pov, int indexadd, int indexsub) const;
+    void addThreataddsub(const Accumulator& accIn, Accumulator& accOut, bool pov, int indexadd, int indexsub) const;
     template<int f>
     void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const;
     void move3(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const;
