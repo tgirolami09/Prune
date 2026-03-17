@@ -254,7 +254,8 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
 #ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
     finny.init();
-    stackAcc[stackIndex].update.nbThreats = 0;
+    stackAcc[stackIndex].update.nbThreats[0] = 0;
+    stackAcc[stackIndex].update.nbThreats[1] = 0;
     stackAcc[stackIndex].update.dirty = false;
     stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.boardRepresentation[WHITE][KING])) <= 3;
     stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.boardRepresentation[BLACK][KING])) <= 3;
