@@ -180,6 +180,7 @@ class IncrementalEvaluator{
     int presentPieces[2][6]; //keep trace of number of pieces by side
 #ifndef HCE
     Accumulator stackAcc[maxDepth];
+    FinnyTables finny;
 #else
     int egScore;
     int mgScore;
