@@ -266,6 +266,7 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     stackIndex = 0;
 #ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
+    finny.init();
     stackAcc[stackIndex].update.nbThreats = 0;
     stackAcc[stackIndex].update.dirty = false;
     stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.boardRepresentation[WHITE][KING])) <= 3;
@@ -303,7 +304,7 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 
 int IncrementalEvaluator::getRaw(bool c){
 #ifndef HCE
-    globnnue.updateStack(stackAcc, stackIndex);
+    globnnue.updateStack(stackAcc, stackIndex, finny);
     return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
 #else
     int clampPhase = min(mgPhase, 24);

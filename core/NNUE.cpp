@@ -418,7 +418,7 @@ void Accumulator::applythreatsUpdates(const Accumulator& accIn, const bool pov){
     }
 }
 
-void Accumulator::updateSelf(const Accumulator& accIn){
+void Accumulator::updateSelf(const Accumulator& accIn, FinnyTables& finny){
     if(threatrefresh || threatfullupdate){
         globnnue.calcThreats(*this, side, bitboards);
         if(threatfullupdate)
@@ -430,14 +430,33 @@ void Accumulator::updateSelf(const Accumulator& accIn){
         applythreatsUpdates(accIn, BLACK);
     }
     if(pstrefresh){
-        globnnue.initAcc(*this, side);
-        ubyte pos[10];
+        int index = (idInputBucket[side]*2+Kside[side])*2+side;
+        oneAccumulator& curAcc=finny.normals[index].accs;
         for(int c=0; c<2; c++)
             for(int piece=0; piece<nbPieces; piece++){
-                int nbp = places(bitboards[c][piece], pos);
-                for(int i=0; i<nbp; i++)
-                    globnnue.change1<1>(*this, side, Index(pos[i], piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
+                const big common = bitboards[c][piece]&finny.normals[index].bitboards[c][piece];
+                big maskadd = bitboards[c][piece]&~common;
+                big maskrem = finny.normals[index].bitboards[c][piece]&~common;
+                while(maskadd && maskrem){
+                    const int posrem = __builtin_ctzll(maskrem);
+                    const int posadd = __builtin_ctzll(maskadd);
+                    globnnue.move2In(curAcc, Index(posrem, piece, c).mirror(Kside[side]).changepov(side), Index(posadd, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
+                    maskrem &= maskrem-1;
+                    maskadd &= maskadd-1;
+                }
+                while(maskrem){
+                    const int posrem = __builtin_ctzll(maskrem);
+                    globnnue.change1acc<-1>(curAcc, Index(posrem, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
+                    maskrem &= maskrem-1;
+                }
+                while(maskadd){
+                    const int posadd = __builtin_ctzll(maskadd);
+                    globnnue.change1acc<1>(curAcc, Index(posadd, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
+                    maskadd &= maskadd-1;
+                }
             }
+        memcpy(accs[side], curAcc, sizeof(accs[side]));
+        memcpy(finny.normals[index].bitboards, bitboards, sizeof(bitboards));
         if(update.type == 0)
             globnnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), idInputBucket[!side]);
         else if(update.type == 1)
@@ -460,6 +479,12 @@ void Accumulator::updateSelf(const Accumulator& accIn){
     update.dirty = false;
 }
 
+void FinnyTables::init(){
+    for(int i=0; i<nbInputBuckets*4; i++){
+        memset(normals[i].bitboards, 0, sizeof(normals[i].bitboards));
+        globnnue.init1Acc(normals[i].accs);
+    }
+}
 
 template<typename T>
 dbyte NNUE::read_bytes(ifstream& file){
@@ -562,6 +587,12 @@ void NNUE::initAcc(Accumulator& accs) const{
 void NNUE::initAcc(Accumulator& accs, bool color) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         accs[color][i] = hlBiases[i];
+    }
+}
+
+void NNUE::init1Acc(oneAccumulator& accs) const{
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        accs[i] = hlBiases[i];
     }
 }
 
@@ -710,6 +741,16 @@ void NNUE::change1(Accumulator& accs, bool pov, int index, int idInputBucket) co
     }
 }
 template<int f>
+void NNUE::change1acc(oneAccumulator& acc, int index, int idInputBucket) const{
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        if constexpr (f == 1) {
+            acc[i] = simd16_add(acc[i], hlWeights[idInputBucket][index][i]);
+        } else {
+            acc[i] = simd16_sub(acc[i], hlWeights[idInputBucket][index][i]);
+        }
+    }
+}
+template<int f>
 void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         if constexpr (f == 1) {
@@ -731,6 +772,14 @@ void NNUE::move2(int color, const Accumulator& accIn, Accumulator& accOut, int i
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
+
+void NNUE::move2In(oneAccumulator& acc, int indexfrom, int indexto, int idInputBucket) const{
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        simd16 update = simd16_sub(hlWeights[idInputBucket][indexto][i], hlWeights[idInputBucket][indexfrom][i]);
+        acc[i] = simd16_add(acc[i], update);
+    }
+}
+
 void NNUE::move4(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 update = simd16_sub(simd16_add(hlWeights[idInputBucket][indexto1][i], hlWeights[idInputBucket][indexto2][i]), simd16_add(hlWeights[idInputBucket][indexfrom1][i], hlWeights[idInputBucket][indexfrom2][i]));
@@ -738,12 +787,12 @@ void NNUE::move4(int color, const Accumulator& accIn, Accumulator& accOut, int i
     }
 }
 
-void NNUE::updateStack(Accumulator* stack, int stackIndex) const{
+void NNUE::updateStack(Accumulator* stack, int stackIndex, FinnyTables& tables) const{
     int startUpdate;
     for(startUpdate=stackIndex; startUpdate >= 1 && stack[startUpdate].update.dirty; startUpdate--);
     startUpdate++;
     for(int i=startUpdate; i<=stackIndex; i++){
-        stack[i].updateSelf(stack[i-1]);
+        stack[i].updateSelf(stack[i-1], tables);
     }
 }
 

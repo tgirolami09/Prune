@@ -70,6 +70,18 @@ public:
     ThreatIndex mirror(bool needs) const;
     void print() const;
 };
+using oneAccumulator=simd16[HL_SIZE/nb16];
+class FinnytableNormal{
+public:
+    big bitboards[2][6];
+    oneAccumulator accs;
+};
+
+class FinnyTables{
+public:
+    FinnytableNormal normals[nbInputBuckets*4];
+    void init();
+};
 
 class updateBuffer{
 public:
@@ -111,7 +123,7 @@ public:
     simd16* operator[](int idx){
         return accs[idx];
     }
-    void updateSelf(const Accumulator& accIn);
+    void updateSelf(const Accumulator& accIn, FinnyTables& finny);
 };
 
 class NNUE{
@@ -130,10 +142,13 @@ public:
     NNUE(string name);
     NNUE();
     void initAcc(Accumulator& accs) const;
+    void init1Acc(oneAccumulator& accs) const;
     void initAcc(Accumulator& accs, bool color) const;
     int get_index(int piece, int c, int square) const;
     template<int f>
     void change1(Accumulator& accIn, bool pov, int index, int idInputBucket) const;
+    template<int f>
+    void change1acc(oneAccumulator& accIn, int index, int idInputBucket) const;
     template<int f>
     void addThreat(Accumulator& accIn, bool pov, int index) const;
     template<int f>
@@ -142,8 +157,9 @@ public:
     void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const;
     void move3(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const;
     void move2(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
+    void move2In(oneAccumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
     void move4(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
-    void updateStack(Accumulator* stack, int stackIndex) const;
+    void updateStack(Accumulator* stack, int stackIndex, FinnyTables& finny) const;
     void calcThreats(Accumulator& accs, bool color, const big bitboards[2][6]) const;
     dbyte eval(Accumulator& accs, bool side, int idB) const;
 };
