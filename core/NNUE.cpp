@@ -196,12 +196,14 @@ inline big firstafter(int square, int square2, big occupancy, big atkmask){
         return 1ULL << (__builtin_clzll(mask)^63);
 }
 
-void Accumulator::updateXrays(int pos, bool remove, int removepos){
+template<bool enPassant>
+void Accumulator::updateXrays(int pos, bool remove, int removepos, int removepos2){
     const big queenbb = bitboards[WHITE][QUEEN] | bitboards[BLACK][QUEEN];
     const big kingsbb = bitboards[WHITE][KING ] | bitboards[BLACK][KING ];
-    const big rookmask =   moves_table(pos+64, occupied&mask_empty_rook  (pos));
+    const big rookmask =   moves_table(pos+64, occupied&mask_empty_rook  (pos))&~(enPassant*mask_row[row(pos)]);
     const big bishopmask = moves_table(pos   , occupied&mask_empty_bishop(pos));
-    const big maskremove = (1ULL << removepos)|firstafter(removepos, pos, occupied, rookmask|bishopmask);
+    const big maskremove = (1ULL << removepos )|firstafter(removepos , pos, occupied, rookmask|bishopmask) |
+         (removepos2 != -1?(1ULL << removepos2)|firstafter(removepos2, pos, occupied, rookmask|bishopmask) : 0);
     const big maskFkings = kingsbb|
         firstafter(__builtin_ctzll(bitboards[WHITE][KING]), pos, occupied, rookmask|bishopmask)|
         firstafter(__builtin_ctzll(bitboards[BLACK][KING]), pos, occupied, rookmask|bishopmask);
@@ -333,11 +335,18 @@ void Accumulator::getThreatUpdates(GameState* state, const Move& move){
     const bool isCapture = move.capture != -2;
     const int capture = move.capture;
     if(move.capture == -1){//en passant
-        threatfullupdate = true;
+        defstaterelated(state);
+        int enpassantpos = move.to()+((side == WHITE) ? -8 : 8);
+        updatePiece(PAWN, side, move.from(), true, -1);
+        updateXrays(move.to(), true, move.from(), enpassantpos);
+        updatePiece(PAWN, !side, enpassantpos, true, move.from());
         state->playMove(move);
-        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
+        defstaterelated(state);
+        updatePiece(PAWN, side, move.to(), false, -1);
+        updateXrays(move.from(), false, move.to());
+        updateXrays<true>(enpassantpos, false, move.to()); //remove the common rook side ray
+        //memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
     }else if(move.isCastling()){
-        threatfullupdate = false;
         defstaterelated(state);
         updatePiece(ROOK, side, update.sub2[0].square, true, -1);
         state->playMove(move);
@@ -345,7 +354,6 @@ void Accumulator::getThreatUpdates(GameState* state, const Move& move){
         updatePiece(ROOK, side, update.add2[0].square, false, -1);
     }else{
         defstaterelated(state);
-        threatfullupdate = false;
         //first remove the threat that will disappear because of the move
         if(move.piece != KING)
             updatePiece(move.piece, side, move.from(), true, -1);
@@ -460,12 +468,9 @@ void Accumulator::applythreatsUpdates(const Accumulator& accIn, const bool pov){
 }
 
 void Accumulator::updateSelf(const Accumulator& accIn, FinnyTables& finny){
-    if(threatrefresh || threatfullupdate){
+    if(threatrefresh){
         globnnue.calcThreats(*this, side, bitboards);
-        if(threatfullupdate)
-            globnnue.calcThreats(*this, !side, bitboards);
-        else
-            applythreatsUpdates(accIn, !side);
+        applythreatsUpdates(accIn, !side);
     }else{
         applythreatsUpdates(accIn, WHITE);
         applythreatsUpdates(accIn, BLACK);
