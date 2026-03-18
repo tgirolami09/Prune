@@ -228,12 +228,12 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             if(capture.isTactical() && !(flag&1))continue;
             else if(!capture.isTactical())continue;
         }
-        ss.stack[relDepth].snap.save(state);
+        ss.stack[rootDist].snap.save(state);
         state.playMoveForward(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor(), &state);
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(capture, !state.friendlyColor());
-        ss.stack[relDepth].snap.restore(state);
+        ss.stack[rootDist].snap.restore(state);
         if(!running || smp_abort)return 0;
         if(score >= beta){
             ss.nbCutoff++;
@@ -354,11 +354,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 return static_eval;
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
-                ss.stack[relDepth].snap.save(state);
+                ss.stack[rootDist].snap.save(state);
                 state.playNullMoveForward();
                 ss.generator.initDangers(state);
                 int v = -negamax<false, limitWay>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
-                ss.stack[relDepth].snap.restore(state);
+                ss.stack[rootDist].snap.restore(state);
                 if(v >= beta){
                     if(depth <= 10 || ss.min_nmp_ply != 0){
                         if(abs(v) > MAXIMUM-maxDepth)return beta;
@@ -430,10 +430,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(order.nbMoves == 1){
         if(isRoot)
             ss.rootBest = order.moves[0];
-        ss.stack[relDepth].snap.save(state);
+        ss.stack[rootDist].snap.save(state);
         state.playMoveForward(order.moves[0]);
         if(state.twofoldFast()){
-            ss.stack[relDepth].snap.restore(state);
+            ss.stack[rootDist].snap.restore(state);
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
             return MIDDLE;
         }
@@ -441,7 +441,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         ss.generator.initDangers(state);
         int sc = -negamax<isPV, limitWay>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
         ss.eval.undoMove(order.moves[0], !state.friendlyColor());
-        ss.stack[relDepth].snap.restore(state);
+        ss.stack[rootDist].snap.restore(state);
         if (sc > alpha && sc < beta && isPV)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
@@ -489,7 +489,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
 #endif
         int score;
-        ss.stack[relDepth].snap.save(state);
+        ss.stack[rootDist].snap.save(state);
         state.playMoveForward(curMove);
         bool isDraw = false;
         triedMove++;
@@ -526,7 +526,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 score = -negamax<isPV, limitWay>(ss, depth-reductionDepth+firstMoveExtension, state, -beta, -alpha, relDepth+1, !cutnode);
             ss.eval.undoMove(curMove, !state.friendlyColor());
         }
-        ss.stack[relDepth].snap.restore(state);
+        ss.stack[rootDist].snap.restore(state);
         if(!running || smp_abort)return bestScore;
         if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval, isPV);
