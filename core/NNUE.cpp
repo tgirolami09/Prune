@@ -410,17 +410,43 @@ void Accumulator::applythreatsUpdates(const Accumulator& accIn, const bool pov){
         else
             globnnue.addThreat< 1>(accIn, *this, pov, _threatind);
     }else{
-        ThreatIndex _threatadd = update.threatUpdates[0][0].changepov(pov).mirror(Kside[pov]);
-        ThreatIndex _threatrem = update.threatUpdates[1][0].changepov(pov).mirror(Kside[pov]);
-        if(_threatrem.issemiexcluded())_threatrem.swap();
-        if(_threatadd.issemiexcluded())_threatadd.swap();
-        globnnue.addThreataddsub(accIn, *this, pov, _threatadd, _threatrem);
-        for(int i=1; i<update.nbThreats[maxi^1]; i++){
-            ThreatIndex threatadd = update.threatUpdates[0][i].changepov(pov).mirror(Kside[pov]);
-            if(threatadd.issemiexcluded())threatadd.swap();
-            ThreatIndex threatrem = update.threatUpdates[1][i].changepov(pov).mirror(Kside[pov]);
+        if(update.nbThreats[maxi^1] >= 2){
+            {
+            ThreatIndex threatadd1 = update.threatUpdates[0][0].changepov(pov).mirror(Kside[pov]);
+            ThreatIndex threatrem1 = update.threatUpdates[1][0].changepov(pov).mirror(Kside[pov]);
+            if(threatadd1.issemiexcluded())threatadd1.swap();
+            if(threatrem1.issemiexcluded())threatrem1.swap();
+            ThreatIndex threatadd2 = update.threatUpdates[0][1].changepov(pov).mirror(Kside[pov]);
+            ThreatIndex threatrem2 = update.threatUpdates[1][1].changepov(pov).mirror(Kside[pov]);
+            if(threatadd2.issemiexcluded())threatadd2.swap();
+            if(threatrem2.issemiexcluded())threatrem2.swap();
+            globnnue.add2Threataddsub(accIn, *this, pov, threatadd1, threatrem1, threatadd2, threatrem2);
+            }
+            int i;
+            for(i=2; i<update.nbThreats[maxi^1]-1; i+=2){
+                ThreatIndex threatadd1 = update.threatUpdates[0][i].changepov(pov).mirror(Kside[pov]);
+                ThreatIndex threatrem1 = update.threatUpdates[1][i].changepov(pov).mirror(Kside[pov]);
+                if(threatadd1.issemiexcluded())threatadd1.swap();
+                if(threatrem1.issemiexcluded())threatrem1.swap();
+                ThreatIndex threatadd2 = update.threatUpdates[0][i+1].changepov(pov).mirror(Kside[pov]);
+                ThreatIndex threatrem2 = update.threatUpdates[1][i+1].changepov(pov).mirror(Kside[pov]);
+                if(threatadd2.issemiexcluded())threatadd2.swap();
+                if(threatrem2.issemiexcluded())threatrem2.swap();
+                globnnue.add2Threataddsub(*this, pov, threatadd1, threatrem1, threatadd2, threatrem2);
+            }
+            if(i < update.nbThreats[maxi^1]){
+                ThreatIndex threatadd = update.threatUpdates[0][i].changepov(pov).mirror(Kside[pov]);
+                ThreatIndex threatrem = update.threatUpdates[1][i].changepov(pov).mirror(Kside[pov]);
+                if(threatrem.issemiexcluded())threatrem.swap();
+                if(threatadd.issemiexcluded())threatadd.swap();
+                globnnue.addThreataddsub(*this, pov, threatadd, threatrem);
+            }
+        }else{
+            ThreatIndex threatadd = update.threatUpdates[0][0].changepov(pov).mirror(Kside[pov]);
+            ThreatIndex threatrem = update.threatUpdates[1][0].changepov(pov).mirror(Kside[pov]);
             if(threatrem.issemiexcluded())threatrem.swap();
-            globnnue.addThreataddsub(*this, pov, threatadd, threatrem);
+            if(threatadd.issemiexcluded())threatadd.swap();
+            globnnue.addThreataddsub(accIn, *this, pov, threatadd, threatrem);
         }
     }
     for(int i=max(update.nbThreats[maxi^1], 1); i<update.nbThreats[maxi]; i++){
@@ -662,6 +688,49 @@ void NNUE::addThreataddsub(const Accumulator& accIn, Accumulator& accs, bool pov
         simd16 highr=simd8_16h(threatWeights[indexrem][i/2]);
         simd16 low = simd16_sub(lowa, lowr);
         simd16 high = simd16_sub(higha, highr);
+        accs[pov+2][i  ] = simd16_add(accIn[pov+2][i  ], low);
+        accs[pov+2][i+1] = simd16_add(accIn[pov+2][i+1], high);
+    }
+}
+
+void NNUE::add2Threataddsub(Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const{
+    for(int i=0; i<HL_SIZE*2/nb8; i += 2){
+        simd16 lowa1=simd8_16l(threatWeights[indexadd1][i/2]);
+        simd16 higha1=simd8_16h(threatWeights[indexadd1][i/2]);
+        simd16 lowr1=simd8_16l(threatWeights[indexrem1][i/2]);
+        simd16 highr1=simd8_16h(threatWeights[indexrem1][i/2]);
+        simd16 lowa2=simd8_16l(threatWeights[indexadd2][i/2]);
+        simd16 higha2=simd8_16h(threatWeights[indexadd2][i/2]);
+        simd16 lowr2=simd8_16l(threatWeights[indexrem2][i/2]);
+        simd16 highr2=simd8_16h(threatWeights[indexrem2][i/2]);
+        simd16 low1 = simd16_sub(lowa1, lowr1);
+        simd16 high1 = simd16_sub(higha1, highr1);
+        simd16 low2 = simd16_sub(lowa2, lowr2);
+        simd16 high2 = simd16_sub(higha2, highr2);
+        simd16 low = simd16_add(low1, low2);
+        simd16 high = simd16_add(high1, high2);
+        accs[pov+2][i  ] = simd16_add(accs[pov+2][i  ], low);
+        accs[pov+2][i+1] = simd16_add(accs[pov+2][i+1], high);
+    }
+}
+
+
+void NNUE::add2Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const{
+    for(int i=0; i<HL_SIZE*2/nb8; i += 2){
+        simd16 lowa1=simd8_16l(threatWeights[indexadd1][i/2]);
+        simd16 higha1=simd8_16h(threatWeights[indexadd1][i/2]);
+        simd16 lowr1=simd8_16l(threatWeights[indexrem1][i/2]);
+        simd16 highr1=simd8_16h(threatWeights[indexrem1][i/2]);
+        simd16 lowa2=simd8_16l(threatWeights[indexadd2][i/2]);
+        simd16 higha2=simd8_16h(threatWeights[indexadd2][i/2]);
+        simd16 lowr2=simd8_16l(threatWeights[indexrem2][i/2]);
+        simd16 highr2=simd8_16h(threatWeights[indexrem2][i/2]);
+        simd16 low1 = simd16_sub(lowa1, lowr1);
+        simd16 high1 = simd16_sub(higha1, highr1);
+        simd16 low2 = simd16_sub(lowa2, lowr2);
+        simd16 high2 = simd16_sub(higha2, highr2);
+        simd16 low = simd16_add(low1, low2);
+        simd16 high = simd16_add(high1, high2);
         accs[pov+2][i  ] = simd16_add(accIn[pov+2][i  ], low);
         accs[pov+2][i+1] = simd16_add(accIn[pov+2][i+1], high);
     }
