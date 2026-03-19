@@ -2,7 +2,7 @@ CC=g++
 ADDOPTION?=
 DEBUGOPT?=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 -I../Fathom/src $(ADDOPTION)
-OPT?=-O3 -flto
+OPT?=-O3 -flto -funroll-loops
 
 # Fathom tablebase library
 FATHOM_DIR = ../Fathom/src
@@ -81,7 +81,7 @@ all: engine.cpp $(OBJECTS)
 
 model.bin:
 	rm -f model.bin
-	curl -sOL https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin
+	curl -OL https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin
 
 unittest: unittest.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)

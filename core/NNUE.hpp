@@ -154,6 +154,8 @@ public:
     void addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const;
     void addThreataddsub(Accumulator& accIn, bool pov, int indexadd, int indexsub) const;
     void addThreataddsub(const Accumulator& accIn, Accumulator& accOut, bool pov, int indexadd, int indexsub) const;
+    void add2Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const;
+    void add2Threataddsub(Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const;
     template<int f>
     void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const;
     void move3(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const;
