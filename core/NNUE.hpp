@@ -100,7 +100,8 @@ class Accumulator{
     void updatePieceOutComing(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
     void updatePieceIncoming(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
     void updatePiece(int piece, bool colorpiece, int square, bool remove, int removepos);
-    void updateXrays(int square, bool remove, int removepos);
+    template<bool enPassant=false, bool tworemove=false>
+    void updateXrays(int square, bool remove, int removepos, int removepos2=-1);
     void getThreatUpdates(const big state1[2][6], const big state2[2][6], const Move& move);
     void applythreatsUpdates(const Accumulator& accIn, bool side);
 public:
@@ -109,7 +110,6 @@ public:
     bool side;
     bool pstrefresh;
     bool threatrefresh;
-    bool threatfullupdate;
     big occupied, blackbb, whitebb;
     int idInputBucket[2];
     big bitboards[2][6];
