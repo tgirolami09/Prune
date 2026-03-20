@@ -236,6 +236,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     }
     order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, rootDist, state);
     Move bestCapture;
+    ss.stack[rootDist].snap.save(state);
     for(int i=0; i<order.nbMoves; i++){
         int flag;
         Move capture = order.pop_max(flag);
@@ -243,7 +244,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             if(capture.isTactical() && !(flag&1))continue;
             else if(!capture.isTactical())continue;
         }
-        ss.stack[rootDist].snap.save(state);
         state.playMoveForward(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor(), &ss.stack[rootDist].snap.board, &state.board);
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
@@ -460,6 +460,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     Move bestMove = nullMove;
     int bestScore = -INF;
     int triedMove = 0;
+    ss.stack[rootDist].snap.save(state);
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         int flag;
         Move curMove = order.pop_max(flag);
@@ -498,7 +499,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
 #endif
         int score;
-        ss.stack[rootDist].snap.save(state);
         state.playMoveForward(curMove);
         bool isDraw = false;
         triedMove++;
@@ -876,10 +876,10 @@ big Perft::_perft(GameState& state, ubyte depth){
     generator.initDangers(state);
     int nbMoves=generator.generateLegalMoves(state, inCheck, stack[depth], dangerPositions);
     //if(depth == 1)return nbMoves;
+    PositionSnapshot snap;
+    snap.save(state);
     big count=0;
     for(int i=0; i<nbMoves; i++){
-        PositionSnapshot snap;
-        snap.save(state);
         state.playMoveForward(stack[depth][i]);
         big nbNodes=_perft(state, depth-1);
         snap.restore(state);
@@ -897,11 +897,11 @@ big Perft::perft(GameState& state, ubyte depth, bool verbose){
     generator.initDangers(state);
     int nbMoves=generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
     big count=0;
+    PositionSnapshot snap;
+    snap.save(state);
     for(int i=0; i<nbMoves; i++){
         clock_t startMove=clock();
         big startVisitedNodes = visitedNodes;
-        PositionSnapshot snap;
-        snap.save(state);
         state.playMoveForward(moves[i]);
         big nbNodes=_perft(state, depth-1);
         snap.restore(state);
