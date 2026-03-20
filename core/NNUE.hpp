@@ -2,8 +2,8 @@
 #define NNUE_CPP
 #include "Const.hpp"
 #include "simd_definitions.hpp"
-#include "GameState.hpp"
 #include <fstream>
+#include "Move.hpp"
 #include "embeder.hpp"
 using namespace std;
 
@@ -96,12 +96,12 @@ public:
 };
 
 class Accumulator{
-    void defstaterelated(const GameState* state);
+    void defstaterelated(const big state[2][6]);
     void updatePieceOutComing(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
     void updatePieceIncoming(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
     void updatePiece(int piece, bool colorpiece, int square, bool remove, int removepos);
     void updateXrays(int square, bool remove, int removepos);
-    void getThreatUpdates(GameState* state, const Move& move);
+    void getThreatUpdates(const big state1[2][6], const big state2[2][6], const Move& move);
     void applythreatsUpdates(const Accumulator& accIn, bool side);
 public:
     simd16 accs[4][HL_SIZE/nb16];
@@ -115,7 +115,7 @@ public:
     big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
-    void reinit(const Move& move, GameState* state, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
+    void reinit(const Move& move, const big state1[2][6], const big state2[2][6], Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
     const simd16* operator[](int idx) const{
         return accs[idx];
     }

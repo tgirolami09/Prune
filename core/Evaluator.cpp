@@ -320,7 +320,7 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const G
 #endif
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
-    playMove<-1>(move, c, NULL);
+    playMove<-1>(move, c, NULL, NULL);
 }
 
 template<int f, bool updateNNUE>
@@ -364,7 +364,7 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 
 
 template<int f>
-void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) GameState* state){
+void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const big state1[2][6], __attribute__((unused)) const big state2[2][6]){
     static_assert(f == -1 || f == 1, "f has to be either -1 or 1");
     int toPiece = move.piece;
     if(move.promotion() != -1){
@@ -424,7 +424,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) G
     }
 #ifndef HCE
     if(f == 1){
-        stackAcc[stackIndex+1].reinit(move, state, stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
+        stackAcc[stackIndex+1].reinit(move, state1, state2, stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
         stackIndex++;
     }else
         stackIndex--;
@@ -479,8 +479,8 @@ const Accumulator& IncrementalEvaluator::operator[](int idx) const{
     return stackAcc[idx];
 }
 
-template void IncrementalEvaluator::playMove<-1>(Move, bool, GameState*);
-template void IncrementalEvaluator::playMove< 1>(Move, bool, GameState*);
+template void IncrementalEvaluator::playMove<-1>(Move, bool, const big[2][6], const big[2][6]);
+template void IncrementalEvaluator::playMove< 1>(Move, bool, const big[2][6], const big[2][6]);
 template void IncrementalEvaluator::changePiece2<-1, true>(int, int, bool);
 template void IncrementalEvaluator::changePiece2< 1, true>(int, int, bool);
 template void IncrementalEvaluator::changePiece2<-1, false>(int, int, bool);

@@ -286,12 +286,13 @@ void manageSearch(){
                 snap.restore(state->root);
                 printf("static evaluation: %d cp\n", overall_eval);
             }else if(command == "raweval"){
+                PositionSnapshot snap;
+                snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMove(move);
+                    state->root.playPartialMoveForward(move);
                 ieval->init(state->root);
                 int overall_eval = ieval->getRaw(state->root.friendlyColor());
-                for(unsigned long i=0; i<state->movesFromRoot.size(); i++)
-                    state->root.undoLastMove();
+                snap.restore(state->root);
                 printf("%d cp\n", overall_eval);
             }else if(command == "ucinewgame"){
                 bestMoveFinder.clear();
@@ -327,7 +328,9 @@ void manageSearch(){
                     testState->movesFromRoot = {};
                     testState->root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    vector<depthInfo> infos = get<3>(goCommand(parsed, *testState, false));
+                    bestMoveResponse res=goCommand(parsed, *testState, false);
+                    vector<depthInfo> infos = get<3>(res);
+                    printf("fen: %s score: %d nodes: %ld\n", testState->root.toFen().c_str(), get<2>(res), infos.empty()?0:infos.back().node);
                     for(depthInfo info:infos){
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;

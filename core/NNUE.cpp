@@ -5,7 +5,6 @@
 #include <fstream>
 #include <utility>
 #include "Functions.hpp"
-#include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "simd_definitions.hpp"
 
@@ -328,23 +327,21 @@ void Accumulator::updatePiece(const int piece, const bool colorpiece, const int 
     updatePieceOutComing(piece, colorpiece, pos, remove, removepos, sliders);
 }
 
-void Accumulator::getThreatUpdates(GameState* state, const Move& move){
+void Accumulator::getThreatUpdates(const big state1[2][6], const big state2[2][6], const Move& move){
     const int toPiece = move.promotion() == -1 ? move.piece : move.promotion();
     const bool isCapture = move.capture != -2;
     const int capture = move.capture;
     if(move.capture == -1){//en passant
         threatfullupdate = true;
-        state->playMove(move);
-        memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
+        memcpy(bitboards, state2, sizeof(bitboards));
     }else if(move.isCastling()){
         threatfullupdate = false;
-        defstaterelated(state);
+        defstaterelated(state1);
         updatePiece(ROOK, side, update.sub2[0].square, true, -1);
-        state->playMove(move);
-        defstaterelated(state);
+        defstaterelated(state2);
         updatePiece(ROOK, side, update.add2[0].square, false, -1);
     }else{
-        defstaterelated(state);
+        defstaterelated(state1);
         threatfullupdate = false;
         //first remove the threat that will disappear because of the move
         if(move.piece != KING)
@@ -353,18 +350,16 @@ void Accumulator::getThreatUpdates(GameState* state, const Move& move){
             updatePiece(capture, !side, move.to(), true, move.from()); // threat including move.from has already been removed
         }else
             updateXrays(move.to(), true, move.from()); // threat including move.from has already been removed
-        //then play the move
-        state->playMove(move);
         //then add the new threats
-        defstaterelated(state);
+        defstaterelated(state2);
         if(move.piece != KING)
             updatePiece(toPiece, side, move.to(), false, -1);
         updateXrays(move.from(), false, move.to()); // threat including move.to() has already been added by addPiece
     }
 }
 
-void Accumulator::defstaterelated(const GameState* state){
-    memcpy(bitboards, state->boardRepresentation, sizeof(bitboards));
+void Accumulator::defstaterelated(const big state[2][6]){
+    memcpy(bitboards, state, sizeof(bitboards));
     blackbb = 0;
     whitebb = 0;
     for(int p=0; p<nbPieces; p++)
@@ -374,10 +369,10 @@ void Accumulator::defstaterelated(const GameState* state){
     occupied = whitebb | blackbb;
 }
 
-void Accumulator::reinit(const Move& move, GameState* state, Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
+void Accumulator::reinit(const Move& move, const big state1[2][6], const big state2[2][6], Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
     side = _side;
     update.reset(add1, add2, sub1, sub2);
-    getThreatUpdates(state, move);
+    getThreatUpdates(state1, state2, move);
     Kside[0] = prevAcc.Kside[0];
     Kside[1] = prevAcc.Kside[1];
     idInputBucket[0] = prevAcc.idInputBucket[0];
