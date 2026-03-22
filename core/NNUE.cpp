@@ -218,7 +218,7 @@ void Accumulator::updateXrays(GameState& state, const int pos, const bool remove
         make_pair(BISHOP, bishopmask)
     }){
         const big maskPiece = bitboards[WHITE][simppiece] | bitboards[BLACK][simppiece] | queenbb;
-        big mask = maskPos & maskPiece;
+        big mask = maskPos & maskPiece & ~maskremove;
         while(mask){
             const int posatk = __builtin_ctzll(mask);
             const big maskatk = 1ULL << posatk; 

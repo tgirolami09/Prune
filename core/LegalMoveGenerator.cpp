@@ -661,51 +661,30 @@ bool LegalMoveGenerator::initDangersImpl(const GameState& state){
         nbCheckers += 1;
         checkerPos = knightCheckerPos;
     }
-    big base = allDangerSquares;
     //Now pieces can pin and have multiple of a type attacking the king
 
-    //Add the queen for its bishop rays
-    int bishopCheckerPos = dealWithEnemyBishops(enemyPieces[BISHOP] | enemyPieces[QUEEN], allPieces, friendlyKingPosition);
-    if (bishopCheckerPos != -1){
-        nbCheckers += 1;
-        if (bishopCheckerPos == doubleCheckFromSameType){
-            nbCheckers += 1;
-        }
-        else{
-            checkerPos = bishopCheckerPos;
-        }
-    }
-
-    //Add the queen for its rook rays
-    int rookCheckerPos = dealWithEnemyRooks(enemyPieces[ROOK] | enemyPieces[QUEEN], allPieces, friendlyKingPosition);
-    if (rookCheckerPos != -1){
-        nbCheckers += 1;
-        if (rookCheckerPos == doubleCheckFromSameType){
-            nbCheckers += 1;
-        }
-        else{
-            checkerPos = rookCheckerPos;
-        }
-    }
-    big ueBB = state.getAtkBB(state.enemyColor());
-    big kingAdded = 0;
+    allDangerSquares |= state.getAtkBB(state.enemyColor());
     for(int dir=0; dir < nbDirs; dir++){
-        if(state.atkBB[state.enemyColor()][dir]&friendlyPieces[KING]){ //there is an attacker from the direction dir to the king, so we continue the ray
-            kingAdded |= maskUpToDir(friendlyKingPosition, dir, allPieces);
+        int rdir = 7-dir;
+        if(nbCheckers < 2 && state.atkBB[state.enemyColor()][dir]&friendlyPieces[KING]){ //there is an attacker from the direction dir to the king, so we continue the ray
+            allDangerSquares |= maskUpToDir(friendlyKingPosition, dir, allPieces);
+            nbCheckers++;
+            big aMask = maskByDir[friendlyKingPosition][rdir]&allEnemies;
+            checkerPos = dir < 4 ? __builtin_ctzll(aMask) : 63-__builtin_clzll(aMask);
+        }else{
+            big andMask = maskByDir[friendlyKingPosition][rdir] & allFriends; // search for potential pinned
+            if(andMask){
+                int pos = rdir >= 4 ? __builtin_ctzll(andMask) : 63-__builtin_clzll(andMask);
+                big maskPos = 1ULL << pos;
+                if(state.atkBB[state.enemyColor()][dir]&maskPos){
+                    big pospinner = maskUpToDir(friendlyKingPosition, rdir, allPieces^maskPos);
+                    if(isDiagDirection(rdir))
+                        pinD12 |= pospinner;
+                    else
+                        pinHV |= pospinner;
+                }
+            }
         }
-    }
-    if(allDangerSquares != (base|ueBB|kingAdded)){
-        Move lastmove = state.getLastMove();
-        for(int i=0; i<state.turnNumber; i++){
-            printf("%s ", state.movesSinceBeginning[i].to_str().c_str());
-        }
-        printf("\nfen: %s lastmove: %s %d %d\n", state.toFen().c_str(), lastmove.to_str().c_str(), lastmove.capture, lastmove.promotion());
-        print_mask(kingAdded);printf("\n");
-        print_mask(ueBB);printf("\n");
-        print_mask(base);printf("\n");
-        print_mask(base|ueBB);printf("\n");
-        print_mask(allDangerSquares);printf("\n");
-        assert(false);
     }
     return nbCheckers >= 1;
 }
