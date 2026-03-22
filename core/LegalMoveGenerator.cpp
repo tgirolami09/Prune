@@ -13,9 +13,21 @@ big normalKingMoves[64];
 big attackPawns[128];
 big directions[64][64];
 big fullDir[64][64];
+big maskByDir[64][8];
+ubyte dirbypos[64][64];
 big* tableMagic;
 int indexesTable[128];
 const constTable* constantsMagic = (const constTable*)magicsData;
+
+big maskUpToDir(int from, int dir, big occupied){
+    big m=maskByDir[from][dir];
+    big x = m&occupied;
+    if(dir >= 4)
+        m &= MAX_BIG >> (x?63-__builtin_ctzll(x):0);
+    else
+        m &= MAX_BIG << (x?63-__builtin_clzll(x):0);
+    return m;
+}
 
 void PrecomputeKnightMoveData(){
     const pair<int, int> moves[8] = {
@@ -137,9 +149,11 @@ void precomputeDirections(){
                     int sq = (r*8+c);
                     mask |= 1ULL << sq;
                     directions[square][sq] = mask; // line of 1 between square and sq
+                    dirbypos[square][sq] = idDir;
                     r += dirs[idDir][0];
                     c += dirs[idDir][1];
                 }
+                maskByDir[square][idDir] = mask;
                 r=row+dirs[idDir][0];
                 c=col+dirs[idDir][1];
                 while(r >= 0 && r < 8 && c >= 0 && c < 8){
@@ -647,7 +661,7 @@ bool LegalMoveGenerator::initDangersImpl(const GameState& state){
         nbCheckers += 1;
         checkerPos = knightCheckerPos;
     }
-
+    big base = allDangerSquares;
     //Now pieces can pin and have multiple of a type attacking the king
 
     //Add the queen for its bishop rays
@@ -672,6 +686,26 @@ bool LegalMoveGenerator::initDangersImpl(const GameState& state){
         else{
             checkerPos = rookCheckerPos;
         }
+    }
+    big ueBB = state.getAtkBB(state.enemyColor());
+    big kingAdded = 0;
+    for(int dir=0; dir < nbDirs; dir++){
+        if(state.atkBB[state.enemyColor()][dir]&friendlyPieces[KING]){ //there is an attacker from the direction dir to the king, so we continue the ray
+            kingAdded |= maskUpToDir(friendlyKingPosition, dir, allPieces);
+        }
+    }
+    if(allDangerSquares != (base|ueBB|kingAdded)){
+        Move lastmove = state.getLastMove();
+        for(int i=0; i<state.turnNumber; i++){
+            printf("%s ", state.movesSinceBeginning[i].to_str().c_str());
+        }
+        printf("\nfen: %s lastmove: %s %d %d\n", state.toFen().c_str(), lastmove.to_str().c_str(), lastmove.capture, lastmove.promotion());
+        print_mask(kingAdded);printf("\n");
+        print_mask(ueBB);printf("\n");
+        print_mask(base);printf("\n");
+        print_mask(base|ueBB);printf("\n");
+        print_mask(allDangerSquares);printf("\n");
+        assert(false);
     }
     return nbCheckers >= 1;
 }

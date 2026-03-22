@@ -14,6 +14,9 @@ public:
 
 big parseInt(int& pointer);
 static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+inline bool isDiagDirection(int dir){
+    return (dir%2) == (dir >= 4);
+}
 extern big KnightMoves[64]; //Knight moves for each position of the board
 extern big pieceCastlingMasks[2][2];
 extern big attackCastlingMasks[2][2];
@@ -21,6 +24,8 @@ extern big normalKingMoves[64];
 extern big attackPawns[128];
 extern big directions[64][64];
 extern big fullDir[64][64];
+extern big maskByDir[64][8];
+extern ubyte dirbypos[64][64];
 void PrecomputeKnightMoveData();
 void precomputeDirections();
 void load_table();

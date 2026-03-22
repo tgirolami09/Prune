@@ -5,6 +5,7 @@
 #include <fstream>
 #include "Move.hpp"
 #include "embeder.hpp"
+#include "GameState.hpp"
 using namespace std;
 
 const int maxThreatUpdates=80;
@@ -97,12 +98,15 @@ public:
 
 class Accumulator{
     void defstaterelated(const big state[2][6]);
-    void updatePieceOutComing(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
-    void updatePieceIncoming(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
-    void updatePiece(int piece, bool colorpiece, int square, bool remove, int removepos);
+    template<bool updateAtkBB=true>
+    void updatePieceOutComing(GameState& state, int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    template<bool updateAtkBB=true>
+    void updatePieceIncoming(GameState& state, int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    template<bool updateAtkBB=true>
+    void updatePiece(GameState& state, int piece, bool colorpiece, int square, bool remove, int removepos);
     template<bool enPassant=false, bool tworemove=false>
-    void updateXrays(int square, bool remove, int removepos, int removepos2=-1);
-    void getThreatUpdates(const big state1[2][6], const big state2[2][6], const Move& move);
+    void updateXrays(GameState& state, int square, bool remove, int removepos, int removepos2=-1);
+    void getThreatUpdates(GameState& state, const big state1[2][6], const big state2[2][6], const Move& move);
     void applythreatsUpdates(const Accumulator& accIn, bool side);
 public:
     simd16 accs[4][HL_SIZE/nb16];
@@ -115,7 +119,7 @@ public:
     big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
-    void reinit(const Move& move, const big state1[2][6], const big state2[2][6], Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
+    void reinit(GameState& state, const Move& move, const big state1[2][6], const big state2[2][6], Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
     const simd16* operator[](int idx) const{
         return accs[idx];
     }
@@ -163,7 +167,8 @@ public:
     void move2In(oneAccumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
     void move4(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex, FinnyTables& finny) const;
-    void calcThreats(Accumulator& accs, bool color, const big bitboards[2][6]) const;
+    template<bool updateAtk=false>
+    void calcThreats(Accumulator& accs, bool color, const big bitboards[2][6], GameState* state) const;
     dbyte eval(Accumulator& accs, bool side, int idB) const;
 };
 

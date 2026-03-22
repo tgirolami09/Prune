@@ -60,9 +60,9 @@ class BestMoveFinder{
         HelpOrdering history;
         corrhists correctionHistory;
         int min_nmp_ply=0;
-        usefull(const GameState& state, tunables& parameters);
+        usefull(GameState& state, tunables& parameters);
         usefull();
-        void reinit(const GameState& state);
+        void reinit(GameState& state);
         string PVprint(LINE pvLine);
         void transfer(int relDepth, Move move);
         void beginLine(int relDepth);

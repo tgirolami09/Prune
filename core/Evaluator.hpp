@@ -194,7 +194,7 @@ public:
     void backStack();
     void print();
     IncrementalEvaluator();
-    void init(const GameState& state);
+    void init(GameState& state);
     bool isInsufficientMaterial() const;
     bool isOnlyPawns() const;
     int getScore(bool c, const corrhists& ch, const GameState& state);
@@ -202,8 +202,8 @@ public:
     int correctEval(int eval, const corrhists& ch, const GameState& state) const;
     int getNbMan() const { return nbMan; }
     template<int f=1>
-    void playMove(Move move, bool c, const big state1[2][6], const big state2[2][6]);
-    void playNoBack(const GameState& state, Move move, bool c);
+    void playMove(GameState* state, Move move, bool c, const big state1[2][6], const big state2[2][6]);
+    void playNoBack(GameState& state, Move move, bool c);
     void undoMove(Move move, bool c);
     const Accumulator& operator[](int idx) const;
 };
