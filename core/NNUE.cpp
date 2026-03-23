@@ -211,6 +211,7 @@ void Accumulator::updateXrays(int pos, bool remove, int removepos, int removepos
         firstafter(__builtin_ctzll(bitboards[WHITE][KING]), pos, occupied, rookmask|bishopmask)|
         firstafter(__builtin_ctzll(bitboards[BLACK][KING]), pos, occupied, rookmask|bishopmask);
     const big filterout = ~(maskremove|maskFkings);
+    #pragma GCC unroll 2
     for(const auto& [simppiece, maskPos]:{
         make_pair(ROOK  , rookmask),
         make_pair(BISHOP, bishopmask)
