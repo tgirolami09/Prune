@@ -36,7 +36,7 @@ public:
     }
     void print(string start) const{
         double mean = ((double)sum)/number;
-        printf("%s = %.2f ± %.2f\n", start.c_str(), mean, sqrt(sumSquare/number-mean*mean));
+        printf("%s = %.2f ± %.2f (n=%ld)\n", start.c_str(), mean, sqrt(sumSquare/number-mean*mean), number);
         printf("  %ld <= x <= %ld", obsmin, obsmax);
         int cum[maxi-mini+2];
         cum[0] = 0;

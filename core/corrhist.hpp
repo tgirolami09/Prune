@@ -3,10 +3,8 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #ifdef DEBUG_MACRO
-extern int max_diff;
-extern int min_diff;
-extern int nb_diffs;
-extern int sum_diffs;
+#include "stats_helpers.hpp"
+extern StatVar<sbig, 64*4, -64*4> diffsStat;
 #endif
 const int corrhistGrain=64;
 template<int size, int maxCorrHist>
