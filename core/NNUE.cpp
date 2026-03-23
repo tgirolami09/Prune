@@ -280,6 +280,7 @@ void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, co
     // ------------------------ non slider pieces (PAWN & KNIGHT) ---------------------------------
     //pawns are doing separatly because of the color importance
     if(piecesThreat[PAWN][piece] != -1){
+        #pragma GCC unroll 2
         for(const bool c:{WHITE, BLACK}){
             if(piece == PAWN && colorpiece != c)continue;
             atkmask = attackPawns[pos+(!c)*64];
@@ -308,6 +309,7 @@ void Accumulator::updatePieceIncoming(const int piece, const bool colorpiece, co
         //they are doing separatly because of bishopatk/rookatk
         const big bishopatk = maskremove & sliders[0];
         const big rookatk   = maskremove & sliders[1];
+        #pragma GCC unroll 3
         for(const int atkpiece:{BISHOP, ROOK, QUEEN}){
             if(atkpiece != piece){
                 atkmask = (bishopatk*(atkpiece != ROOK))|(rookatk*(atkpiece != BISHOP));
