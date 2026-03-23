@@ -14,7 +14,7 @@ int main(__attribute__((unused)) int argc, char** argv){
     while(getline(file, fen)){
         state.fromFen(fen),
         eval.init(state);
-        sum_eval += abs(eval.getRaw(state.friendlyColor(), state));
+        sum_eval += abs(eval.getRaw(state.friendlyColor()));
         count++;
     }
     printf("%lf\n", ((double)sum_eval)/count);
