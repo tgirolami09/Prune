@@ -18,6 +18,8 @@ int nmpVerifAllNode=0,
     nmpVerifCutNode=0,
     nmpVerifPassCutNode=0,
     nmpVerifPassAllNode=0;
+StatVar<sbig, maxHistory, -maxHistory> quiethistPostStat;
+StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
 BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){
@@ -473,14 +475,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
         }
 #ifdef DEBUG_MACRO
-        if(curMove.isTactical()){
-            capthistSum += moveHistory;
-            capthistSquare += moveHistory*moveHistory;
-            nbCaptHist++;
-        }else{
-            quiethistSum += moveHistory;
-            quiethistSquare += moveHistory*moveHistory;
-            nbquietHist++;
+        if(moveHistory != maxHistory){
+            if(curMove.isTactical()){
+                capthistPostStat.update(moveHistory);
+            }else{
+                quiethistPostStat.update(moveHistory);
+            }
         }
 #endif
         int score;

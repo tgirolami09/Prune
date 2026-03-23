@@ -6,12 +6,8 @@
 #include "tunables.hpp"
 
 #ifdef DEBUG_MACRO
-int quiethistSum=0;
-double quiethistSquare=0;
-int nbquietHist=0;
-int capthistSum=0;
-double capthistSquare=0;
-int nbCaptHist=0;
+StatVar<sbig, maxHistory, -maxHistory> quiethistPreStat;
+StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
 #endif
 
 //#define COUNTER
@@ -103,6 +99,16 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 this->swap(i, 1);
             nbPriority++;
         }else{
+#ifdef DEBUG_MACRO
+            int moveHistory = history.getHistoryScore(moves[i], state.friendlyColor());
+            if(moveHistory != maxHistory){
+                if(moves[i].isTactical()){
+                    capthistPreStat.update(moveHistory);
+                }else{
+                    quiethistPreStat.update(moveHistory);
+                }
+            }
+#endif
             scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state, value_pieces);
         }
     }

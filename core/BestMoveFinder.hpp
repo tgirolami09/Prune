@@ -22,11 +22,14 @@
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
 #ifdef DEBUG_MACRO
+#include "stats_helpers.hpp"
 extern int
     nmpVerifAllNode,
     nmpVerifCutNode,
     nmpVerifPassCutNode,
     nmpVerifPassAllNode;
+extern StatVar<sbig, maxHistory, -maxHistory> quiethistPostStat;
+extern StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
 using timeMesure=chrono::high_resolution_clock;

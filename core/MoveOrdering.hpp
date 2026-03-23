@@ -7,12 +7,9 @@
 #include "tunables.hpp"
 
 #ifdef DEBUG_MACRO
-extern int quiethistSum;
-extern double quiethistSquare;
-extern int nbquietHist;
-extern int capthistSum;
-extern double capthistSquare;
-extern int nbCaptHist;
+#include "stats_helpers.hpp"
+extern StatVar<sbig, maxHistory, -maxHistory> quiethistPreStat;
+extern StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
 #endif
 
 class HelpOrdering{
