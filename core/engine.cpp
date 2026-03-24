@@ -389,6 +389,9 @@ void manageSearch(){
                 capthistPreStat.print("capthistPre");
                 quiethistPostStat.print("quiethistPost");
                 capthistPostStat.print("capthistPost");
+                TIupdateAddStat.print("TIupdateAdd");
+                TIupdateRemStat.print("TIupdateRem");
+                TIupdateTotStat.print("TIupdateTot");
 #endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
@@ -539,6 +542,9 @@ void manageSearch(){
                 capthistPreStat.print("capthistPre");
                 quiethistPostStat.print("quiethistPost");
                 capthistPostStat.print("capthistPost");
+                TIupdateAddStat.print("TIupdateAdd");
+                TIupdateRemStat.print("TIupdateRem");
+                TIupdateTotStat.print("TIupdateTot");
 #endif
             }
             fflush(stdout);

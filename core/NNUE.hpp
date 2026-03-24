@@ -6,7 +6,12 @@
 #include "Move.hpp"
 #include "embeder.hpp"
 using namespace std;
-
+#ifdef DEBUG_MACRO
+#include "stats_helpers.hpp"
+extern StatVar<sbig, 64, 0> TIupdateRemStat;
+extern StatVar<sbig, 64, 0> TIupdateAddStat;
+extern StatVar<sbig, 64, 0> TIupdateTotStat;
+#endif
 const int maxThreatUpdates=80;
 const int INPUT_SIZE = 12*64;
 const int HL_SIZE = 384;

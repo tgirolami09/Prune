@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <cassert>
+#include <cstring>
 using namespace std;
 template<typename T, int maxi=-1, int mini=0>
 class StatVar{

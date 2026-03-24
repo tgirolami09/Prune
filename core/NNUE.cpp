@@ -10,6 +10,11 @@
 
 using namespace std;
 
+#ifdef DEBUG_MACRO
+StatVar<sbig, 64, 0> TIupdateRemStat;
+StatVar<sbig, 64, 0> TIupdateAddStat;
+StatVar<sbig, 64, 0> TIupdateTotStat;
+#endif
 int threatIndex[(nbPieces-1)*2][64][64];
 int threatoffset[(nbPieces-1)*2];
 const int valid_targets[5] = {3, 5, 4, 4, 5};
@@ -469,6 +474,11 @@ void Accumulator::applythreatsUpdates(const Accumulator& accIn, const bool pov){
 }
 
 void Accumulator::updateSelf(const Accumulator& accIn, FinnyTables& finny){
+#ifdef DEBUG_MACRO
+    TIupdateAddStat.update(update.nbThreats[0]);
+    TIupdateRemStat.update(update.nbThreats[1]);
+    TIupdateTotStat.update(update.nbThreats[0]+update.nbThreats[1]);
+#endif
     if(threatrefresh){
         globnnue.calcThreats(*this, side, bitboards);
         applythreatsUpdates(accIn, !side);
