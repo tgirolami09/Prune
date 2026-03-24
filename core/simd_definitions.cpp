@@ -76,34 +76,12 @@ simd8 simd8_add(simd8 a, simd8 b) {
 simd8 simd8_sub(simd8 a, simd8 b) {
     return ADDMM(sub_epi8)(a, b);
 }
-#ifdef __AVX512F__
-#elif defined(__AVX2__)
-alignas(64) static const uint8_t shuffle8[nb8] = {0, 0x80, 1, 0x80, 2, 0x80, 3, 0x80, 4, 0x80, 5, 0x80, 6, 0x80, 7, 0x80, 24, 0x80, 25, 0x80, 26, 0x80, 27, 0x80, 28, 0x80, 29, 0x80, 30, 0x80, 31, 0x80};
-const simd8& shuf8 = *(simd8*)&shuffle8;
-#else
-alignas(64) static const uint8_t shuffle8l[nb8] = {0, 0x80, 1, 0x80, 2 , 0x80, 3 , 0x80, 4 , 0x80, 5 , 0x80, 6 , 0x80, 7 , 0x80};
-alignas(64) static const uint8_t shuffle8h[nb8] = {8, 0x80, 9, 0x80, 10, 0x80, 11, 0x80, 12, 0x80, 13, 0x80, 14, 0x80, 15, 0x80};
-static_assert(sizeof(shuffle8h) == sizeof(simd8));
-static_assert(sizeof(shuffle8l) == sizeof(simd8));
-const simd8& shuf8l = *(simd8*)&shuffle8l;
-const simd8& shuf8h = *(simd8*)&shuffle8l;
-#endif
-alignas(64) static const std::vector<int16_t> n128(nb16, 8);
-static const simd8& v128=*(simd16*)&n128;
-
-#ifdef __AVX2__
-simd16 simd8_16l(simd8 v){
-    return _mm256_cvtepi8_epi16(_mm256_castsi256_si128(v));
-}
-simd16 simd8_16h(simd8 v){
-    return _mm256_cvtepi8_epi16(_mm256_extracti128_si256(v, 1));
+#ifndef __AVX2__
+simd16 simdh8_16(simdhalf v){
+    return ADDMM(cvtepi8_epi16)(_mm_set_epi64x(0, v));
 }
 #else
-simd16 simd8_16l(simd8 v){
-    return ADDMM(shuffle_epi8)(v, shuf8l);
-}
-
-simd16 simd8_16h(simd8 v){
-    return ADDMM(shuffle_epi8)(v, shuf8h);
+simd16 simdh8_16(simdhalf v){
+    return ADDMM(cvtepi8_epi16)(v);
 }
 #endif
