@@ -73,6 +73,9 @@ public:
     ThreatIndex changepov(bool needs) const;
     ThreatIndex mirror(bool needs) const;
     void print() const;
+    ThreatIndex swapSemiExcluded() const{
+        return issemiexcluded()?ThreatIndex(to, from):ThreatIndex(from, to);
+    }
 };
 using oneAccumulator=simd16[HL_SIZE/nb16];
 class FinnytableNormal{
@@ -97,6 +100,7 @@ public:
     int type;
     updateBuffer();
     void reset(Index sub1, Index add1, Index sub2, Index add2);
+    void addThreat(const ThreatIndex& threat, const bool remove);
     void print();
 };
 
@@ -173,4 +177,7 @@ public:
 };
 
 inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
+inline void updateBuffer::addThreat(const ThreatIndex& threat, const bool remove){
+    threatUpdates[remove][nbThreats[remove]++] = threat;
+}
 #endif
