@@ -29,26 +29,11 @@ inline void GameState::updateZobrists(int piece, bool color, int square){
         minorZobrist ^= zobr;
 }
 
-void GameState::testPawnZobr(){
-    big _pawn = 0;
-    for(int c=0; c<2; c++){
-        for(int i=0; i<64; i++){
-            big mask = 1ULL << i;
-            if(boardRepresentation[c][PAWN]&mask){
-                _pawn ^= zobrist[(c*6+PAWN)*64+i];
-            }
-        }
-    }
-    assert(_pawn == pawnZobrist);
-}
-
 void GameState::fromFen(string fen){
     zobristHash=0;
     pawnZobrist = 0;
     minorZobrist = 0;
-    for(int c=0; c<2; c++)
-        for(int p=0; p<6; p++)
-            boardRepresentation[c][p] = 0;
+    board.reset();
     int id=0;
     int dec=63;
     for(; id<(int)fen.size(); id++){
@@ -60,7 +45,7 @@ void GameState::fromFen(string fen){
                 color_p = WHITE;
             else
                 color_p = BLACK;
-            boardRepresentation[color_p][piece] |= 1ULL << dec;
+            board.addPiece(dec, piece, color_p);
             updateZobrists(piece, color_p, dec);
             dec--;
         }else if(isdigit(c)){
@@ -206,13 +191,13 @@ int GameState::enemyColor() const{
 //Returns the 6 bitboards of the FRIENDLY pieces on the board
 const big* GameState::friendlyPieces() const{
     int friendlyIndex = friendlyColor();
-    return boardRepresentation[friendlyIndex];
+    return board.pieces[friendlyIndex];
 }
 
 //Returns the 6 bitboards of the ENEMY pieces on the board
 const big* GameState::enemyPieces() const{
     int enemyIndex = enemyColor();
-    return boardRepresentation[enemyIndex];
+    return board.pieces[enemyIndex];
 }
 template<bool back>
 inline bool GameState::isEnPassantPossibility(const Move& move){
@@ -255,14 +240,6 @@ int GameState::playMove(Move move){
     if(lastDoublePawnPush != -1)
         zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
     const bool curColor=friendlyColor();
-    if(move.promotion() == -1){
-        updateZobrists(move.piece, curColor, move.to());
-        boardRepresentation[curColor][move.piece] ^= (1ULL << move.to());
-    }else{
-        boardRepresentation[curColor][move.promotion()] ^= (1ULL << move.to());
-        updateZobrists(move.promotion(), curColor, move.to());
-    }
-    boardRepresentation[curColor][move.piece] ^= (1ULL<<move.from());
     updateZobrists(move.piece, curColor, move.from());
     if(move.capture != -2){
         const bool enColor=enemyColor();
@@ -282,8 +259,16 @@ int GameState::playMove(Move move){
             else posCapture += 8;
         }
         updateZobrists(pieceCapture, enColor, posCapture);
-        boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
+        board.remPiece(posCapture, pieceCapture, enColor);
     }
+    if(move.promotion() == -1){
+        updateZobrists(move.piece, curColor, move.to());
+        board.addPiece(move.to(), move.piece, curColor);
+    }else{
+        board.addPiece(move.to(), move.promotion(), curColor);
+        updateZobrists(move.promotion(), curColor, move.to());
+    }
+    board.remPiece(move.from(), move.piece, curColor);
     movesSinceBeginning[turnNumber] = move;
     if(isEnPassantPossibility<false>(move)){
         lastDoublePawnPush = 8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
@@ -311,7 +296,8 @@ int GameState::playMove(Move move){
             }
             updateZobrists(ROOK, curColor, startRook);
             updateZobrists(ROOK, curColor, endRook);
-            boardRepresentation[curColor][ROOK] ^= (1ULL << startRook)^(1ULL << endRook);
+            board.remPiece(startRook, ROOK, curColor);
+            board.addPiece(endRook  , ROOK, curColor);
         }
     }else if(move.piece == ROOK){
         if(move.from() == posRook[curColor][0] && castlingRights[curColor][0]){
@@ -357,11 +343,11 @@ Move GameState::getContMove() const{
 
 
 Move GameState::playPartialMove(Move move){
-    int piece=getPiece(move.to(), enemyColor());
+    int piece=getPiece(move.to());
     if(piece != SPACE){
         move.capture = piece;
     }
-    int mover = getPiece(move.from(), friendlyColor());
+    int mover = getPiece(move.from());
     if(mover == PAWN && col(move.from()) != col(move.to()) && move.capture == -2){
         move.capture = -1;
     }
@@ -370,29 +356,12 @@ Move GameState::playPartialMove(Move move){
     return move;
 }
 
-int GameState::getPiece(int square, int c) const{
-    big mask=1ULL << square;
-    for(int p=0; p<nbPieces; p++){
-        if(mask&boardRepresentation[c][p])return p;
-    }
-    return SPACE;
+int GameState::getPiece(int square) const{
+    return type(board.mailbox[square]);
 }
 
 int GameState::getfullPiece(int square) const{
-    big mask = 1ULL << square;
-    for(int c=0; c<2; c++){
-        for(int p=0; p<6; p++){
-            if(boardRepresentation[c][p] & mask)return p*2+c;
-        }
-    }
-    return SPACE*2;
-}
-
-pawnStruct GameState::getPawnStruct(){
-    pawnStruct res;
-    res.whitePawn = boardRepresentation[WHITE][PAWN];
-    res.blackPawn = boardRepresentation[BLACK][PAWN];
-    return res;
+    return board.mailbox[square];
 }
 
 void GameState::print() const{
@@ -404,14 +373,8 @@ void GameState::print() const{
     for(int row=0; row<8; row++){
         printf("|");
         for(int col=0; col<8; col++){
-            big mask = 1ULL << (63-(row << 3 | col));
-            int piece = SPACE*2;
-            for(int i=0; i< 12; i++){
-                if(boardRepresentation[i%2][i/2] & mask){
-                    piece = i;
-                    break;
-                }
-            }
+            int pos = 63-(row << 3 | col);
+            int piece = getfullPiece(pos);
             char c;
             if(piece == SPACE*2)
                 c = ' ';
@@ -455,11 +418,11 @@ void GameState::print() const{
 }
 
 void GameState::initMove(Move& move){
-    int piece=getPiece(move.to(), enemyColor());
+    int piece=getPiece(move.to());
     if(piece != SPACE){
         move.capture = piece;
     }
-    int mover = getPiece(move.from(), friendlyColor());
+    int mover = getPiece(move.from());
     if(mover == PAWN && col(move.from()) != col(move.to()) && move.capture == -2){
         move.capture = -1;
     }
@@ -486,17 +449,6 @@ void GameState::playMoveForward(Move move){
 
     const bool curColor = friendlyColor();
 
-    // Move piece on board + update zobrists
-    if(move.promotion() == -1){
-        updateZobr(zobristHash, pawnZobrist, minorZobrist,move.piece, curColor, move.to());
-        boardRepresentation[curColor][move.piece] ^= (1ULL << move.to());
-    }else{
-        boardRepresentation[curColor][move.promotion()] ^= (1ULL << move.to());
-        updateZobr(zobristHash, pawnZobrist, minorZobrist,move.promotion(), curColor, move.to());
-    }
-    boardRepresentation[curColor][move.piece] ^= (1ULL << move.from());
-    updateZobr(zobristHash, pawnZobrist, minorZobrist,move.piece, curColor, move.from());
-
     // Handle captures
     if(move.capture != -2){
         const bool enColor = enemyColor();
@@ -507,7 +459,7 @@ void GameState::playMoveForward(Move move){
             else posCapture += 8;
         }
         updateZobr(zobristHash, pawnZobrist, minorZobrist,pieceCapture, enColor, posCapture);
-        boardRepresentation[enColor][pieceCapture] ^= 1ULL << posCapture;
+        board.remPiece(posCapture, pieceCapture, enColor);
 
         // Rook captured: revoke castling rights directly (no deathRook needed)
         if(move.capture == ROOK){
@@ -520,6 +472,17 @@ void GameState::playMoveForward(Move move){
             }
         }
     }
+
+    // Move piece on board + update zobrists
+    board.remPiece(move.from(), move.piece, curColor);
+    if(move.promotion() == -1){
+        updateZobr(zobristHash, pawnZobrist, minorZobrist,move.piece, curColor, move.to());
+        board.addPiece(move.to(), move.piece, curColor);
+    }else{
+        board.addPiece(move.to(), move.promotion(), curColor);
+        updateZobr(zobristHash, pawnZobrist, minorZobrist,move.promotion(), curColor, move.to());
+    }
+    updateZobr(zobristHash, pawnZobrist, minorZobrist,move.piece, curColor, move.from());
 
     // Store move for getLastMove()/getContMove()
     movesSinceBeginning[turnNumber] = move;
@@ -559,7 +522,8 @@ void GameState::playMoveForward(Move move){
             }
             updateZobr(zobristHash, pawnZobrist, minorZobrist,ROOK, curColor, startRook);
             updateZobr(zobristHash, pawnZobrist, minorZobrist,ROOK, curColor, endRook);
-            boardRepresentation[curColor][ROOK] ^= (1ULL << startRook) ^ (1ULL << endRook);
+            board.remPiece(startRook, ROOK, curColor);
+            board.addPiece(endRook  , ROOK, curColor);
         }
     }else if(move.piece == ROOK){
         // Rook moves from starting square: revoke that castling right
@@ -584,11 +548,11 @@ void GameState::playMoveForward(Move move){
 
 // Forward-only partial move (fills in piece/capture, then calls playMoveForward)
 Move GameState::playPartialMoveForward(Move move){
-    int piece=getPiece(move.to(), enemyColor());
+    int piece=getPiece(move.to());
     if(piece != SPACE){
         move.capture = piece;
     }
-    int mover = getPiece(move.from(), friendlyColor());
+    int mover = getPiece(move.from());
     if(mover == PAWN && col(move.from()) != col(move.to()) && move.capture == -2){
         move.capture = -1;
     }

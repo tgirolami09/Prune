@@ -5,6 +5,8 @@
 #include <fstream>
 #include "Move.hpp"
 #include "embeder.hpp"
+#include "GameState.hpp"
+
 using namespace std;
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
@@ -105,13 +107,13 @@ public:
 };
 
 class Accumulator{
-    void defstaterelated(const big state[2][6]);
-    void updatePieceOutComing(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
-    void updatePieceIncoming(int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
-    void updatePiece(int piece, bool colorpiece, int square, bool remove, int removepos);
+    void defstaterelated(const PositionState& state);
+    void updatePieceOutComing(const int8_t mailbox[64], int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    void updatePieceIncoming(const int8_t mailbox[64], int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    void updatePiece(const int8_t mailbox[64], int piece, bool colorpiece, int square, bool remove, int removepos);
     template<bool enPassant=false, bool tworemove=false>
-    void updateXrays(int square, bool remove, int removepos, int removepos2=-1);
-    void getThreatUpdates(const big state1[2][6], const big state2[2][6], const Move& move);
+    void updateXrays(const int8_t mailbox[64], int square, bool remove, int removepos, int removepos2=-1);
+    void getThreatUpdates(const PositionState& state1, const PositionState& state2, const Move& move);
     void applythreatsUpdates(const Accumulator& accIn, bool side);
 public:
     simd16 accs[4][HL_SIZE/nb16];
@@ -119,12 +121,12 @@ public:
     bool side;
     bool pstrefresh;
     bool threatrefresh;
-    big occupied, blackbb, whitebb;
+    big occupied;
     int idInputBucket[2];
     big bitboards[2][6];
     updateBuffer update;
     Accumulator(){}
-    void reinit(const Move& move, const big state1[2][6], const big state2[2][6], Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
+    void reinit(const Move& move, const PositionState& state1, const PositionState& state2, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
     const simd16* operator[](int idx) const{
         return accs[idx];
     }
