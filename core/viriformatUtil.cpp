@@ -65,7 +65,7 @@ void GamePlayed::dump(FILE* datafile){
     big occupied = 0; // calculate the occupied bitboard
     for(int j=0; j<2; j++)
         for(int i=0; i<6; i++)
-            occupied |= startPos.boardRepresentation[j][i];
+            occupied |= startPos.board.pieces[j][i];
     fastWrite(reverse_col(occupied), datafile);
     uint8_t entry = 0x00;
     bool isSec = false;
@@ -116,7 +116,7 @@ void GamePlayed::clear(){
 
 GamePlayed readGame(FILE* file){
     GamePlayed game;
-    memset(game.startPos.boardRepresentation, 0, sizeof(game.startPos.boardRepresentation));
+    memset(game.startPos.board.pieces, 0, sizeof(game.startPos.board.pieces));
     big occupied=0;
     fastRead(occupied, file);
     occupied = reverse_col(occupied);
@@ -138,7 +138,7 @@ GamePlayed readGame(FILE* file){
                 castle |= mask;
                 piece = ROOK;
             }
-            game.startPos.boardRepresentation[_c][piece] |= mask;
+            game.startPos.board.pieces[_c][piece] |= mask;
             game.startPos.updateZobrists(piece, _c, i);
             isSec ^= 1;
             nbEntry++;

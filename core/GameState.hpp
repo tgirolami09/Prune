@@ -3,6 +3,7 @@
 #include "Move.hpp"
 #include "Const.hpp"
 #include <cstring>
+#include <cassert>
 using namespace std;
 const int maxPly = 8848*2+2;
 const int zobrCastle=64*2*6;
@@ -11,6 +12,32 @@ const int zobrTurn=zobrPassant+8;
 const int nbZobrist=zobrTurn+1;
 const int sizeThreeFold=8192;
 extern big zobrist[nbZobrist];
+
+struct PositionState{
+    big pieces[2][6];
+    int8_t mailbox[64];
+    void remPiece(int position, int piecetype, bool color){
+        pieces[color][piecetype] ^= 1ULL << position;
+        mailbox[position] = SPACE*2;
+    }
+    void addPiece(int position, int piecetype, bool color){
+        pieces[color][piecetype] ^= 1ULL << position;
+        mailbox[position] = (piecetype << 1) | color;
+    }
+
+    void remPiece(int position, int fullpiece){
+        pieces[color(fullpiece)][type(fullpiece)] ^= 1ULL << position;
+        mailbox[position] = SPACE*2;
+    }
+    void addPiece(int position, int fullpiece){
+        pieces[color(fullpiece)][type(fullpiece)] ^= 1ULL << position;
+        mailbox[position] = fullpiece;
+    }
+    void reset(){
+        memset(pieces, 0, sizeof(pieces));
+        memset(mailbox, SPACE*2, sizeof(mailbox));
+    }
+};
 
 struct PositionSnapshot;
 
@@ -37,7 +64,7 @@ public :
     big zobristHash;
     big pawnZobrist;
     big minorZobrist;
-    big boardRepresentation[2][6];
+    PositionState board;
     //End of last double pawn push, (-1) if last move was not a double pawn push
     int lastDoublePawnPush;
     bool castlingRights[2][2];
@@ -61,7 +88,7 @@ public :
     Move getLastMove() const;
     Move getContMove() const;
     Move playPartialMove(Move move);
-    int getPiece(int square, int c) const;
+    int getPiece(int square) const;
     int getfullPiece(int square) const;
     pawnStruct getPawnStruct();
     void print() const;
@@ -84,7 +111,7 @@ const string startpos="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 // Used for copy/make: save before playMoveForward, restore after search
 // No nbMoves, posRook, or deathRook — not needed in forward-only mode
 struct PositionSnapshot {
-    big boardRepresentation[2][6];
+    PositionState board;
     big zobristHash;
     big pawnZobrist;
     big minorZobrist;
@@ -93,7 +120,7 @@ struct PositionSnapshot {
     int turnNumber;
 
     inline void save(const GameState& s) {
-        memcpy(boardRepresentation, s.boardRepresentation, sizeof(boardRepresentation));
+        memcpy(&board, &s.board, sizeof(board));
         zobristHash = s.zobristHash;
         pawnZobrist = s.pawnZobrist;
         minorZobrist = s.minorZobrist;
@@ -103,7 +130,7 @@ struct PositionSnapshot {
     }
 
     inline void restore(GameState& s) const {
-        memcpy(s.boardRepresentation, boardRepresentation, sizeof(boardRepresentation));
+        memcpy(&s.board, &board, sizeof(board));
         s.zobristHash = zobristHash;
         s.pawnZobrist = pawnZobrist;
         s.minorZobrist = minorZobrist;

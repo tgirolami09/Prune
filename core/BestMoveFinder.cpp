@@ -224,7 +224,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         }
         ss.stack[rootDist].snap.save(state);
         state.playMoveForward(capture);//don't care about repetition
-        ss.eval.playMove(capture, !state.friendlyColor(), ss.stack[rootDist].snap.boardRepresentation, state.boardRepresentation);
+        ss.eval.playMove(capture, !state.friendlyColor(), &ss.stack[rootDist].snap.board, &state.board);
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(capture, !state.friendlyColor());
         ss.stack[rootDist].snap.restore(state);
@@ -434,7 +434,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
             return MIDDLE;
         }
-        ss.eval.playMove(order.moves[0], !state.friendlyColor(), ss.stack[rootDist].snap.boardRepresentation, state.boardRepresentation);
+        ss.eval.playMove(order.moves[0], !state.friendlyColor(), &ss.stack[rootDist].snap.board, &state.board);
         ss.generator.initDangers(state);
         int sc = -negamax<isPV, limitWay>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
         ss.eval.undoMove(order.moves[0], !state.friendlyColor());
@@ -492,7 +492,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             score = MIDDLE;
             isDraw = true;
         }else{
-            ss.eval.playMove(curMove, !state.friendlyColor(), ss.stack[rootDist].snap.boardRepresentation, state.boardRepresentation);
+            ss.eval.playMove(curMove, !state.friendlyColor(), &ss.stack[rootDist].snap.board, &state.board);
             bool inCheckPos = ss.generator.initDangers(state);
             int reductionDepth = 1;
             if(inCheckPos && firstMoveExtension == 0){
