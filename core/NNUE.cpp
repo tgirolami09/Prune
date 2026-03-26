@@ -272,27 +272,20 @@ void Accumulator::updatePieceOutComing(const int8_t mailbox[64], const int piece
 void Accumulator::updatePieceIncoming(const int8_t mailbox[64], const int piece, const bool colorpiece, const int pos, const bool remove, const int removepos, const big sliders[3]){
     const Index posdef(pos, piece, colorpiece);
     const big maskremove = ~((removepos == -1 ? 0 : (1ULL << removepos)) | bitboards[WHITE][KING] | bitboards[BLACK][KING]);
-    big pawnAtks[2] = {
-        attackPawns[pos+64],
-        attackPawns[pos]
-    };
-    big pieceAtks[] = {
-        (piecesThreat[PAWN][piece] != -1)*(pawnAtks[0]|pawnAtks[1]),
-        (piece != KNIGHT)*KnightMoves[pos],
-        (piece != QUEEN && piece != BISHOP)*sliders[0],
-        (piece != QUEEN && piece != ROOK)*sliders[1],
-        (piece != QUEEN)*sliders[2],
-    };
-    big possMask = pieceAtks[PAWN] | pieceAtks[KNIGHT] | pieceAtks[BISHOP] | pieceAtks[ROOK] | pieceAtks[QUEEN];
-    possMask &= occupied&maskremove;
+    big possMask = 
+        (piecesThreat[PAWN][piece] != -1)*(
+                            (attackPawns[pos+64*!colorpiece]&bitboards[ colorpiece][PAWN])|
+            (piece != PAWN)*(attackPawns[pos+64* colorpiece]&bitboards[!colorpiece][PAWN])
+        ) | //pawns
+        ((piece != KNIGHT)*KnightMoves[pos] & (bitboards[WHITE][KNIGHT] | bitboards[BLACK][KNIGHT])) | // knights
+        ((piece != QUEEN && piece != BISHOP)*sliders[0] & (bitboards[WHITE][BISHOP] | bitboards[BLACK][BISHOP])) | // bishops
+        ((piece != QUEEN && piece != ROOK)*sliders[1] & (bitboards[WHITE][ROOK] | bitboards[BLACK][ROOK])) | // queens
+        ((piece != QUEEN)*sliders[2] & (bitboards[WHITE][QUEEN] | bitboards[BLACK][QUEEN])); // queens
+    possMask &= maskremove;
     for(; possMask; possMask &= possMask-1){
         const int atkpos = __builtin_ctzll(possMask);
-        const big atkmask = 1ULL << atkpos;
         const bool atkcolor = color(mailbox[atkpos]);
         const int atkpiece = type(mailbox[atkpos]);
-        if(piece == PAWN && atkpiece == PAWN && atkcolor != colorpiece)continue;
-        if(atkpiece == PAWN && !(pawnAtks[atkcolor]&atkmask))continue;
-        else if(!(pieceAtks[atkpiece]&atkmask))continue;
         update.addThreat(ThreatIndex(
             Index(atkpos, atkpiece, atkcolor),
             posdef
