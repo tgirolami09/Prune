@@ -107,6 +107,8 @@ int main(int argc, char** argv){
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;
+    big globseed = time(NULL);
+    printf("%ld\n", globseed);
     int limitNodes;
     if(argc > 3)
         limitNodes = atoi(argv[3]);
@@ -172,7 +174,7 @@ int main(int argc, char** argv){
             int nbTry = 0;
             state->init(fens[i%fens.size()]);
             idFenTried++;
-            while(moveRandom(state, idFenTried+idThread+(nbTry++)) || 
+            while(moveRandom(state, (idFenTried+idThread+(nbTry++))^globseed) || 
                 abs(get<2>(state->getEval(tm))) > 500
             ){
                 state->reset(fens[i%fens.size()]);
