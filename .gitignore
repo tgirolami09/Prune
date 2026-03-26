@@ -24,3 +24,4 @@ prune*
 !Fathom/
 !Fathom/**
 *.json
+*perf.data*
