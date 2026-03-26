@@ -198,7 +198,7 @@ inline big firstafter(int square, int square2, big occupancy, big atkmask){
 
 template<bool enPassant, bool tworemove>
 void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, int removepos, int removepos2){
-    const big kingsbb = bitboards[WHITE][KING ] | bitboards[BLACK][KING ];
+    const big kingsbb = board.pieces[WHITE][KING ] | board.pieces[BLACK][KING ];
     big masks[3] = {
         moves_table(pos   , occupied&mask_empty_bishop(pos)),
         moves_table(pos+64, occupied&mask_empty_rook  (pos))
@@ -211,13 +211,13 @@ void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, in
         maskremove |= (1ULL << removepos2)|firstafter(removepos2, pos, occupied, masks[2]);
     }
     const big maskFkings = kingsbb|
-        firstafter(__builtin_ctzll(bitboards[WHITE][KING]), pos, occupied, masks[2])|
-        firstafter(__builtin_ctzll(bitboards[BLACK][KING]), pos, occupied, masks[2]);
+        firstafter(__builtin_ctzll(board.pieces[WHITE][KING]), pos, occupied, masks[2])|
+        firstafter(__builtin_ctzll(board.pieces[BLACK][KING]), pos, occupied, masks[2]);
     const big filterout = ~(maskremove|maskFkings);
     big mask = (
-        (masks[0]&(bitboards[WHITE][BISHOP] | bitboards[BLACK][BISHOP])) |
-        (masks[1]&(bitboards[WHITE][ROOK  ] | bitboards[BLACK][ROOK  ])) |
-        (masks[2]&(bitboards[WHITE][QUEEN ] | bitboards[BLACK][QUEEN ]))
+        (masks[0]&(board.pieces[WHITE][BISHOP] | board.pieces[BLACK][BISHOP])) |
+        (masks[1]&(board.pieces[WHITE][ROOK  ] | board.pieces[BLACK][ROOK  ])) |
+        (masks[2]&(board.pieces[WHITE][QUEEN ] | board.pieces[BLACK][QUEEN ]))
     ) & filterout;
     while(mask){
         const int posatk = __builtin_ctzll(mask);
@@ -248,7 +248,7 @@ void Accumulator::updatePieceOutComing(const int8_t mailbox[64], const int piece
     big authMask = 0;
     for(int x=0; x<nbPieces-1; x++)
         if(piecesThreat[piece][x] != -1)
-            authMask |= bitboards[WHITE][x]|bitboards[BLACK][x];
+            authMask |= board.pieces[WHITE][x]|board.pieces[BLACK][x];
     atkmask &= authMask;
     if(removepos != -1)atkmask &= ~(1ULL << removepos);
     while(atkmask){
@@ -264,16 +264,16 @@ void Accumulator::updatePieceOutComing(const int8_t mailbox[64], const int piece
 
 void Accumulator::updatePieceIncoming(const int8_t mailbox[64], const int piece, const bool colorpiece, const int pos, const bool remove, const int removepos, const big sliders[3]){
     const Index posdef(pos, piece, colorpiece);
-    const big maskremove = ~((removepos == -1 ? 0 : (1ULL << removepos)) | bitboards[WHITE][KING] | bitboards[BLACK][KING]);
+    const big maskremove = ~((removepos == -1 ? 0 : (1ULL << removepos)) | board.pieces[WHITE][KING] | board.pieces[BLACK][KING]);
     big possMask = 
         (piecesThreat[PAWN][piece] != -1)*(
-                            (attackPawns[pos+64*!colorpiece]&bitboards[ colorpiece][PAWN])|
-            (piece != PAWN)*(attackPawns[pos+64* colorpiece]&bitboards[!colorpiece][PAWN])
+                            (attackPawns[pos+64*!colorpiece]&board.pieces[ colorpiece][PAWN])|
+            (piece != PAWN)*(attackPawns[pos+64* colorpiece]&board.pieces[!colorpiece][PAWN])
         ) | //pawns
-        ((piece != KNIGHT)*KnightMoves[pos] & (bitboards[WHITE][KNIGHT] | bitboards[BLACK][KNIGHT])) | // knights
-        ((piece != QUEEN && piece != BISHOP)*sliders[0] & (bitboards[WHITE][BISHOP] | bitboards[BLACK][BISHOP])) | // bishops
-        ((piece != QUEEN && piece != ROOK)*sliders[1] & (bitboards[WHITE][ROOK] | bitboards[BLACK][ROOK])) | // queens
-        ((piece != QUEEN)*sliders[2] & (bitboards[WHITE][QUEEN] | bitboards[BLACK][QUEEN])); // queens
+        ((piece != KNIGHT)*KnightMoves[pos] & (board.pieces[WHITE][KNIGHT] | board.pieces[BLACK][KNIGHT])) | // knights
+        ((piece != QUEEN && piece != BISHOP)*sliders[0] & (board.pieces[WHITE][BISHOP] | board.pieces[BLACK][BISHOP])) | // bishops
+        ((piece != QUEEN && piece != ROOK)*sliders[1] & (board.pieces[WHITE][ROOK] | board.pieces[BLACK][ROOK])) | // queens
+        ((piece != QUEEN)*sliders[2] & (board.pieces[WHITE][QUEEN] | board.pieces[BLACK][QUEEN])); // queens
     possMask &= maskremove;
     for(; possMask; possMask &= possMask-1){
         const int atkpos = __builtin_ctzll(possMask);
@@ -332,13 +332,13 @@ void Accumulator::getThreatUpdates(const PositionState& state1, const PositionSt
     }
 }
 
-void Accumulator::defstaterelated(const PositionState& state){
-    memcpy(bitboards, state.pieces, sizeof(bitboards));
+void Accumulator::defstaterelated(const PositionState& _state){
+    memcpy(&board, &_state, sizeof(board));
     occupied = 0;
     for(int p=0; p<nbPieces; p++)
-        occupied |= bitboards[WHITE][p];
+        occupied |= board.pieces[WHITE][p];
     for(int p=0; p<nbPieces; p++)
-        occupied |= bitboards[BLACK][p];
+        occupied |= board.pieces[BLACK][p];
 }
 
 void Accumulator::reinit(const Move& move, const PositionState& state1, const PositionState& state2, Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1, Index sub2, Index add2){
@@ -405,7 +405,7 @@ void Accumulator::updateSelf(const Accumulator& accIn, FinnyTables& finny){
     TIupdateTotStat.update(update.nbThreats[0]+update.nbThreats[1]);
 #endif
     if(threatrefresh){
-        globnnue.calcThreats(*this, side, bitboards);
+        globnnue.calcThreats(*this, side, board);
         applythreatsUpdates(accIn, !side);
     }else{
         applythreatsUpdates(accIn, WHITE);
@@ -416,8 +416,8 @@ void Accumulator::updateSelf(const Accumulator& accIn, FinnyTables& finny){
         oneAccumulator& curAcc=finny.normals[index].accs;
         for(int c=0; c<2; c++)
             for(int piece=0; piece<nbPieces; piece++){
-                const big common = bitboards[c][piece]&finny.normals[index].bitboards[c][piece];
-                big maskadd = bitboards[c][piece]&~common;
+                const big common = board.pieces[c][piece]&finny.normals[index].bitboards[c][piece];
+                big maskadd = board.pieces[c][piece]&~common;
                 big maskrem = finny.normals[index].bitboards[c][piece]&~common;
                 while(maskadd && maskrem){
                     const int posrem = __builtin_ctzll(maskrem);
@@ -438,7 +438,7 @@ void Accumulator::updateSelf(const Accumulator& accIn, FinnyTables& finny){
                 }
             }
         memcpy(accs[side], curAcc, sizeof(accs[side]));
-        memcpy(finny.normals[index].bitboards, bitboards, sizeof(bitboards));
+        memcpy(finny.normals[index].bitboards, board.pieces, sizeof(board.pieces));
         if(update.type == 0)
             globnnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), idInputBucket[!side]);
         else if(update.type == 1)
@@ -678,77 +678,73 @@ void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, in
     }
 }
 
-void NNUE::calcThreats(Accumulator& accs, bool pov, const big bitboards[2][6]) const{
+void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) const{
     for(int i=0; i<HL_SIZE/nb16; i++){
         accs[pov+2][i] = simd16_zero();
     }
     big blackbb = 0;
     big whitebb = 0;
     for(int p=0; p<nbPieces; p++)
-        whitebb |= bitboards[WHITE][p];
+        whitebb |= state.pieces[WHITE][p];
     for(int p=0; p<nbPieces; p++)
-        blackbb |= bitboards[BLACK][p];
+        blackbb |= state.pieces[BLACK][p];
     const big occupied = whitebb | blackbb;
-    bool mirror = col(__builtin_ctzll(bitboards[pov][KING])) <= 3;
-    for(int idPiece=0; type(idPiece)<nbPieces-1; idPiece++){
-        big mask = bitboards[color(idPiece)][type(idPiece)];
-        big authMask = 0;
+    big authMasks[nbPieces-1];
+    for(int i=0; i<nbPieces-1; i++){
+        authMasks[i] = 0;
         for(int p=0; p<nbPieces; p++)
-            if(p != type(idPiece) && piecesThreat[type(idPiece)][p] != -1)
-                for(int _c=0; _c<2; _c++)
-                    authMask |= bitboards[_c][p];
+            if(p != i && piecesThreat[i][p] != -1)
+                authMasks[i] |= state.pieces[WHITE][p] | state.pieces[BLACK][p];
+    }
+    bool mirror = col(__builtin_ctzll(state.pieces[pov][KING])) <= 3;
+    big mask = occupied;
+    while(mask){
+        const int pos = __builtin_ctzll(mask);
+        const int idPiece = state.mailbox[pos];
+        big authMask = authMasks[type(idPiece)];
         big semiexcluded = 0;
         if(type(idPiece) == PAWN)
-            authMask |= bitboards[color(idPiece)][type(idPiece)];
+            authMask |= state.pieces[color(idPiece)][type(idPiece)];
         else
-            semiexcluded = bitboards[color(idPiece)][type(idPiece)];
-        semiexcluded |= bitboards[color(idPiece) ^ 1][type(idPiece)];
+            semiexcluded = state.pieces[color(idPiece)][type(idPiece)];
+        semiexcluded |= state.pieces[color(idPiece) ^ 1][type(idPiece)];
 
-        while(mask){
-            int pos = __builtin_ctzll(mask);
-            big atkmask=0;
-            Index posatk(pos, type(idPiece), color(idPiece));
-            posatk.smirror(mirror);
-            posatk.schangepov(pov);
-            switch (type(idPiece)) {
-                case PAWN:
-                    atkmask = attackPawns[pos+color(idPiece)*64];
-                    break;
-                case KNIGHT:
-                    atkmask = KnightMoves[pos];
-                    break;
-                case BISHOP:
-                    atkmask = moves_table(pos, occupied&mask_empty_bishop(pos));
-                    break;
-                case ROOK:
-                    atkmask = moves_table(pos+64, occupied&mask_empty_rook(pos));
-                    break;
-                case QUEEN:
-                    atkmask = moves_table(pos, occupied&mask_empty_bishop(pos)) | moves_table(pos+64, occupied&mask_empty_rook(pos));
-                    break;
-            }
-            big semiEmask = (MAX_BIG>>(63-pos))^(mask_row[row(pos)]*(!mirror^pov));
-            if(pov == BLACK)semiEmask = ~semiEmask;
-            atkmask &= authMask|(semiexcluded&semiEmask);
-            while(atkmask){
-                const int _posdef = __builtin_ctzll(atkmask);
-                const big maskPiece = 1ULL << _posdef;
-                int piece = -1;
-                const int colorPiece = (whitebb&maskPiece)?WHITE:BLACK;
-                for(int x=0; x<nbPieces; x++)
-                    if(bitboards[colorPiece][x]&maskPiece){
-                        piece = x;
-                        break;
-                    }
-                Index posdef(_posdef, piece, colorPiece);
-                posdef.smirror(mirror);
-                posdef.schangepov(pov);
-                int threatindex = getThreatIndex(posatk, posdef);
-                addThreat<1>(accs, pov, threatindex);
-                atkmask &= atkmask-1;
-            }
-            mask &= mask-1;
+        big atkmask=0;
+        Index posatk(pos, type(idPiece), color(idPiece));
+        posatk.smirror(mirror);
+        posatk.schangepov(pov);
+        switch (type(idPiece)) {
+            case PAWN:
+                atkmask = attackPawns[pos+color(idPiece)*64];
+                break;
+            case KNIGHT:
+                atkmask = KnightMoves[pos];
+                break;
+            case BISHOP:
+                atkmask = moves_table(pos, occupied&mask_empty_bishop(pos));
+                break;
+            case ROOK:
+                atkmask = moves_table(pos+64, occupied&mask_empty_rook(pos));
+                break;
+            case QUEEN:
+                atkmask = moves_table(pos, occupied&mask_empty_bishop(pos)) | moves_table(pos+64, occupied&mask_empty_rook(pos));
+                break;
         }
+        big semiEmask = (MAX_BIG>>(63-pos))^(mask_row[row(pos)]*(!mirror^pov));
+        if(pov == BLACK)semiEmask = ~semiEmask;
+        atkmask &= authMask|(semiexcluded&semiEmask);
+        while(atkmask){
+            const int _posdef = __builtin_ctzll(atkmask);
+            const int piece = type(state.mailbox[_posdef]);
+            const int colorPiece = color(state.mailbox[_posdef]);
+            Index posdef(_posdef, piece, colorPiece);
+            posdef.smirror(mirror);
+            posdef.schangepov(pov);
+            int threatindex = getThreatIndex(posatk, posdef);
+            addThreat<1>(accs, pov, threatindex);
+            atkmask &= atkmask-1;
+        }
+        mask &= mask-1;
     }
 }
 

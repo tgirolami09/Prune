@@ -126,7 +126,7 @@ public:
     bool threatrefresh;
     big occupied;
     int idInputBucket[2];
-    big bitboards[2][6];
+    PositionState board;
     updateBuffer update;
     Accumulator(){}
     void reinit(const Move& move, const PositionState& state1, const PositionState& state2, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
@@ -177,7 +177,7 @@ public:
     void move2In(oneAccumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
     void move4(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex, FinnyTables& finny) const;
-    void calcThreats(Accumulator& accs, bool color, const big bitboards[2][6]) const;
+    void calcThreats(Accumulator& accs, bool color, const PositionState& state) const;
     dbyte eval(Accumulator& accs, bool side, int idB) const;
 };
 

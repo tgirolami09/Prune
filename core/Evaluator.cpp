@@ -261,9 +261,9 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.board.pieces[BLACK][KING])) <= 3;
     stackAcc[stackIndex].idInputBucket[WHITE] = getInputBucket(__builtin_ctzll(state.board.pieces[WHITE][KING]), WHITE, stackAcc[stackIndex].Kside[WHITE]);
     stackAcc[stackIndex].idInputBucket[BLACK] = getInputBucket(__builtin_ctzll(state.board.pieces[BLACK][KING]), BLACK, stackAcc[stackIndex].Kside[BLACK]);
-    memcpy(stackAcc[stackIndex].bitboards, state.board.pieces, sizeof(stackAcc[stackIndex].bitboards));
-    globnnue.calcThreats(stackAcc[stackIndex], WHITE, state.board.pieces);
-    globnnue.calcThreats(stackAcc[stackIndex], BLACK, state.board.pieces);
+    memcpy(&stackAcc[stackIndex].board, &state.board, sizeof(stackAcc[stackIndex].board));
+    globnnue.calcThreats(stackAcc[stackIndex], WHITE, state.board);
+    globnnue.calcThreats(stackAcc[stackIndex], BLACK, state.board);
     //printf("%d %d\n", stackAcc[stackIndex].idInputBucket[WHITE], stackAcc[stackIndex].idInputBucket[BLACK]);
 #else
     egScore = 0;
