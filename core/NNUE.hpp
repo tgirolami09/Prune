@@ -78,6 +78,9 @@ public:
     ThreatIndex swapSemiExcluded() const{
         return issemiexcluded()?ThreatIndex(to, from):ThreatIndex(from, to);
     }
+    ThreatIndex swapExcluded() const{
+        return isexcluded()?ThreatIndex(to, from):ThreatIndex(from, to);
+    }
 };
 using oneAccumulator=simd16[HL_SIZE/nb16];
 class FinnytableNormal{

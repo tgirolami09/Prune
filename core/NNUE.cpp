@@ -203,7 +203,6 @@ inline big firstafter(int square, int square2, big occupancy, big atkmask){
 
 template<bool enPassant, bool tworemove>
 void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, int removepos, int removepos2){
-    const big queenbb = bitboards[WHITE][QUEEN] | bitboards[BLACK][QUEEN];
     const big kingsbb = bitboards[WHITE][KING ] | bitboards[BLACK][KING ];
     big masks[3] = {
         moves_table(pos   , occupied&mask_empty_bishop(pos)),
@@ -220,24 +219,23 @@ void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, in
         firstafter(__builtin_ctzll(bitboards[WHITE][KING]), pos, occupied, masks[2])|
         firstafter(__builtin_ctzll(bitboards[BLACK][KING]), pos, occupied, masks[2]);
     const big filterout = ~(maskremove|maskFkings);
-    const big maskPiece = bitboards[WHITE][BISHOP] | bitboards[BLACK][BISHOP] | bitboards[WHITE][ROOK] | bitboards[BLACK][ROOK] | queenbb;
-    big mask = masks[2] & maskPiece & filterout; //only cares about the pieces
+    big mask = (
+        (masks[0]&(bitboards[WHITE][BISHOP] | bitboards[BLACK][BISHOP])) |
+        (masks[1]&(bitboards[WHITE][ROOK  ] | bitboards[BLACK][ROOK  ])) |
+        (masks[2]&(bitboards[WHITE][QUEEN ] | bitboards[BLACK][QUEEN ]))
+    ) & filterout;
     while(mask){
         const int posatk = __builtin_ctzll(mask);
         const bool coloratk = color(mailbox[posatk]);
         const int pieceatk = type(mailbox[posatk]);
-        if(masks[pieceatk-BISHOP]&(1ULL << posatk)){
-            const big maskdef = firstInDirection(posatk, pos, occupied);
-            if(maskdef){
-                const int posdef = __builtin_ctzll(maskdef);
-                const bool colordef = color(mailbox[posdef]);
-                const int piecedef = type(mailbox[posdef]);
-                const ThreatIndex threat(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef));
-                if(!threat.isexcluded() && !threat.issemiexcluded()){ // the non excluded threat will be in the reverse
-                    update.addThreat(threat, remove);
-                    mask &= ~maskdef;
-                }
-            }
+        const big maskdef = firstInDirection(posatk, pos, occupied);
+        if(maskdef){
+            const int posdef = __builtin_ctzll(maskdef);
+            const bool colordef = color(mailbox[posdef]);
+            const int piecedef = type(mailbox[posdef]);
+            const ThreatIndex threat(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef));
+            update.addThreat(threat.swapExcluded(), remove);
+            mask &= ~maskdef;
         }
         mask &= mask-1;
     }
