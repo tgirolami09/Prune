@@ -193,12 +193,7 @@ inline big firstInDirection(int square, int square2, big occupancy){
 }
 inline big firstafter(int square, int square2, big occupancy, big atkmask){
     if(!((1ULL << square)&atkmask))return 0;
-    big mask = fullDir[square][square2]&occupancy;
-    if(!mask)return 0;
-    if(square2 > square)
-        return mask&-mask;
-    else
-        return 1ULL << (__builtin_clzll(mask)^63);
+    return fullDir[square][square2]&occupancy&atkmask;
 }
 
 template<bool enPassant, bool tworemove>
@@ -226,10 +221,10 @@ void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, in
     ) & filterout;
     while(mask){
         const int posatk = __builtin_ctzll(mask);
-        const bool coloratk = color(mailbox[posatk]);
-        const int pieceatk = type(mailbox[posatk]);
-        const big maskdef = firstInDirection(posatk, pos, occupied);
+        const big maskdef = fullDir[posatk][pos]&masks[2]&occupied;
         if(maskdef){
+            const bool coloratk = color(mailbox[posatk]);
+            const int pieceatk = type(mailbox[posatk]);
             const int posdef = __builtin_ctzll(maskdef);
             const bool colordef = color(mailbox[posdef]);
             const int piecedef = type(mailbox[posdef]);
