@@ -15,6 +15,7 @@ using namespace std;
 StatVar<sbig, 64, 0> TIupdateRemStat;
 StatVar<sbig, 64, 0> TIupdateAddStat;
 StatVar<sbig, 64, 0> TIupdateTotStat;
+StatVar<sbig, 128, -128> TIupdateDiffStat;
 #endif
 int threatIndex[(nbPieces-1)*2][64][64];
 int threatoffset[(nbPieces-1)*2];
@@ -198,7 +199,6 @@ inline big firstafter(int square, int square2, big occupancy, big atkmask){
 
 template<bool enPassant, bool tworemove>
 void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, int removepos, int removepos2){
-    const big kingsbb = board.pieces[WHITE][KING ] | board.pieces[BLACK][KING ];
     big masks[3] = {
         moves_table(pos   , occupied&mask_empty_bishop(pos)),
         moves_table(pos+64, occupied&mask_empty_rook  (pos))
@@ -210,9 +210,9 @@ void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, in
     if constexpr(tworemove){
         maskremove |= (1ULL << removepos2)|firstafter(removepos2, pos, occupied, masks[2]);
     }
-    const big maskFkings = kingsbb|
-        firstafter(__builtin_ctzll(board.pieces[WHITE][KING]), pos, occupied, masks[2])|
-        firstafter(__builtin_ctzll(board.pieces[BLACK][KING]), pos, occupied, masks[2]);
+    const big maskFkings = board.pieces[WHITE][KING ] | board.pieces[BLACK][KING ] |
+        ((board.pieces[WHITE][KING]&masks[2]) ? fullDir[__builtin_ctzll(board.pieces[WHITE][KING])][pos]&occupied&masks[2] : 0)|
+        ((board.pieces[BLACK][KING]&masks[2]) ? fullDir[__builtin_ctzll(board.pieces[BLACK][KING])][pos]&occupied&masks[2] : 0);
     const big filterout = ~(maskremove|maskFkings);
     big mask = (
         (masks[0]&(board.pieces[WHITE][BISHOP] | board.pieces[BLACK][BISHOP])) |
@@ -228,8 +228,10 @@ void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, in
             const int posdef = __builtin_ctzll(maskdef);
             const bool colordef = color(mailbox[posdef]);
             const int piecedef = type(mailbox[posdef]);
-            const ThreatIndex threat(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef));
-            update.addThreat(threat.swapExcluded(), remove);
+            update.addThreat(ThreatIndex(
+                Index(posatk, pieceatk, coloratk),
+                Index(posdef, piecedef, colordef)
+            ).swapExcluded(), remove);
             mask &= ~maskdef;
         }
         mask &= mask-1;
@@ -255,9 +257,10 @@ void Accumulator::updatePieceOutComing(const int8_t mailbox[64], const int piece
         const int _posdef = __builtin_ctzll(atkmask);
         const int piecedef = type(mailbox[_posdef]);
         const int colorPiece = color(mailbox[_posdef]);
-        Index posdef(_posdef, piecedef, colorPiece);
-        ThreatIndex threat(posatk, posdef);
-        update.addThreat(threat, remove);
+        update.addThreat(ThreatIndex(
+            posatk,
+            Index(_posdef, piecedef, colorPiece)
+        ), remove);
         atkmask &= atkmask-1;
     }
 }
@@ -403,6 +406,7 @@ void Accumulator::updateSelf(const Accumulator& accIn, FinnyTables& finny){
     TIupdateAddStat.update(update.nbThreats[0]);
     TIupdateRemStat.update(update.nbThreats[1]);
     TIupdateTotStat.update(update.nbThreats[0]+update.nbThreats[1]);
+    TIupdateDiffStat.update(update.nbThreats[0]-update.nbThreats[1]);
 #endif
     if(threatrefresh){
         globnnue.calcThreats(*this, side, board);

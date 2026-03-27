@@ -13,6 +13,7 @@ using namespace std;
 extern StatVar<sbig, 64, 0> TIupdateRemStat;
 extern StatVar<sbig, 64, 0> TIupdateAddStat;
 extern StatVar<sbig, 64, 0> TIupdateTotStat;
+extern StatVar<sbig, 128, -128> TIupdateDiffStat;
 #endif
 const int maxThreatUpdates=80;
 const int INPUT_SIZE = 12*64;
