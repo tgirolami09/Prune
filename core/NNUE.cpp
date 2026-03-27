@@ -610,60 +610,60 @@ void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
 }
 
 void NNUE::addThreataddsub(Accumulator& accs, bool pov, int indexadd, int indexrem) const{
-    const simdhalf* weightsadd = (simdhalf*)&threatWeights[indexadd];
-    const simdhalf* weightsrem = (simdhalf*)&threatWeights[indexrem];
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 add=simdh8_16(weightsadd[i]);
-        simd16 rem=simdh8_16(weightsrem[i]);
-        simd16 low = simd16_sub(add, rem);
-        accs[pov+2][i] = simd16_add(accs[pov+2][i], low);
+    const auto& weightsadd = threatWeights[indexadd];
+    const auto& weightsrem = threatWeights[indexrem];
+    for(int i=0; i<HL_SIZE/nb16; i += 2){
+        simd8 f=simd8_sub(weightsadd[i/2], weightsrem[i/2]);
+        simdhalf* fd = (simdhalf*)&f;
+        accs[pov+2][i  ] = simd16_add(accs[pov+2][i  ], simdh8_16(fd[0]));
+        accs[pov+2][i+1] = simd16_add(accs[pov+2][i+1], simdh8_16(fd[1]));
     }
 }
 
 
 void NNUE::addThreataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, int indexadd, int indexrem) const{
-    const simdhalf* weightsadd = (simdhalf*)&threatWeights[indexadd];
-    const simdhalf* weightsrem = (simdhalf*)&threatWeights[indexrem];
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 add=simdh8_16(weightsadd[i]);
-        simd16 rem=simdh8_16(weightsrem[i]);
-        simd16 low = simd16_sub(add, rem);
-        accs[pov+2][i] = simd16_add(accIn[pov+2][i], low);
+    const auto& weightsadd = threatWeights[indexadd];
+    const auto& weightsrem = threatWeights[indexrem];
+    for(int i=0; i<HL_SIZE/nb16; i += 2){
+        simd8 f=simd8_sub(weightsadd[i/2], weightsrem[i/2]);
+        simdhalf* fd = (simdhalf*)&f;
+        accs[pov+2][i  ] = simd16_add(accIn[pov+2][i  ], simdh8_16(fd[0]));
+        accs[pov+2][i+1] = simd16_add(accIn[pov+2][i+1], simdh8_16(fd[1]));
     }
 }
 
 void NNUE::add2Threataddsub(Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const{
-    const simdhalf* weightsadd1 = (simdhalf*)&threatWeights[indexadd1];
-    const simdhalf* weightsadd2 = (simdhalf*)&threatWeights[indexadd2];
-    const simdhalf* weightsrem1 = (simdhalf*)&threatWeights[indexrem1];
-    const simdhalf* weightsrem2 = (simdhalf*)&threatWeights[indexrem2];
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 add1=simdh8_16(weightsadd1[i]);
-        simd16 add2=simdh8_16(weightsadd2[i]);
-        simd16 rem1=simdh8_16(weightsrem1[i]);
-        simd16 rem2=simdh8_16(weightsrem2[i]);
-        simd16 low1 = simd16_sub(add1, rem1);
-        simd16 low2 = simd16_sub(add2, rem2);
-        simd16 low = simd16_add(low1, low2);
+    const auto& weightsadd1 = threatWeights[indexadd1];
+    const auto& weightsadd2 = threatWeights[indexadd2];
+    const auto& weightsrem1 = threatWeights[indexrem1];
+    const auto& weightsrem2 = threatWeights[indexrem2];
+    for(int i=0; i<HL_SIZE/nb16; i += 2){
+        simd8 f1 = simd8_sub(weightsadd1[i/2], weightsrem1[i/2]);
+        simd8 f2 = simd8_sub(weightsadd2[i/2], weightsrem2[i/2]);
+        simdhalf* fd1 = (simdhalf*)&f1;
+        simdhalf* fd2 = (simdhalf*)&f2;
+        simd16 low = simd16_add(simdh8_16(fd1[0]), simdh8_16(fd2[0]));
         accs[pov+2][i] = simd16_add(accs[pov+2][i], low);
+        simd16 high = simd16_add(simdh8_16(fd1[1]), simdh8_16(fd2[1]));
+        accs[pov+2][i+1] = simd16_add(accs[pov+2][i+1], high);
     }
 }
 
 
 void NNUE::add2Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const{
-    const simdhalf* weightsadd1 = (simdhalf*)&threatWeights[indexadd1];
-    const simdhalf* weightsadd2 = (simdhalf*)&threatWeights[indexadd2];
-    const simdhalf* weightsrem1 = (simdhalf*)&threatWeights[indexrem1];
-    const simdhalf* weightsrem2 = (simdhalf*)&threatWeights[indexrem2];
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 add1=simdh8_16(weightsadd1[i]);
-        simd16 add2=simdh8_16(weightsadd2[i]);
-        simd16 rem1=simdh8_16(weightsrem1[i]);
-        simd16 rem2=simdh8_16(weightsrem2[i]);
-        simd16 low1 = simd16_sub(add1, rem1);
-        simd16 low2 = simd16_sub(add2, rem2);
-        simd16 low = simd16_add(low1, low2);
+    const auto& weightsadd1 = threatWeights[indexadd1];
+    const auto& weightsadd2 = threatWeights[indexadd2];
+    const auto& weightsrem1 = threatWeights[indexrem1];
+    const auto& weightsrem2 = threatWeights[indexrem2];
+    for(int i=0; i<HL_SIZE/nb16; i += 2){
+        simd8 f1 = simd8_sub(weightsadd1[i/2], weightsrem1[i/2]);
+        simd8 f2 = simd8_sub(weightsadd2[i/2], weightsrem2[i/2]);
+        simdhalf* fd1 = (simdhalf*)&f1;
+        simdhalf* fd2 = (simdhalf*)&f2;
+        simd16 low = simd16_add(simdh8_16(fd1[0]), simdh8_16(fd2[0]));
         accs[pov+2][i] = simd16_add(accIn[pov+2][i], low);
+        simd16 high = simd16_add(simdh8_16(fd1[1]), simdh8_16(fd2[1]));
+        accs[pov+2][i+1] = simd16_add(accIn[pov+2][i+1], high);
     }
 }
 
@@ -755,8 +755,8 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     simdint res = simdint_zero();
     for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 pov = simd16_add(accs[side][i], accs[side+2][i]);
-        simd16 npov = simd16_add(accs[side^1][i], accs[(side^1)+2][i]);
+        simd16 pov = simd16_add(accs[side][i], simd16_add(accs[side+2][i], accs[side+2][i]));
+        simd16 npov = simd16_add(accs[side^1][i], simd16_add(accs[(side^1)+2][i], accs[(side^1)+2][i]));
         res = simdint_add(res, doOut(pov, outWeights[idB][0][i]));
         res = simdint_add(res, doOut(npov, outWeights[idB][1][i]));
     }
