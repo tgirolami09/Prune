@@ -701,7 +701,7 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
                 authMasks[i] |= state.pieces[WHITE][p] | state.pieces[BLACK][p];
     }
     bool mirror = col(__builtin_ctzll(state.pieces[pov][KING])) <= 3;
-    big mask = occupied;
+    big mask = occupied&~(state.pieces[WHITE][KING]|state.pieces[BLACK][KING]);
     while(mask){
         const int pos = __builtin_ctzll(mask);
         const int idPiece = state.mailbox[pos];
