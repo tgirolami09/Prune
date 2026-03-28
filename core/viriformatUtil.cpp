@@ -62,10 +62,7 @@ void MoveInfo::dump(FILE* datafile){
     fastWrite<int16_t>(score, datafile);
 }
 void GamePlayed::dump(FILE* datafile){
-    big occupied = 0; // calculate the occupied bitboard
-    for(int j=0; j<2; j++)
-        for(int i=0; i<6; i++)
-            occupied |= startPos.board.pieces[j][i];
+    big occupied = startPos.board.colors[WHITE] | startPos.board.colors[BLACK]; // calculate the occupied bitboard
     fastWrite(reverse_col(occupied), datafile);
     uint8_t entry = 0x00;
     bool isSec = false;
@@ -138,7 +135,7 @@ GamePlayed readGame(FILE* file){
                 castle |= mask;
                 piece = ROOK;
             }
-            game.startPos.board.pieces[_c][piece] |= mask;
+            game.startPos.board.addPiece(index, piece, _c);
             game.startPos.updateZobrists(piece, _c, i);
             isSec ^= 1;
             nbEntry++;

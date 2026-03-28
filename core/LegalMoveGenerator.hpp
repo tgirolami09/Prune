@@ -68,8 +68,8 @@ private:
     template<bool IsWhite>
     Move getLVAImpl(int posCapture, GameState& state);
 
-    const big* friendlyPieces;
-    const big* enemyPieces;
+    big friendlyPieces[6];
+    big enemyPieces[6];
     big allFriends;
     big allEnemies;
     big allPieces;

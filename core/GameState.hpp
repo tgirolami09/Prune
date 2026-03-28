@@ -14,28 +14,40 @@ const int sizeThreeFold=8192;
 extern big zobrist[nbZobrist];
 
 struct PositionState{
-    big pieces[2][6];
+    big pieces[6];
+    big colors[2];
     int8_t mailbox[64];
     void remPiece(int position, int piecetype, bool color){
-        pieces[color][piecetype] ^= 1ULL << position;
+        pieces[piecetype] ^= 1ULL << position;
+        colors[color] ^= 1ULL << position;
         mailbox[position] = SPACE*2;
     }
     void addPiece(int position, int piecetype, bool color){
-        pieces[color][piecetype] ^= 1ULL << position;
+        pieces[piecetype] ^= 1ULL << position;
+        colors[color] ^= 1ULL << position;
         mailbox[position] = (piecetype << 1) | color;
     }
 
     void remPiece(int position, int fullpiece){
-        pieces[color(fullpiece)][type(fullpiece)] ^= 1ULL << position;
+        pieces[type(fullpiece)] ^= 1ULL << position;
+        colors[color(fullpiece)] ^= 1ULL << position;
         mailbox[position] = SPACE*2;
     }
     void addPiece(int position, int fullpiece){
-        pieces[color(fullpiece)][type(fullpiece)] ^= 1ULL << position;
+        pieces[type(fullpiece)] ^= 1ULL << position;
+        colors[color(fullpiece)] ^= 1ULL << position;
         mailbox[position] = fullpiece;
     }
     void reset(){
         memset(pieces, 0, sizeof(pieces));
+        memset(colors, 0, sizeof(colors));
         memset(mailbox, SPACE*2, sizeof(mailbox));
+    }
+    big getMask(int piece, bool color) const{
+        return pieces[piece]&colors[color];
+    }
+    big getMask(int piece) const{
+        return pieces[type(piece)]&colors[color(piece)];
     }
 };
 
@@ -74,10 +86,6 @@ public :
     string toFen() const;
     int friendlyColor() const;
     int enemyColor() const;
-    //Returns the 6 bitboards of the FRIENDLY pieces on the board
-    const big* friendlyPieces() const;
-    //Returns the 6 bitboards of the ENEMY pieces on the board
-    const big* enemyPieces() const;
     template<bool back>
     bool isEnPassantPossibility(const Move& move);
     int rule50_count() const;

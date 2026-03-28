@@ -188,24 +188,13 @@ int GameState::enemyColor() const{
     return (turnNumber%2)?BLACK:WHITE;
 }
 
-//Returns the 6 bitboards of the FRIENDLY pieces on the board
-const big* GameState::friendlyPieces() const{
-    int friendlyIndex = friendlyColor();
-    return board.pieces[friendlyIndex];
-}
-
-//Returns the 6 bitboards of the ENEMY pieces on the board
-const big* GameState::enemyPieces() const{
-    int enemyIndex = enemyColor();
-    return board.pieces[enemyIndex];
-}
 template<bool back>
 inline bool GameState::isEnPassantPossibility(const Move& move){
     big sidePawn=((1ULL << clipped_left(move.to()))|(1ULL << clipped_right(move.to())));
     if(back)
-        sidePawn &= friendlyPieces()[PAWN];
+        sidePawn &= board.getMask(PAWN, friendlyColor());
     else
-        sidePawn &= enemyPieces()[PAWN];
+        sidePawn &= board.getMask(PAWN, enemyColor());
     return move.piece == PAWN && 
         abs(move.from()-move.to()) == 2*8 && 
         sidePawn;
@@ -490,7 +479,7 @@ void GameState::playMoveForward(Move move){
     // En passant possibility
     if(move.piece == PAWN && abs(move.from()-move.to()) == 16){
         big sidePawn = (1ULL << clipped_left(move.to())) | (1ULL << clipped_right(move.to()));
-        if(sidePawn & enemyPieces()[PAWN]){
+        if(sidePawn & board.getMask(PAWN, enemyColor())){
             lastDoublePawnPush = 8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
             zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         }else{

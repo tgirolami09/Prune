@@ -63,39 +63,39 @@ big get_bishop_lines(big occupancy, int square){
 
 inline int getLVA(int square, const GameState& state, bool stm, big occupancy, int& pieceType){ // return the square where the lva come from, set pieceType
     //Pawns
-    big mask = occupancy&state.board.pieces[stm][PAWN]&attackPawns[(!stm)*64+square];
+    big mask = occupancy&state.board.getMask(PAWN, stm)&attackPawns[(!stm)*64+square];
     if(mask){
         pieceType = PAWN;
         return __builtin_ctzll(mask);
     }
     //Knight
-    mask = occupancy&state.board.pieces[stm][KNIGHT]&KnightMoves[square];
+    mask = occupancy&state.board.getMask(KNIGHT, stm)&KnightMoves[square];
     if(mask){
         pieceType = KNIGHT;
         return __builtin_ctzll(mask);
     }
     //Bishop
     big maskB = occupancy&get_bishop_lines(occupancy&mask_empty_bishop(square), square);
-    mask = state.board.pieces[stm][BISHOP]&maskB;
+    mask = state.board.getMask(BISHOP, stm)&maskB;
     if(mask){
         pieceType = BISHOP;
         return __builtin_ctzll(mask);
     }
     //Rook
     big maskR = occupancy&get_rook_lines(occupancy&mask_empty_rook(square), square);
-    mask = state.board.pieces[stm][ROOK]&maskR;
+    mask = state.board.getMask(ROOK, stm)&maskR;
     if(mask){
         pieceType = ROOK;
         return __builtin_ctzll(mask);
     }
     //Queen
-    mask = state.board.pieces[stm][QUEEN]&(maskR|maskB);
+    mask = state.board.getMask(QUEEN, stm)&(maskR|maskB);
     if(mask){
         pieceType = QUEEN;
         return __builtin_ctzll(mask);
     }
     //KING
-    mask = occupancy&state.board.pieces[stm][KING]&normalKingMoves[square];
+    mask = occupancy&state.board.getMask(KING, stm)&normalKingMoves[square];
     if(mask){
         pieceType = KING;
         return __builtin_ctzll(mask);
@@ -104,10 +104,7 @@ inline int getLVA(int square, const GameState& state, bool stm, big occupancy, i
 }
 
 int fastSEE(const Move& move, const GameState& state, const int* value_pieces){
-    big occupancy = 0;
-    for(int c=0; c<2; c++)
-        for(int p=0; p<6; p++)
-            occupancy |= state.board.pieces[c][p];
+    big occupancy = state.board.colors[WHITE]|state.board.colors[BLACK];
     occupancy ^= 1ULL << move.from();
     int square = move.to();
     bool stm = !state.friendlyColor();
@@ -131,7 +128,7 @@ int fastSEE(const Move& move, const GameState& state, const int* value_pieces){
 }
 
 big get_mask(const GameState& state, int p){
-    return state.board.pieces[0][p]|state.board.pieces[1][p];
+    return state.board.pieces[p];
 }
 
 SEE_BB::SEE_BB(const GameState& state){
@@ -140,11 +137,8 @@ SEE_BB::SEE_BB(const GameState& state){
     Bs = get_mask(state, BISHOP)|Qs;
     Ns = get_mask(state, KNIGHT);
     Ks = get_mask(state, KING);
-    occupancies[0] = 0;
-    occupancies[1] = 0;
-    for(int _c=0; _c<2; _c++)
-        for(int p=0; p<6; p++)
-            occupancies[_c] |= state.board.pieces[_c][p];
+    occupancies[0] = state.board.colors[0];
+    occupancies[1] = state.board.colors[1];
     occupancy = occupancies[0]|occupancies[1];
 }
 
@@ -175,14 +169,14 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
     big rooksAtk = mask_empty_rook(square);
     big attacks =((get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs) | (get_rook_lines(occupancy&rooksAtk, square)&bb.Rs) |
                   (KnightMoves[square]&bb.Ns) |
-                  (attackPawns[square]&state.board.pieces[1][PAWN]) | (attackPawns[square+64]&state.board.pieces[0][PAWN]) |
+                  (attackPawns[square]&state.board.getMask(PAWN, 1)) | (attackPawns[square+64]&state.board.getMask(PAWN, 0)) |
                   (normalKingMoves[square]&bb.Ks))&occupancy;
     bool begin2first = false;
     bool begin2second = false;
     while(attacks&bb.occupancies[stm]){
         pieceType = -1;
         for(int p=begin2first*2; p<nbPieces; p++){
-            big mask = state.board.pieces[stm][p]&attacks;
+            big mask = state.board.getMask(p, stm)&attacks;
             if(mask){
                 atk = __builtin_ctzll(mask);
                 pieceType = p;
@@ -257,10 +251,10 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     stackAcc[stackIndex].update.nbThreats[0] = 0;
     stackAcc[stackIndex].update.nbThreats[1] = 0;
     stackAcc[stackIndex].update.dirty = false;
-    stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.board.pieces[WHITE][KING])) <= 3;
-    stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.board.pieces[BLACK][KING])) <= 3;
-    stackAcc[stackIndex].idInputBucket[WHITE] = getInputBucket(__builtin_ctzll(state.board.pieces[WHITE][KING]), WHITE, stackAcc[stackIndex].Kside[WHITE]);
-    stackAcc[stackIndex].idInputBucket[BLACK] = getInputBucket(__builtin_ctzll(state.board.pieces[BLACK][KING]), BLACK, stackAcc[stackIndex].Kside[BLACK]);
+    stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.board.getMask(KING, WHITE))) <= 3;
+    stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.board.getMask(KING, BLACK))) <= 3;
+    stackAcc[stackIndex].idInputBucket[WHITE] = getInputBucket(__builtin_ctzll(state.board.getMask(KING, WHITE)), WHITE, stackAcc[stackIndex].Kside[WHITE]);
+    stackAcc[stackIndex].idInputBucket[BLACK] = getInputBucket(__builtin_ctzll(state.board.getMask(KING, BLACK)), BLACK, stackAcc[stackIndex].Kside[BLACK]);
     memcpy(&stackAcc[stackIndex].board, &state.board, sizeof(stackAcc[stackIndex].board));
     globnnue.calcThreats(stackAcc[stackIndex], WHITE, state.board);
     globnnue.calcThreats(stackAcc[stackIndex], BLACK, state.board);

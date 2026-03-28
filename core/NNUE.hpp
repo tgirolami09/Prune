@@ -86,7 +86,7 @@ public:
 using oneAccumulator=simd16[HL_SIZE/nb16];
 class FinnytableNormal{
 public:
-    big bitboards[2][6];
+    big bitboards[8];
     oneAccumulator accs;
 };
 
