@@ -90,7 +90,6 @@ public :
     Move playPartialMove(Move move);
     int getPiece(int square) const;
     int getfullPiece(int square) const;
-    pawnStruct getPawnStruct();
     void print() const;
     void initMove(Move& move);
     big castlingMask();

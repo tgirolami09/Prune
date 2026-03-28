@@ -66,7 +66,3 @@ __attribute__((constructor(101))) void init_lines(){
         rook_full[i] = mask_full_rook(i);
     }
 }
-
-bool pawnStruct::operator==(pawnStruct s){
-    return blackPawn == s.blackPawn && whitePawn == s.whitePawn;
-}
