@@ -90,18 +90,16 @@ int clipped_left(int pos){
 }
 
 big mask_empty_rook(int square){
-    return (clipped_col[square&7]|clipped_row[square >> 3])&(~(1ULL << square));
+    return rook_empty[square];
 }
 big mask_empty_bishop(int square){
-    int col=square&7, row=square >> 3;
-    return clipped_diag[col+row] ^ clipped_idiag[row-col+7];
+    return bishop_empty[square];
 }
 big mask_full_rook(int square){
-    return (mask_col[square&7]|mask_row[square >> 3])&(~(1ULL << square));
+    return rook_full[square];
 }
 big mask_full_bishop(int square){
-    int col=square&7, row=square >> 3;
-    return mask_diag[col+row] ^ mask_idiag[row-col+7];
+    return bishop_full[square];
 }
 
 big maskCol(int square){

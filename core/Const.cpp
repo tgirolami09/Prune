@@ -8,6 +8,25 @@ big mask_row[8];
 big mask_col[8];
 big mask_diag[15];
 big mask_idiag[15];
+big bishop_empty[64];
+big rook_empty[64];
+big bishop_full[64];
+big rook_full[64];
+
+inline big mask_empty_rook(int square){
+    return (clipped_col[square&7]|clipped_row[square >> 3])&(~(1ULL << square));
+}
+inline big mask_empty_bishop(int square){
+    int col=square&7, row=square >> 3;
+    return clipped_diag[col+row] ^ clipped_idiag[row-col+7];
+}
+inline big mask_full_rook(int square){
+    return (mask_col[square&7]|mask_row[square >> 3])&(~(1ULL << square));
+}
+inline big mask_full_bishop(int square){
+    int col=square&7, row=square >> 3;
+    return mask_diag[col+row] ^ mask_idiag[row-col+7];
+}
 
 __attribute__((constructor(101))) void init_lines(){
     big row = MAX_BIG >> (8*7+2) << 1;
@@ -39,6 +58,12 @@ __attribute__((constructor(101))) void init_lines(){
         clipped_idiag[i] = idiag&clipped_mask;
         mask_diag[i] = diag;
         mask_idiag[i] = idiag;
+    }
+    for(int i=0; i<64; i++){
+        bishop_empty[i] = mask_empty_bishop(i);
+        bishop_full[i] = mask_full_bishop(i);
+        rook_empty[i] = mask_empty_rook(i);
+        rook_full[i] = mask_full_rook(i);
     }
 }
 
