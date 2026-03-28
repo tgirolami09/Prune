@@ -172,6 +172,16 @@ void transpositionTable::aging(){
     age &= maxAge;
 }
 
+int transpositionTable::hashfull(){
+    int fullentries = 0;
+    for(int i=0; i<1000; i++){
+        for(int j=0; j<clusterSize; j++){
+            fullentries += table[i].entries[j].age() == age && table[i].entries[j].typeNode() != 3;
+        }
+    }
+    return fullentries/clusterSize;
+}
+
 TTperft::TTperft(int alloted_mem):mem(alloted_mem/sizeof(perftMem)), modulo(alloted_mem/sizeof(perftMem)){}
 void TTperft::push(perftMem eval){
     int index = eval.hash%modulo;

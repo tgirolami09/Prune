@@ -52,6 +52,7 @@ public:
     void clear();
     void reinit(size_t count);
     void aging();
+    int hashfull();
 };
 
 class perftMem{
