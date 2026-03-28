@@ -98,6 +98,8 @@ public :
     Move playPartialMove(Move move);
     int getPiece(int square) const;
     int getfullPiece(int square) const;
+    big getFriendlyMask(int piece) const;
+    big getEnemyMask(int piece) const;
     void print() const;
     void initMove(Move& move);
     big castlingMask();

@@ -192,9 +192,9 @@ template<bool back>
 inline bool GameState::isEnPassantPossibility(const Move& move){
     big sidePawn=((1ULL << clipped_left(move.to()))|(1ULL << clipped_right(move.to())));
     if(back)
-        sidePawn &= board.getMask(PAWN, friendlyColor());
+        sidePawn &= getFriendlyMask(PAWN);
     else
-        sidePawn &= board.getMask(PAWN, enemyColor());
+        sidePawn &= getEnemyMask(PAWN);
     return move.piece == PAWN && 
         abs(move.from()-move.to()) == 2*8 && 
         sidePawn;
@@ -352,6 +352,12 @@ int GameState::getPiece(int square) const{
 int GameState::getfullPiece(int square) const{
     return board.mailbox[square];
 }
+big GameState::getFriendlyMask(int piece) const{
+    return board.getMask(piece, friendlyColor());
+}
+big GameState::getEnemyMask(int piece) const{
+    return board.getMask(piece, enemyColor());
+}
 
 void GameState::print() const{
     printf("/−");
@@ -479,7 +485,7 @@ void GameState::playMoveForward(Move move){
     // En passant possibility
     if(move.piece == PAWN && abs(move.from()-move.to()) == 16){
         big sidePawn = (1ULL << clipped_left(move.to())) | (1ULL << clipped_right(move.to()));
-        if(sidePawn & board.getMask(PAWN, enemyColor())){
+        if(sidePawn & getEnemyMask(PAWN)){
             lastDoublePawnPush = 8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
             zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
         }else{

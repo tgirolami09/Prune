@@ -57,7 +57,7 @@ uint64_t enPassant_hash(const GameState& state){
         if(enPassant_offset != 7){
             possibleCapturePawns |= (1ull << (state.lastDoublePawnPush + (-8 * moveFactor) + (1)));
         }
-        if (possibleCapturePawns & state.board.getMask(PAWN, state.friendlyColor())){
+        if (possibleCapturePawns & state.getFriendlyMask(PAWN)){
             enPassant = Random64[baseOffset+7-enPassant_offset];
         }
 

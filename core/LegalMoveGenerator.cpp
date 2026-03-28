@@ -526,7 +526,7 @@ void LegalMoveGenerator::dealWithEnemyKing(int enemyKingPos){
 template<bool IsWhite>
 void LegalMoveGenerator::legalKingMoves(const GameState& state, Move* moves, int& nbMoves, big Pieces, big captureMask){
     constexpr int color = IsWhite ? 0 : 1;
-    int kingPos = __builtin_ctzll(state.board.getMask(KING, state.friendlyColor()));
+    int kingPos = __builtin_ctzll(state.getFriendlyMask(KING));
     big kingEndMask = pseudoLegalKingMoves<IsWhite>(kingPos, Pieces, state.castlingRights[color][1], state.castlingRights[color][0]);
     kingEndMask &= (~allFriends);
     kingEndMask &= (~allDangerSquares);
@@ -616,8 +616,8 @@ bool LegalMoveGenerator::initDangersImpl(const GameState& state){
     nbCheckers = 0;
     checkerPos = -1;
     for(int p=0; p<nbPieces; p++){
-        friendlyPieces[p] = state.board.getMask(p, state.friendlyColor());
-        enemyPieces[p] = state.board.getMask(p, state.enemyColor());
+        friendlyPieces[p] = state.getFriendlyMask(p);
+        enemyPieces[p] = state.getEnemyMask(p);
     }
 
     friendlyKingPosition = __builtin_ctzll(friendlyPieces[KING]);
@@ -740,8 +740,8 @@ Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
     nbCheckers = 0;
     checkerPos = -1;
     for(int p=0; p<nbPieces; p++){
-        friendlyPieces[p] = state.board.getMask(p, state.friendlyColor());
-        enemyPieces[p] = state.board.getMask(p, state.enemyColor());
+        friendlyPieces[p] = state.getFriendlyMask(p);
+        enemyPieces[p] = state.getEnemyMask(p);
     }
 
     friendlyKingPosition = __builtin_ctzll(friendlyPieces[KING]);
