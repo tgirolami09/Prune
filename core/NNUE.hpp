@@ -167,6 +167,8 @@ public:
     void addThreat(Accumulator& accIn, bool pov, int index) const;
     template<int f>
     void addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const;
+    template<int f, int N>
+    void addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, uint16_t* index) const;
     template<int N>
     void Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, uint16_t indexadds[N], uint16_t indexrems[N]) const;
     template<int f>

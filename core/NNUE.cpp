@@ -377,36 +377,41 @@ void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov){
             __builtin_prefetch(&globnnue.threatWeights[updates[j][i]]);
         }
     int maxi = update.nbThreats[0] < update.nbThreats[1];
-    if(!update.nbThreats[maxi^1]){
-        if(maxi)
-            globnnue.addThreat<-1>(accIn, *this, pov, updates[maxi][0]);
-        else
-            globnnue.addThreat< 1>(accIn, *this, pov, updates[maxi][0]);
-    }else{
-        Accumulator* inAcc = &accIn;
-        int applied = 0;
-        while(update.nbThreats[maxi^1] >= 4+applied){
-            globnnue.Threataddsub<4>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
-            inAcc = this;
-            applied += 4;
-        }
-        if(update.nbThreats[maxi^1] >= 2+applied){
-            globnnue.Threataddsub<2>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
-            inAcc = this;
-            applied += 2;
-        }
-        if(update.nbThreats[maxi^1] >= 1+applied){
-            globnnue.Threataddsub<1>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
-            inAcc = this;
-            applied += 1;
-        }
+    Accumulator* inAcc = &accIn;
+    int applied = 0;
+    while(update.nbThreats[maxi^1] >= 4+applied){
+        globnnue.Threataddsub<4>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+        inAcc = this;
+        applied += 4;
     }
-    if(maxi)
-        for(int i=max(update.nbThreats[0], 1); i<update.nbThreats[1]; i++)
-            globnnue.addThreat<-1>(*this, pov, updates[maxi][i]);
-    else
-        for(int i=max(update.nbThreats[1], 1); i<update.nbThreats[0]; i++)
-            globnnue.addThreat< 1>(*this, pov, updates[maxi][i]);
+    if(update.nbThreats[maxi^1] >= 2+applied){
+        globnnue.Threataddsub<2>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+        inAcc = this;
+        applied += 2;
+    }
+    if(update.nbThreats[maxi^1] >= 1+applied){
+        globnnue.Threataddsub<1>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+        inAcc = this;
+        applied += 1;
+    }
+    while(update.nbThreats[maxi] >= 4+applied){
+        if(maxi)globnnue.addThreat<-1, 4>(*inAcc, *this, pov, updates[maxi]+applied);
+        else    globnnue.addThreat< 1, 4>(*inAcc, *this, pov, updates[maxi]+applied);
+        applied += 4;
+        inAcc = this;
+    }
+    if(update.nbThreats[maxi] >= 2+applied){
+        if(maxi)globnnue.addThreat<-1, 2>(*inAcc, *this, pov, updates[maxi]+applied);
+        else    globnnue.addThreat< 1, 2>(*inAcc, *this, pov, updates[maxi]+applied);
+        applied += 2;
+        inAcc = this;
+    }
+    if(update.nbThreats[maxi] >= 1+applied){
+        if(maxi)globnnue.addThreat<-1, 1>(*inAcc, *this, pov, updates[maxi]+applied);
+        else    globnnue.addThreat< 1, 1>(*inAcc, *this, pov, updates[maxi]+applied);
+        applied += 1;
+        inAcc = this;
+    }
 }
 
 void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny){
@@ -643,6 +648,25 @@ void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, in
     const simdhalf* weights = (simdhalf*)&threatWeights[index];
     for(int i=0; i<HL_SIZE/nb16; i++){
         simd16 low=simdh8_16(weights[i]);
+        if constexpr (f == 1) {
+            accOut[pov+2][i] = simd16_add(accIn[pov+2][i], low);
+        } else {
+            accOut[pov+2][i] = simd16_sub(accIn[pov+2][i], low);
+        }
+    }
+}
+
+template<int f, int N>
+void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, uint16_t* index) const{
+    static_assert(f == 1 || f == -1, "f should be either 1 or -1");
+    for(int i=0; i<HL_SIZE/nb16; i++){
+        simd16 low=simdh8_16(((simdhalf*)&threatWeights[index[0]])[i]);
+        for(int u=1; u<N; u++){
+            low = simd16_add(
+                low, 
+                simdh8_16(((simdhalf*)&threatWeights[index[u]])[i])
+        );
+        }
         if constexpr (f == 1) {
             accOut[pov+2][i] = simd16_add(accIn[pov+2][i], low);
         } else {
