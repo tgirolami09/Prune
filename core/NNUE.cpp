@@ -394,23 +394,38 @@ void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov){
         inAcc = this;
         applied += 1;
     }
-    while(update.nbThreats[maxi] >= 4+applied){
-        if(maxi)globnnue.addThreat<-1, 4>(*inAcc, *this, pov, updates[maxi]+applied);
-        else    globnnue.addThreat< 1, 4>(*inAcc, *this, pov, updates[maxi]+applied);
-        applied += 4;
-        inAcc = this;
-    }
-    if(update.nbThreats[maxi] >= 2+applied){
-        if(maxi)globnnue.addThreat<-1, 2>(*inAcc, *this, pov, updates[maxi]+applied);
-        else    globnnue.addThreat< 1, 2>(*inAcc, *this, pov, updates[maxi]+applied);
-        applied += 2;
-        inAcc = this;
-    }
-    if(update.nbThreats[maxi] >= 1+applied){
-        if(maxi)globnnue.addThreat<-1, 1>(*inAcc, *this, pov, updates[maxi]+applied);
-        else    globnnue.addThreat< 1, 1>(*inAcc, *this, pov, updates[maxi]+applied);
-        applied += 1;
-        inAcc = this;
+    if(maxi){
+        while(update.nbThreats[1] >= 4+applied){
+            globnnue.addThreat<-1, 4>(*inAcc, *this, pov, updates[1]+applied);
+            applied += 4;
+            inAcc = this;
+        }
+        if(update.nbThreats[1] >= 2+applied){
+            globnnue.addThreat<-1, 2>(*inAcc, *this, pov, updates[1]+applied);
+            applied += 2;
+            inAcc = this;
+        }
+        if(update.nbThreats[1] >= 1+applied){
+            globnnue.addThreat<-1, 1>(*inAcc, *this, pov, updates[1]+applied);
+            applied += 1;
+            inAcc = this;
+        }
+    }else{
+        while(update.nbThreats[0] >= 4+applied){
+            globnnue.addThreat< 1, 4>(*inAcc, *this, pov, updates[0]+applied);
+            applied += 4;
+            inAcc = this;
+        }
+        if(update.nbThreats[0] >= 2+applied){
+            globnnue.addThreat< 1, 2>(*inAcc, *this, pov, updates[0]+applied);
+            applied += 2;
+            inAcc = this;
+        }
+        if(update.nbThreats[0] >= 1+applied){
+            globnnue.addThreat< 1, 1>(*inAcc, *this, pov, updates[0]+applied);
+            applied += 1;
+            inAcc = this;
+        }
     }
 }
 
