@@ -623,15 +623,8 @@ bool LegalMoveGenerator::initDangersImpl(const GameState& state){
     friendlyKingPosition = __builtin_ctzll(friendlyPieces[KING]);
     enemyKingPosition = __builtin_ctzll(enemyPieces[KING]);
 
-    allFriends = 0;
-    allEnemies = 0;
-    for (int i = 0; i < 6; ++i){
-        big boardFriend = friendlyPieces[i];
-        allFriends |= boardFriend;
-        big boardEnemy = enemyPieces[i];
-        allEnemies |= boardEnemy;
-    }
-
+    allFriends = state.board.colors[state.friendlyColor()];
+    allEnemies = state.board.colors[state.enemyColor()];
     allPieces = allFriends | allEnemies;
     allDangerSquares = 0;
     dealWithEnemyKing(enemyKingPosition);
@@ -747,15 +740,8 @@ Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
     friendlyKingPosition = __builtin_ctzll(friendlyPieces[KING]);
     enemyKingPosition = __builtin_ctzll(enemyPieces[KING]);
 
-    allFriends = 0;
-    allEnemies = 0;
-    for (int i = 0; i < 6; ++i){
-        big boardFriend = friendlyPieces[i];
-        allFriends |= boardFriend;
-        big boardEnemy = enemyPieces[i];
-        allEnemies |= boardEnemy;
-    }
-
+    allFriends = state.board.colors[state.friendlyColor()];
+    allEnemies = state.board.colors[state.enemyColor()];
     allPieces = allFriends | allEnemies;
 
     captureMask = allEnemies;
