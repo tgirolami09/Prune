@@ -365,7 +365,7 @@ void Accumulator::reinit(const Move& move, const PositionState& state1, const Po
     }
 }
 
-void Accumulator::applythreatsUpdates(const Accumulator& accIn, const bool pov){
+void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov){
     if(update.nbThreats[0]+update.nbThreats[1] == 0){
         memcpy(accs[pov+2], accIn.accs[pov+2], sizeof(accs[pov+2]));
         return;
@@ -383,15 +383,23 @@ void Accumulator::applythreatsUpdates(const Accumulator& accIn, const bool pov){
         else
             globnnue.addThreat< 1>(accIn, *this, pov, updates[maxi][0]);
     }else{
-        if(update.nbThreats[maxi^1] >= 2){
-            globnnue.add2Threataddsub(accIn, *this, pov, updates[0][0], updates[1][0], updates[0][1], updates[1][1]);
-            int i;
-            for(i=2; i<update.nbThreats[maxi^1]-1; i += 2)
-                globnnue.add2Threataddsub(*this, pov, updates[0][i], updates[1][i], updates[0][i+1], updates[1][i+1]);
-            if(i < update.nbThreats[maxi^1])
-                globnnue.addThreataddsub(*this, pov, updates[0][i], updates[1][i]);
-        }else
-            globnnue.addThreataddsub(accIn, *this, pov, updates[0][0], updates[1][0]);
+        Accumulator* inAcc = &accIn;
+        int applied = 0;
+        while(update.nbThreats[maxi^1] >= 4+applied){
+            globnnue.Threataddsub<4>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+            inAcc = this;
+            applied += 4;
+        }
+        if(update.nbThreats[maxi^1] >= 2+applied){
+            globnnue.Threataddsub<2>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+            inAcc = this;
+            applied += 2;
+        }
+        if(update.nbThreats[maxi^1] >= 1+applied){
+            globnnue.Threataddsub<1>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+            inAcc = this;
+            applied += 1;
+        }
     }
     if(maxi)
         for(int i=max(update.nbThreats[0], 1); i<update.nbThreats[1]; i++)
@@ -401,7 +409,7 @@ void Accumulator::applythreatsUpdates(const Accumulator& accIn, const bool pov){
             globnnue.addThreat< 1>(*this, pov, updates[maxi][i]);
 }
 
-void Accumulator::updateSelf(const Accumulator& accIn, FinnyTables& finny){
+void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny){
 #ifdef DEBUG_MACRO
     TIupdateAddStat.update(update.nbThreats[0]);
     TIupdateRemStat.update(update.nbThreats[1]);
@@ -609,65 +617,26 @@ void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
     }
 }
 
-void NNUE::addThreataddsub(Accumulator& accs, bool pov, int indexadd, int indexrem) const{
-    const simdhalf* weightsadd = (simdhalf*)&threatWeights[indexadd];
-    const simdhalf* weightsrem = (simdhalf*)&threatWeights[indexrem];
+template<int N>
+void NNUE::Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, uint16_t indexadds[N], uint16_t indexrems[N]) const{
+    static_assert(N >= 1, "at least one update lol");
     for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 add=simdh8_16(weightsadd[i]);
-        simd16 rem=simdh8_16(weightsrem[i]);
-        simd16 low = simd16_sub(add, rem);
-        accs[pov+2][i] = simd16_add(accs[pov+2][i], low);
-    }
-}
-
-
-void NNUE::addThreataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, int indexadd, int indexrem) const{
-    const simdhalf* weightsadd = (simdhalf*)&threatWeights[indexadd];
-    const simdhalf* weightsrem = (simdhalf*)&threatWeights[indexrem];
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 add=simdh8_16(weightsadd[i]);
-        simd16 rem=simdh8_16(weightsrem[i]);
-        simd16 low = simd16_sub(add, rem);
+        simd16 low = simd16_sub(
+            simdh8_16(((simdhalf*)&threatWeights[indexadds[0]])[i]),
+            simdh8_16(((simdhalf*)&threatWeights[indexrems[0]])[i])
+        );
+        for(int u=1; u<N; u++){
+            low = simd16_add(
+                low,
+                simd16_sub(
+                    simdh8_16(((simdhalf*)&threatWeights[indexadds[u]])[i]),
+                    simdh8_16(((simdhalf*)&threatWeights[indexrems[u]])[i])
+                )
+            );
+        }
         accs[pov+2][i] = simd16_add(accIn[pov+2][i], low);
     }
 }
-
-void NNUE::add2Threataddsub(Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const{
-    const simdhalf* weightsadd1 = (simdhalf*)&threatWeights[indexadd1];
-    const simdhalf* weightsadd2 = (simdhalf*)&threatWeights[indexadd2];
-    const simdhalf* weightsrem1 = (simdhalf*)&threatWeights[indexrem1];
-    const simdhalf* weightsrem2 = (simdhalf*)&threatWeights[indexrem2];
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 add1=simdh8_16(weightsadd1[i]);
-        simd16 add2=simdh8_16(weightsadd2[i]);
-        simd16 rem1=simdh8_16(weightsrem1[i]);
-        simd16 rem2=simdh8_16(weightsrem2[i]);
-        simd16 low1 = simd16_sub(add1, rem1);
-        simd16 low2 = simd16_sub(add2, rem2);
-        simd16 low = simd16_add(low1, low2);
-        accs[pov+2][i] = simd16_add(accs[pov+2][i], low);
-    }
-}
-
-
-void NNUE::add2Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const{
-    const simdhalf* weightsadd1 = (simdhalf*)&threatWeights[indexadd1];
-    const simdhalf* weightsadd2 = (simdhalf*)&threatWeights[indexadd2];
-    const simdhalf* weightsrem1 = (simdhalf*)&threatWeights[indexrem1];
-    const simdhalf* weightsrem2 = (simdhalf*)&threatWeights[indexrem2];
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 add1=simdh8_16(weightsadd1[i]);
-        simd16 add2=simdh8_16(weightsadd2[i]);
-        simd16 rem1=simdh8_16(weightsrem1[i]);
-        simd16 rem2=simdh8_16(weightsrem2[i]);
-        simd16 low1 = simd16_sub(add1, rem1);
-        simd16 low2 = simd16_sub(add2, rem2);
-        simd16 low = simd16_add(low1, low2);
-        accs[pov+2][i] = simd16_add(accIn[pov+2][i], low);
-    }
-}
-
-
 template<int f>
 void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const{
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");

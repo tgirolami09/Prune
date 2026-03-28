@@ -118,7 +118,7 @@ class Accumulator{
     template<bool enPassant=false, bool tworemove=false>
     void updateXrays(const int8_t mailbox[64], int square, bool remove, int removepos, int removepos2=-1);
     void getThreatUpdates(const PositionState& state1, const PositionState& state2, const Move& move);
-    void applythreatsUpdates(const Accumulator& accIn, bool side);
+    void applythreatsUpdates(Accumulator& accIn, bool side);
 public:
     simd16 accs[4][HL_SIZE/nb16];
     bool Kside[2];
@@ -137,7 +137,7 @@ public:
     simd16* operator[](int idx){
         return accs[idx];
     }
-    void updateSelf(const Accumulator& accIn, FinnyTables& finny);
+    void updateSelf(Accumulator& accIn, FinnyTables& finny);
 };
 
 class NNUE{
@@ -167,10 +167,8 @@ public:
     void addThreat(Accumulator& accIn, bool pov, int index) const;
     template<int f>
     void addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const;
-    void addThreataddsub(Accumulator& accIn, bool pov, int indexadd, int indexsub) const;
-    void addThreataddsub(const Accumulator& accIn, Accumulator& accOut, bool pov, int indexadd, int indexsub) const;
-    void add2Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const;
-    void add2Threataddsub(Accumulator& accs, bool pov, int indexadd1, int indexrem1, int indexadd2, int indexrem2) const;
+    template<int N>
+    void Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, uint16_t indexadds[N], uint16_t indexrems[N]) const;
     template<int f>
     void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const;
     void move3(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const;
