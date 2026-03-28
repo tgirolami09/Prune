@@ -45,7 +45,7 @@ public:
             cum[i+1] = cum[i]+hist[i];
         }
         printf("  percentiles:\n");
-        for(double percent:{0.1, 1., 5., 25., 50., 75., 95., 99., 99.9}){
+        for(double percent:{0.1, 1., 5., 10., 20., 25., 30., 40., 50., 60., 70., 75., 80., 90., 95., 99., 99.9}){
             int search = cum[maxi-mini+1]*percent/100;
             int left = 0;
             int right = maxi-mini+2;
@@ -60,7 +60,9 @@ public:
                     break;
                 }
             }
-            printf("    %.2f : %d\n", percent, left+mini);
+            printf("    %.2f : %.2f (%.2f %.2f)\n", percent,
+                ((double)(cum[left]-search)*(left-1+mini)+(search-cum[left-1])*(left+mini))/(cum[left]-cum[left-1]),
+                (double)cum[left]*100/cum[maxi-mini+1], (double)cum[left-1]*100/cum[maxi-mini+1]);
         }
     }
 };
