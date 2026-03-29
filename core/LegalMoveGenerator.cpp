@@ -4,7 +4,7 @@
 #include "GameState.hpp"
 #include <cstring>
 #include <cassert>
-#if defined(__BMI2__)
+#if defined(__BMI2__) && !defined(__AVX512F__)
 #define USE_PEXT
 #endif
 #ifdef USE_PEXT
