@@ -55,10 +55,10 @@ __attribute__((constructor(103))) void init_forwards(){
 
 
 big get_rook_lines(big occupancy, int square){
-    return moves_table(square+64, occupancy);
+    return moves_table(square+64, occupancy, mask_empty_rook(square));
 }
 big get_bishop_lines(big occupancy, int square){
-    return moves_table(square, occupancy);
+    return moves_table(square, occupancy, mask_empty_bishop(square));
 }
 
 inline int getLVA(int square, const GameState& state, bool stm, big occupancy, int& pieceType){ // return the square where the lva come from, set pieceType
@@ -75,14 +75,14 @@ inline int getLVA(int square, const GameState& state, bool stm, big occupancy, i
         return __builtin_ctzll(mask);
     }
     //Bishop
-    big maskB = occupancy&get_bishop_lines(occupancy&mask_empty_bishop(square), square);
+    big maskB = occupancy&get_bishop_lines(occupancy, square);
     mask = state.board.getMask(BISHOP, stm)&maskB;
     if(mask){
         pieceType = BISHOP;
         return __builtin_ctzll(mask);
     }
     //Rook
-    big maskR = occupancy&get_rook_lines(occupancy&mask_empty_rook(square), square);
+    big maskR = occupancy&get_rook_lines(occupancy, square);
     mask = state.board.getMask(ROOK, stm)&maskR;
     if(mask){
         pieceType = ROOK;
@@ -165,9 +165,8 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
     lastPiece = pieceType;
     if(born < 0)
         return false;
-    big bishopAtk = mask_empty_bishop(square);
-    big rooksAtk = mask_empty_rook(square);
-    big attacks =((get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs) | (get_rook_lines(occupancy&rooksAtk, square)&bb.Rs) |
+    big bishopAtk = mask_empty_bishop(square);  
+    big attacks =((get_bishop_lines(occupancy, square)&bb.Bs) | (get_rook_lines(occupancy, square)&bb.Rs) |
                   (KnightMoves[square]&bb.Ns) |
                   (attackPawns[square]&state.board.getMask(PAWN, 1)) | (attackPawns[square+64]&state.board.getMask(PAWN, 0)) |
                   (normalKingMoves[square]&bb.Ks))&occupancy;

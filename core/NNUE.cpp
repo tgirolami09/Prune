@@ -200,8 +200,8 @@ inline big firstafter(int square, int square2, big occupancy, big atkmask){
 template<bool enPassant, bool tworemove>
 void Accumulator::updateXrays(const int8_t mailbox[64], int pos, bool remove, int removepos, int removepos2){
     big masks[3] = {
-        moves_table(pos   , occupied&mask_empty_bishop(pos)),
-        moves_table(pos+64, occupied&mask_empty_rook  (pos))
+        moves_table(pos   , occupied, mask_empty_bishop(pos)),
+        moves_table(pos+64, occupied, mask_empty_rook  (pos))
     };
     if constexpr(enPassant)
         masks[1] &= ~mask_row[row(pos)];
@@ -291,8 +291,8 @@ void Accumulator::updatePieceIncoming(const int8_t mailbox[64], const int piece,
 
 void Accumulator::updatePiece(const int8_t mailbox[64], const int piece, const bool colorpiece, const int pos, const bool remove, const int removepos){
     big sliders[3] = {
-        moves_table(pos   , occupied&mask_empty_bishop(pos)),
-        moves_table(pos+64, occupied&mask_empty_rook  (pos)),
+        moves_table(pos   , occupied, mask_empty_bishop(pos)),
+        moves_table(pos+64, occupied, mask_empty_rook  (pos)),
     };
     sliders[2] = sliders[0]|sliders[1];
     updatePieceIncoming(mailbox, piece, colorpiece, pos, remove, removepos, sliders);
@@ -727,13 +727,13 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
                 atkmask = KnightMoves[pos];
                 break;
             case BISHOP:
-                atkmask = moves_table(pos, occupied&mask_empty_bishop(pos));
+                atkmask = moves_table(pos, occupied, mask_empty_bishop(pos));
                 break;
             case ROOK:
-                atkmask = moves_table(pos+64, occupied&mask_empty_rook(pos));
+                atkmask = moves_table(pos+64, occupied, mask_empty_rook(pos));
                 break;
             case QUEEN:
-                atkmask = moves_table(pos, occupied&mask_empty_bishop(pos)) | moves_table(pos+64, occupied&mask_empty_rook(pos));
+                atkmask = moves_table(pos, occupied, mask_empty_bishop(pos)) | moves_table(pos+64, occupied, mask_empty_rook(pos));
                 break;
         }
         big semiEmask = (MAX_BIG>>(63-pos))^(mask_row[row(pos)]*(!mirror^pov));

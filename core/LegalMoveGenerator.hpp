@@ -28,7 +28,7 @@ void clear_table();
 void precomputeCastlingMasks();
 void precomputeNormlaKingMoves();
 void precomputePawnsAttack();
-big moves_table(int index, big mask_pieces);
+big moves_table(int index, big mask_pieces, big mask);
 
 class LegalMoveGenerator{
 private:
