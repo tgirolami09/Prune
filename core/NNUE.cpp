@@ -273,10 +273,10 @@ void Accumulator::updatePieceIncoming(const int8_t mailbox[64], const int piece,
                             (attackPawns[pos+64*!colorpiece]&board.getMask(PAWN,  colorpiece))|
             (piece != PAWN)*(attackPawns[pos+64* colorpiece]&board.getMask(PAWN, !colorpiece))
         ) | //pawns
-        ((piece != KNIGHT)*KnightMoves[pos] & (board.pieces[KNIGHT])) | // knights
-        ((piece != QUEEN && piece != BISHOP)*sliders[0] & (board.pieces[BISHOP])) | // bishops
-        ((piece != QUEEN && piece != ROOK)*sliders[1] & (board.pieces[ROOK])) | // queens
-        ((piece != QUEEN)*sliders[2] & (board.pieces[QUEEN])); // queens
+        ((piece != KNIGHT)*(KnightMoves[pos] & board.pieces[KNIGHT])) | // knights
+        ((piece != QUEEN && piece != BISHOP)*(sliders[0] & board.pieces[BISHOP])) | // bishops
+        ((piece != QUEEN && piece != ROOK)*(sliders[1] & board.pieces[ROOK])) | // queens
+        ((piece != QUEEN)*(sliders[2] & board.pieces[QUEEN])); // queens
     possMask &= maskremove;
     for(; possMask; possMask &= possMask-1){
         const int atkpos = __builtin_ctzll(possMask);
