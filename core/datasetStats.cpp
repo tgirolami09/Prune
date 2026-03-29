@@ -57,22 +57,64 @@ public:
         if(abs(move.score) > max_eval)return true;
         if(filter_tactical && move.move.isTactical())return true;
         if(filter_castling && move.move.isCastling())return true;
-        int nbMan = 0;
-        for(int i=0; i<2; i++)
-            for(int j=0; j<6; j++)
-                nbMan += countbit(state.boardRepresentation[i][j]);
+        int nbMan = countbit(state.board.colors[WHITE]|state.board.colors[BLACK]);
         if(nbMan < min_pieces)return true;
         int value_pieces[5] = {1, 3, 3, 5, 9};
         int material=0;
-        for(int i=0; i<2; i++)
-            for(int j=0; j<5; j++)
-                material += value_pieces[j]*countbit(state.boardRepresentation[i][j]);
+        for(int j=0; j<5; j++)
+            material += value_pieces[j]*countbit(state.board.pieces[j]);
         if(material < material_min || material > material_max)return true;
         if(random_fen_skipping && dist(randomGen) > random_fen_skip_probability)return true;
         if(result == 1 && abs(move.score) > max_eval_incorrectness)return true; // draw
         if(result == 2 && -move.score > max_eval_incorrectness)return true; // white win
         if(result == 0 && move.score > max_eval_incorrectness)return true;  // black win
         return false;
+    }
+};
+
+class HyperLogLog{
+public:
+    int b;
+    vector<int8_t> M;
+    big mask;
+    big size;
+    HyperLogLog(int _b):b(_b), size(1ULL << b){
+        M = vector<int8_t>(size, 0);
+        mask = size-1;
+    }
+    void add(big data){
+        big j = data >> (64-b);
+        big w = data << b;
+        M[j] = max<int8_t>(M[j], w?__builtin_clzll(w)+1:(64-b+1));
+    }
+    big count(){
+        const double alpha = [&]{
+            switch(size){
+                case 16:
+                    return 0.673;
+                case 32:
+                    return 0.697;
+                case 64:
+                    return 0.709;
+                default:
+                    return 0.7213/(1+1.079/size);
+            }
+        }();
+        double sum=0;
+        big V=0;
+        for(big i=0; i<size; i++){
+            if(M[i] == 0)V++;
+            sum += pow(2.0, -M[i]);
+        }
+        double E = alpha*size*size/sum;
+        if(E <= 2.5*size && V > 0){
+            E = size*log((double)size/V);
+        }
+        double two64 = pow(2, 64);
+        if(E > two64/30){
+            E = -two64*log(1-E/two64);
+        }
+        return (big)E;
     }
 };
 
@@ -84,6 +126,7 @@ int main(int argc, char** argv){
     filtering filter;
     big countFiltered=0;
     big countUnfiltered=0;
+    HyperLogLog uniqueness(10);
     LegalMoveGenerator movegen;
     for(int idFile=1; idFile<argc; idFile++){
         FILE* file=fopen(argv[idFile], "r");
@@ -98,13 +141,15 @@ int main(int argc, char** argv){
                 game.startPos.initMove(move.move);
                 if(filter.filter(game.startPos, move, inCheck, game.result))countFiltered++;
                 else countUnfiltered++;
+                uniqueness.add(game.startPos.zobristHash);
                 game.startPos.playMove(move.move);
             }
             big nbPos = countFiltered+countUnfiltered;
-            printf("\r%s %s/%s : %.2f %.2f                   ", niceNumber(countFiltered).c_str(), niceNumber(countUnfiltered).c_str(), niceNumber(nbPos).c_str(), (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
+            big countUnique = uniqueness.count();
+            printf("\r%s %s/%s(%s %.2f) : %.2f %.2f                   ", niceNumber(countFiltered).c_str(), niceNumber(countUnfiltered).c_str(), niceNumber(nbPos).c_str(), niceNumber(countUnique).c_str(), countUnique*100.0/nbPos, (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
             fflush(stdout);
         }
     }
     big nbPos = countFiltered+countUnfiltered;
-    printf("\n%ld %ld/%ld : %.2f %.2f\n", countFiltered, countUnfiltered, nbPos, (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
+    printf("\n%ld %ld/%ld (%ld): %.2f %.2f\n", countFiltered, countUnfiltered, nbPos, uniqueness.count(), (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
 }
