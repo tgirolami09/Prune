@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 const int maxAge = 0b11111;
-using resHash=uint16_t;
+using residualHash=uint16_t;
 class __attribute__((packed)) infoScore{
 public:
     int16_t score,
@@ -13,7 +13,7 @@ public:
     ubyte flag;
     int16_t bestMoveInfo;
     ubyte depth;
-    resHash hash;
+    residualHash hash;
     int typeNode() const;
     int age() const;
     void setFlag(int typeNode, int age, bool pv);
@@ -26,7 +26,7 @@ class Cluster{
 public:
     infoScore entries[clusterSize];
     ubyte padding[clusterByte-clusterSize*sizeof(infoScore)];
-    infoScore& probe(resHash hash, bool& ttHit);
+    infoScore& probe(residualHash hash, bool& ttHit);
     void push(infoScore& entry, int curAge);
 };
 static_assert(sizeof(Cluster) == clusterByte, "size of cluster should be 32");

@@ -44,7 +44,7 @@ bool infoScore::tt_pv() const{
     return flag >> 7;
 }
 
-infoScore& Cluster::probe(resHash hash, bool& ttHit){
+infoScore& Cluster::probe(residualHash hash, bool& ttHit){
     for(int i=0; i<clusterSize; i++){
         if(entries[i].typeNode() != 3 && entries[i].hash == hash){
             ttHit = true;
@@ -91,9 +91,9 @@ void Cluster::push(infoScore& entry, int curAge){
         entries[bestID] = entry;
 }
 
-pair<big, resHash> getIndex(const GameState& state, big modulo){
+pair<big, residualHash> getIndex(const GameState& state, big modulo){
     __uint128_t tHash = ((__uint128_t)state.zobristHash)*modulo;
-    static const int dec = 8*sizeof(resHash);
+    static const int dec = 8*sizeof(residualHash);
     tHash >>= 64-dec;
     return {tHash >> dec, tHash&((1ULL << dec)-1)};
 }
