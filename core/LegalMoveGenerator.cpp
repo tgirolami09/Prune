@@ -501,7 +501,7 @@ int LegalMoveGenerator::dealWithEnemyBishops(big enemyBishopPositions, big Piece
             big ray = directions[friendKingPos][currentBishopPos];
             big pinnedPieceMask = (ray ^ (1ull << currentBishopPos)) & Pieces;
             //There is a pinned piece;
-            if (countbit(pinnedPieceMask) == 1){
+            if (countbit(pinnedPieceMask) == 1 && pinnedPieceMask&allFriends){
                 pinD12 |= ray;
             }
         }
@@ -536,7 +536,7 @@ int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, i
             big ray = directions[friendKingPos][currentRookPos];
             big pinnedPieceMask = (ray ^ (1ull << currentRookPos)) & Pieces;
             //There is a pinned piece;
-            if (countbit(pinnedPieceMask) == 1){
+            if (countbit(pinnedPieceMask) == 1 && pinnedPieceMask&allFriends){
                 pinHV |= ray;
             }
         }
