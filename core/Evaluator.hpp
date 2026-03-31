@@ -205,7 +205,9 @@ public:
     void playMove(Move move, bool c, const PositionState* state1, const PositionState* state2);
     void playNoBack(const GameState& state, Move move, bool c);
     void undoMove(Move move, bool c);
+#ifndef HCE
     const Accumulator& operator[](int idx) const;
+#endif
 };
 
 #endif

@@ -421,8 +421,6 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) c
         stackIndex++;
     }else
         stackIndex--;
-#else
-    state->playMove(move);
 #endif
 }
 
@@ -468,9 +466,11 @@ void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& s
     }
 #endif
 }
+#ifndef HCE
 const Accumulator& IncrementalEvaluator::operator[](int idx) const{
     return stackAcc[idx];
 }
+#endif
 
 template void IncrementalEvaluator::playMove<-1>(Move, bool, const PositionState*, const PositionState*);
 template void IncrementalEvaluator::playMove< 1>(Move, bool, const PositionState*, const PositionState*);
