@@ -316,7 +316,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
         }
     }
-    if(depth <= 0 || (!isRoot && depth == 1 && (static_eval+100 < alpha || static_eval > beta+100))){
+    bool inCheck=ss.generator.isCheck();
+    if(depth <= 0 || (!isRoot && depth == 1 && (!inCheck && (static_eval+100 < alpha || static_eval > beta+100)))){
         if constexpr(isPV)ss.beginLine(rootDist);
         return Evaluate<isPV, limitWay>(ss, state, alpha, beta, relDepth);
     }
@@ -335,7 +336,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     ubyte typeNode = UPPERBOUND;
     Order& order = ss.stack[rootDist].order;
-    bool inCheck=ss.generator.isCheck();
     bool improving = false;
     if((!ttHit || ttEntry.depth+parameters.iir_validity_depth < depth) && depth >= parameters.iir_min_depth && !allnode && excludedMove == nullMove.moveInfo)depth--;
     if(rootDist > 2)
