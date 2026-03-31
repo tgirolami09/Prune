@@ -87,6 +87,9 @@ else
 	NEEDINGFILE=
 endif
 
+all: engine.cpp $(OBJECTS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
+
 download:
 	@if [ ! -f model.bin ]; then \
 		echo "File missing, downloading..."; \
@@ -95,11 +98,6 @@ download:
 		echo "SHA mismatch, re-downloading..."; \
 		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin"; \
 	fi
-
-
-
-all: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
 
 unittest: unittest.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
