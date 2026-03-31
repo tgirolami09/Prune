@@ -20,7 +20,7 @@ __attribute__((constructor)) void init_zobrs(){
 GameState::GameState(){
 }
 
-inline void GameState::updateZobrists(int piece, bool color, int square){
+void GameState::updateZobrists(int piece, bool color, int square){
     big zobr = zobrist[(color*6+piece)*64+square];
     zobristHash ^= zobr;
     if(piece == PAWN)
