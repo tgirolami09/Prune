@@ -331,7 +331,7 @@ void manageSearch(){
                     bestMoveResponse res=goCommand(parsed, *testState, false);
                     vector<depthInfo> infos = get<3>(res);
                     if(DEBUG)
-                        printf("fen: %s score: %d nodes: %ld\n", testState->root.toFen().c_str(), get<2>(res), infos.empty()?0:infos.back().node);
+                        printf("fen: %s score: %d nodes: %" PRId64 "\n", testState->root.toFen().c_str(), get<2>(res), infos.empty()?0:infos.back().node);
                     for(depthInfo info:infos){
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;
