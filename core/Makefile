@@ -3,7 +3,8 @@ ADDOPTION?=
 DEBUGOPT?=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 -I../Fathom/src $(ADDOPTION)
 OPT?=-O3 -flto -funroll-loops
-
+DOWNLOADNET?=true
+SHELL := /bin/bash
 # Fathom tablebase library
 FATHOM_DIR = ../Fathom/src
 FATHOM_OBJ = tbprobe.o
@@ -75,13 +76,30 @@ else
 	NAME=$(EXE)
 	SHORTNAME=$(EXE)
 endif
+ifeq ($(OS),Windows)
+    NULL_DEVICE = nul
+else
+    NULL_DEVICE = /dev/null
+endif
+ifeq ($(DOWNLOADNET), true)
+	NEEDINGFILE=download
+else
+	NEEDINGFILE=
+endif
+
+download:
+	@if [ ! -f model.bin ]; then \
+		echo "File missing, downloading..."; \
+		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin"; \
+	elif [ "$$(sha256sum model.bin | cut -c1-7)" != "$$(grep -P ".{7}$$" nn-name.txt -o)" ]; then \
+		echo "SHA mismatch, re-downloading..."; \
+		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin"; \
+	fi
+
+
 
 all: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
-
-model.bin:
-	rm -f model.bin
-	curl -OL https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin
 
 unittest: unittest.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
@@ -116,8 +134,8 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 %HCE.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
 
-embeder.o: embeder.cpp
-	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+embeder.o: embeder.cpp $(NEEDINGFILE)
+	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
 
 embederHCE.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
