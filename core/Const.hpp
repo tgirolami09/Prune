@@ -35,8 +35,8 @@ extern big clipped_diag[15];
 extern big clipped_idiag[15];
 extern big mask_row[8];
 extern big mask_col[8];
-extern big mask_diag[15];
-extern big mask_idiag[15];
+extern big mask_diag[15];  // diag : index = column+row
+extern big mask_idiag[15]; //idiag : index = row-column+7
 extern big bishop_empty[64];
 extern big rook_empty[64];
 extern big bishop_full[64];
