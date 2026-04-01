@@ -55,47 +55,47 @@ __attribute__((constructor(103))) void init_forwards(){
 
 
 big get_rook_lines(big occupancy, int square){
-    return moves_table(square+64, occupancy);
+    return moves_table(square+64, occupancy, mask_empty_rook(square));
 }
 big get_bishop_lines(big occupancy, int square){
-    return moves_table(square, occupancy);
+    return moves_table(square, occupancy, mask_empty_bishop(square));
 }
 
 inline int getLVA(int square, const GameState& state, bool stm, big occupancy, int& pieceType){ // return the square where the lva come from, set pieceType
     //Pawns
-    big mask = occupancy&state.boardRepresentation[stm][PAWN]&attackPawns[(!stm)*64+square];
+    big mask = occupancy&state.board.getMask(PAWN, stm)&attackPawns[(!stm)*64+square];
     if(mask){
         pieceType = PAWN;
         return __builtin_ctzll(mask);
     }
     //Knight
-    mask = occupancy&state.boardRepresentation[stm][KNIGHT]&KnightMoves[square];
+    mask = occupancy&state.board.getMask(KNIGHT, stm)&KnightMoves[square];
     if(mask){
         pieceType = KNIGHT;
         return __builtin_ctzll(mask);
     }
     //Bishop
-    big maskB = occupancy&get_bishop_lines(occupancy&mask_empty_bishop(square), square);
-    mask = state.boardRepresentation[stm][BISHOP]&maskB;
+    big maskB = occupancy&get_bishop_lines(occupancy, square);
+    mask = state.board.getMask(BISHOP, stm)&maskB;
     if(mask){
         pieceType = BISHOP;
         return __builtin_ctzll(mask);
     }
     //Rook
-    big maskR = occupancy&get_rook_lines(occupancy&mask_empty_rook(square), square);
-    mask = state.boardRepresentation[stm][ROOK]&maskR;
+    big maskR = occupancy&get_rook_lines(occupancy, square);
+    mask = state.board.getMask(ROOK, stm)&maskR;
     if(mask){
         pieceType = ROOK;
         return __builtin_ctzll(mask);
     }
     //Queen
-    mask = state.boardRepresentation[stm][QUEEN]&(maskR|maskB);
+    mask = state.board.getMask(QUEEN, stm)&(maskR|maskB);
     if(mask){
         pieceType = QUEEN;
         return __builtin_ctzll(mask);
     }
     //KING
-    mask = occupancy&state.boardRepresentation[stm][KING]&normalKingMoves[square];
+    mask = occupancy&state.board.getMask(KING, stm)&normalKingMoves[square];
     if(mask){
         pieceType = KING;
         return __builtin_ctzll(mask);
@@ -104,10 +104,7 @@ inline int getLVA(int square, const GameState& state, bool stm, big occupancy, i
 }
 
 int fastSEE(const Move& move, const GameState& state, const int* value_pieces){
-    big occupancy = 0;
-    for(int c=0; c<2; c++)
-        for(int p=0; p<6; p++)
-            occupancy |= state.boardRepresentation[c][p];
+    big occupancy = state.board.colors[WHITE]|state.board.colors[BLACK];
     occupancy ^= 1ULL << move.from();
     int square = move.to();
     bool stm = !state.friendlyColor();
@@ -131,7 +128,7 @@ int fastSEE(const Move& move, const GameState& state, const int* value_pieces){
 }
 
 big get_mask(const GameState& state, int p){
-    return state.boardRepresentation[0][p]|state.boardRepresentation[1][p];
+    return state.board.pieces[p];
 }
 
 SEE_BB::SEE_BB(const GameState& state){
@@ -140,11 +137,8 @@ SEE_BB::SEE_BB(const GameState& state){
     Bs = get_mask(state, BISHOP)|Qs;
     Ns = get_mask(state, KNIGHT);
     Ks = get_mask(state, KING);
-    occupancies[0] = 0;
-    occupancies[1] = 0;
-    for(int _c=0; _c<2; _c++)
-        for(int p=0; p<6; p++)
-            occupancies[_c] |= state.boardRepresentation[_c][p];
+    occupancies[0] = state.board.colors[0];
+    occupancies[1] = state.board.colors[1];
     occupancy = occupancies[0]|occupancies[1];
 }
 
@@ -171,18 +165,17 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
     lastPiece = pieceType;
     if(born < 0)
         return false;
-    big bishopAtk = mask_empty_bishop(square);
-    big rooksAtk = mask_empty_rook(square);
-    big attacks =((get_bishop_lines(occupancy&bishopAtk, square)&bb.Bs) | (get_rook_lines(occupancy&rooksAtk, square)&bb.Rs) |
+    big bishopAtk = mask_empty_bishop(square);  
+    big attacks =((get_bishop_lines(occupancy, square)&bb.Bs) | (get_rook_lines(occupancy, square)&bb.Rs) |
                   (KnightMoves[square]&bb.Ns) |
-                  (attackPawns[square]&state.boardRepresentation[1][PAWN]) | (attackPawns[square+64]&state.boardRepresentation[0][PAWN]) |
+                  (attackPawns[square]&state.board.getMask(PAWN, 1)) | (attackPawns[square+64]&state.board.getMask(PAWN, 0)) |
                   (normalKingMoves[square]&bb.Ks))&occupancy;
     bool begin2first = false;
     bool begin2second = false;
     while(attacks&bb.occupancies[stm]){
         pieceType = -1;
         for(int p=begin2first*2; p<nbPieces; p++){
-            big mask = state.boardRepresentation[stm][p]&attacks;
+            big mask = state.board.getMask(p, stm)&attacks;
             if(mask){
                 atk = __builtin_ctzll(mask);
                 pieceType = p;
@@ -253,9 +246,18 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     stackIndex = 0;
 #ifndef HCE
     globnnue.initAcc(stackAcc[stackIndex]);
+    finny.init();
+    stackAcc[stackIndex].update.nbThreats[0] = 0;
+    stackAcc[stackIndex].update.nbThreats[1] = 0;
     stackAcc[stackIndex].update.dirty = false;
-    stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.boardRepresentation[WHITE][KING])) <= 3;
-    stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.boardRepresentation[BLACK][KING])) <= 3;
+    stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.board.getMask(KING, WHITE))) <= 3;
+    stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.board.getMask(KING, BLACK))) <= 3;
+    stackAcc[stackIndex].idInputBucket[WHITE] = getInputBucket(__builtin_ctzll(state.board.getMask(KING, WHITE)), WHITE, stackAcc[stackIndex].Kside[WHITE]);
+    stackAcc[stackIndex].idInputBucket[BLACK] = getInputBucket(__builtin_ctzll(state.board.getMask(KING, BLACK)), BLACK, stackAcc[stackIndex].Kside[BLACK]);
+    memcpy(&stackAcc[stackIndex].board, &state.board, sizeof(stackAcc[stackIndex].board));
+    globnnue.calcThreats(stackAcc[stackIndex], WHITE, state.board);
+    globnnue.calcThreats(stackAcc[stackIndex], BLACK, state.board);
+    //printf("%d %d\n", stackAcc[stackIndex].idInputBucket[WHITE], stackAcc[stackIndex].idInputBucket[BLACK]);
 #else
     egScore = 0;
     mgScore = 0;
@@ -283,7 +285,7 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 
 int IncrementalEvaluator::getRaw(bool c){
 #ifndef HCE
-    globnnue.updateStack(stackAcc, stackIndex);
+    globnnue.updateStack(stackAcc, stackIndex, finny);
     return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
 #else
     int clampPhase = min(mgPhase, 24);
@@ -311,7 +313,7 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const G
 #endif
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){
-    playMove<-1>(move, c, NULL);
+    playMove<-1>(move, c, NULL, NULL);
 }
 
 template<int f, bool updateNNUE>
@@ -320,8 +322,8 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c, __attribute__
     if(updateNNUE)
         if(updateNNUE2){
             Index index(pos, piece, c);
-            globnnue.change1<f>(stackAcc[stackIndex], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]));
-            globnnue.change1<f>(stackAcc[stackIndex], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov());
+            globnnue.change1<f>(stackAcc[stackIndex], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]), stackAcc[stackIndex].idInputBucket[WHITE]);
+            globnnue.change1<f>(stackAcc[stackIndex], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(), stackAcc[stackIndex].idInputBucket[BLACK]);
         }
 #else
     mgScore += f*mg_table[c][piece][pos];
@@ -338,8 +340,8 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 #ifndef HCE
     if(updateNNUE){
         Index index(pos, piece, c);
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]));
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov());
+        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]), stackAcc[stackIndex].idInputBucket[WHITE]);
+        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(), stackAcc[stackIndex].idInputBucket[BLACK]);
         stackIndex++;
     }else{
         stackIndex--;
@@ -355,7 +357,8 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 
 
 template<int f>
-void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const GameState* state){
+void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const PositionState* state1, __attribute__((unused)) const PositionState* state2){
+    static_assert(f == -1 || f == 1, "f has to be either -1 or 1");
     int toPiece = move.piece;
     if(move.promotion() != -1){
         toPiece = move.promotion();
@@ -414,7 +417,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) c
     }
 #ifndef HCE
     if(f == 1){
-        stackAcc[stackIndex+1].reinit(state, stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
+        stackAcc[stackIndex+1].reinit(move, *state1, *state2, stackAcc[stackIndex], c, mirror, sub1, add1, sub2, add2);
         stackIndex++;
     }else
         stackIndex--;
@@ -463,10 +466,15 @@ void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& s
     }
 #endif
 }
+#ifndef HCE
+const Accumulator& IncrementalEvaluator::operator[](int idx) const{
+    return stackAcc[idx];
+}
+#endif
 
-template void IncrementalEvaluator::playMove<-1>(Move, bool, const GameState*);
-template void IncrementalEvaluator::playMove<1>(Move, bool, const GameState*);
+template void IncrementalEvaluator::playMove<-1>(Move, bool, const PositionState*, const PositionState*);
+template void IncrementalEvaluator::playMove< 1>(Move, bool, const PositionState*, const PositionState*);
 template void IncrementalEvaluator::changePiece2<-1, true>(int, int, bool);
-template void IncrementalEvaluator::changePiece2<1, true>(int, int, bool);
+template void IncrementalEvaluator::changePiece2< 1, true>(int, int, bool);
 template void IncrementalEvaluator::changePiece2<-1, false>(int, int, bool);
-template void IncrementalEvaluator::changePiece2<1, false>(int, int, bool);
+template void IncrementalEvaluator::changePiece2< 1, false>(int, int, bool);

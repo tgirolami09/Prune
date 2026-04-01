@@ -107,6 +107,8 @@ int main(int argc, char** argv){
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;
+    big globseed = time(NULL);
+    printf("%ld\n", globseed);
     int limitNodes;
     if(argc > 3)
         limitNodes = atoi(argv[3]);
@@ -127,7 +129,7 @@ int main(int argc, char** argv){
 #endif
     realThread = min(omp_get_num_threads(), sizeGame);
     if(argc > 5)realThread = atoi(argv[5]);
-    globnnue = NNUE(argv[2]);
+    //globnnue = NNUE(argv[2]);
     big nodesSearched = 0;
 #ifndef DEBUG
     #pragma omp parallel for shared(gamesMade, lastGamesMade, nodesSearched)
@@ -172,7 +174,7 @@ int main(int argc, char** argv){
             int nbTry = 0;
             state->init(fens[i%fens.size()]);
             idFenTried++;
-            while(moveRandom(state, idFenTried+idThread+(nbTry++)) || 
+            while(moveRandom(state, (idFenTried+idThread+(nbTry++))^globseed) || 
                 abs(get<2>(state->getEval(tm))) > 500
             ){
                 state->reset(fens[i%fens.size()]);
@@ -188,7 +190,15 @@ int main(int argc, char** argv){
                     localNodes += infos.back().node;
                 int score = get<2>(res);
                 Move curMove = get<0>(res);
-                assert(curMove.moveInfo != nullMove.moveInfo);
+                if(curMove.moveInfo == nullMove.moveInfo){
+                    if(score == 0)break;
+                    if(score == -INF){
+                        result = (state->state.enemyColor() == WHITE)*2;
+                        break;
+                    }
+                    printf("score: %d fen: %s\n", get<2>(res), state->state.toFen().c_str());
+                    assert(false);
+                }
                 if(abs(score) > MAXIMUM-maxDepth){
                     result = (score > 0)*2;
                     if(state->state.friendlyColor() == BLACK)

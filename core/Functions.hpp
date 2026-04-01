@@ -21,6 +21,8 @@ int clipped_right(int pos);
 int clipped_left(int pos);
 big mask_empty_rook(int square);
 big mask_empty_bishop(int square);
+big mask_full_rook(int square);
+big mask_full_bishop(int square);
 big maskCol(int square);
 char transform(ubyte n);
 int sign(int n);

@@ -4,6 +4,12 @@
 #include "GameState.hpp"
 #include <cstring>
 #include <cassert>
+#if defined(__BMI2__) && defined(__AVX512F__)
+#define USE_PEXT
+#endif
+#ifdef USE_PEXT
+#include <immintrin.h>
+#endif
 using namespace std;
 
 big KnightMoves[64]; //Knight moves for each position of the board
@@ -234,29 +240,46 @@ static big get_mask(bool is_rook, big id, big square){
 }
 
 void load_table(){
-    big magic=0;
-    int decR=0, minimum=0, size=0;
+    __attribute__((unused)) big magic=0;
+    __attribute__((unused)) int decR=0, minimum=0, size=0;
     int total = 0;
+    int step;
     for(int i=0; i<128; i++){
-        indexesTable[i] = i ? indexesTable[i-1]+(1<<constantsMagic[i-1].bits) : 0;
-        total += 1<<constantsMagic[i].bits;
+        indexesTable[i] = i ? indexesTable[i-1]+step : 0;
+#ifndef USE_PEXT
+        step = 1 << constantsMagic[i].bits;
+#else
+        step = 1 << __builtin_popcountll(get_mask(i >= 64, MAX_BIG, i%64));
+#endif
+        total += step;
     }
     tableMagic = (big*)calloc(total, sizeof(big));
     for(int current = 0; current<128; current++){
         magic = constantsMagic[current].magic;
         decR = constantsMagic[current].decR;
         minimum = constantsMagic[current].bits;
-        size = 1ul << minimum;
         const bool is_rook = current >= 64;
         const int square = current%64;
         int nbBits = __builtin_popcountll(get_mask(is_rook, MAX_BIG, square));
         const big nbIds = 1ul << nbBits;
+#ifndef USE_PEXT
+        size = 1ul << minimum;
+#else
+        size = nbIds;
+#endif
         for(big id=0; id<nbIds; id++){
             const big mask = get_mask(is_rook, id, square);
+#ifdef USE_PEXT
+            const big key = id;
+#else
             const big res = mask*magic;
-            const big res_mask = get_usefull(is_rook, mask, square);
             const big key = (res&(MAX_BIG>>decR)) >> (64-decR-minimum);
-            assert(key < (big)size);
+#endif
+            const big res_mask = get_usefull(is_rook, mask, square);
+            if(key >= (big)size){
+                printf("%d %d\n", minimum, nbBits);
+                assert(false);
+            }
             tableMagic[indexesTable[current]+key] = res_mask;
         }
     }
@@ -311,21 +334,25 @@ void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMo
     }
 }
 
-big moves_table(int index, big mask_pieces){
-    int tIndex = (mask_pieces*constantsMagic[index].magic & (MAX_BIG >> constantsMagic[index].decR)) >> (64-constantsMagic[index].decR-constantsMagic[index].bits);
+big moves_table(int index, big mask_pieces, big mask){
+#ifdef USE_PEXT
+    int tIndex = _pext_u64(mask_pieces, mask);
+#else
+    int tIndex = ((mask_pieces&mask)*constantsMagic[index].magic & (MAX_BIG >> constantsMagic[index].decR)) >> (64-constantsMagic[index].decR-constantsMagic[index].bits);
+#endif
     return tableMagic[indexesTable[index]+tIndex];
 }
 
 inline big LegalMoveGenerator::pseudoLegalBishopMoves(int bishopPosition, big Pieces){
     // big bishopMoveMask=moves_table(bishopPosition, allPieces&mask_empty_bishop(bishopPosition));
     // return bishopMoveMask;
-    return moves_table(bishopPosition, Pieces&mask_empty_bishop(bishopPosition));
+    return moves_table(bishopPosition, Pieces, mask_empty_bishop(bishopPosition));
 }
 
 inline big LegalMoveGenerator::pseudoLegalRookMoves(int rookPosition, big Pieces){
     // big rookMoveMask=moves_table(rookPosition+64, allPieces&mask_empty_rook(rookPosition));
     // return rookMoveMask;
-    return moves_table(rookPosition+64, Pieces&mask_empty_rook(rookPosition));
+    return moves_table(rookPosition+64, Pieces, mask_empty_rook(rookPosition));
 }
 
 
@@ -474,7 +501,7 @@ int LegalMoveGenerator::dealWithEnemyBishops(big enemyBishopPositions, big Piece
             big ray = directions[friendKingPos][currentBishopPos];
             big pinnedPieceMask = (ray ^ (1ull << currentBishopPos)) & Pieces;
             //There is a pinned piece;
-            if (countbit(pinnedPieceMask) == 1){
+            if (countbit(pinnedPieceMask) == 1 && pinnedPieceMask&allFriends){
                 pinD12 |= ray;
             }
         }
@@ -509,7 +536,7 @@ int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, i
             big ray = directions[friendKingPos][currentRookPos];
             big pinnedPieceMask = (ray ^ (1ull << currentRookPos)) & Pieces;
             //There is a pinned piece;
-            if (countbit(pinnedPieceMask) == 1){
+            if (countbit(pinnedPieceMask) == 1 && pinnedPieceMask&allFriends){
                 pinHV |= ray;
             }
         }
@@ -526,7 +553,7 @@ void LegalMoveGenerator::dealWithEnemyKing(int enemyKingPos){
 template<bool IsWhite>
 void LegalMoveGenerator::legalKingMoves(const GameState& state, Move* moves, int& nbMoves, big Pieces, big captureMask){
     constexpr int color = IsWhite ? 0 : 1;
-    int kingPos = __builtin_ctzll(state.friendlyPieces()[KING]);
+    int kingPos = __builtin_ctzll(state.getFriendlyMask(KING));
     big kingEndMask = pseudoLegalKingMoves<IsWhite>(kingPos, Pieces, state.castlingRights[color][1], state.castlingRights[color][0]);
     kingEndMask &= (~allFriends);
     kingEndMask &= (~allDangerSquares);
@@ -615,21 +642,16 @@ bool LegalMoveGenerator::initDangersImpl(const GameState& state){
     pinD12 = 0;
     nbCheckers = 0;
     checkerPos = -1;
-    friendlyPieces = state.friendlyPieces();
-    enemyPieces = state.enemyPieces();
+    for(int p=0; p<nbPieces; p++){
+        friendlyPieces[p] = state.getFriendlyMask(p);
+        enemyPieces[p] = state.getEnemyMask(p);
+    }
 
     friendlyKingPosition = __builtin_ctzll(friendlyPieces[KING]);
     enemyKingPosition = __builtin_ctzll(enemyPieces[KING]);
 
-    allFriends = 0;
-    allEnemies = 0;
-    for (int i = 0; i < 6; ++i){
-        big boardFriend = friendlyPieces[i];
-        allFriends |= boardFriend;
-        big boardEnemy = enemyPieces[i];
-        allEnemies |= boardEnemy;
-    }
-
+    allFriends = state.board.colors[state.friendlyColor()];
+    allEnemies = state.board.colors[state.enemyColor()];
     allPieces = allFriends | allEnemies;
     allDangerSquares = 0;
     dealWithEnemyKing(enemyKingPosition);
@@ -737,22 +759,16 @@ Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
 
     nbCheckers = 0;
     checkerPos = -1;
-
-    friendlyPieces = state.friendlyPieces();
-    enemyPieces = state.enemyPieces();
+    for(int p=0; p<nbPieces; p++){
+        friendlyPieces[p] = state.getFriendlyMask(p);
+        enemyPieces[p] = state.getEnemyMask(p);
+    }
 
     friendlyKingPosition = __builtin_ctzll(friendlyPieces[KING]);
     enemyKingPosition = __builtin_ctzll(enemyPieces[KING]);
 
-    allFriends = 0;
-    allEnemies = 0;
-    for (int i = 0; i < 6; ++i){
-        big boardFriend = friendlyPieces[i];
-        allFriends |= boardFriend;
-        big boardEnemy = enemyPieces[i];
-        allEnemies |= boardEnemy;
-    }
-
+    allFriends = state.board.colors[state.friendlyColor()];
+    allEnemies = state.board.colors[state.enemyColor()];
     allPieces = allFriends | allEnemies;
 
     captureMask = allEnemies;
@@ -824,8 +840,8 @@ Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
         LVAmove.piece = KING;
         return LVAmove;
     }
-    big fromCaseBishop = moves_table(posCapture, allPieces&mask_empty_bishop(posCapture));
-    big fromCaseRook = moves_table(posCapture+64, allPieces&mask_empty_rook(posCapture));
+    big fromCaseBishop = moves_table(posCapture, allPieces, mask_empty_bishop(posCapture));
+    big fromCaseRook = moves_table(posCapture+64, allPieces, mask_empty_rook(posCapture));
     big pinned = pinHV | pinD12;
     constexpr int enemyColorIdx = IsWhite ? 1 : 0;
     big possiblePieces[5] = {

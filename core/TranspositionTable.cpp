@@ -20,6 +20,14 @@ __attribute__((constructor(101))) void init_log_table(){
     }
 }
 
+int fromTT(int score, int rootDist){
+    if(score < MINIMUM+maxDepth)
+        return score + rootDist;
+    else if(score > MAXIMUM-maxDepth)
+        return score - rootDist;
+    return score;
+}
+
 int infoScore::typeNode() const{
     return 3-(flag&0b11);
 }
@@ -36,7 +44,7 @@ bool infoScore::tt_pv() const{
     return flag >> 7;
 }
 
-infoScore& Cluster::probe(resHash hash, bool& ttHit){
+infoScore& Cluster::probe(residualHash hash, bool& ttHit){
     for(int i=0; i<clusterSize; i++){
         if(entries[i].typeNode() != 3 && entries[i].hash == hash){
             ttHit = true;
@@ -83,28 +91,21 @@ void Cluster::push(infoScore& entry, int curAge){
         entries[bestID] = entry;
 }
 
-pair<big, resHash> getIndex(const GameState& state, big modulo){
+pair<big, residualHash> getIndex(const GameState& state, big modulo){
     __uint128_t tHash = ((__uint128_t)state.zobristHash)*modulo;
-    static const int dec = 8*sizeof(resHash);
+    static const int dec = 8*sizeof(residualHash);
     tHash >>= 64-dec;
     return {tHash >> dec, tHash&((1ULL << dec)-1)};
 }
 
-inline int transpositionTable::storedScore(int alpha, int beta, int depth, const infoScore& entry) const{
-    if(entry.depth >= depth){//if we have evaluated it with more depth remaining, we can just return this evaluation since it's a better evaluation
-        if(entry.typeNode() == EXACT)
-            return entry.score;
-        if(entry.score >= beta && entry.typeNode() == LOWERBOUND)
-            return entry.score;
-        if(entry.score <= alpha && entry.typeNode() == UPPERBOUND)
-            return entry.score;
-    }
-    return INVALID;
-}
-
-int transpositionTable::get_eval(const infoScore& entry, int alpha, int beta, ubyte depth) const{
-    int score = storedScore(alpha, beta, depth, entry);
-    if(score != INVALID)return score;
+int transpositionTable::storedScore(int alpha, int beta, const infoScore& entry, int rootDist) const{
+    const int score = fromTT(entry.score, rootDist);
+    if(entry.typeNode() == EXACT)
+        return score;
+    if(score >= beta && entry.typeNode() == LOWERBOUND)
+        return score;
+    if(score <= alpha && entry.typeNode() == UPPERBOUND)
+        return score;
     return INVALID;
 }
 
@@ -169,6 +170,16 @@ void transpositionTable::reinit(size_t count){
 void transpositionTable::aging(){
     age++;
     age &= maxAge;
+}
+
+int transpositionTable::hashfull(){
+    int fullentries = 0;
+    for(int i=0; i<1000; i++){
+        for(int j=0; j<clusterSize; j++){
+            fullentries += table[i].entries[j].age() == age && table[i].entries[j].typeNode() != 3;
+        }
+    }
+    return fullentries/clusterSize;
 }
 
 TTperft::TTperft(int alloted_mem):mem(alloted_mem/sizeof(perftMem)), modulo(alloted_mem/sizeof(perftMem)){}

@@ -21,3 +21,5 @@ public:
     void dump(FILE* datafile);
     void clear();
 };
+
+GamePlayed readGame(FILE* file);

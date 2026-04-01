@@ -33,6 +33,14 @@ extern big clipped_row[8];
 extern big clipped_col[8];
 extern big clipped_diag[15];
 extern big clipped_idiag[15];
+extern big mask_row[8];
+extern big mask_col[8];
+extern big mask_diag[15];  // diag : index = column+row
+extern big mask_idiag[15]; //idiag : index = row-column+7
+extern big bishop_empty[64];
+extern big rook_empty[64];
+extern big bishop_full[64];
+extern big rook_full[64];
 const big clipped_brow = (MAX_BIG >> 16 << 8);
 const big clipped_bcol = (~0x8181818181818181);
 const big clipped_mask = clipped_brow & clipped_bcol;
@@ -53,14 +61,6 @@ const ubyte LOWERBOUND = 1;
 const ubyte UPPERBOUND = 2;
 const int KILLER_ADVANTAGE = 1<<20;
 //const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
-const int maxHistory=1165;
-
-class pawnStruct{
-public:
-    big blackPawn;
-    big whitePawn;
-    int score;
-    bool operator==(pawnStruct s);
-};
+const int maxHistory=16384;
 
 #endif

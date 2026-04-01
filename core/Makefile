@@ -2,8 +2,9 @@ CC=g++
 ADDOPTION?=
 DEBUGOPT?=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 -I../Fathom/src $(ADDOPTION)
-OPT?=-O3 -flto
-
+OPT?=-O3 -flto -funroll-loops
+DOWNLOADNET?=true
+SHELL := /bin/bash
 # Fathom tablebase library
 FATHOM_DIR = ../Fathom/src
 FATHOM_OBJ = tbprobe.o
@@ -17,6 +18,8 @@ SOURCES := $(filter-out engine.cpp,$(SOURCES))
 SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 SOURCES := $(filter-out netScale.cpp,$(SOURCES))
 SOURCES := $(filter-out spsa.cpp,$(SOURCES))
+SOURCES := $(filter-out datasetStats.cpp,$(SOURCES))
+SOURCES := $(filter-out testTI.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
@@ -73,9 +76,28 @@ else
 	NAME=$(EXE)
 	SHORTNAME=$(EXE)
 endif
+ifeq ($(OS),Windows)
+    NULL_DEVICE = nul
+else
+    NULL_DEVICE = /dev/null
+endif
+ifeq ($(DOWNLOADNET), true)
+	NEEDINGFILE=download
+else
+	NEEDINGFILE=
+endif
 
 all: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
+
+download:
+	@if [ ! -f model.bin ]; then \
+		echo "File missing, downloading..."; \
+		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin"; \
+	elif [ "$$(sha256sum model.bin | cut -c1-7)" != "$$(grep -P ".{7}$$" nn-name.txt -o)" ]; then \
+		echo "SHA mismatch, re-downloading..."; \
+		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin"; \
+	fi
 
 unittest: unittest.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
@@ -85,6 +107,9 @@ prune: engine.cpp $(OBJECTS)
 
 netScale: netScale.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS)
+
+datastat: datasetStats.cpp $(OBJECTS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $^ $(VERSIONNING) $(LDFLAGS)
 
 pruneHCE: engine.cpp $(OBJECTSHCE)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE $(LDFLAGS)
@@ -107,11 +132,14 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 %HCE.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
 
-embeder.o: embeder.cpp
-	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+embeder.o: embeder.cpp $(NEEDINGFILE)
+	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
 
 embederHCE.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
+
+testTI: $(OBJECTS) testTI.cpp
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
 
 clean:
 	rm $(OBJECTS) $(DEPENDS)

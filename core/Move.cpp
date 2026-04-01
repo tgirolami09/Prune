@@ -62,6 +62,10 @@ bool Move::isTactical() const{
     return moveInfo > 0 || capture != -2; // moveInfo > 0 is an equivalent of promotion() != -1
 }
 
+bool Move::isCastling() const{
+    return piece == KING && abs(from()-to()) == 2;
+}
+
 bool Move::isChanger() const{
     return piece == PAWN || capture != -2;
 }

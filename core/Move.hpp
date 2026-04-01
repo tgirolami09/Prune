@@ -29,6 +29,7 @@ public :
     bool isTactical() const;
     bool isChanger() const;
     int getMovePart() const;
+    bool isCastling() const;
 };
 // const Move nullMove={0, 0, 0, -1, -2, -4096};
 const Move nullMove = {0, -2, -4096};

@@ -10,9 +10,6 @@
 #include "GameState.hpp"
 #include <vector>
 #include "BestMoveFinder.hpp"
-#ifndef HCE
-#include "NNUE.hpp"
-#endif
 #include "TimeManagement.hpp"
 #include "TablebaseProbe.hpp"
 #include <set>
@@ -148,6 +145,7 @@ const Option Options[] = {
     Option("SyzygyPath", "string", "<empty>"),
     Option("SyzygyProbeDepth", "spin", "1", 1, 100),
     Option("SyzygyProbeLimit", "spin", "7", 0, 7),
+    Option("Minimal", "check", "false"),
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -288,6 +286,15 @@ void manageSearch(){
 
                 snap.restore(state->root);
                 printf("static evaluation: %d cp\n", overall_eval);
+            }else if(command == "raweval"){
+                PositionSnapshot snap;
+                snap.save(state->root);
+                for(Move move:state->movesFromRoot)
+                    state->root.playPartialMoveForward(move);
+                ieval->init(state->root);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor());
+                snap.restore(state->root);
+                printf("%d cp\n", overall_eval);
             }else if(command == "ucinewgame"){
                 bestMoveFinder.clear();
                 lastMove = nullMove;
@@ -322,7 +329,10 @@ void manageSearch(){
                     testState->movesFromRoot = {};
                     testState->root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    vector<depthInfo> infos = get<3>(goCommand(parsed, *testState, false));
+                    bestMoveResponse res=goCommand(parsed, *testState, false);
+                    vector<depthInfo> infos = get<3>(res);
+                    if(DEBUG)
+                        printf("fen: %s score: %d nodes: %" PRId64 "\n", testState->root.toFen().c_str(), get<2>(res), infos.empty()?0:infos.back().node);
                     for(depthInfo info:infos){
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;
@@ -373,13 +383,17 @@ void manageSearch(){
                 if(DEBUG)printf("search score: (%d %" PRId64 ") (%d %" PRId64 ")\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
                 printf("%" PRId64 " nodes %.0f nps\n", scoreAll.second, sumNPS*1000.0/sumTime);
 #ifdef DEBUG_MACRO
-                printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
+                diffsStat.print("corrhist applied");
                 printf("nmp in allnodes stats : %d/%d = %.2f%%\n", nmpVerifPassAllNode, nmpVerifAllNode, nmpVerifPassAllNode*100.0/nmpVerifAllNode);
                 printf("nmp in curnodes stats : %d/%d = %.2f%%\n", nmpVerifPassCutNode, nmpVerifCutNode, nmpVerifPassCutNode*100.0/nmpVerifCutNode);
-                double meanQuiet = ((double)quiethistSum)/nbquietHist;
-                printf("quiethist=%.2f ± %.2f\n", meanQuiet, sqrt(quiethistSquare/nbquietHist-meanQuiet*meanQuiet));
-                double meanCapt = ((double)capthistSum)/nbCaptHist;
-                printf("capthist=%.2f ± %.2f\n", meanCapt, sqrt(capthistSquare/nbCaptHist-meanCapt*meanCapt));
+                quiethistPreStat.print("quiethistPre");
+                capthistPreStat.print("capthistPre");
+                quiethistPostStat.print("quiethistPost");
+                capthistPostStat.print("capthistPost");
+                TIupdateAddStat.print("TIupdateAdd");
+                TIupdateRemStat.print("TIupdateRem");
+                TIupdateTotStat.print("TIupdateTot");
+                TIupdateDiffStat.print("TIupdateDiff");
 #endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
@@ -473,6 +487,11 @@ void manageSearch(){
                         }
                         else if(parsed[i].second == "SyzygyProbeLimit"){
                             tbProbe.setProbeLimit(stoi(parsed[i+1].second));
+                        }else if(parsed[i].second == "Minimal"){
+                            if(parsed[i+1].second == "true")
+                                bestMoveFinder.minimal=true;
+                            else
+                                bestMoveFinder.minimal = false;
                         }
                         i += incr;
                     }
@@ -523,13 +542,17 @@ void manageSearch(){
                 snap.restore(state->root);
             }else if(command == "stats"){
 #ifdef DEBUG_MACRO
-                printf("max diff %d\nmin diff %d\navg diff %f\nnb diff %d\n", max_diff, min_diff, (double)sum_diffs/nb_diffs, nb_diffs);
+                diffsStat.print("corrhist applied");
                 printf("nmp in allnodes stats : %d/%d = %.2f%%\n", nmpVerifPassAllNode, nmpVerifAllNode, nmpVerifPassAllNode*100.0/nmpVerifAllNode);
                 printf("nmp in curnodes stats : %d/%d = %.2f%%\n", nmpVerifPassCutNode, nmpVerifCutNode, nmpVerifPassCutNode*100.0/nmpVerifCutNode);
-                double meanQuiet = ((double)quiethistSum)/nbquietHist;
-                printf("quiethist=%.2f ± %.2f\n", meanQuiet, sqrt(quiethistSquare/nbquietHist-meanQuiet*meanQuiet));
-                double meanCapt = ((double)capthistSum)/nbCaptHist;
-                printf("capthist=%.2f ± %.2f\n", meanCapt, sqrt(capthistSquare/nbCaptHist-meanCapt*meanCapt));
+                quiethistPreStat.print("quiethistPre");
+                capthistPreStat.print("capthistPre");
+                quiethistPostStat.print("quiethistPost");
+                capthistPostStat.print("capthistPost");
+                TIupdateAddStat.print("TIupdateAdd");
+                TIupdateRemStat.print("TIupdateRem");
+                TIupdateTotStat.print("TIupdateTot");
+                TIupdateDiffStat.print("TIupdateDiff");
 #endif
             }
             fflush(stdout);

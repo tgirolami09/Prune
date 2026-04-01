@@ -3,6 +3,7 @@
 #include "Move.hpp"
 #include "Const.hpp"
 #include <cstring>
+#include <cassert>
 using namespace std;
 const int maxPly = 8848*2+2;
 const int zobrCastle=64*2*6;
@@ -11,6 +12,44 @@ const int zobrTurn=zobrPassant+8;
 const int nbZobrist=zobrTurn+1;
 const int sizeThreeFold=8192;
 extern big zobrist[nbZobrist];
+
+struct PositionState{
+    big pieces[6];
+    big colors[2];
+    int8_t mailbox[64];
+    void remPiece(int position, int piecetype, bool color){
+        pieces[piecetype] ^= 1ULL << position;
+        colors[color] ^= 1ULL << position;
+        mailbox[position] = SPACE*2;
+    }
+    void addPiece(int position, int piecetype, bool color){
+        pieces[piecetype] ^= 1ULL << position;
+        colors[color] ^= 1ULL << position;
+        mailbox[position] = (piecetype << 1) | color;
+    }
+
+    void remPiece(int position, int fullpiece){
+        pieces[type(fullpiece)] ^= 1ULL << position;
+        colors[color(fullpiece)] ^= 1ULL << position;
+        mailbox[position] = SPACE*2;
+    }
+    void addPiece(int position, int fullpiece){
+        pieces[type(fullpiece)] ^= 1ULL << position;
+        colors[color(fullpiece)] ^= 1ULL << position;
+        mailbox[position] = fullpiece;
+    }
+    void reset(){
+        memset(pieces, 0, sizeof(pieces));
+        memset(colors, 0, sizeof(colors));
+        memset(mailbox, SPACE*2, sizeof(mailbox));
+    }
+    big getMask(int piece, bool color) const{
+        return pieces[piece]&colors[color];
+    }
+    big getMask(int piece) const{
+        return pieces[type(piece)]&colors[color(piece)];
+    }
+};
 
 struct PositionSnapshot;
 
@@ -21,21 +60,23 @@ class GameState{
     big repHist[maxPly];
     int rule50[maxPly];
 
-    //To determine whose turn it is to play AND rules that involve turn count
-    int turnNumber;
 
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
     short posRook[2][2];
-    void updateZobrists(int piece, bool color, int square);
+    short deathRook[2][2];
+    int startEnPassant;
     void testPawnZobr();
 
     friend struct PositionSnapshot;
 
 public : 
+    void updateZobrists(int piece, bool color, int square);
+    //To determine whose turn it is to play
+    int turnNumber;
     big zobristHash;
     big pawnZobrist;
     big minorZobrist;
-    big boardRepresentation[2][6];
+    PositionState board;
     //End of last double pawn push, (-1) if last move was not a double pawn push
     int lastDoublePawnPush;
     bool castlingRights[2][2];
@@ -45,23 +86,20 @@ public :
     string toFen() const;
     int friendlyColor() const;
     int enemyColor() const;
-    //Returns the 6 bitboards of the FRIENDLY pieces on the board
-    const big* friendlyPieces() const;
-    //Returns the 6 bitboards of the ENEMY pieces on the board
-    const big* enemyPieces() const;
     template<bool back>
     bool isEnPassantPossibility(const Move& move);
     int rule50_count() const;
-    bool twofold();
-    bool threefold();
+    bool twofold() const;
+    bool threefold() const;
     int playMove(Move move);
     void playNullMove();
     Move getLastMove() const;
     Move getContMove() const;
     Move playPartialMove(Move move);
-    int getPiece(int square, int c);
+    int getPiece(int square) const;
     int getfullPiece(int square) const;
-    pawnStruct getPawnStruct();
+    big getFriendlyMask(int piece) const;
+    big getEnemyMask(int piece) const;
     void print() const;
     void initMove(Move& move);
     big castlingMask();
@@ -73,6 +111,7 @@ public :
     // Optimized repetition detection: step by 2 (zobrist includes turn bit)
     bool twofoldFast();
     bool threefoldFast();
+    void castlingFromMask(big mask);
 };
 
 const string startpos="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -81,7 +120,7 @@ const string startpos="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 // Used for copy/make: save before playMoveForward, restore after search
 // No nbMoves, posRook, or deathRook — not needed in forward-only mode
 struct PositionSnapshot {
-    big boardRepresentation[2][6];
+    PositionState board;
     big zobristHash;
     big pawnZobrist;
     big minorZobrist;
@@ -90,7 +129,7 @@ struct PositionSnapshot {
     int turnNumber;
 
     inline void save(const GameState& s) {
-        memcpy(boardRepresentation, s.boardRepresentation, sizeof(boardRepresentation));
+        memcpy(&board, &s.board, sizeof(board));
         zobristHash = s.zobristHash;
         pawnZobrist = s.pawnZobrist;
         minorZobrist = s.minorZobrist;
@@ -100,7 +139,7 @@ struct PositionSnapshot {
     }
 
     inline void restore(GameState& s) const {
-        memcpy(s.boardRepresentation, boardRepresentation, sizeof(boardRepresentation));
+        memcpy(&s.board, &board, sizeof(board));
         s.zobristHash = zobristHash;
         s.pawnZobrist = pawnZobrist;
         s.minorZobrist = minorZobrist;

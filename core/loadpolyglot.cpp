@@ -158,20 +158,11 @@ Move findPolyglot(const GameState& state, bool& inTable, unordered_map<uint64_t,
     if (moveIt != book.end()){
         PolyglotEntry bestPolyglotEntry = moveIt->second;
         //Determine moving piece
-        int movingPiece = -1;
-        for (int id = 0; id < 6; ++ id){
-            if ((state.friendlyPieces()[id] & (1ull << bestPolyglotEntry.from_square)) != 0){
-                movingPiece = id;
-                break;
-            }
-        }
+        int movingPiece = state.board.mailbox[bestPolyglotEntry.from_square];
 
         int capturedPiece = -2;
-        for (int id = 0; id < 6; ++ id){
-            if ((state.enemyPieces()[id] & (1ull << bestPolyglotEntry.to_square)) != 0){
-                capturedPiece = id;
-                break;
-            }
+        if(state.board.colors[state.enemyColor()]&(1ULL << bestPolyglotEntry.to_square)){
+            capturedPiece = state.board.mailbox[bestPolyglotEntry.to_square];
         }
 
         bestMove = bestPolyglotEntry.toMove(movingPiece,capturedPiece);

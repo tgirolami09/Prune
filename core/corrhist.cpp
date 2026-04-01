@@ -5,10 +5,7 @@
 #include <cassert>
 
 #ifdef DEBUG_MACRO
-int sum_diffs = 0;
-int nb_diffs = 0;
-int max_diff = 0;
-int min_diff = 0;
+StatVar<sbig, 64*4, -64*4> diffsStat;
 #endif
 
 //used 256 / max(depth+1, 16) from https://github.com/mcthouacbb/Sirius
@@ -52,10 +49,7 @@ int corrhists::probe(const GameState& state) const{
         minor.probe(state.minorZobrist, state.friendlyColor())
     )/corrhistGrain;
 #ifdef DEBUG_MACRO
-    if(diff > max_diff)max_diff = diff;
-    else if(diff < min_diff)min_diff = diff;
-    sum_diffs += diff;
-    nb_diffs++;
+    diffsStat.update(diff);
 #endif
     return diff;
 }
@@ -68,4 +62,5 @@ void corrhists::reset(){
     pawns.reset();
     cont.reset();
     prevMove.reset();
+    minor.reset();
 }

@@ -11,23 +11,40 @@
     //#include <arm_neon.h>
 
 #endif
-
+//#define __AVX2__
 #define dbyte int16_t
 // Manual SIMD wrapper for cross-platform compatibility
-#if defined(__AVX2__)
-    using simd16 = __m256i;  // 16 int16_t values
-    const int nb16 = 16;
+#ifdef __AVX512F__
+    using simd16 = __m512i;
+    using simdint = __m512i;
+    using simd8 = __m512i;
+    using simdhalf = __m256i;
+    #define MM _mm512
+    #define SIZE 512
+#elif defined(__AVX2__)
+    using simd16 = __m256i;
+    using simd8 = __m256i;
     using simdint = __m256i;
-    const int nbint = 16;  // 16 int32 values total
+    using simdhalf = __m128i;
+    #define MM _mm256
+    #define SIZE 256
 #elif defined(__SSE2__)
-    using simd16 = __m128i;  // 8 int16_t values  
-    const int nb16 = 8;
-    // For SSE2, we need TWO __m128i to hold 8 int32 values
+    using simd16 = __m128i;
+    using simd8 = __m128i;
     using simdint = __m128i;
-    const int nbint = 8;  // 8 int32 values total
+    using simdhalf = int64_t;
+    #define MM _mm
+    #define SIZE 128
 #else
     #error "This code requires at least SSE2 support"
 #endif
+const int nb16 = sizeof(simd16)/sizeof(int16_t);
+const int nb8 = sizeof(simd8)/sizeof(int8_t);
+const int nbint = sizeof(simdint)/sizeof(int32_t);
+#define CONCAT2(a, b) a ## b
+#define CONCAT(a, b) CONCAT2(a, b)
+#define ADDMM(func_name) CONCAT(MM, _ ## func_name)
+#define ADDSIZE(func_name) CONCAT(func_name, SIZE)
 
 // SIMD utility functions
 simd16 simd16_zero();
@@ -41,4 +58,7 @@ simdint mull_add(simd16 a, simd16 b);
 int mysum(simdint x);
 simd16 simd16_add(simd16 a, simd16 b);
 simd16 simd16_sub(simd16 a, simd16 b);
+simd8 simd8_add(simd8 a, simd8 b);
+simd8 simd8_sub(simd8 a, simd8 b);
+simd16 simdh8_16(simdhalf v);
 #endif

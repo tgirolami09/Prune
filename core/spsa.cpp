@@ -253,18 +253,13 @@ void play_games(int id){
         int result = 1;
         ss.state.fromFen(ss.fen);
         int phase = countbit(
-            ss.state.boardRepresentation[WHITE][PAWN] |
-            ss.state.boardRepresentation[BLACK][PAWN] |
-            ss.state.boardRepresentation[WHITE][ROOK] |
-            ss.state.boardRepresentation[BLACK][ROOK] |
-            ss.state.boardRepresentation[WHITE][QUEEN] |
-            ss.state.boardRepresentation[BLACK][QUEEN]
+            ss.state.board.pieces[PAWN] |
+            ss.state.board.pieces[ROOK] |
+            ss.state.board.pieces[QUEEN]
         )*2;
         phase += countbit(
-            ss.state.boardRepresentation[WHITE][BISHOP] |
-            ss.state.boardRepresentation[BLACK][BISHOP] |
-            ss.state.boardRepresentation[WHITE][KNIGHT] |
-            ss.state.boardRepresentation[BLACK][KNIGHT]
+            ss.state.board.pieces[BISHOP] |
+            ss.state.board.pieces[KNIGHT]
         );
         ss.ply = 0;
         while(1){
@@ -293,6 +288,8 @@ void play_games(int id){
             if(bm.capture != -2){
                 phase -= (bm.capture != BISHOP && bm.capture != KNIGHT)+1;
             }
+            if(bm.promotion() == KNIGHT || bm.promotion() == BISHOP)
+                phase -= 1;
             times[player] += increment;
             ss.state.playMove(bm);
             ss.ply++;

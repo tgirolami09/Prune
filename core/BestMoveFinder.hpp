@@ -22,11 +22,14 @@
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
 #ifdef DEBUG_MACRO
+#include "stats_helpers.hpp"
 extern int
     nmpVerifAllNode,
     nmpVerifCutNode,
     nmpVerifPassCutNode,
     nmpVerifPassAllNode;
+extern StatVar<sbig, maxHistory, -maxHistory> quiethistPostStat;
+extern StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
 using timeMesure=chrono::high_resolution_clock;
@@ -50,10 +53,10 @@ class BestMoveFinder{
         StackCase stack[maxDepth];
         LINE PVlines[maxDepth];
         IncrementalEvaluator eval;
-        sbig nodes;
-        sbig bestMoveNodes;
-        int seldepth;
-        sbig nbCutoff, nbFirstCutoff;
+        atomic<sbig> nodes;
+        atomic<sbig> bestMoveNodes;
+        atomic<int> seldepth;
+        atomic<sbig> nbCutoff, nbFirstCutoff;
         sbig tbHits;
         Move rootBest;
         bool mainThread;
@@ -96,6 +99,7 @@ class BestMoveFinder{
     transpositionTable transposition;
 public:
     std::atomic<bool> running;
+    bool minimal = false;
     BestMoveFinder(int memory, bool mute=false);
     BestMoveFinder();
     sbig hardBound;

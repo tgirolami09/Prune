@@ -7,21 +7,12 @@ uint64_t key_hash(uint64_t piece, uint64_t castle, uint64_t enpassant, uint64_t 
 
 uint64_t piece_hash(const GameState& state){
     uint64_t piece = 0;
-    const uint64_t* whitePieces = state.friendlyColor() == WHITE ? state.friendlyPieces() : state.enemyPieces();
-    const uint64_t* blackPieces = state.friendlyColor() == BLACK ? state.friendlyPieces() : state.enemyPieces();
     for (int id = 0; id < 6; ++ id){
-        for (big bb = whitePieces[id]; bb; bb &= bb - 1){
+        for (big bb = state.board.pieces[id]; bb; bb &= bb - 1){
             int pos = __builtin_ctzll(bb);
             //+1 because white
             //Not sure that we have the right orientation with columns
-            int offset_piece = (64 * (2 * id + 1)) + (8 * (row(pos))) + (7-col(pos));
-            piece ^= Random64[offset_piece];
-        }
-
-        for (big bb = blackPieces[id]; bb; bb &= bb - 1){
-            int pos = __builtin_ctzll(bb);
-            //Not sure that we have the right orientation with columns
-            int offset_piece = (64 * (2 * id)) + (8 * (row(pos))) + (7-col(pos));
+            int offset_piece = (64 * (2 * id + !!(state.board.colors[WHITE]&1ULL << pos))) + (8 * (row(pos))) + (7-col(pos));
             piece ^= Random64[offset_piece];
         }
     }
@@ -66,7 +57,7 @@ uint64_t enPassant_hash(const GameState& state){
         if(enPassant_offset != 7){
             possibleCapturePawns |= (1ull << (state.lastDoublePawnPush + (-8 * moveFactor) + (1)));
         }
-        if (possibleCapturePawns & state.friendlyPieces()[PAWN]){
+        if (possibleCapturePawns & state.getFriendlyMask(PAWN)){
             enPassant = Random64[baseOffset+7-enPassant_offset];
         }
 

@@ -57,13 +57,7 @@ int TablebaseProbe::maxPieces() const {
 }
 
 int TablebaseProbe::countPieces(const GameState& state) {
-    int count = 0;
-    for (int c = 0; c < 2; c++) {
-        for (int p = 0; p < 6; p++) {
-            count += countbit(state.boardRepresentation[c][p]);
-        }
-    }
-    return count;
+    return countbit(state.board.colors[WHITE]|state.board.colors[BLACK]);
 }
 
 bool TablebaseProbe::canProbe(const GameState& state, int nbMan, int depth) const {
@@ -94,30 +88,18 @@ static void stateToFathom(const GameState& state,
                           uint64_t& kings, uint64_t& queens, uint64_t& rooks,
                           uint64_t& bishops, uint64_t& knights, uint64_t& pawns,
                           unsigned& ep, bool& turn) {
-    // Combine color bitboards and convert to Fathom format using reverse_col
-    white = reverse_col(
-            state.boardRepresentation[WHITE][PAWN] |
-            state.boardRepresentation[WHITE][KNIGHT] |
-            state.boardRepresentation[WHITE][BISHOP] |
-            state.boardRepresentation[WHITE][ROOK] |
-            state.boardRepresentation[WHITE][QUEEN] |
-            state.boardRepresentation[WHITE][KING]);
+    // Combine color bitboard.piecess and convert to Fathom format using reverse_col
+    white = reverse_col(state.board.colors[WHITE]);
 
-    black = reverse_col(
-            state.boardRepresentation[BLACK][PAWN] |
-            state.boardRepresentation[BLACK][KNIGHT] |
-            state.boardRepresentation[BLACK][BISHOP] |
-            state.boardRepresentation[BLACK][ROOK] |
-            state.boardRepresentation[BLACK][QUEEN] |
-            state.boardRepresentation[BLACK][KING]);
+    black = reverse_col(state.board.colors[BLACK]);
 
-    // Combine piece type bitboards and convert to Fathom format
-    kings   = reverse_col(state.boardRepresentation[WHITE][KING]   | state.boardRepresentation[BLACK][KING]);
-    queens  = reverse_col(state.boardRepresentation[WHITE][QUEEN]  | state.boardRepresentation[BLACK][QUEEN]);
-    rooks   = reverse_col(state.boardRepresentation[WHITE][ROOK]   | state.boardRepresentation[BLACK][ROOK]);
-    bishops = reverse_col(state.boardRepresentation[WHITE][BISHOP] | state.boardRepresentation[BLACK][BISHOP]);
-    knights = reverse_col(state.boardRepresentation[WHITE][KNIGHT] | state.boardRepresentation[BLACK][KNIGHT]);
-    pawns   = reverse_col(state.boardRepresentation[WHITE][PAWN]   | state.boardRepresentation[BLACK][PAWN]);
+    // Combine piece type bitboard.piecess and convert to Fathom format
+    kings   = reverse_col(state.board.pieces[KING]);
+    queens  = reverse_col(state.board.pieces[QUEEN]);
+    rooks   = reverse_col(state.board.pieces[ROOK]);
+    bishops = reverse_col(state.board.pieces[BISHOP]);
+    knights = reverse_col(state.board.pieces[KNIGHT]);
+    pawns   = reverse_col(state.board.pieces[PAWN]);
 
     // En passant: convert engine square to Fathom square
     if (state.lastDoublePawnPush != -1) {
@@ -187,23 +169,13 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     int to = fathomTo ^ 7;
 
     // Determine piece type from engine position
-    int piece = PAWN;  // Default
-    int friendlyColor = state.friendlyColor();
-    for (int p = 0; p < 6; p++) {
-        if (state.boardRepresentation[friendlyColor][p] & (1ULL << from)) {
-            piece = p;
-            break;
-        }
-    }
+    int piece = type(state.board.mailbox[from]);
     int capture = -2;  // No capture by default
 
     // Check if there's a capture (using engine squares)
     int oppColor = 1 - state.friendlyColor();
-    for (int p = 0; p < 6; p++) {
-        if (state.boardRepresentation[oppColor][p] & (1ULL << to)) {
-            capture = p;
-            break;
-        }
+    if(state.board.colors[oppColor]&(1ULL << to)){
+        capture = type(state.board.mailbox[to]);
     }
 
     // Handle en passant

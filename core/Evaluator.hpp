@@ -2,7 +2,6 @@
 #define EVALUATOR_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
-#include "LegalMoveGenerator.hpp"
 #ifndef HCE
     #include "NNUE.hpp"
 #endif
@@ -180,13 +179,14 @@ class IncrementalEvaluator{
     int presentPieces[2][6]; //keep trace of number of pieces by side
 #ifndef HCE
     Accumulator stackAcc[maxDepth];
+    FinnyTables finny;
 #else
     int egScore;
     int mgScore;
 #endif
-    int stackIndex;
     int nbMan;
 public:
+    int stackIndex;
     template<int f, bool updateNNUE>
     void changePiece(int pos, int piece, bool c, bool updateNNUE2=true);
     template<int f, bool updateNNUE>
@@ -202,9 +202,12 @@ public:
     int correctEval(int eval, const corrhists& ch, const GameState& state) const;
     int getNbMan() const { return nbMan; }
     template<int f=1>
-    void playMove(Move move, bool c, const GameState* state);
+    void playMove(Move move, bool c, const PositionState* state1, const PositionState* state2);
     void playNoBack(const GameState& state, Move move, bool c);
     void undoMove(Move move, bool c);
+#ifndef HCE
+    const Accumulator& operator[](int idx) const;
+#endif
 };
 
 #endif

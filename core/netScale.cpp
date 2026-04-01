@@ -4,11 +4,9 @@
 #include <fstream>
 #include <cstdio>
 using namespace std;
-int main(int argc, char** argv){
+int main(__attribute__((unused)) int argc, char** argv){
     ifstream file(argv[1]);
     IncrementalEvaluator eval;
-    if(argc > 2)
-        globnnue = NNUE(argv[2]);
     GameState state;
     string fen;
     big sum_eval = 0;

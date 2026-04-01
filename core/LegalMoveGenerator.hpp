@@ -28,7 +28,7 @@ void clear_table();
 void precomputeCastlingMasks();
 void precomputeNormlaKingMoves();
 void precomputePawnsAttack();
-big moves_table(int index, big mask_pieces);
+big moves_table(int index, big mask_pieces, big mask);
 
 class LegalMoveGenerator{
 private:
@@ -68,8 +68,8 @@ private:
     template<bool IsWhite>
     Move getLVAImpl(int posCapture, GameState& state);
 
-    const big* friendlyPieces;
-    const big* enemyPieces;
+    big friendlyPieces[6];
+    big enemyPieces[6];
     big allFriends;
     big allEnemies;
     big allPieces;
