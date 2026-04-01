@@ -145,6 +145,7 @@ const Option Options[] = {
     Option("SyzygyPath", "string", "<empty>"),
     Option("SyzygyProbeDepth", "spin", "1", 1, 100),
     Option("SyzygyProbeLimit", "spin", "7", 0, 7),
+    Option("Minimal", "check", "false"),
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -486,6 +487,11 @@ void manageSearch(){
                         }
                         else if(parsed[i].second == "SyzygyProbeLimit"){
                             tbProbe.setProbeLimit(stoi(parsed[i+1].second));
+                        }else if(parsed[i].second == "Minimal"){
+                            if(parsed[i+1].second == "true")
+                                bestMoveFinder.minimal=true;
+                            else
+                                bestMoveFinder.minimal = false;
                         }
                         i += incr;
                     }

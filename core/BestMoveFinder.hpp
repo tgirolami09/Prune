@@ -99,6 +99,7 @@ class BestMoveFinder{
     transpositionTable transposition;
 public:
     std::atomic<bool> running;
+    bool minimal = false;
     BestMoveFinder(int memory, bool mute=false);
     BestMoveFinder();
     sbig hardBound;
