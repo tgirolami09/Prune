@@ -7,7 +7,7 @@ tunables::tunables():
     nmp_red_depth_div(263),
     nmp_red_base(2793*128),
     se_validity_depth(3*128),
-    se_min_depth(6),
+    se_min_depth(6*128),
     se_dext_margin(17),
     lmp_base(4*128*128),
     lmp_mul(4*128),
