@@ -647,7 +647,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
     int lastScore = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
-    char lastline[200];
+    char lastline[1000];
     for(int depth=1; depth<=depthMax && running && !smp_abort; depth++){
         int deltaUp = parameters.aw_base;
         int deltaDown = parameters.aw_base;
@@ -701,8 +701,8 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             double speed=0;
             if(tcpu != 0)speed = totNodes/tcpu;
             if(verbose && bestScore != -INF){
-                char line[200] = "info depth %d seldepth %d score %s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s string branching factor %.3f first cutoff %.3f\n";
-                sprintf(lastline, line, depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
+                char line[1000] = "info depth %d seldepth %d score %s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s string branching factor %.3f first cutoff %.3f\n";
+                snprintf(lastline, 1000, line, depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
                 if(!minimal){
                     printf("%s", lastline);
                     fflush(stdout);
