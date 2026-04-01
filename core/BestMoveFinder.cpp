@@ -186,17 +186,17 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     }
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
-    if(!isCalc){
-        if(ttHit)
-            raw_eval = ttEntry.raw_eval;
-        else
-            raw_eval = ss.eval.getRaw(state.friendlyColor());
-        staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
-    }
     int typeNode = UPPERBOUND;
     bool testCheck = ss.generator.initDangers(state);
     int bestEval = MINIMUM;
     if(!testCheck){
+        if(!isCalc){
+            if(ttHit)
+                raw_eval = ttEntry.raw_eval;
+            else
+                raw_eval = ss.eval.getRaw(state.friendlyColor());
+            staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
+        }
         if(staticEval >= beta){
             transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval, isPV);
             return staticEval;
@@ -206,6 +206,8 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             typeNode = EXACT;
         }
         bestEval = staticEval;
+    }else{
+        raw_eval = INF;
     }
     Order& order = ss.stack[rootDist].order;
     bool inCheck;
@@ -287,11 +289,17 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     int& raw_eval = ss.stack[rootDist].raw_eval;
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
-    if(ttHit)
-        raw_eval = ttEntry.raw_eval;
-    else
-        raw_eval = ss.eval.getRaw(state.friendlyColor());
-    static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
+    bool inCheck=ss.generator.isCheck();
+    if(!inCheck){
+        if(ttHit)
+            raw_eval = ttEntry.raw_eval;
+        else
+            raw_eval = ss.eval.getRaw(state.friendlyColor());
+        static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
+    }else{
+        static_eval = INF;
+        raw_eval = INF;
+    }
     // Tablebase probe in search
     if (!isRoot && tbProbe.canProbe(state, ss.eval.getNbMan(), depth)) {
         int wdl = tbProbe.probeWDL(state);
@@ -316,7 +324,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
         }
     }
-    bool inCheck=ss.generator.isCheck();
     if(depth <= 0 || (!isRoot && depth == 1 && (!inCheck && (static_eval+100 < alpha || static_eval > beta+100)))){
         if constexpr(isPV)ss.beginLine(rootDist);
         return Evaluate<isPV, limitWay>(ss, state, alpha, beta, relDepth);
@@ -339,7 +346,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     bool improving = false;
     if((!ttHit || ttEntry.depth+parameters.iir_validity_depth < depth) && depth >= parameters.iir_min_depth && !allnode && excludedMove == nullMove.moveInfo)depth--;
     if(rootDist > 2)
-        improving = ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
+        improving = !inCheck && ss.stack[rootDist-2].static_score != INF && ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
     if constexpr(!isPV){
         if(!inCheck && excludedMove == nullMove.moveInfo && beta > MINIMUM+maxDepth){
             int margin;
