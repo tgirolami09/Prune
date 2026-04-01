@@ -62,4 +62,5 @@ void corrhists::reset(){
     pawns.reset();
     cont.reset();
     prevMove.reset();
+    minor.reset();
 }
