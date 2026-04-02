@@ -788,6 +788,8 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
                 fflush(stdout);
             }
             // In all positions return  perfect move from egtb
+            if(verbose)
+                printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(TablebaseProbe::wdlToScore(tbWdl, 0)).c_str());
             if (tbWdl == TB_RESULT_WIN){
                 running = false;
                 return make_tuple(tbMove, nullMove, MAXIMUM, vector<depthInfo>());
