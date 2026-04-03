@@ -50,6 +50,7 @@ const int maxMoves=218;
 const int maxCaptures = 12*8+4*4;
 const int maxExtension = 16;
 const big hashMul = 1024*1024;
+const int fractionalDepth=128;
 
 const int MINIMUM=-32767;
 const int MAXIMUM=-MINIMUM;
