@@ -347,27 +347,27 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     ubyte typeNode = UPPERBOUND;
     Order& order = ss.stack[rootDist].order;
     bool improving = false;
-    if((!ttHit || ttEntry.depth+parameters.iir_validity_depth < realDepth()) && realDepth() >= parameters.iir_min_depth && !allnode && excludedMove == nullMove.moveInfo)depth -= fractionalDepth;
+    if((!ttHit || ttEntry.depth*fractionalDepth+parameters.iir_validity_depth < depth) && depth >= parameters.iir_min_depth && !allnode && excludedMove == nullMove.moveInfo)depth -= fractionalDepth;
     if(rootDist > 2)
         improving = !inCheck && ss.stack[rootDist-2].static_score != INF && ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
     if constexpr(!isPV){
         if(!inCheck && excludedMove == nullMove.moveInfo && beta > MINIMUM+maxDepth){
             int margin;
             if(improving)
-                margin = parameters.rfp_improving*realDepth();
+                margin = parameters.rfp_improving*depth;
             else
-                margin = parameters.rfp_nimproving*realDepth();
-            if(expected_score >= beta+margin)
+                margin = parameters.rfp_nimproving*depth;
+            if(expected_score >= beta+margin/margin)
                 return expected_score;
-            int r = (realDepth()*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
-            if(rootDist >= ss.min_nmp_ply && realDepth() >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
+            int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
+            if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 ss.stack[rootDist].snap.save(state);
                 state.playNullMoveForward();
                 ss.generator.initDangers(state);
-                int v = -negamax<false, limitWay>(ss, depth-r*fractionalDepth, state, -beta, -beta+1, relDepth+1, !cutnode);
+                int v = -negamax<false, limitWay>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
                 ss.stack[rootDist].snap.restore(state);
                 if(v >= beta){
-                    if(realDepth() <= 10 || ss.min_nmp_ply != 0){
+                    if(depth <= 10*fractionalDepth || ss.min_nmp_ply != 0){
                         if(abs(v) > MAXIMUM-maxDepth)return beta;
                         return v;
                     }
@@ -379,7 +379,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
 #endif
                     ss.min_nmp_ply = rootDist+r;
                     ss.generator.initDangers(state);
-                    v = negamax<false, limitWay>(ss, depth-r*fractionalDepth, state, beta-1, beta, relDepth, cutnode);
+                    v = negamax<false, limitWay>(ss, depth-r, state, beta-1, beta, relDepth, cutnode);
                     ss.min_nmp_ply = 0;
                     if(v >= beta){
 #ifdef DEBUG_MACRO
@@ -396,7 +396,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
     }
     int firstMoveExtension = 0;
-    if(!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= realDepth() && ttEntry.typeNode() != UPPERBOUND && realDepth() >= parameters.se_min_depth && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
+    if(!isRoot && ttHit && ttEntry.depth*fractionalDepth + parameters.se_validity_depth >= depth && ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - realDepth();
         int score = negamax<false, limitWay>(ss, (depth-fractionalDepth)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMoveInfo);
         if(score < goal){
@@ -471,16 +471,17 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         else
             moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
+            int depth2 = depth*depth/fractionalDepth;
             if(!curMove.isTactical()){
-                if(triedMove > realDepth()*realDepth()*parameters.lmp_mul+parameters.lmp_base)continue;
-                if(moveHistory < -parameters.mhp_mul*realDepth() && triedMove >= 1)
+                if(triedMove > (depth2*parameters.lmp_mul+parameters.lmp_base)/(128*fractionalDepth))continue;
+                if(moveHistory*fractionalDepth < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
-                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*realDepth()+moveHistory/64;
-                if(!isPV && triedMove >= 1 && realDepth() <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
+                int futilityValue = static_eval+(parameters.fp_base+parameters.fp_mul*depth+moveHistory*parameters.fp_mh/64)/fractionalDepth;
+                if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
                 }
             }else{
-                if(!isPV && moveHistory < -parameters.mchp_mul*realDepth()*realDepth() && realDepth() <= 4)
+                if(!isPV && moveHistory*fractionalDepth < -parameters.mchp_mul*depth2 && depth <= 4*fractionalDepth)
                     continue;
             }
         }
@@ -510,12 +511,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
             if(rankMove > 0){
                 int addRedDepth = 0;
-                if(rankMove > 3 && realDepth() > 2){
-                    addRedDepth = static_cast<int>(parameters.lmr_base + log(realDepth()) * log(rankMove) * parameters.lmr_div);
-                    addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
+                if(rankMove > 3 && depth > 2*fractionalDepth){
+                    addRedDepth = static_cast<int>(parameters.lmr_base + (log(depth)-log(fractionalDepth)) * log(rankMove) * parameters.lmr_div);
+                    addRedDepth -= moveHistory*parameters.lmr_history/maxHistory;
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
-                    addRedDepth *= fractionalDepth;
                 }
                 score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha && (score < beta || isPV || addRedDepth)){

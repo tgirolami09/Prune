@@ -38,7 +38,8 @@ public:
         mats_bishop,
         mats_rook,
         mats_queen,
-        mats_offset;
+        mats_offset,
+        fp_mh;
     float
         aw_mul,
         nodetm_base,
