@@ -66,7 +66,13 @@ vector<int*> tunables::to_tune_int(){
         &qvalue,
         &lmr_base,
         &lmr_div,
-        &mchp_mul
+        &mchp_mul,
+        &mats_pawn,
+        &mats_knight,
+        &mats_bishop,
+        &mats_rook,
+        &mats_queen,
+        &mats_offset
     };
 }
 
