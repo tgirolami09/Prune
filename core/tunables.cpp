@@ -73,7 +73,8 @@ vector<int*> tunables::to_tune_int(){
         &mats_bishop,
         &mats_rook,
         &mats_queen,
-        &mats_offset
+        &mats_offset,
+        &fp_mh
     };
 }
 
