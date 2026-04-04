@@ -306,7 +306,7 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const G
     int nbR = presentPieces[WHITE][ROOK]+presentPieces[BLACK][ROOK];
     int nbB = presentPieces[WHITE][BISHOP]+presentPieces[BLACK][BISHOP];
     int nbN = presentPieces[WHITE][KNIGHT]+presentPieces[BLACK][KNIGHT];
-    int matScaling = raw_eval*(nbQ*4+nbR*2+nbB+nbN+24)/48;
+    int matScaling = raw_eval*(nbQ*4+nbR*2+nbB+nbN+36)/48;
     return matScaling;
 #else
     return raw_eval;
