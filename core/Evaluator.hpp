@@ -6,6 +6,11 @@
     #include "NNUE.hpp"
 #endif
 #include "corrhist.hpp"
+
+#ifdef DEBUG_MACRO
+#include "stats_helpers.hpp"
+extern StatVar<big, 48*1024, 0> matScalingStats;
+#endif
 //https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
 const int eg_value[6] = { 94, 281, 297, 512,  936,  0};

@@ -394,6 +394,7 @@ void manageSearch(){
                 TIupdateRemStat.print("TIupdateRem");
                 TIupdateTotStat.print("TIupdateTot");
                 TIupdateDiffStat.print("TIupdateDiff");
+                matScalingStats.print("matScaling");
 #endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
@@ -553,6 +554,7 @@ void manageSearch(){
                 TIupdateRemStat.print("TIupdateRem");
                 TIupdateTotStat.print("TIupdateTot");
                 TIupdateDiffStat.print("TIupdateDiff");
+                matScalingStats.print("matScaling");
 #endif
             }
             fflush(stdout);

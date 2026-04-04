@@ -8,6 +8,10 @@
 #endif
 #include <assert.h>
 #include <cstring>
+#ifdef DEBUG_MACRO
+#include "stats_helpers.hpp"
+StatVar<big, 48*1024, 0> matScalingStats;
+#endif
 
 const int* mg_pesto_table[6] =
 {
@@ -306,7 +310,11 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const G
     int nbR = presentPieces[WHITE][ROOK]+presentPieces[BLACK][ROOK];
     int nbB = presentPieces[WHITE][BISHOP]+presentPieces[BLACK][BISHOP];
     int nbN = presentPieces[WHITE][KNIGHT]+presentPieces[BLACK][KNIGHT];
-    int matScaling = raw_eval*(nbQ*4+nbR*2+nbB+nbN+36)/48;
+    int mat = (nbQ*4+nbR*2+nbB+nbN)*1024;
+#ifdef DEBUG_MACRO
+    matScalingStats.update(mat);
+#endif
+    int matScaling = raw_eval*(mat+36*1024)/(48*1024);
     return matScaling;
 #else
     return raw_eval;
