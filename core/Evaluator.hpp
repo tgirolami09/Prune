@@ -2,6 +2,7 @@
 #define EVALUATOR_HPP
 #include "Const.hpp"
 #include "GameState.hpp"
+#include "tunables.hpp"
 #ifndef HCE
     #include "NNUE.hpp"
 #endif
@@ -202,9 +203,9 @@ public:
     void init(const GameState& state);
     bool isInsufficientMaterial() const;
     bool isOnlyPawns() const;
-    int getScore(bool c, const corrhists& ch, const GameState& state);
+    int getScore(bool c, const corrhists& ch, const GameState& state, const tunables& parameters);
     int getRaw(bool c);
-    int correctEval(int eval, const corrhists& ch, const GameState& state) const;
+    int correctEval(int eval, const corrhists& ch, const GameState& state, const tunables& parameters) const;
     int getNbMan() const { return nbMan; }
     template<int f=1>
     void playMove(Move move, bool c, const PositionState* state1, const PositionState* state2);

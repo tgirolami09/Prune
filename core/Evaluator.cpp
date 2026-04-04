@@ -3,6 +3,7 @@
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
+#include "tunables.hpp"
 #ifndef HCE
 #include "NNUE.hpp"
 #endif
@@ -299,22 +300,23 @@ int IncrementalEvaluator::getRaw(bool c){
 #endif
 }
 
-int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state){
+int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state, const tunables& parameters){
     int raw_eval = getRaw(c);
-    return correctEval(raw_eval, ch, state);
+    return correctEval(raw_eval, ch, state, parameters);
 }
-int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const GameState &state) const{
+int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const GameState &state, const tunables& parameters) const{
     raw_eval += ch.probe(state);
 #if !defined(DATAGEN) && !defined(HCE)
     int nbQ = presentPieces[WHITE][QUEEN]+presentPieces[BLACK][QUEEN];
     int nbR = presentPieces[WHITE][ROOK]+presentPieces[BLACK][ROOK];
     int nbB = presentPieces[WHITE][BISHOP]+presentPieces[BLACK][BISHOP];
     int nbN = presentPieces[WHITE][KNIGHT]+presentPieces[BLACK][KNIGHT];
-    int mat = (nbQ*4+nbR*2+nbB+nbN)*1024;
+    int nbP = presentPieces[WHITE][PAWN]+presentPieces[BLACK][PAWN];
+    int mat = nbQ*parameters.mats_queen+nbR*parameters.mats_rook+nbB*parameters.mats_bishop+nbN*parameters.mats_knight+nbP*parameters.mats_pawn;
 #ifdef DEBUG_MACRO
     matScalingStats.update(mat);
 #endif
-    int matScaling = raw_eval*(mat+36*1024)/(48*1024);
+    int matScaling = raw_eval*(mat+parameters.mats_offset)/(48*1024);
     return matScaling;
 #else
     return raw_eval;

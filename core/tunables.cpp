@@ -27,6 +27,12 @@ tunables::tunables():
     lmr_base(851),
     lmr_div(335),
     mchp_mul(1600),
+    mats_pawn(0),
+    mats_knight(1024),
+    mats_bishop(1024),
+    mats_rook(2048),
+    mats_queen(4096),
+    mats_offset(36864),
     aw_mul(1.9495),
     nodetm_base(2.13688),
     nodetm_mul(1.37487)
