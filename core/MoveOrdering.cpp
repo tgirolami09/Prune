@@ -57,6 +57,8 @@ void HelpOrdering::updateMove(int bonus, Move move, bool c, const GameState& sta
         updateHistory(bonus, history[c][move.from()][move.to()]);
         Move lastmove = state.getLastMove();
         updateHistory(bonus, conthist[!c][lastmove.piece][lastmove.to()][c][move.piece][move.to()]);
+        Move followupmove = state.getContMove();
+        updateHistory(bonus, conthist[c][followupmove.piece][followupmove.to()][c][move.piece][move.to()]);
     }
 }
 
@@ -84,7 +86,10 @@ bool HelpOrdering::isKiller(Move move, int relDepth) const{
 int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) const{
     if(!move.isTactical()){
         Move lastmove = state.getLastMove();
-        return history[c][move.from()][move.to()]+conthist[!c][lastmove.piece][lastmove.to()][c][move.piece][move.to()];
+        Move followupmove = state.getContMove();
+        return history[c][move.from()][move.to()]+
+            conthist[!c][lastmove.piece][lastmove.to()][c][move.piece][move.to()]+
+            conthist[c][followupmove.piece][followupmove.to()][c][move.piece][move.to()];
     }else if(move.promotion() == -1)
         return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
     else
