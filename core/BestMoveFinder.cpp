@@ -466,7 +466,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(ss.history.isKiller(curMove, rootDist))
             moveHistory = maxHistory;
         else
-            moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor());
+            moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
             if(!curMove.isTactical()){
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
@@ -535,8 +535,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.nbCutoff++;
             if(isRoot)ss.rootBest=curMove;
             if(rankMove == 0)ss.nbFirstCutoff++;
-            ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor());
-            ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
+            ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
+            ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
             if(!curMove.isTactical()){
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);

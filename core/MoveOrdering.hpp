@@ -15,19 +15,22 @@ extern StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
+    int conthist[2][6][64][2][6][64];
     int captHist[2][nbPieces+4][6][64];
     int& getIndex(Move move, bool c);
+    int& getTactIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;
+    void updateMove(int bonus, Move move, bool c, const GameState& state);
 public:
     tunables parameters;
     void init(tunables& parameters);
-    void addKiller(Move move, int depth, int relDepth, bool c);
+    void addKiller(Move move, int depth, int relDepth, bool c, const GameState& state);
     bool isKiller(Move move, int relDepth) const;
-    int getHistoryScore(Move move, bool c) const;
+    int getHistoryScore(Move move, bool c, const GameState& state) const;
     void updateHistory(int bonus, int& hist);
-    void negUpdate(Move[maxMoves], int upto, bool c, int depth);
+    void negUpdate(Move[maxMoves], int upto, bool c, int depth, const GameState& state);
 
-    int getMoveScore(Move move, bool c, int relDepths) const;
+    int getMoveScore(Move move, bool c, int relDepth, const GameState& state) const;
 };
 
 class Order{

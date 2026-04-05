@@ -26,6 +26,13 @@ int& HelpOrdering::getIndex(Move move, bool c){
     else
         return captHist[c][move.promotion()-KNIGHT+nbPieces][max<int>(move.capture, 0)][move.to()];
 }
+int& HelpOrdering::getTactIndex(Move move, bool c){
+    if(move.promotion() == -1)
+        return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
+    else
+        return captHist[c][move.promotion()-KNIGHT+nbPieces][max<int>(move.capture, 0)][move.to()];
+
+}
 bool HelpOrdering::fastEq(Move a, Move b) const{
     return a.moveInfo == b.moveInfo;
 }
@@ -43,41 +50,52 @@ void HelpOrdering::updateHistory(int bonus, int& hist){
     hist += bonus - hist*abs(bonus)/maxHistory;
 }
 
-void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth){
-    for(int i=0; i<upto; i++){
-        if(moves[i].isTactical() >= moves[upto].isTactical())
-            updateHistory(-depth*parameters.mo_mul_malus, getIndex(moves[i], c));
+void HelpOrdering::updateMove(int bonus, Move move, bool c, const GameState& state){
+    if(move.isTactical()){
+        updateHistory(bonus, getTactIndex(move, c));
+    }else{
+        updateHistory(bonus, history[c][move.from()][move.to()]);
+        Move lastmove = state.getLastMove();
+        updateHistory(bonus, conthist[!c][lastmove.piece][lastmove.to()][c][move.piece][move.to()]);
     }
 }
 
-void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c){
+void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth, const GameState& state){
+    for(int i=0; i<upto; i++){
+        if(moves[i].isTactical() >= moves[upto].isTactical())
+            updateMove(-depth*parameters.mo_mul_malus, moves[i], c, state);
+    }
+}
+
+void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c, const GameState& state){
     if(move.capture == -2){
         if(!fastEq(move, killers[relDepth][0])){
             killers[relDepth][1] = killers[relDepth][0];
             killers[relDepth][0] = move;
         }
     }
-    updateHistory(depth*depth*16, getIndex(move, c));
+    updateMove(depth*depth*16, move, c, state);
 }
 
 bool HelpOrdering::isKiller(Move move, int relDepth) const{
     if(relDepth == (ubyte)-1)return false;
     return fastEq(move, killers[relDepth][0]) || fastEq(move, killers[relDepth][1]);
 }
-int HelpOrdering::getHistoryScore(Move move, bool c) const{
-    if(!move.isTactical())
-        return history[c][move.from()][move.to()];
-    else if(move.promotion() == -1)
+int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) const{
+    if(!move.isTactical()){
+        Move lastmove = state.getLastMove();
+        return history[c][move.from()][move.to()]+conthist[!c][lastmove.piece][lastmove.to()][c][move.piece][move.to()];
+    }else if(move.promotion() == -1)
         return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
     else
         return captHist[c][move.promotion()-KNIGHT+nbPieces][max<int>(move.capture, 0)][move.to()];
 }
 
-int HelpOrdering::getMoveScore(Move move, bool c, int relDepth) const{
+int HelpOrdering::getMoveScore(Move move, bool c, int relDepth, const GameState& state) const{
     int score = 0;
     if(move.capture == -2 && isKiller(move, relDepth))
         score = KILLER_ADVANTAGE;
-    return score+getHistoryScore(move, c);
+    return score+getHistoryScore(move, c, state);
 }
 
 Order::Order():dangerPositions(0){
@@ -109,7 +127,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 }
             }
 #endif
-            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth), bb, state, value_pieces);
+            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth, state), bb, state, value_pieces);
         }
     }
     #if defined(__AVX2__)
