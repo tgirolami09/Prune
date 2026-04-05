@@ -400,6 +400,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             firstMoveExtension++;
             if(!isPV && score <= goal-parameters.se_dext_margin)
                 firstMoveExtension++;
+        }else if(goal >= beta){
+            return goal;
         }else if(cutnode){
             firstMoveExtension--;
         }else if(ttEntry.score >= beta){
