@@ -502,9 +502,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.eval.playMove(curMove, !state.friendlyColor(), &ss.stack[rootDist].snap.board, &state.board);
             bool inCheckPos = ss.generator.initDangers(state);
             int reductionDepth = 1;
-            if(inCheckPos && firstMoveExtension == 0){
-                reductionDepth--;
-            }
             if(rankMove > 0){
                 int addRedDepth = 0;
                 if(rankMove > 3 && depth > 3){
