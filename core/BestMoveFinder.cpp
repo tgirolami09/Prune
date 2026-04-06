@@ -453,9 +453,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     Move bestMove = nullMove;
     int bestScore = -INF;
     int triedMove = 0;
+    Move ttMove = nullMove;
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         int flag;
         Move curMove = order.pop_max(flag);
+        if(ttHit && curMove.moveInfo == ttEntry.bestMoveInfo)ttMove = curMove;
         if(excludedMove == curMove.moveInfo)continue;
         sbig startNodes = ss.nodes;
         if(isRoot && verbose && ss.mainThread && DEBUG && !minimal){
@@ -558,7 +560,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth, raw_eval, isPV);
     }
     if(!inCheck && (!bestMove.isTactical()) && abs(bestScore) < MAXIMUM-maxDepth &&
-        (typeNode != UPPERBOUND || bestScore < static_eval)){
+        (typeNode != UPPERBOUND || bestScore < static_eval) &&
+        (bestMove.moveInfo != nullMove.moveInfo || !ttHit || (ttEntry.bestMoveInfo != nullMove.moveInfo && !ttMove.isTactical()))){
         ss.correctionHistory.update(state, bestScore-static_eval, depth);
     }
     return bestScore;
