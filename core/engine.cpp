@@ -395,6 +395,7 @@ void manageSearch(){
                 TIupdateTotStat.print("TIupdateTot");
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
+                predictionCaptureStat.print("predictionCapture");
 #endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
@@ -555,6 +556,7 @@ void manageSearch(){
                 TIupdateTotStat.print("TIupdateTot");
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
+                predictionCaptureStat.print("predictionCapture");
 #endif
             }
             fflush(stdout);

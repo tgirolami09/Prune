@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <cmath>
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 
@@ -28,8 +29,9 @@ extern int
     nmpVerifCutNode,
     nmpVerifPassCutNode,
     nmpVerifPassAllNode;
-extern StatVar<sbig, maxHistory, -maxHistory> quiethistPostStat;
+extern StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
 extern StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
+extern StatVar<sbig, 1024, 0> predictionCaptureStat;
 #endif
 
 using timeMesure=chrono::high_resolution_clock;
@@ -61,6 +63,7 @@ class BestMoveFinder{
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
+        float bestmovetactic[2][16384];
         corrhists correctionHistory;
         int min_nmp_ply=0;
         usefull(const GameState& state, tunables& parameters);

@@ -18,8 +18,9 @@ int nmpVerifAllNode=0,
     nmpVerifCutNode=0,
     nmpVerifPassCutNode=0,
     nmpVerifPassAllNode=0;
-StatVar<sbig, maxHistory, -maxHistory> quiethistPostStat;
+StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
 StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
+StatVar<sbig, 1024, 0> predictionCaptureStat;
 #endif
 
 BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){
@@ -27,6 +28,11 @@ BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):n
     generator.initDangers(state);
     history.init(parameters);
     correctionHistory.reset();
+    for(int i=0; i<2; i++){
+        for(int j=0; j<16384; j++){
+            bestmovetactic[i][j] = 0.5;
+        }
+    }
 }
 BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){}
 void BestMoveFinder::usefull::reinit(const GameState& state){
@@ -40,6 +46,11 @@ void BestMoveFinder::usefull::reinit(const GameState& state){
     mainThread = true;
     eval.init(state);
     generator.initDangers(state);
+    for(int i=0; i<2; i++){
+        for(int j=0; j<16384; j++){
+            bestmovetactic[i][j] = 0.5;
+        }
+    }
 }
 
 int compScoreMove(const void* a, const void*b){
@@ -510,6 +521,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(rankMove > 3 && depth > 2){
                     addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
+                    if(curMove.isTactical())
+                        addRedDepth += 128*(0.5-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]);
+                    else
+                        addRedDepth += 128*(ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-0.5);
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
@@ -531,10 +546,19 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove == 0)ss.nbFirstCutoff++;
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
             ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
+            float& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
+            assert(bucket <= 1.0 && bucket >= 0.0);
             if(!curMove.isTactical()){
+                bucket = log(bucket+1);
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
+            }else{
+                bucket = 1-log(2-bucket);
             }
+            assert(bucket <= 1.0 && bucket >= 0.0);
+#ifdef DEBUG_MACRO
+            predictionCaptureStat.update((sbig)(bucket*1024));
+#endif
             return score;
         }
         if(score > alpha){
@@ -560,6 +584,18 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(!inCheck && (!bestMove.isTactical()) && abs(bestScore) < MAXIMUM-maxDepth &&
         (typeNode != UPPERBOUND || bestScore < static_eval)){
         ss.correctionHistory.update(state, bestScore-static_eval, depth);
+    }
+    if(typeNode == EXACT){
+        float& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
+        assert(bucket <= 1.0 && bucket >= 0.0);
+        if(bestMove.isTactical())
+            bucket = 1-log(2-bucket);
+        else
+            bucket = log(bucket+1);
+        assert(bucket <= 1.0 && bucket >= 0.0);
+#ifdef DEBUG_MACRO
+        predictionCaptureStat.update(((sbig)bucket*1024));
+#endif
     }
     return bestScore;
 }
