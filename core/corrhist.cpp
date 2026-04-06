@@ -28,8 +28,8 @@ corrhist<size, maxCorrHist>::corrhist(){
 template<int size, int maxCorrHist>
 void corrhist<size, maxCorrHist>::update(big key, bool c, int bonus){
     int& cur = table[c][key%size];
-    bonus = clamp(bonus, -maxCorrHist, maxCorrHist);
-    cur += bonus-bonus*abs(cur)/maxCorrHist;
+    cur += bonus-cur*abs(bonus)/maxCorrHist;
+    cur = clamp(cur, -maxCorrHist, maxCorrHist);
 }
 
 void corrhists::update(const GameState& state, int diff, int depth){
