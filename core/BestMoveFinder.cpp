@@ -26,9 +26,16 @@ BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):n
     eval.init(state);
     generator.initDangers(state);
     history.init(parameters);
+    for(int i=0; i<maxDepth; i++){
+        stack[i].excludedMove = nullMove.moveInfo;
+    }
     correctionHistory.reset();
 }
-BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){}
+BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){
+    for(int i=0; i<maxDepth; i++){
+        stack[i].excludedMove = nullMove.moveInfo;
+    }
+}
 void BestMoveFinder::usefull::reinit(const GameState& state){
     nodes = 0;
     bestMoveNodes = 0;
@@ -258,11 +265,12 @@ inline int BestMoveFinder::Evaluate(usefull& ss, GameState& state, int alpha, in
 }
 
 template <bool isPV, int limitWay, bool isRoot>
-int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove){
+int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode){
     if(isPV)
         cutnode = false;
     bool allnode = !cutnode && !isPV;
     const int rootDist = relDepth-startRelDepth;
+    const bool isExcluded = ss.stack[rootDist].excludedMove != nullMove.moveInfo;
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters);
     if(isPV)ss.seldepth = max(ss.seldepth.load(), relDepth);
     transposition.prefetch(state);
@@ -331,7 +339,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     ss.nodes++;
     int16_t lastBest = nullMove.moveInfo;
     int expected_score = static_eval;
-    if(excludedMove == nullMove.moveInfo && ttHit){
+    assert(!isExcluded || ttEntry.bestMoveInfo == ss.stack[rootDist].excludedMove);
+    if(!isExcluded && ttHit){
         int lastEval = transposition.storedScore(alpha, beta, ttEntry, rootDist);
         if(lastEval != INVALID){
             if(!isPV && ttEntry.depth >= depth)
@@ -344,11 +353,16 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     ubyte typeNode = UPPERBOUND;
     Order& order = ss.stack[rootDist].order;
     bool improving = false;
-    if((!ttHit || ttEntry.depth+parameters.iir_validity_depth < depth) && depth >= parameters.iir_min_depth && !allnode && excludedMove == nullMove.moveInfo)depth--;
+    if((!ttHit || ttEntry.depth+parameters.iir_validity_depth < depth) && depth >= parameters.iir_min_depth && !allnode && !isExcluded)depth--;
     if(rootDist > 2)
-        improving = !inCheck && ss.stack[rootDist-2].static_score != INF && ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
+        improving = !inCheck && ss.stack[rootDist-2].static_score != INF && ss.stack[rootDist-2].static_score < static_eval && !isExcluded;
     if constexpr(!isPV){
-        if(!inCheck && excludedMove == nullMove.moveInfo && beta > MINIMUM+maxDepth){
+        if(!inCheck && !isExcluded && beta > MINIMUM+maxDepth){
+            if(rootDist > 1 && ss.stack[rootDist-1].static_score != INF){
+                int parent_score = ss.stack[rootDist-1].static_score;
+                if(depth < maxDepth && ss.stack[rootDist-1].reduction >= 3 && parent_score+static_eval >= 0)
+                    depth++;
+            }
             int margin;
             if(improving)
                 margin = parameters.rfp_improving*depth;
@@ -393,9 +407,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
     }
     int firstMoveExtension = 0;
-    if(!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= depth && ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
+    if(!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= depth && ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && !isExcluded && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - depth;
-        int score = negamax<false, limitWay>(ss, (depth-1)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMoveInfo);
+        ss.stack[rootDist].excludedMove = ttEntry.bestMoveInfo;
+        int score = negamax<false, limitWay>(ss, (depth-1)/2, state, goal-1, goal, relDepth, cutnode);
+        ss.stack[rootDist].excludedMove = nullMove.moveInfo;
         if(score < goal){
             firstMoveExtension++;
             if(!isPV && score <= goal-parameters.se_dext_margin)
@@ -456,7 +472,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         int flag;
         Move curMove = order.pop_max(flag);
-        if(excludedMove == curMove.moveInfo)continue;
+        if(ss.stack[rootDist].excludedMove == curMove.moveInfo)continue;
         sbig startNodes = ss.nodes;
         if(isRoot && verbose && ss.mainThread && DEBUG && !minimal){
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes.load(), flag);
@@ -513,6 +529,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
+                ss.stack[rootDist].reduction = addRedDepth;
                 score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha && (score < beta || isPV || addRedDepth)){
                     ss.generator.initDangers(state);
@@ -554,7 +571,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     if(cutnode && bestScore == alpha)
         return bestScore;
-    if((!isRoot || typeNode != UPPERBOUND) && excludedMove == nullMove.moveInfo){
+    if((!isRoot || typeNode != UPPERBOUND) && !isExcluded){
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth, raw_eval, isPV);
     }
     if(!inCheck && (!bestMove.isTactical()) && abs(bestScore) < MAXIMUM-maxDepth &&
