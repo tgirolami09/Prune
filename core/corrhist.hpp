@@ -6,7 +6,7 @@
 #include "stats_helpers.hpp"
 extern StatVar<sbig, 64*4, -64*4> diffsStat;
 #endif
-const int corrhistGrain=64;
+const int corrhistGrain=512;
 template<int size, int maxCorrHist>
 class corrhist{
 public:
@@ -18,10 +18,10 @@ public:
 };
 
 class corrhists{
-    corrhist<16384, 64*corrhistGrain> pawns;
-    corrhist<16384, 64*corrhistGrain> prevMove;
-    corrhist<16384, 64*corrhistGrain> cont;
-    corrhist<16384, 64*corrhistGrain> minor;
+    corrhist<16384, 2*corrhistGrain> pawns;
+    corrhist<16384, 2*corrhistGrain> prevMove;
+    corrhist<16384, 2*corrhistGrain> cont;
+    corrhist<16384, 2*corrhistGrain> minor;
 public:
     corrhists();
     void update(const GameState&, int, int);
