@@ -33,7 +33,7 @@ void corrhist<size, maxCorrHist>::update(big key, bool c, int bonus){
 }
 
 void corrhists::update(const GameState& state, int diff, int depth){
-    int bonus = diff*depth/8;
+    int bonus = diff*(depth/8+1);
     pawns.update(state.pawnZobrist, state.friendlyColor(), bonus);
     prevMove.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus);
     cont.update(state.getContMove().moveInfo+(1<<15), state.friendlyColor(), bonus);
