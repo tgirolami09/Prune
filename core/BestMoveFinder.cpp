@@ -360,8 +360,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(!inCheck && !isExcluded && beta > MINIMUM+maxDepth){
             if(rootDist > 1 && ss.stack[rootDist-1].static_score != INF){
                 int parent_score = ss.stack[rootDist-1].static_score;
-                if(depth < maxDepth && ss.stack[rootDist-1].reduction >= 3 && parent_score+static_eval <= 0)
-                    depth++;
+                if(depth >= 2 && ss.stack[rootDist-1].reduction >= 2 && parent_score+static_eval >= 200)
+                    depth--;
             }
             int margin;
             if(improving)
