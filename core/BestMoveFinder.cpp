@@ -515,7 +515,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 }
                 score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 bool fullSearch = false;
-                if((score > alpha && score < beta) || (isPV && score == beta && beta == alpha+1)){
+                if((score > alpha && score < beta) || (isPV && score > alpha)){
                     fullSearch = true;
                 }
                 if(addRedDepth && score >= beta)
