@@ -511,7 +511,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
                     addRedDepth /= 1024;
-                    addRedDepth = max(addRedDepth, 0);
+                    addRedDepth = max(addRedDepth, -isPV);
                 }
                 score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 bool fullSearch = false;
