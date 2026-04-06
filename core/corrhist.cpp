@@ -26,19 +26,18 @@ corrhist<size, maxCorrHist>::corrhist(){
 }
 
 template<int size, int maxCorrHist>
-void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int weight){
+void corrhist<size, maxCorrHist>::update(big key, bool c, int bonus){
     int& cur = table[c][key%size];
-    cur = ((256-weight)*cur+diff*weight)/256;
-    cur = clamp(cur, -maxCorrHist, maxCorrHist);
+    bonus = clamp(bonus, -maxCorrHist, maxCorrHist);
+    cur += bonus-bonus*abs(cur)/maxCorrHist;
 }
 
 void corrhists::update(const GameState& state, int diff, int depth){
-    int bonus = diff*corrhistGrain;
-    int weight = max(depth+1, 16);
-    pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, weight);
-    prevMove.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
-    cont.update(state.getContMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
-    minor.update(state.minorZobrist, state.friendlyColor(), bonus, weight);
+    int bonus = diff*corrhistGrain*depth/8;
+    pawns.update(state.pawnZobrist, state.friendlyColor(), bonus);
+    prevMove.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus);
+    cont.update(state.getContMove().moveInfo+(1<<15), state.friendlyColor(), bonus);
+    minor.update(state.minorZobrist, state.friendlyColor(), bonus);
 }
 
 int corrhists::probe(const GameState& state) const{

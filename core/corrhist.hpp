@@ -13,7 +13,7 @@ public:
     corrhist();
     int table[2][size];
     void reset();
-    void update(big, bool, int, int);
+    void update(big, bool, int);
     int probe(big, bool) const;
 };
 
