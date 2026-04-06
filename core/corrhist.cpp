@@ -28,12 +28,12 @@ corrhist<size, maxCorrHist>::corrhist(){
 template<int size, int maxCorrHist>
 void corrhist<size, maxCorrHist>::update(big key, bool c, int bonus){
     int& cur = table[c][key%size];
+    bonus = clamp(bonus, -maxCorrHist/4, maxCorrHist/4);
     cur += bonus-cur*abs(bonus)/maxCorrHist;
-    cur = clamp(cur, -maxCorrHist, maxCorrHist);
 }
 
 void corrhists::update(const GameState& state, int diff, int depth){
-    int bonus = diff*corrhistGrain*depth/8;
+    int bonus = diff*depth/8;
     pawns.update(state.pawnZobrist, state.friendlyColor(), bonus);
     prevMove.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus);
     cont.update(state.getContMove().moveInfo+(1<<15), state.friendlyColor(), bonus);
