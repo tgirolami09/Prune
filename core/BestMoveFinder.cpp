@@ -508,7 +508,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 int reduction = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
                 reduction -= (moveHistory)*parameters.lmr_history/maxHistory;
                 reduction /= 1024;
-                int lmrDepth = min(max(newDepth-reduction, 1), newDepth);
+                int lmrDepth = min(max(newDepth-reduction, 0), newDepth);
                 score = -negamax<false, limitWay>(ss, lmrDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha && lmrDepth < newDepth){
                     ss.generator.initDangers(state);
