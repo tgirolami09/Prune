@@ -482,8 +482,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(!isPV && moveHistory < -parameters.mchp_mul*depth*depth && depth <= 4)
                     continue;
             }
-            int margin = curMove.isTactical() ? 80*depth : 60*depth*depth;
-            if((!(flag&1) || !curMove.isTactical()) && see_ge(bbs, margin, curMove, state, value_pieces))
+            int margin = curMove.isTactical() ? 100*depth : 80*depth*depth;
+            if(!isPV && (!(flag&1) || !curMove.isTactical()) && see_ge(bbs, margin, curMove, state, value_pieces))
                 continue;
         }
 #ifdef DEBUG_MACRO
