@@ -514,7 +514,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth = max(addRedDepth, 0);
                 }
                 score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
-                if(score > alpha && (score < beta || isPV || addRedDepth)){
+                if(score > alpha && addRedDepth){
+                    ss.generator.initDangers(state);
+                    score = -negamax<false, limitWay>(ss, depth-reductionDepth, state, -alpha-1, -alpha, relDepth+1, true);
+                }
+                if(score > alpha && isPV){
                     ss.generator.initDangers(state);
                     score = -negamax<isPV, limitWay>(ss, depth-reductionDepth, state, -beta, -alpha, relDepth+1, !cutnode);
                 }
