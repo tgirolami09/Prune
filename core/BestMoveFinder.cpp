@@ -531,9 +531,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
                     if(curMove.isTactical())
-                        addRedDepth += (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384])/8;
+                        addRedDepth += (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]);
                     else
-                        addRedDepth += (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512)/8;
+                        addRedDepth += (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512);
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
