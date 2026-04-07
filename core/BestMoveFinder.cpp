@@ -509,18 +509,17 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 reduction -= (moveHistory)*parameters.lmr_history/maxHistory;
                 reduction /= 1024;
                 int lmrDepth = min(max(newDepth-reduction, 1), newDepth);
-                ss.generator.initDangers(state);
                 score = -negamax<false, limitWay>(ss, lmrDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha && lmrDepth < newDepth){
                     ss.generator.initDangers(state);
                     score = -negamax<false, limitWay>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, !cutnode);
                 }
             }else if(!isPV || rankMove >= 1){
-                ss.generator.initDangers(state);
                 score = -negamax<false, limitWay>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, !cutnode);
             }
             if(isPV && (rankMove == 0 || score > alpha)){
-                ss.generator.initDangers(state);
+                if(rankMove)
+                    ss.generator.initDangers(state);
                 score = -negamax<true, limitWay>(ss, newDepth, state, -beta, -alpha, relDepth+1, false);
             }
             ss.eval.undoMove(curMove, !state.friendlyColor());
