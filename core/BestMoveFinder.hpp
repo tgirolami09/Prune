@@ -63,7 +63,7 @@ class BestMoveFinder{
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
-        float bestmovetactic[2][16384];
+        int16_t bestmovetactic[2][16384];
         corrhists correctionHistory;
         int min_nmp_ply=0;
         usefull(const GameState& state, tunables& parameters);

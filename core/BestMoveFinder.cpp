@@ -4,6 +4,7 @@
 #include "GameState.hpp"
 #include "Move.hpp"
 #include "TranspositionTable.hpp"
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -22,6 +23,14 @@ StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
 StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 StatVar<sbig, 1024, 0> predictionCaptureStat;
 #endif
+const int Q=1024;
+int16_t LOG1p[Q+1];// log(1+x)
+__attribute__((constructor(200))) void log_table(){
+    for(int i=0; i<=Q; i++){
+        int div = 880*(i+2*Q);
+        LOG1p[i] = (i*(27*i*i/Q+50*i+1752*Q)+div*2/3+div/28)/(880*(i+2*Q));
+    }
+}
 
 BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), nbCutoff(0), nbFirstCutoff(0),tbHits(0),rootBest(nullMove), mainThread(true){
     eval.init(state);
@@ -30,7 +39,7 @@ BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):n
     correctionHistory.reset();
     for(int i=0; i<2; i++){
         for(int j=0; j<16384; j++){
-            bestmovetactic[i][j] = 0.5;
+            bestmovetactic[i][j] = Q/2;
         }
     }
 }
@@ -48,7 +57,7 @@ void BestMoveFinder::usefull::reinit(const GameState& state){
     generator.initDangers(state);
     for(int i=0; i<2; i++){
         for(int j=0; j<16384; j++){
-            bestmovetactic[i][j] = 0.5;
+            bestmovetactic[i][j] = Q/2;
         }
     }
 }
@@ -522,9 +531,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
                     if(curMove.isTactical())
-                        addRedDepth += 128*(0.5-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]);
+                        addRedDepth += (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384])/8;
                     else
-                        addRedDepth += 128*(ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-0.5);
+                        addRedDepth += (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512)/8;
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
@@ -546,16 +555,16 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove == 0)ss.nbFirstCutoff++;
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
             ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
-            float& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
+            int16_t& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
             if(!curMove.isTactical()){
-                bucket = bucket-(bucket-log(bucket+1))/4;
+                bucket = bucket-(bucket-LOG1p[bucket])/4;
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
             }else{
-                bucket = bucket-(bucket-1+log(2-bucket))/4;
+                bucket = bucket-(bucket-Q+LOG1p[Q-bucket])/4;
             }
 #ifdef DEBUG_MACRO
-            predictionCaptureStat.update((sbig)(bucket*1024));
+            predictionCaptureStat.update(bucket);
 #endif
             return score;
         }
@@ -584,13 +593,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         ss.correctionHistory.update(state, bestScore-static_eval, depth);
     }
     if(typeNode == EXACT){
-        float& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
+        int16_t& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
         if(bestMove.isTactical())
-            bucket = bucket-(bucket-1+log(2-bucket))/4;
+            bucket = bucket-(bucket-Q+LOG1p[Q-bucket])/4;
         else
-            bucket = bucket-(bucket-log(bucket+1))/4;
+            bucket = bucket-(bucket-LOG1p[bucket])/4;
 #ifdef DEBUG_MACRO
-        predictionCaptureStat.update(((sbig)bucket*1024));
+        predictionCaptureStat.update(bucket);
 #endif
     }
     return bestScore;
