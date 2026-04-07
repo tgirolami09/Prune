@@ -531,9 +531,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
                     if(curMove.isTactical())
-                        addRedDepth += (512-ss.bestmovetactic[state.friendlyColor()][state.minorZobrist%16384]);
+                        addRedDepth += (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]);
                     else
-                        addRedDepth += (ss.bestmovetactic[state.friendlyColor()][state.minorZobrist%16384]-512);
+                        addRedDepth += (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512);
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
@@ -555,13 +555,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove == 0)ss.nbFirstCutoff++;
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
             ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
-            int16_t& bucket = ss.bestmovetactic[state.friendlyColor()][state.minorZobrist%16384];
+            int16_t& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
             if(!curMove.isTactical()){
-                bucket = bucket-(bucket-LOG1p[bucket])/4;
+                bucket = bucket-min(1, (bucket-LOG1p[bucket])/4);
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
             }else{
-                bucket = bucket-(bucket-Q+LOG1p[Q-bucket])/4;
+                bucket = bucket-max(-1, (bucket-Q+LOG1p[Q-bucket])/4);
             }
 #ifdef DEBUG_MACRO
             predictionCaptureStat.update(bucket);
@@ -593,11 +593,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         ss.correctionHistory.update(state, bestScore-static_eval, depth);
     }
     if(typeNode == EXACT){
-        int16_t& bucket = ss.bestmovetactic[state.friendlyColor()][state.minorZobrist%16384];
+        int16_t& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
         if(bestMove.isTactical())
-            bucket = bucket-(bucket-Q+LOG1p[Q-bucket])/4;
+            bucket = bucket-min(1, (bucket-Q+LOG1p[Q-bucket])/4);
         else
-            bucket = bucket-(bucket-LOG1p[bucket])/4;
+            bucket = bucket-max(-1, (bucket-LOG1p[bucket])/4);
 #ifdef DEBUG_MACRO
         predictionCaptureStat.update(bucket);
 #endif
