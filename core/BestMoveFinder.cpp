@@ -547,15 +547,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
             ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
             float& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
-            assert(bucket <= 1.0 && bucket >= 0.0);
             if(!curMove.isTactical()){
-                bucket = log(bucket+1);
+                bucket = bucket-(bucket-log(bucket+1))/4;
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
             }else{
-                bucket = 1-log(2-bucket);
+                bucket = bucket-(bucket-1+log(2-bucket))/4;
             }
-            assert(bucket <= 1.0 && bucket >= 0.0);
 #ifdef DEBUG_MACRO
             predictionCaptureStat.update((sbig)(bucket*1024));
 #endif
@@ -587,12 +585,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     if(typeNode == EXACT){
         float& bucket = ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384];
-        assert(bucket <= 1.0 && bucket >= 0.0);
         if(bestMove.isTactical())
-            bucket = 1-log(2-bucket);
+            bucket = bucket-(bucket-1+log(2-bucket))/4;
         else
-            bucket = log(bucket+1);
-        assert(bucket <= 1.0 && bucket >= 0.0);
+            bucket = bucket-(bucket-log(bucket+1))/4;
 #ifdef DEBUG_MACRO
         predictionCaptureStat.update(((sbig)bucket*1024));
 #endif
