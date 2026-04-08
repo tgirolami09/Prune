@@ -223,7 +223,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         int flag;
         Move capture = order.pop_max(flag);
         if(bestEval >= MINIMUM+maxDepth){
-            if(capture.isTactical() && !see_ge(bbs, 50, capture, state, value_pieces))continue;
+            if(capture.isTactical() && !see_ge(bbs, ss.history.getHistoryScore(capture, state.friendlyColor(), state)*100/maxHistory, capture, state, value_pieces))continue;
             else if(!capture.isTactical())continue;
         }
         ss.stack[rootDist].snap.save(state);
