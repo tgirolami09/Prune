@@ -10,7 +10,7 @@ tunables::tunables():
     se_min_depth(6),
     se_dext_margin(17),
     lmp_base(4),
-    lmp_mul(1),
+    lmp_mul(4),
     mhp_mul(1200),
     fp_base(280),
     fp_mul(120),
