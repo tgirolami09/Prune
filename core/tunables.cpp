@@ -16,7 +16,7 @@ tunables::tunables():
     fp_mul(148),
     fp_max_depth(5),
     lmr_history(531),
-    mo_mul_malus(32),
+    mo_mul_malus(256),
     aw_base(20),
     see_born(1),
     pvalue(104),

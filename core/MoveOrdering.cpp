@@ -74,7 +74,7 @@ void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c, const G
             killers[relDepth][0] = move;
         }
     }
-    updateMove(depth*depth*16, move, c, state);
+    updateMove(depth*512, move, c, state);
 }
 
 bool HelpOrdering::isKiller(Move move, int relDepth) const{
