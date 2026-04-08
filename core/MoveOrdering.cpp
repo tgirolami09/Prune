@@ -3,6 +3,7 @@
 #include "MoveOrdering.hpp"
 #include "Evaluator.hpp"
 #include "Const.hpp"
+#include "GameState.hpp"
 #include "tunables.hpp"
 
 #ifdef DEBUG_MACRO
@@ -105,10 +106,13 @@ void Order::swap(int idMove1, int idMove2){
     std::swap(scores[idMove1], scores[idMove2]);
 }
 
+template<bool isQS>
 void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state){
     nbPriority = 0;
     pointer = 0;
-    SEE_BB bb(state);
+    SEE_BB bb;
+    if(!isQS)
+        bb = SEE_BB(state);
     const int value_pieces[7] = {history.parameters.pvalue, history.parameters.nvalue, history.parameters.bvalue, history.parameters.rvalue, history.parameters.qvalue, 100000, 0};
     for(int i=0; i<nbMoves; i++){
         if(moveInfoPriority == moves[i].moveInfo){
@@ -127,7 +131,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 }
             }
 #endif
-            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth, state), bb, state, value_pieces);
+            scores[i] = score_move<!isQS>(moves[i], history.getMoveScore(moves[i], c, relDepth, state), bb, state, value_pieces);
         }
     }
     #if defined(__AVX2__)
@@ -135,6 +139,8 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
     _mm256_storeu_si256((__m256i*)&scores[nbMoves], vIntMin);
     #endif
 }
+template void Order::init<true>(bool, int16_t, const HelpOrdering&, ubyte, const GameState&);
+template void Order::init<false>(bool, int16_t, const HelpOrdering&, ubyte, const GameState&);
 
 void Order::reinit(int16_t priorityMove){
     nbPriority = 0;

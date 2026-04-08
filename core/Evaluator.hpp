@@ -165,6 +165,7 @@ extern big mask_forward_inv[64];
 class SEE_BB{
 public:
     SEE_BB(const GameState& state);
+    SEE_BB();
     big occupancy;
     big occupancies[2];
     big Qs;
@@ -176,6 +177,7 @@ public:
 
 int fastSEE(const Move& move, const GameState& state, const int* value_pieces);
 bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state, const int* value_pieces);
+template<bool seeHere>
 int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, const int* value_pieces);
 
 const int tableSize=1<<10;//must be a power of two, for now it's pretty small because we should hit the table very often, and so we didn't use too much memory

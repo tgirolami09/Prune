@@ -215,13 +215,15 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(order.nbMoves == 0 && testCheck){
         return MINIMUM+rootDist;
     }
-    order.init(state.friendlyColor(), nullMove.moveInfo, ss.history, rootDist, state);
+    order.init<true>(state.friendlyColor(), nullMove.moveInfo, ss.history, rootDist, state);
     Move bestCapture;
+    SEE_BB bbs(state);
+    const int value_pieces[7] = {ss.history.parameters.pvalue, ss.history.parameters.nvalue, ss.history.parameters.bvalue, ss.history.parameters.rvalue, ss.history.parameters.qvalue, 100000, 0};
     for(int i=0; i<order.nbMoves; i++){
         int flag;
         Move capture = order.pop_max(flag);
         if(bestEval >= MINIMUM+maxDepth){
-            if(capture.isTactical() && !(flag&1))continue;
+            if(capture.isTactical() && !see_ge(bbs, 50, capture, state, value_pieces))continue;
             else if(!capture.isTactical())continue;
         }
         ss.stack[rootDist].snap.save(state);
@@ -449,7 +451,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (sc > alpha && sc < beta && isPV)ss.transfer(rootDist, order.moves[0]);
         return sc;
     }
-    order.init(state.friendlyColor(), lastBest, ss.history, rootDist, state);
+    order.init<false>(state.friendlyColor(), lastBest, ss.history, rootDist, state);
     Move bestMove = nullMove;
     int bestScore = -INF;
     int triedMove = 0;

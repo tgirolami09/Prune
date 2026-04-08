@@ -146,6 +146,7 @@ SEE_BB::SEE_BB(const GameState& state){
     occupancies[1] = state.board.colors[1];
     occupancy = occupancies[0]|occupancies[1];
 }
+SEE_BB::SEE_BB(){}
 
 big firstTouch(int square, int square2, big occupancy){
     big mask = fullDir[square][square2]&occupancy;
@@ -215,6 +216,7 @@ bool see_ge(const SEE_BB& bb, int born, const Move& move, const GameState& state
     return stm != sstm || born <= 0;
 }
 
+template<bool seeHere>
 int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameState& state, const int* value_pieces){
     int score = 0;
     if(move.isTactical()){
@@ -224,13 +226,16 @@ int score_move(const Move& move, int historyScore, const SEE_BB& bb, const GameS
             score += cap*6;
         if(move.promotion() != -1)score += move.promotion();
         score *= maxHistory*2;
-        if(see_ge(bb, 0, move, state, value_pieces))
-            score |= 1<<28;
+        if constexpr(seeHere)
+            if(see_ge(bb, 0, move, state, value_pieces))
+                score |= 1<<28;
         score |= 2<<28;
     }
     score += historyScore+maxHistory;
     return score;
 }
+template int score_move<true>(const Move&, int, const SEE_BB&, const GameState&, const int*);
+template int score_move<false>(const Move&, int, const SEE_BB&, const GameState&, const int*);
 
 void IncrementalEvaluator::print(){
     printf("phase = %d\n", mgPhase);
