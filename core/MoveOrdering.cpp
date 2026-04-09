@@ -63,7 +63,7 @@ void HelpOrdering::updateMove(int bonus, Move move, bool c, const GameState& sta
 void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth, const GameState& state){
     for(int i=0; i<upto; i++){
         if(moves[i].isTactical() >= moves[upto].isTactical())
-            updateMove(-depth*parameters.mo_mul_malus, moves[i], c, state);
+            updateMove(-(depth*parameters.mo_mul_malus+parameters.mo_add_malus), moves[i], c, state);
     }
 }
 
@@ -74,7 +74,7 @@ void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c, const G
             killers[relDepth][0] = move;
         }
     }
-    updateMove(depth*512, move, c, state);
+    updateMove(depth*parameters.mo_mul_bonus+parameters.mo_add_bonus, move, c, state);
 }
 
 bool HelpOrdering::isKiller(Move move, int relDepth) const{
