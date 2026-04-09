@@ -334,7 +334,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(excludedMove == nullMove.moveInfo && ttHit){
         int lastEval = transposition.storedScore(alpha, beta, ttEntry, rootDist);
         if(lastEval != INVALID){
-            if(!isPV && ttEntry.depth >= depth)
+            if(!isPV && ttEntry.depth >= depth && (ttEntry.age() == transposition.age || ttEntry.typeNode() == EXACT))
                 return lastEval;
             else
                 expected_score = lastEval;
