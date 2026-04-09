@@ -349,11 +349,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         improving = !inCheck && ss.stack[rootDist-2].static_score != INF && ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
     if constexpr(!isPV){
         if(!inCheck && excludedMove == nullMove.moveInfo && beta > MINIMUM+maxDepth){
-            int margin;
-            if(improving)
-                margin = parameters.rfp_improving*depth;
-            else
-                margin = parameters.rfp_nimproving*depth;
+            int margin = 100*(depth-improving);
             if(expected_score >= beta+margin)
                 return expected_score;
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
