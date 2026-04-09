@@ -27,7 +27,7 @@ tunables::tunables():
     lmr_base(123900),
     lmr_div(40846),
     mchp_mul(1708),
-    mats_pawn(1),
+    mats_pawn(300),
     mats_knight(1066),
     mats_bishop(987),
     mats_rook(2218),
@@ -41,15 +41,15 @@ tunables::tunables():
 
 vector<int*> tunables::to_tune_int(){
     return {
-        &iir_min_depth,
-        &iir_validity_depth,
+        //&iir_min_depth,
+        //&iir_validity_depth,
         &rfp_improving,
         &rfp_nimproving,
         &nmp_red_depth_div,
         &nmp_red_base,
-        &se_validity_depth,
-        &se_min_depth,
-        &se_dext_margin,
+        //&se_validity_depth,
+        //&se_min_depth,
+        //&se_dext_margin,
         &lmp_base,
         &lmp_mul,
         &mhp_mul,
@@ -80,8 +80,8 @@ vector<int*> tunables::to_tune_int(){
 
 vector<float*> tunables::to_tune_float(){
     return {
-        &aw_mul,
-        &nodetm_base,
-        &nodetm_mul
+        //&aw_mul,
+        //&nodetm_base,
+        //&nodetm_mul
     };
 }
