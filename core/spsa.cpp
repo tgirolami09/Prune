@@ -51,8 +51,8 @@ int nbIters;
 int nbThreadsSPSA;
 int baseTime, increment;
 int memory;
-int moveOverhead = 10;
-float alpha = 0.602, _gamma = 0.101, lr=0.01, grain = 0.05;
+const int moveOverhead = 10;
+const float alpha = 0.602, _gamma = 0.101, lr=0.02, grain = 0.05;
 class internalState{
 public:
     vector<float> state;
@@ -236,7 +236,7 @@ public:
     void apply(){
         double loss = diffloss();
         for(int i=0; i<(int)parameters->state.size(); i++)
-            parameters->updateParam(i, loss*ak/(randoms[i]*ck));
+            parameters->updateParam(i, loss*ak/randoms[i]);
     }
 };
 
