@@ -19,7 +19,6 @@ int nbThreads=1;
 #include <vector>
 #include <cassert>
 #include <sstream>
-#include <set>
 using namespace std;
 using namespace std::chrono;
 
@@ -230,7 +229,7 @@ public:
     }
 
     double diffloss(){
-        return (double)score/nbGamesPerIter;
+        return (double)score;
     }
 
     void apply(){
@@ -317,7 +316,7 @@ void play_games(int id){
 
 int main(int argc, char** argv){
     if(argc == 1){
-        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:)( <memory> <baseTime> <increment>) (another optional)<logFile> <added params>(to continue)\n", argv[0]);
+        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:)( <memory> <baseTime> <increment>) (another optional)<logFile>\n", argv[0]);
         printf("book: a file name that contains a list of fens\n");
         printf("nbGames Per Iter: number of games per SPSA iters\n");
         printf("nbIter: number of SPSA iters\n");
@@ -348,28 +347,27 @@ int main(int argc, char** argv){
     internalState state((tunables()));
     int nbPassedIters = 0;
     int nbFinishedGames = 0;
+    bool restart = false;
     if(argc > 5){
         memory = atoi(argv[5]);
         baseTime = atoi(argv[6]);
         increment = atoi(argv[7]);
         if(argc > 8){
             string line;
-            ifstream oldLog(argv[8]);
-            set<int> S;
-            if(argc > 9){
-                stringstream addedparams(argv[9]);
-                int x;
-                while(addedparams >> x)S.insert(x);
+            string refile = argv[8];
+            printf("%s %d\n", refile.c_str(), refile == "re");
+            if(refile == "re"){
+                refile = "spsaOut.log";
+                restart = true;
             }
+            ifstream oldLog(refile.c_str());
+            assert(oldLog.is_open());
             bool iseven = true;
             while(getline(oldLog, line)){
                 if(!iseven){
                     stringstream ss(line);
                     int idParam = 0;
-                    while(S.count(idParam))idParam++;
-                    while(ss >> state.state[idParam++]){
-                        while(S.count(idParam))idParam++;
-                    }
+                    while(ss >> state.state[idParam++]);
                     idSPSA++;
                 }
                 iseven = !iseven;
@@ -381,7 +379,7 @@ int main(int argc, char** argv){
             printf("%d\n", idSPSA);
         }
     }
-    int alreadyMadeGames = nbFinishedGames;
+    const int alreadyMadeGames = nbFinishedGames;
     memory *= hashMul;
     stateIter S;
     S.init(idSPSA++, &state);
@@ -405,7 +403,11 @@ int main(int argc, char** argv){
     printf("all threads has been launched\n");
     int threadUp = nbThreadsSPSA;
     auto start = high_resolution_clock::now();
-    ofstream logFile("spsaOut.log");
+    ofstream logFile;
+    if(restart)
+        logFile.open("spsaOut.log", std::ios::app);
+    else
+        logFile.open("spsaOut.log");
     while(threadUp){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
@@ -424,7 +426,7 @@ int main(int argc, char** argv){
                 }
                 auto end = high_resolution_clock::now();
                 int passedTime = duration_cast<milliseconds>(end-start).count();
-                printf("\r%d/%d iters %d/%d games, speed: %.2fg/s time remaining: %s      ", nbPassedIters, nbIters, nbFinishedGames, nbIters*nbGamesPerIter, ((nbFinishedGames-alreadyMadeGames)*1000.0)/passedTime, secondsToStr(((long)nbIters*nbGamesPerIter-nbFinishedGames+alreadyMadeGames)*passedTime/(nbFinishedGames*1000)).c_str());
+                printf("\r%d/%d iters %d/%d games, speed: %.2fg/s time remaining: %s      ", nbPassedIters, nbIters, nbFinishedGames, nbIters*nbGamesPerIter, ((nbFinishedGames-alreadyMadeGames)*1000.0)/passedTime, secondsToStr(((long)nbIters*nbGamesPerIter-nbFinishedGames)*passedTime/((nbFinishedGames-alreadyMadeGames)*1000)).c_str());
                 fflush(stdout);
                 if(islast || Qiters.back().nbLaunched >= nbGamesPerIter){
                     if(idSPSA >= nbIters){
