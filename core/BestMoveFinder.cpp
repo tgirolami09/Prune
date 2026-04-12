@@ -489,7 +489,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
             if(!curMove.isTactical()){
-                int cH = moveHistory + (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512);
+                int cH = moveHistory + (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512)*8;
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
                 if(cH < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
@@ -498,7 +498,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     continue;
                 }
             }else{
-                int cH = moveHistory + (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]);
+                int cH = moveHistory + (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384])*8;
                 if(!isPV && cH < -parameters.mchp_mul*depth*depth && depth <= 4)
                     continue;
             }
