@@ -198,7 +198,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state, parameters);
         }
         if(staticEval >= beta){
-            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval, isPV);
             return staticEval;
         }
         if(staticEval > alpha){
