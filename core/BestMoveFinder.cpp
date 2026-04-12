@@ -489,15 +489,17 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
             if(!curMove.isTactical()){
+                int cH = moveHistory + (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512);
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
-                if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
+                if(cH < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
-                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+moveHistory/64;
+                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+cH/64;
                 if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
                 }
             }else{
-                if(!isPV && moveHistory < -parameters.mchp_mul*depth*depth && depth <= 4)
+                int cH = moveHistory + (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]);
+                if(!isPV && cH < -parameters.mchp_mul*depth*depth && depth <= 4)
                     continue;
             }
         }
@@ -530,10 +532,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(rankMove > 3 && depth > 2){
                     addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
-                    if(curMove.isTactical())
-                        addRedDepth += (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]);
-                    else
-                        addRedDepth += (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512);
+                    //if(curMove.isTactical())
+                    //    addRedDepth += (512-ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]);
+                    //else
+                    //    addRedDepth += (ss.bestmovetactic[state.friendlyColor()][state.pawnZobrist%16384]-512);
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
