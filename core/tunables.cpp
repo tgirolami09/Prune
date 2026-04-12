@@ -2,8 +2,10 @@
 tunables::tunables():
     iir_min_depth(3),
     iir_validity_depth(4),
-    rfp_improving(94),
-    rfp_nimproving(163),
+    rfp_improving(64),
+    rfp_improving_2(5),
+    rfp_nimproving(133),
+    rfp_nimproving_2(5),
     nmp_red_depth_div(263),
     nmp_red_base(2793),
     se_validity_depth(3),
