@@ -454,7 +454,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     int bestScore = -INF;
     int triedMove = 0;
     SEE_BB bbs(state);
-    const int value_pieces[7] = {ss.history.parameters.pvalue, ss.history.parameters.nvalue, ss.history.parameters.bvalue, ss.history.parameters.rvalue, ss.history.parameters.qvalue, 100000, 0};
+    static const int value_pieces[7] = {ss.history.parameters.pvalue, ss.history.parameters.nvalue, ss.history.parameters.bvalue, ss.history.parameters.rvalue, ss.history.parameters.qvalue, 100000, 0};
     for(int rankMove=0; rankMove<order.nbMoves; rankMove++){
         int flag;
         Move curMove = order.pop_max(flag);
@@ -481,10 +481,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }else{
                 if(!isPV && moveHistory < -parameters.mchp_mul*depth*depth && depth <= 4)
                     continue;
+                if(!isPV && (!(flag&1)) && see_ge(bbs, 100*depth, curMove, state, value_pieces))
+                    continue;
             }
-            int margin = curMove.isTactical() ? 70*depth : 50*depth*depth;
-            if(!isPV && (!(flag&1) || !curMove.isTactical()) && see_ge(bbs, margin, curMove, state, value_pieces))
-                continue;
         }
 #ifdef DEBUG_MACRO
         if(moveHistory != maxHistory){
