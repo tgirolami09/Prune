@@ -108,7 +108,6 @@ void Order::swap(int idMove1, int idMove2){
 void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state){
     nbPriority = 0;
     pointer = 0;
-    SEE_BB bb(state);
     const int value_pieces[7] = {history.parameters.pvalue, history.parameters.nvalue, history.parameters.bvalue, history.parameters.rvalue, history.parameters.qvalue, 100000, 0};
     for(int i=0; i<nbMoves; i++){
         if(moveInfoPriority == moves[i].moveInfo){
@@ -127,7 +126,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
                 }
             }
 #endif
-            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth, state), bb, state, value_pieces);
+            scores[i] = score_move(moves[i], history.getMoveScore(moves[i], c, relDepth, state), state, value_pieces);
         }
     }
     #if defined(__AVX2__)

@@ -505,7 +505,6 @@ void manageSearch(){
                 istringstream moves(parsed[0].second);
                 string curMove;
                 bool isExact = true;
-                SEE_BB bb(state->root);
                 while(moves >> curMove){
                     if(curMove == "ge"){
                         isExact=false;
@@ -525,7 +524,7 @@ void manageSearch(){
                         if(move.capture != -2)
                             res += value_pieces[max(0, cap)];
                     }else
-                        res = see_ge(bb, 0, move, state->root, value_pieces);
+                        res = see_ge(0, move, state->root, value_pieces);
                     printf("%s : %d\n", move.to_str().c_str(), res);
                 }
                 snap.restore(state->root);

@@ -49,6 +49,9 @@ struct PositionState{
     big getMask(int piece) const{
         return pieces[type(piece)]&colors[color(piece)];
     }
+    big occupancy() const{
+        return colors[WHITE] | colors[BLACK];
+    }
 };
 
 struct PositionSnapshot;
