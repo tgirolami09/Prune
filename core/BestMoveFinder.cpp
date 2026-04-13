@@ -478,10 +478,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
                 }
+                if(!isPV && see_ge(bbs, 60*depth*depth, curMove, state, value_pieces))
+                    continue;
             }else{
                 if(!isPV && moveHistory < -parameters.mchp_mul*depth*depth && depth <= 4)
-                    continue;
-                if(!isPV && (!(flag&1)) && see_ge(bbs, 100*depth, curMove, state, value_pieces))
                     continue;
             }
         }
