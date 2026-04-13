@@ -16,12 +16,21 @@ extern StatVar<sbig, 64, 0> TIupdateTotStat;
 extern StatVar<sbig, 128, -128> TIupdateDiffStat;
 #endif
 const int maxThreatUpdates=80;
+
 const int INPUT_SIZE = 12*64;
-const int HL_SIZE = 384;
-const int SCALE = 400;
+const int THREAT_SIZE = 60144;
+
 const int QA = 255;
 const int QB = 64;
+
 const int BUCKET = 8;
+const int nbInputBuckets = 4;
+
+const int HL_SIZE = 384;
+const int L2=16;
+const int L3=32;
+
+const int SCALE = 400;
 const int inputBuckets[32] = {
     0, 0, 1, 1,
     2, 2, 2, 2,
@@ -32,9 +41,7 @@ const int inputBuckets[32] = {
     3, 3, 3, 3,
     3, 3, 3, 3,
 };
-const int nbInputBuckets = 4;
 const int DIVISOR=(31+BUCKET)/BUCKET;
-const int THREAT_SIZE = 60144;
 
 static_assert(HL_SIZE%nb16 == 0);
 
@@ -110,6 +117,28 @@ public:
     void print();
 };
 
+template<int input, int output>
+struct Layer{
+    simdint weights[output][input/nb16];
+    int biases[output];
+    void forward(simdint x[input/nbint], int y[output]){
+        for(int i=0; i<output; i++){
+            y[i] = biases[i];
+        }
+        for(int i=0; i<output; i++){
+            for(int j=0; j<input/nb16; j++){
+                y[i] = simdint_add(simdint_mullo(x[j], weights[i][j]));
+            }
+        }
+    }
+};
+
+struct Layers{
+    Layer<HL_SIZE, L2> l1;
+    Layer<L2, L3> l2;
+    Layer<L3, 1> l3;
+};
+
 class Accumulator{
     void defstaterelated(const PositionState& state);
     void updatePieceOutComing(const int8_t mailbox[64], int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
@@ -145,8 +174,7 @@ public:
     simd16 hlWeights[nbInputBuckets][INPUT_SIZE][HL_SIZE/nb16];
     simd8 threatWeights[THREAT_SIZE][HL_SIZE/nb8];
     simd16 hlBiases[HL_SIZE/nb16];
-    simd16 outWeights[BUCKET][2][HL_SIZE/nb16];
-    dbyte outbias[BUCKET];
+    Layers laterLayers[BUCKET];
 
     template<typename T=char>
     dbyte read_bytes(ifstream& file);
