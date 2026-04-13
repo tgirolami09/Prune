@@ -361,11 +361,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             bool hindsight = false;
             if(rootDist > 1 && ss.stack[rootDist-1].static_score != INF){
                 int parent_score = ss.stack[rootDist-1].static_score;
-                if(depth < maxDepth && ss.stack[rootDist-1].reduction >= 3 && static_eval >= -parent_score){
+                if(depth < maxDepth && ss.stack[rootDist-1].reduction >= 4 && static_eval >= -parent_score){
                     depth++;
                     hindsight = true;
                 }
-            }if(!hindsight){
+            }
             int margin;
             if(improving)
                 margin = parameters.rfp_improving*depth;
@@ -373,7 +373,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 margin = parameters.rfp_nimproving*depth;
             if(expected_score >= beta+margin)
                 return expected_score;
-            }
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 ss.stack[rootDist].snap.save(state);
