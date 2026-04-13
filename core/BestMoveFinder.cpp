@@ -358,11 +358,14 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         improving = !inCheck && ss.stack[rootDist-2].static_score != INF && ss.stack[rootDist-2].static_score < static_eval && !isExcluded;
     if constexpr(!isPV){
         if(!inCheck && !isExcluded && beta > MINIMUM+maxDepth){
+            bool hindsight = false;
             if(rootDist > 1 && ss.stack[rootDist-1].static_score != INF){
                 int parent_score = ss.stack[rootDist-1].static_score;
-                if(depth < maxDepth && ss.stack[rootDist-1].reduction >= 3 && static_eval >= -parent_score)
+                if(depth < maxDepth && ss.stack[rootDist-1].reduction >= 3 && static_eval >= -parent_score){
                     depth++;
-            }
+                    hindsight = true;
+                }
+            }if(!hindsight){
             int margin;
             if(improving)
                 margin = parameters.rfp_improving*depth;
@@ -403,6 +406,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     };
                 };
                 ss.generator.initDangers(state);
+            }
             }
         }
     }
