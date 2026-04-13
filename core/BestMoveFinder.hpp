@@ -46,6 +46,7 @@ class BestMoveFinder{
             Order order;
             int static_score;
             int raw_eval;
+            Move evaluatedMove;
             PositionSnapshot snap;
             int16_t excludedMove;
             int reduction;

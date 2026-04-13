@@ -360,7 +360,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(!inCheck && !isExcluded && beta > MINIMUM+maxDepth){
             if(rootDist > 1 && ss.stack[rootDist-1].static_score != INF){
                 int parent_score = ss.stack[rootDist-1].static_score;
-                if(depth < maxDepth && ss.stack[rootDist-1].reduction >= 3 && parent_score+static_eval <= -10)
+                if(depth < maxDepth && ss.stack[rootDist-1].reduction >= 3 && static_eval >= -parent_score+100*ss.stack[rootDist-1].evaluatedMove.isTactical())
                     depth++;
             }
             int margin;
@@ -457,6 +457,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
             return MIDDLE;
         }
+        ss.stack[rootDist].evaluatedMove = order.moves[0];
         ss.eval.playMove(order.moves[0], !state.friendlyColor(), &ss.stack[rootDist].snap.board, &state.board);
         ss.generator.initDangers(state);
         int sc = -negamax<isPV, limitWay>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
@@ -515,6 +516,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             score = MIDDLE;
             isDraw = true;
         }else{
+            ss.stack[rootDist].evaluatedMove = curMove;
             ss.eval.playMove(curMove, !state.friendlyColor(), &ss.stack[rootDist].snap.board, &state.board);
             bool inCheckPos = ss.generator.initDangers(state);
             int reductionDepth = 1;
