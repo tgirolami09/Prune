@@ -159,23 +159,23 @@ struct PWLayer{
     static const int full=input/nb16;
     static const int half=full/2;
     simd8 weights[output][input/nb8];
-    int biases[output];
+    simdint biases[output/nbint];
     void forward(simd16 x1[full], simd16 x2[full], simdint y[output/nbint]) const{
-        for(int i=0; i<output; i++){
+        for(int i=0; i<output/nbint; i++){
             y[i] = biases[i];
         }
-        for(int i=0; i<output; i++){
+        for(int i=0; i<output/nbint; i++){
             for(int j=0; j<half; j += 2){
-                simd16 neurons1 = simd16_clamp(x1[j  ], 0, QA)*simd16_clamp(x1[j  +half], 0, QA);
-                simd16 neurons2 = simd16_clamp(x1[j+1], 0, QA)*simd16_clamp(x1[j+1+half], 0, QA);
+                simd16 neurons1 = simd16_clamp(x1[j  ], mini, maxiA)*simd16_clamp(x1[j  +half], mini, maxiA);
+                simd16 neurons2 = simd16_clamp(x1[j+1], mini, maxiA)*simd16_clamp(x1[j+1+half], mini, maxiA);
                 neurons1 = simdint_shr(neurons1, 9);
                 neurons2 = simdint_shr(neurons2, 9);
                 simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);
                 y[i] = simdint_add(y[i], matrix_mul(neurons, weights[i][j/2]));
             }
             for(int j=0; j<half; j += 2){
-                simd16 neurons1 = simd16_clamp(x2[j  -full], 0, QA)*simd16_clamp(x2[j  -half], 0, QA);
-                simd16 neurons2 = simd16_clamp(x2[j+1-full], 0, QA)*simd16_clamp(x2[j+1-half], 0, QA);
+                simd16 neurons1 = simd16_clamp(x2[j  -full], mini, maxiA)*simd16_clamp(x2[j  -half], mini, maxiA);
+                simd16 neurons2 = simd16_clamp(x2[j+1-full], mini, maxiA)*simd16_clamp(x2[j+1-half], mini, maxiA);
                 neurons1 = simdint_shr(neurons1, 9);
                 neurons2 = simdint_shr(neurons2, 9);
                 simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);

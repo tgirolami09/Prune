@@ -694,8 +694,6 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
 }
 
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
-    simdint res = simdint_zero();
-    simdint HL1[HL_SIZE];
     simdint HL2[L2];
     simdint HL3[L3];
     int finRes;
