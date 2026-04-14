@@ -1,6 +1,7 @@
 #include "NNUE.hpp"
 #include "Const.hpp"
 #include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <utility>
@@ -694,12 +695,32 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
 }
 
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
+    simd8 HL1[HL_SIZE/nb8];
+    const auto& x1 = accs.accs[ side];
+    const auto& x3 = accs.accs[ side+2];
+    const auto& x2 = accs.accs[!side];
+    const auto& x4 = accs.accs[!side+2];
+    const int half = HL_SIZE/nb16/2;
+    for(int i=0; i<half; i += 2){
+        simd16 neurons1 = simd16_mullo(simd16_clamp(simd16_add(x1[i  ], x3[i  ]), mini, maxiA), simd16_clamp(simd16_add(x1[i  +half], x3[i  +half]), mini, maxiA));
+        simd16 neurons2 = simd16_mullo(simd16_clamp(simd16_add(x1[i+1], x3[i+1]), mini, maxiA), simd16_clamp(simd16_add(x1[i+1+half], x3[i+1+half]), mini, maxiA));
+        neurons1 = simdint_shr(neurons1, 10);
+        neurons2 = simdint_shr(neurons2, 10);
+        HL1[i/2] = ADDMM(packus_epi16)(neurons2, neurons1);
+    }
+    for(int i=0; i<half; i += 2){
+        simd16 neurons1 = simd16_mullo(simd16_clamp(simd16_add(x2[i  ], x4[i  ]), mini, maxiA), simd16_clamp(simd16_add(x2[i  +half], x4[i  +half]), mini, maxiA));
+        simd16 neurons2 = simd16_mullo(simd16_clamp(simd16_add(x2[i+1], x4[i+1]), mini, maxiA), simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA));
+        neurons1 = simdint_shr(neurons1, 10);
+        neurons2 = simdint_shr(neurons2, 10);
+        HL1[i/2+HL_SIZE/nb8/2] = ADDMM(packus_epi16)(neurons2, neurons1);
+    }
     simdint HL2[L2];
     simdint HL3[L3];
     int finRes;
     const auto& subnet=laterLayers[idB];
-    subnet.l1.forward(accs.accs[side], accs.accs[!side], accs.accs[side+2], accs.accs[!side+2], HL2);
-    subnet.l2.forward(HL2, (int*)&HL3);
+    subnet.l1.forward((uint32_t*)HL1, HL2);
+    subnet.l2.forward(HL2, (int*)HL3);
     subnet.l3.forward(HL3, &finRes);
     finRes = finRes/(QB*QB)*SCALE/(QB*QB);
     return finRes;
