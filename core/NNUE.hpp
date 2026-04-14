@@ -121,6 +121,7 @@ public:
 static const simdint mini = simdint_set1(0);
 static const simdint maxiA = simdint_set1(QA);
 static const simdint maxiB = simdint_set1(QB);
+
 template<bool squared>
 inline simdint doOut(simdint a, simdint w, const simdint maxi){
     simdint clamped = simdint_clamp(a, mini, maxi);
@@ -135,13 +136,18 @@ struct Layer{
     simdint weights[output][input/nbint];
     int biases[output];
     void forward(simdint x[input/nbint], int y[output]) const{
+        simdint out[output];
         for(int i=0; i<output; i++){
             y[i] = biases[i];
+            out[i] = simdint_set1(0);
         }
         for(int i=0; i<output; i++){
             for(int j=0; j<input/nb16; j++){
-                y[i] += mysum(doOut<isSquared>(x[j], weights[i][j], simdint_set1(clamp)));
+                out[i] = simdint_add(out[i], doOut<isSquared>(x[j], weights[i][j], simdint_set1(clamp)));
             }
+        }
+        for(int i=0; i<output; i++){
+            y[i] += mysum(out[i]);
         }
     }
 };
@@ -158,8 +164,8 @@ template<int input, int output>
 struct Layer1{
     static const int full=input/nb16;
     static const int half=full/2;
-    simd8 weights[input*output/nb8];
-    simdint biases[output/nbint];
+    alignas(64) simd8 weights[input*output/nb8];
+    alignas(64) simdint biases[output/nbint];
     static const int frame = 4;
     void forward(uint32_t x[input/frame], simdint y[output/nbint]) const{
         for(int i=0; i<output/nbint; i++){
@@ -211,9 +217,9 @@ public:
 
 class NNUE{
 public:
-    simd16 hlWeights[nbInputBuckets][INPUT_SIZE][HL_SIZE/nb16];
-    simd8 threatWeights[THREAT_SIZE][HL_SIZE/nb8];
-    simd16 hlBiases[HL_SIZE/nb16];
+    alignas(64) simd16 hlWeights[nbInputBuckets][INPUT_SIZE][HL_SIZE/nb16];
+    alignas(64) simd8 threatWeights[THREAT_SIZE][HL_SIZE/nb8];
+    alignas(64) simd16 hlBiases[HL_SIZE/nb16];
     Layers laterLayers[BUCKET];
 
     template<typename T=char>

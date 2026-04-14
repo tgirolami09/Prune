@@ -21,6 +21,7 @@ const int L2=16;
 const int L3=32;
 
 const bool isPW=true;
+const char zero = 0;// for padding
 
 template<typename T, int Q>
 T _quantise(float w){
@@ -49,10 +50,12 @@ struct layer{
                 }
             }
         }
+        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
         for(int i=0; i<output; i++){
             T2 quantised = _quantise<T2, Qbias>(bias[i+output*id]);
             fwrite(&quantised, sizeof(T2), 1, file);
         }
+        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
     }
 };
 
@@ -66,14 +69,17 @@ struct inputlayer{
             int16_t quantised = _quantise<int16_t, QA>(w);
             fwrite(&quantised, sizeof(int16_t), 1, file);
         }
+        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
         for(int i=0; i<threatSize; i++)for(float w:threatweights[i]){
             int8_t quantised = _quantise<int8_t, QA>(w);
             fwrite(&quantised, sizeof(int8_t), 1, file);
         }
+        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
         for(float b:biases){
             int16_t quantised = _quantise<int16_t, QA>(b);
             fwrite(&quantised, sizeof(int16_t), 1, file);
         }
+        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
     }
 };
 
