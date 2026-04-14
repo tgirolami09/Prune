@@ -530,63 +530,11 @@ big genRandom(big& state){
     return z ^ (z >> 31);
 }
 
-NNUE::NNUE(string name){
-    if(name == "random"){
-        big state = 42;
-        for(int idInputBucket=0; idInputBucket<nbInputBuckets; idInputBucket++){
-            for(int i=0; i<INPUT_SIZE; i++) {
-                for(int j=0; j<HL_SIZE/nb16; j++) {
-                    hlWeights[idInputBucket][i][j] = simd16_zero();
-                    for(int k=0; k<nb16; k++) {
-                        set_simd16_element(hlWeights[idInputBucket][i][j], k, genRandom(state)%256-128);
-                    }
-                }
-            }
-        }
-        
-        for(int i=0; i<HL_SIZE/nb16; i++){
-            hlBiases[i] = simd16_zero();
-            for(int id16=0; id16<nb16; id16++) {
-                set_simd16_element(hlBiases[i], id16, genRandom(state)%256-128);
-            }
-        }
-        
-        for(int idB = 0; idB < BUCKET; idB++){
-            for(int side=0; side < 2; side++){
-                for(int i=0; i<HL_SIZE/nb16; i++) {
-                    outWeights[idB][side][i] = simd16_zero();
-                    for(int id16=0; id16<nb16; id16++) {
-                        set_simd16_element(outWeights[idB][side][i], id16, genRandom(state)%256-128);
-                    }
-                }
-            }
-        }
-        for(int idB = 0; idB < BUCKET; idB++)
-            outbias[idB] = genRandom(state)%256-128;
-    }else{
-        ifstream file(name);
-        file.read(reinterpret_cast<char*>(hlWeights), sizeof(hlWeights));
-        file.read(reinterpret_cast<char*>(hlBiases), sizeof(hlBiases));
-        file.read(reinterpret_cast<char*>(outWeights), sizeof(outWeights));
-        file.read(reinterpret_cast<char*>(outbias), sizeof(outbias));
-    }
-}
 template<typename T>
 T get_int(const unsigned char* source, int length){
     T res;
     memcpy(&res, source, length);
     return res;
-}
-
-NNUE::NNUE(){
-    int pointer = 0;
-    memcpy(hlWeights, baseModel, sizeof(hlWeights));
-    pointer += sizeof(hlWeights);
-    memcpy(hlBiases, &baseModel[pointer], sizeof(hlBiases));
-    pointer += sizeof(hlBiases);
-    memcpy(outWeights, &baseModel[pointer], sizeof(outWeights));
-    pointer += sizeof(outWeights);
-    memcpy(outbias, &baseModel[pointer], sizeof(outbias));
 }
 
 void NNUE::initAcc(Accumulator& accs) const{
@@ -756,16 +704,15 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
 
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     simdint res = simdint_zero();
-    for(int i=0; i<HL_SIZE/nb16; i++){
-        simd16 pov = simd16_add(accs[side][i], accs[side+2][i]);
-        simd16 npov = simd16_add(accs[side^1][i], accs[(side^1)+2][i]);
-        res = simdint_add(res, doOut(pov, outWeights[idB][0][i]));
-        res = simdint_add(res, doOut(npov, outWeights[idB][1][i]));
-    }
-    int finRes = mysum(res);
-    finRes /= QA;
-    finRes += outbias[idB];
-    finRes = finRes*SCALE/(QA*QB);
+    simdint HL1[HL_SIZE];
+    simdint HL2[L2];
+    simdint HL3[L3];
+    int finRes;
+    const auto& subnet=laterLayers[idB];
+    subnet.l1.forward(accs.accs[side], accs.accs[!side], HL2);
+    subnet.l2.forward(HL2, (int*)&HL3);
+    subnet.l3.forward(HL3, &finRes);
+    finRes = finRes/QB*SCALE/(QB*QB*QB);
     return finRes;
 }
 template<int f>

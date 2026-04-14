@@ -119,9 +119,9 @@ public:
 
 template<int input, int output>
 struct Layer{
-    simdint weights[output][input/nb16];
+    simdint weights[output][input/nbint];
     int biases[output];
-    void forward(simdint x[input/nbint], int y[output]){
+    void forward(simdint x[input/nbint], int y[output]) const{
         for(int i=0; i<output; i++){
             y[i] = biases[i];
         }
@@ -133,8 +133,47 @@ struct Layer{
     }
 };
 
+inline simdint matrix_mul(simd8 inputs, simd8 weights){
+#ifdef __AVX2__
+    return _mm256_madd_epi16(_mm256_maddubs_epi16(inputs, weights), _mm256_set1_epi16(1));
+#elif defined(__AVX512F__)
+    return _mm512_dpbusd_epi32(_mm512_setzero_si512(), inputs, weights);
+#endif
+}
+
+template<int input, int output>
+struct PWLayer{
+    static const int full=input/nb16;
+    static const int half=full/2;
+    simd8 weights[output][input/nb8];
+    int biases[output];
+    void forward(simd16 x1[full], simd16 x2[full], simdint y[output/nbint]) const{
+        for(int i=0; i<output; i++){
+            y[i] = biases[i];
+        }
+        for(int i=0; i<output; i++){
+            for(int j=0; j<half; j += 2){
+                simd16 neurons1 = simd16_clamp(x1[j  ], 0, QA)*simd16_clamp(x1[j  +half], 0, QA);
+                simd16 neurons2 = simd16_clamp(x1[j+1], 0, QA)*simd16_clamp(x1[j+1+half], 0, QA);
+                neurons1 = simdint_shr(neurons1, 9);
+                neurons2 = simdint_shr(neurons2, 9);
+                simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);
+                y[i] = simdint_add(y[i], matrix_mul(neurons, weights[i][j/2]));
+            }
+            for(int j=0; j<half; j += 2){
+                simd16 neurons1 = simd16_clamp(x1[j  ], 0, QA)*simd16_clamp(x1[j  +half], 0, QA);
+                simd16 neurons2 = simd16_clamp(x1[j+1], 0, QA)*simd16_clamp(x1[j+1+half], 0, QA);
+                neurons1 = simdint_shr(neurons1, 9);
+                neurons2 = simdint_shr(neurons2, 9);
+                simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);
+                y[i] = simdint_add(y[i], matrix_mul(neurons, weights[i][j/2]));
+            }
+        }
+    }
+};
+
 struct Layers{
-    Layer<HL_SIZE, L2> l1;
+    PWLayer<HL_SIZE, L2> l1;
     Layer<L2, L3> l2;
     Layer<L3, 1> l3;
 };

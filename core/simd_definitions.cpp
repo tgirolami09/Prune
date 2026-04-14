@@ -22,6 +22,14 @@ simd16 simd16_mullo(simd16 a, simd16 b) {
     return ADDMM(mullo_epi16)(a, b);
 }
 
+simdint simdint_shr(simdint a, int b){
+    return ADDMM(srli_epi32)(a, b);
+}
+
+simd16 simd16_shr(simd16 a, int b){
+    return ADDMM(srli_epi16)(a, b);
+}
+
 simd16 simd16_clamp(simd16 value, simd16 min_val, simd16 max_val) {
     return ADDMM(min_epi16)(ADDMM(max_epi16)(value, min_val), max_val);
 }
