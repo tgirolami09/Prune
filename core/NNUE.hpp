@@ -160,22 +160,22 @@ struct PWLayer{
     static const int half=full/2;
     simd8 weights[output][input/nb8];
     simdint biases[output/nbint];
-    void forward(simd16 x1[full], simd16 x2[full], simdint y[output/nbint]) const{
+    void forward(simd16 x1[full], simd16 x2[full], simd16 x3[full], simd16 x4[full], simdint y[output/nbint]) const{
         for(int i=0; i<output/nbint; i++){
             y[i] = biases[i];
         }
         for(int i=0; i<output/nbint; i++){
             for(int j=0; j<half; j += 2){
-                simd16 neurons1 = simd16_mullo(simd16_clamp(x1[j  ], mini, maxiA), simd16_clamp(x1[j  +half], mini, maxiA));
-                simd16 neurons2 = simd16_mullo(simd16_clamp(x1[j+1], mini, maxiA), simd16_clamp(x1[j+1+half], mini, maxiA));
+                simd16 neurons1 = simd16_mullo(simd16_clamp(simd16_add(x1[j  ], x3[j  ]), mini, maxiA), simd16_clamp(simd16_add(x1[j  +half], x3[j  +half]), mini, maxiA));
+                simd16 neurons2 = simd16_mullo(simd16_clamp(simd16_add(x1[j+1], x3[j+1]), mini, maxiA), simd16_clamp(simd16_add(x1[j+1+half], x3[j+1+half]), mini, maxiA));
                 neurons1 = simdint_shr(neurons1, 9);
                 neurons2 = simdint_shr(neurons2, 9);
                 simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);
                 y[i] = simdint_add(y[i], matrix_mul(neurons, weights[i][j/2]));
             }
             for(int j=0; j<half; j += 2){
-                simd16 neurons1 = simd16_mullo(simd16_clamp(x2[j  -full], mini, maxiA), simd16_clamp(x2[j  -half], mini, maxiA));
-                simd16 neurons2 = simd16_mullo(simd16_clamp(x2[j+1-full], mini, maxiA), simd16_clamp(x2[j+1-half], mini, maxiA));
+                simd16 neurons1 = simd16_mullo(simd16_clamp(simd16_add(x2[j  -full], x4[j  -full]), mini, maxiA), simd16_clamp(simd16_add(x2[j  -half], x4[j  -half]), mini, maxiA));
+                simd16 neurons2 = simd16_mullo(simd16_clamp(simd16_add(x2[j+1-full], x4[j+1-full]), mini, maxiA), simd16_clamp(simd16_add(x2[j+1-half], x4[j+1-half]), mini, maxiA));
                 neurons1 = simdint_shr(neurons1, 9);
                 neurons2 = simdint_shr(neurons2, 9);
                 simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);

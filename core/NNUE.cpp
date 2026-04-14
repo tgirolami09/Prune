@@ -698,7 +698,7 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     simdint HL3[L3];
     int finRes;
     const auto& subnet=laterLayers[idB];
-    subnet.l1.forward(accs.accs[side], accs.accs[!side], HL2);
+    subnet.l1.forward(accs.accs[side], accs.accs[!side], accs.accs[side+2], accs.accs[!side+2], HL2);
     subnet.l2.forward(HL2, (int*)&HL3);
     subnet.l3.forward(HL3, &finRes);
     finRes = finRes/(QB*QB)*SCALE/(QB*QB);
