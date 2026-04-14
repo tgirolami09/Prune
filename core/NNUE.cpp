@@ -560,15 +560,6 @@ int NNUE::get_index(int piece, int c, int square) const{
     return ((6*c+piece)<<6)|(square^7);
 }
 
-static const simd16 mini = simd16_set1(0);
-static const simd16 maxi = simd16_set1(QA);
-simdint doOut(simd16 a, simd16 w){
-    simd16 clamped = simd16_clamp(a, mini, maxi);
-    simd16 mul = simd16_mullo(clamped, w);
-    simdint overall = mull_add(mul, clamped);
-    return overall;
-}
-
 template<int f>
 void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");

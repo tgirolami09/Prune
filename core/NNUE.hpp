@@ -117,7 +117,20 @@ public:
     void print();
 };
 
-template<int input, int output>
+
+static const simdint mini = simd16_set1(0);
+static const simdint maxiA = simd16_set1(QA);
+static const simdint maxiB = simd16_set1(QB);
+template<bool squared>
+inline simdint doOut(simdint a, simdint w, const simdint maxi){
+    simdint clamped = simdint_clamp(a, mini, maxi);
+    simdint mul = simdint_mullo(clamped, w);
+    if constexpr(squared)
+        mul = simdint_mullo(mul, clamped);
+    return mul;
+}
+
+template<int input, int output, bool isSquared, int clamp>
 struct Layer{
     simdint weights[output][input/nbint];
     int biases[output];
@@ -127,7 +140,7 @@ struct Layer{
         }
         for(int i=0; i<output; i++){
             for(int j=0; j<input/nb16; j++){
-                y[i] = simdint_add(simdint_mullo(x[j], weights[i][j]));
+                y[i] += mysum(doOut<isSquared>(x[j], weights[i][j], simdint_set1(clamp)));
             }
         }
     }
@@ -174,8 +187,8 @@ struct PWLayer{
 
 struct Layers{
     PWLayer<HL_SIZE, L2> l1;
-    Layer<L2, L3> l2;
-    Layer<L3, 1> l3;
+    Layer<L2, L3, true, QB> l2;
+    Layer<L3, 1, false, QB*QB*QB> l3;
 };
 
 class Accumulator{

@@ -1,5 +1,4 @@
 #include "simd_definitions.hpp"
-#include <vector>
 
 // SIMD utility functions
 simd16 simd16_zero() {
@@ -12,6 +11,10 @@ simdint simdint_zero() {
 
 simd16 simd16_set1(dbyte value) {
     return ADDMM(set1_epi16)(value);
+}
+
+simdint simdint_set1(int value) {
+    return ADDMM(set1_epi32)(value);
 }
 
 simdint simdint_add(simdint a, simdint b) {
@@ -32,6 +35,10 @@ simd16 simd16_shr(simd16 a, int b){
 
 simd16 simd16_clamp(simd16 value, simd16 min_val, simd16 max_val) {
     return ADDMM(min_epi16)(ADDMM(max_epi16)(value, min_val), max_val);
+}
+
+simd16 simdint_clamp(simdint value, simdint min_val, simdint max_val) {
+    return ADDMM(min_epi32)(ADDMM(max_epi32)(value, min_val), max_val);
 }
 
 simdint simdint_mullo(simdint a, simdint b) {
