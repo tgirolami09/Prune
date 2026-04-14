@@ -170,7 +170,7 @@ struct PWLayer{
                 simd16 neurons2 = simd16_mullo(simd16_clamp(simd16_add(x1[j+1], x3[j+1]), mini, maxiA), simd16_clamp(simd16_add(x1[j+1+half], x3[j+1+half]), mini, maxiA));
                 neurons1 = simdint_shr(neurons1, 9);
                 neurons2 = simdint_shr(neurons2, 9);
-                simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);
+                simd8 neurons = ADDMM(packus_epi16)(neurons2, neurons1);
                 y[i] = simdint_add(y[i], matrix_mul(neurons, weights[i][j/2]));
             }
             for(int j=0; j<half; j += 2){
@@ -178,7 +178,7 @@ struct PWLayer{
                 simd16 neurons2 = simd16_mullo(simd16_clamp(simd16_add(x2[j+1-full], x4[j+1-full]), mini, maxiA), simd16_clamp(simd16_add(x2[j+1-half], x4[j+1-half]), mini, maxiA));
                 neurons1 = simdint_shr(neurons1, 9);
                 neurons2 = simdint_shr(neurons2, 9);
-                simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);
+                simd8 neurons = ADDMM(packus_epi16)(neurons2, neurons1);
                 y[i] = simdint_add(y[i], matrix_mul(neurons, weights[i][j/2]));
             }
         }
