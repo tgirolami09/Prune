@@ -136,18 +136,12 @@ struct Layer{
     simdint weights[output][input/nbint];
     int biases[output];
     void forward(simdint x[input/nbint], int y[output]) const{
-        simdint out[output];
         for(int i=0; i<output; i++){
-            y[i] = biases[i];
-            out[i] = simdint_set1(0);
-        }
-        for(int i=0; i<output; i++){
+            simdint partial = simdint_set1(0);
             for(int j=0; j<input/nb16; j++){
-                out[i] = simdint_add(out[i], doOut<isSquared>(x[j], weights[i][j], simdint_set1(clamp)));
+                partial = simdint_add(partial, doOut<isSquared>(x[j], weights[i][j], simdint_set1(clamp)));
             }
-        }
-        for(int i=0; i<output; i++){
-            y[i] += mysum(out[i]);
+            y[i] = biases[i]+mysum(partial);
         }
     }
 };
