@@ -29,13 +29,17 @@ T _quantise(float w){
     return clamp<int>(round(w*Q), -numeric_limits<T>::max(), numeric_limits<T>::max());
 }
 
+int transpose(int n){
+    return ((__builtin_popcount(n&0b1100) == 1)*0b1100)^n;
+}
+
 template<int input, int output, int ob>
 struct layer{
     float weights[input][ob*output];
     float bias[ob*output];
-    template<typename T1, typename T2, int Qbias, bool transpose=true>
+    template<typename T1, typename T2, int Qbias, bool isL1=false>
     void quantise(int id, FILE* file){
-        if(transpose){
+        if constexpr(!isL1){
             for(int i=0; i<output; i++){
                 for(int j=0; j<input; j++){
                     T1 quantised = _quantise<T1, QB>(weights[j][i+output*id]);
@@ -45,7 +49,7 @@ struct layer{
         }else{
             for(int j=0; j<input; j++){
                 for(int i=0; i<output; i++){
-                    T1 quantised = _quantise<T1, QB>(weights[j][i+output*id]);
+                    T1 quantised = _quantise<T1, QB>(weights[j][transpose(i)+output*id]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
@@ -101,7 +105,7 @@ int main(int argc, char** argv){
     fclose(fin);
     nnue->FT.quantise(fout);
     for(int id=0; id<OB; id++){
-        nnue->l1.quantise<int8_t, int32_t, QB, false>(id, fout);
+        nnue->l1.quantise<int8_t, int32_t, QB, true>(id, fout);
         nnue->l2.quantise<int32_t, int32_t, QB*QB*QB>(id, fout);
         nnue->l3.quantise<int32_t, int32_t, QB*QB*QB*QB>(id, fout);
     }
