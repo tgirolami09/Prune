@@ -76,8 +76,8 @@ struct nn{
 };
 
 int main(int argc, char** argv){
-    FILE* fin=fopen(argv[0], "r");
-    FILE* fout=fopen(argv[1], "w");
+    FILE* fin=fopen(argv[1], "r");
+    FILE* fout=fopen(argv[2], "w");
     unique_ptr<nn> nnue = make_unique<nn>();
     fread(&nnue->FT, 1, sizeof(nnue->FT), fin);
     fread(&nnue->l1, 1, sizeof(nnue->l1), fin);
