@@ -701,7 +701,7 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     subnet.l1.forward(accs.accs[side], accs.accs[!side], HL2);
     subnet.l2.forward(HL2, (int*)&HL3);
     subnet.l3.forward(HL3, &finRes);
-    finRes = finRes/QB*SCALE/(QB*QB*QB);
+    finRes = finRes/(QB*QB)*SCALE/(QB*QB);
     return finRes;
 }
 template<int f>
