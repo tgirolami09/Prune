@@ -49,7 +49,7 @@ struct layer{
         }else{
             for(int j=0; j<input; j++){
                 for(int i=0; i<output; i++){
-                    T1 quantised = _quantise<T1, QB>(weights[j][transpose(i)+output*id]);
+                    T1 quantised = _quantise<T1, QB>(weights[transpose(j)][output*id]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
