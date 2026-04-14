@@ -118,9 +118,9 @@ public:
 };
 
 
-static const simdint mini = simd16_set1(0);
-static const simdint maxiA = simd16_set1(QA);
-static const simdint maxiB = simd16_set1(QB);
+static const simdint mini = simdint_set1(0);
+static const simdint maxiA = simdint_set1(QA);
+static const simdint maxiB = simdint_set1(QB);
 template<bool squared>
 inline simdint doOut(simdint a, simdint w, const simdint maxi){
     simdint clamped = simdint_clamp(a, mini, maxi);

@@ -50,7 +50,7 @@ struct layer{
             }
         }
         for(int i=0; i<output; i++){
-            T2 quantised = _quantise<T2, Qbias>(bias[i+output*id]*Qbias);
+            T2 quantised = _quantise<T2, Qbias>(bias[i+output*id]);
             fwrite(&quantised, sizeof(T2), 1, file);
         }
     }
