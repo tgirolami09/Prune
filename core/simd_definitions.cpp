@@ -36,6 +36,9 @@ simd16 simd16_shr(simd16 a, int b){
 simd16 simd16_clamp(simd16 value, simd16 min_val, simd16 max_val) {
     return ADDMM(min_epi16)(ADDMM(max_epi16)(value, min_val), max_val);
 }
+simd16 simd16_uclamp(simd16 value, simd16 min_val, simd16 max_val) {
+    return ADDMM(min_epu16)(ADDMM(max_epu16)(value, min_val), max_val);
+}
 
 simd16 simdint_clamp(simdint value, simdint min_val, simdint max_val) {
     return ADDMM(min_epi32)(ADDMM(max_epi32)(value, min_val), max_val);
