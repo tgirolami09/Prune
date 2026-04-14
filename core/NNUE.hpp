@@ -161,8 +161,8 @@ struct PWLayer{
                 y[i] = simdint_add(y[i], matrix_mul(neurons, weights[i][j/2]));
             }
             for(int j=0; j<half; j += 2){
-                simd16 neurons1 = simd16_clamp(x1[j  ], 0, QA)*simd16_clamp(x1[j  +half], 0, QA);
-                simd16 neurons2 = simd16_clamp(x1[j+1], 0, QA)*simd16_clamp(x1[j+1+half], 0, QA);
+                simd16 neurons1 = simd16_clamp(x2[j  -full], 0, QA)*simd16_clamp(x2[j  -half], 0, QA);
+                simd16 neurons2 = simd16_clamp(x2[j+1-full], 0, QA)*simd16_clamp(x2[j+1-half], 0, QA);
                 neurons1 = simdint_shr(neurons1, 9);
                 neurons2 = simdint_shr(neurons2, 9);
                 simd8 neurons = ADDMM(packus_epi16)(neurons1, neurons2);
