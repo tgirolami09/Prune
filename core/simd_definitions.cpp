@@ -21,6 +21,14 @@ simdint simdint_add(simdint a, simdint b) {
     return ADDMM(add_epi32)(a, b);
 }
 
+simd16 simd16_sli(simd16 a, int shift){
+    return ADDMM(slli_epi16)(a, shift);
+}
+
+simd16 simd16_mulhi(simd16 a, simd16 b){
+    return ADDMM(mulhi_epi16)(a, b);
+}
+
 simd16 simd16_mullo(simd16 a, simd16 b) {
     return ADDMM(mullo_epi16)(a, b);
 }
