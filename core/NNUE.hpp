@@ -172,12 +172,13 @@ struct Layer1{
         for(int i=0; i<input/frame; i++){
             simd8 inp = ADDMM(set1_epi32)(x[i]);
             const int offset = i*output*frame;
-            for(int j=0; j<output; j += nbint){
-                y[j/nbint] = matrix_mul(y[j/nbint], inp, weights[(offset+j*frame)/nb8]);
+            for(int j=0; j<output/nbint; j++){
+                y[j] = matrix_mul(y[j], inp, weights[(offset+j*frame*nbint)/nb8]);
             }
         }
         for(int i=0; i<output/nbint; i++){
-            y[i] = simdint_clamp(y[i], mini, simdint_set1(QB));
+            y[i] = simdint_clamp(y[i], mini, simdint_set1(QB*128));
+            y[i] = simdint_shr(y[i], 7);
             y[i] = simdint_mullo(y[i], y[i]);
         }
     }

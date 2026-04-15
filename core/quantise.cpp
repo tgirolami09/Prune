@@ -80,21 +80,21 @@ struct layer{
         if constexpr(!isL1){
             for(int i=0; i<output; i++){
                 for(int j=0; j<input; j++){
-                    T1 quantised = _quantise<T1, QB>(weights[j][i+output*id]);
+                    T1 quantised = _quantise<T1, QB>(weights[j][output*id+i]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
         }else{
             for(int j=0; j<input; j++){
                 for(int i=0; i<output; i++){
-                    T1 quantised = _quantise<T1, QB>(weights[transpose(j)][output*id]);
+                    T1 quantised = _quantise<T1, QB>(weights[transpose(j)][output*id+i]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
         }
         while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
         for(int i=0; i<output; i++){
-            T2 quantised = _quantise<T2, Qbias>(bias[i+output*id]);
+            T2 quantised = _quantise<T2, Qbias>(bias[output*id+i]);
             fwrite(&quantised, sizeof(T2), 1, file);
         }
         while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
@@ -143,7 +143,7 @@ int main(int argc, char** argv){
     fclose(fin);
     nnue->FT.quantise(fout);
     for(int id=0; id<OB; id++){
-        nnue->l1.quantise<int8_t, int32_t, QB, true>(id, fout);
+        nnue->l1.quantise<int8_t, int32_t, 128*QB, true>(id, fout);
         nnue->l2.quantise<int32_t, int32_t, QB*QB*QB>(id, fout);
         nnue->l3.quantise<int32_t, int32_t, QB*QB*QB*QB>(id, fout);
     }
