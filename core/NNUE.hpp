@@ -147,10 +147,10 @@ struct Layer{
 };
 
 inline simdint matrix_mul(simdint output, simd8 inputs, simd8 weights){
-#ifdef __AVX2__
-    return _mm256_add_epi32(output, _mm256_madd_epi16(_mm256_maddubs_epi16(inputs, weights), _mm256_set1_epi16(1)));
-#elif defined(__AVX512F__)
-    return _mm512_dpbusd_epi32(output, inputs, weights);
+#ifdef VNNI
+    return ADDMM(dpbusd_epi32(output, inputs, weights));
+#else
+    return ADDMM(add_epi32)(output, ADDMM(madd_epi16)(ADDMM(maddubs_epi16)(inputs, weights), simd16_set1(1)));
 #endif
 }
 
@@ -166,8 +166,10 @@ struct Layer1{
             y[i] = biases[i];
         }
         for(int i=0; i<input/frame; i++){
-            for(int j=0; j<output/nbint; j++){
-                y[j] = matrix_mul(y[j], ADDMM(set1_epi32)(x[i]), weights[(i*output*frame+j*nbint)/nb8]);
+            simd8 inp = ADDMM(set1_epi32)(x[i]);
+            const int offset = i*output*frame;
+            for(int j=0; j<output; j += nbint){
+                y[j/nbint] = matrix_mul(y[j/nbint], inp, weights[(offset+j*frame)/nb8]);
             }
         }
     }

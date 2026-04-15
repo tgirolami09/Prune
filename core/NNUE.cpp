@@ -703,13 +703,13 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     const int half = HL_SIZE/nb16/2;
     const int shift = 16-9;
     for(int i=0; i<half; i += 2){
-        simd16 neurons1 = simd16_mulhi(simd16_clamp(simd16_add(x1[i  ], x3[i  ]), mini, maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i  +half], x3[i  +half]), mini, maxiA), shift));
-        simd16 neurons2 = simd16_mulhi(simd16_clamp(simd16_add(x1[i+1], x3[i+1]), mini, maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i+1+half], x3[i+1+half]), mini, maxiA), shift));
+        simd16 neurons1 = simd16_mulhi(simd16_min(simd16_add(x1[i  ], x3[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i  +half], x3[i  +half]), mini, maxiA), shift));
+        simd16 neurons2 = simd16_mulhi(simd16_min(simd16_add(x1[i+1], x3[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i+1+half], x3[i+1+half]), mini, maxiA), shift));
         HL1[i/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     for(int i=0; i<half; i += 2){
-        simd16 neurons1 = simd16_mulhi(simd16_clamp(simd16_add(x2[i  ], x4[i  ]), mini, maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i  +half], x4[i  +half]), mini, maxiA), shift));
-        simd16 neurons2 = simd16_mulhi(simd16_clamp(simd16_add(x2[i+1], x4[i+1]), mini, maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA), shift));
+        simd16 neurons1 = simd16_mulhi(simd16_min(simd16_add(x2[i  ], x4[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i  +half], x4[i  +half]), mini, maxiA), shift));
+        simd16 neurons2 = simd16_mulhi(simd16_min(simd16_add(x2[i+1], x4[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA), shift));
         HL1[i/2+HL_SIZE/nb8/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     simdint HL2[L2];

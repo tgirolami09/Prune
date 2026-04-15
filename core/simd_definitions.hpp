@@ -38,6 +38,13 @@
 #else
     #error "This code requires at least SSE2 support"
 #endif
+
+#if defined(__AVX512VNNI__) || defined(__AVX2_VNNI__)
+#define VNNI
+#pragma message("cpu support vnni instructions")
+#endif
+
+
 const int nb16 = sizeof(simd16)/sizeof(int16_t);
 const int nb8 = sizeof(simd8)/sizeof(int8_t);
 const int nbint = sizeof(simdint)/sizeof(int32_t);
@@ -54,6 +61,9 @@ simdint simdint_set1(int value);
 simdint simdint_add(simdint a, simdint b);
 simd16 simd16_mullo(simd16 a, simd16 b);
 simd16 simd16_mulhi(simd16 a, simd16 b);
+simd16 simd16_min(simd16 a, simd16 b);
+simdint simdint_min(simdint a, simdint b);
+simdint simdint_max(simdint a, simdint b);
 simd16 simd16_clamp(simd16 value, simd16 min_val, simd16 max_val);
 simd16 simd16_uclamp(simd16 value, simd16 min_val, simd16 max_val);
 simdint simdint_clamp(simdint value, simdint min_val, simdint max_val);
