@@ -3,6 +3,7 @@
 #include "Const.hpp"
 #include "simd_definitions.hpp"
 #include <fstream>
+#include <algorithm>
 #include "Move.hpp"
 #include "embeder.hpp"
 #include "GameState.hpp"
@@ -131,7 +132,7 @@ inline simdint doOut(simdint a, simdint w, const simdint maxi){
     return mul;
 }
 
-template<int input, int output, bool isSquared, int clamp>
+template<int input, int output, int _clamp, bool isLast=false>
 struct Layer{
     simdint weights[output][input/nbint];
     int biases[output];
@@ -139,9 +140,12 @@ struct Layer{
         for(int i=0; i<output; i++){
             simdint partial = simdint_set1(0);
             for(int j=0; j<input/nb16; j++){
-                partial = simdint_add(partial, doOut<isSquared>(x[j], weights[i][j], simdint_set1(clamp)));
+                partial = simdint_add(partial, simdint_mullo(x[j], weights[i][j]));
             }
             y[i] = biases[i]+mysum(partial);
+            if constexpr(!isLast){
+                y[i] = clamp(y[i], 0, _clamp);
+            }
         }
     }
 };
@@ -156,11 +160,11 @@ inline simdint matrix_mul(simdint output, simd8 inputs, simd8 weights){
 
 template<int input, int output>
 struct Layer1{
-    static const int full=input/nb16;
-    static const int half=full/2;
+    static constexpr int full=input/nb16;
+    static constexpr int half=full/2;
     alignas(64) simd8 weights[input*output/nb8];
     alignas(64) simdint biases[output/nbint];
-    static const int frame = 4;
+    static constexpr int frame = sizeof(int32_t)/sizeof(int8_t);
     void forward(uint32_t x[input/frame], simdint y[output/nbint]) const{
         for(int i=0; i<output/nbint; i++){
             y[i] = biases[i];
@@ -172,13 +176,17 @@ struct Layer1{
                 y[j/nbint] = matrix_mul(y[j/nbint], inp, weights[(offset+j*frame)/nb8]);
             }
         }
+        for(int i=0; i<output/nbint; i++){
+            y[i] = simdint_clamp(y[i], mini, simdint_set1(QB));
+            y[i] = simdint_mullo(y[i], y[i]);
+        }
     }
 };
 
 struct Layers{
     Layer1<HL_SIZE, L2> l1;
-    Layer<L2, L3, true, QB> l2;
-    Layer<L3, 1, false, QB*QB*QB> l3;
+    Layer<L2, L3, QB*QB*QB> l2;
+    Layer<L3, 1, 0, true> l3;
 };
 
 class Accumulator{

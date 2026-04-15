@@ -712,8 +712,8 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
         simd16 neurons2 = simd16_mulhi(simd16_min(simd16_add(x2[i+1], x4[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA), shift));
         HL1[i/2+HL_SIZE/nb8/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
-    simdint HL2[L2];
-    simdint HL3[L3];
+    simdint HL2[L2/nbint];
+    simdint HL3[L3/nbint];
     int finRes;
     const auto& subnet=laterLayers[idB];
     subnet.l1.forward((uint32_t*)HL1, HL2);
