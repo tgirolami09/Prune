@@ -123,15 +123,6 @@ static const simdint mini = simdint_set1(0);
 static const simdint maxiA = simdint_set1(QA);
 static const simdint maxiB = simdint_set1(QB);
 
-template<bool squared>
-inline simdint doOut(simdint a, simdint w, const simdint maxi){
-    simdint clamped = simdint_clamp(a, mini, maxi);
-    simdint mul = simdint_mullo(clamped, w);
-    if constexpr(squared)
-        mul = simdint_mullo(mul, clamped);
-    return mul;
-}
-
 template<int input, int output, int _clamp, bool isLast=false>
 struct Layer{
     simdint weights[output][input/nbint];
@@ -162,7 +153,7 @@ template<int input, int output>
 struct Layer1{
     static constexpr int full=input/nb16;
     static constexpr int half=full/2;
-    alignas(64) simd8 weights[input*output/nb8];
+    alignas(64) simd8 weights[input][output/nb8];
     alignas(64) simdint biases[output/nbint];
     static constexpr int frame = sizeof(int32_t)/sizeof(int8_t);
     void forward(uint32_t x[input/frame], simdint y[output/nbint]) const{
@@ -171,9 +162,8 @@ struct Layer1{
         }
         for(int i=0; i<input/frame; i++){
             simd8 inp = ADDMM(set1_epi32)(x[i]);
-            const int offset = i*output*frame;
             for(int j=0; j<output/nbint; j++){
-                y[j] = matrix_mul(y[j], inp, weights[(offset+j*frame*nbint)/nb8]);
+                y[j] = matrix_mul(y[j], inp, weights[i][j*nbint/nb8]);
             }
         }
         for(int i=0; i<output/nbint; i++){
