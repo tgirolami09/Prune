@@ -153,7 +153,7 @@ template<int input, int output>
 struct Layer1{
     static constexpr int full=input/nb16;
     static constexpr int half=full/2;
-    alignas(64) simd8 weights[input][output/nb8];
+    alignas(64) simd8 weights[input*output/nb8];
     alignas(64) simdint biases[output/nbint];
     static constexpr int frame = sizeof(int32_t)/sizeof(int8_t);
     void forward(uint32_t x[input/frame], simdint y[output/nbint]) const{
@@ -162,8 +162,9 @@ struct Layer1{
         }
         for(int i=0; i<input/frame; i++){
             simd8 inp = ADDMM(set1_epi32)(x[i]);
+            const int offset = i*frame*output/nb8;
             for(int j=0; j<output/nbint; j++){
-                y[j] = matrix_mul(y[j], inp, weights[i][j*nbint/nb8]);
+                y[j] = matrix_mul(y[j], inp, weights[offset+j*nbint/nb8]);
             }
         }
         for(int i=0; i<output/nbint; i++){
