@@ -169,8 +169,8 @@ struct Layer1{
         }
         for(int i=0; i<output/nbint; i++){
             y[i] = simdint_clamp(y[i], mini, simdint_set1(QB*128));
-            y[i] = simdint_shr(y[i], 7);
             y[i] = simdint_mullo(y[i], y[i]);
+            y[i] = simdint_shr(y[i], 14);
         }
     }
 };
