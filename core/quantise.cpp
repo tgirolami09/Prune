@@ -24,6 +24,7 @@ const int L2=16;
 const int L3=32;
 
 const bool isPW=true;
+const bool isFactorised=true;
 const char zero = 0;// for padding
 
 template<typename T, int Q>
@@ -108,11 +109,15 @@ struct layer{
 template<int ib, int hl>
 struct inputlayer{
     alignas(64) float threatweights[threatSize][hl];
-    alignas(64) float psqweights[ib][psqSize][hl];
-    float biases[hl];
+    alignas(64) float psqweights[ib+isFactorised][psqSize][hl];
+    alignas(64) float biases[hl];
     void quantise(FILE* file){
-        for(int i=0; i<ib; i++)for(int j=0; j<psqSize; j++)for(float w:psqweights[i][j]){
-            int16_t quantised = _quantise<int16_t, QA>(w);
+        for(int i=0; i<ib; i++)for(int j=0; j<psqSize; j++)for(int k=0; k<hl; k++){
+            float param = psqweights[i+isFactorised][j][k];
+            if constexpr(isFactorised){
+                param += psqweights[0][j][k];
+            }
+            int16_t quantised = _quantise<int16_t, QA>(param);
             fwrite(&quantised, sizeof(int16_t), 1, file);
         }
         while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);

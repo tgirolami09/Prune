@@ -539,20 +539,20 @@ T get_int(const unsigned char* source, int length){
 }
 
 void NNUE::initAcc(Accumulator& accs) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
     }
 }
 
 void NNUE::initAcc(Accumulator& accs, bool color) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         accs[color][i] = hlBiases[i];
     }
 }
 
 void NNUE::init1Acc(oneAccumulator& accs) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         accs[i] = hlBiases[i];
     }
 }
@@ -565,7 +565,7 @@ template<int f>
 void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");
     const simdhalf* weights = (simdhalf*)&threatWeights[index];
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         simd16 low=simdh8_16(weights[i]);
         if constexpr (f == 1) {
             accs[pov+2][i] = simd16_add(accs[pov+2][i], low);
@@ -578,7 +578,7 @@ void NNUE::addThreat(Accumulator& accs, bool pov, int index) const{
 template<int N>
 void NNUE::Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, uint16_t indexadds[N], uint16_t indexrems[N]) const{
     static_assert(N >= 1, "at least one update lol");
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         simd16 low = simd16_sub(
             simdh8_16(((simdhalf*)&threatWeights[indexadds[0]])[i]),
             simdh8_16(((simdhalf*)&threatWeights[indexrems[0]])[i])
@@ -599,7 +599,7 @@ template<int f>
 void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const{
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");
     const simdhalf* weights = (simdhalf*)&threatWeights[index];
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         simd16 low=simdh8_16(weights[i]);
         if constexpr (f == 1) {
             accOut[pov+2][i] = simd16_add(accIn[pov+2][i], low);
@@ -612,7 +612,7 @@ void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, in
 template<int f, int N>
 void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, uint16_t* index) const{
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         simd16 low=simdh8_16(((simdhalf*)&threatWeights[index[0]])[i]);
         for(int u=1; u<N; u++){
             low = simd16_add(
@@ -629,7 +629,7 @@ void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, ui
 }
 
 void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         accs[pov+2][i] = simd16_zero();
     }
     big blackbb = state.colors[BLACK];
@@ -695,14 +695,14 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
 }
 
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
-    simd8 HL1[HL_SIZE/nb8];
+    simd8 HL1[L1/nb8];
     simdint HL2[L2/nbint];
     simdint HL3[L3/nbint];
     const auto& x1 = accs.accs[ side];
     const auto& x3 = accs.accs[ side+2];
     const auto& x2 = accs.accs[!side];
     const auto& x4 = accs.accs[!side+2];
-    const int half = HL_SIZE/nb16/2;
+    const int half = L1/nb16/2;
     const int shift = 16-9;
     for(int i=0; i<half; i += 2){
         simd16 neurons1 = simd16_mulhi(simd16_min(simd16_add(x1[i  ], x3[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i  +half], x3[i  +half]), mini, maxiA), shift));
@@ -712,7 +712,7 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     for(int i=0; i<half; i += 2){
         simd16 neurons1 = simd16_mulhi(simd16_min(simd16_add(x2[i  ], x4[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i  +half], x4[i  +half]), mini, maxiA), shift));
         simd16 neurons2 = simd16_mulhi(simd16_min(simd16_add(x2[i+1], x4[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA), shift));
-        HL1[i/2+HL_SIZE/nb8/2] = ADDMM(packus_epi16)(neurons1, neurons2);
+        HL1[i/2+L1/nb8/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     int finRes;
     const auto& subnet=laterLayers[idB];
@@ -724,7 +724,7 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
 }
 template<int f>
 void NNUE::change1(Accumulator& accs, bool pov, int index, int idInputBucket) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         if constexpr (f == 1) {
             accs[pov][i] = simd16_add(accs[pov][i], hlWeights[idInputBucket][index][i]);
         } else {
@@ -734,7 +734,7 @@ void NNUE::change1(Accumulator& accs, bool pov, int index, int idInputBucket) co
 }
 template<int f>
 void NNUE::change1acc(oneAccumulator& acc, int index, int idInputBucket) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         if constexpr (f == 1) {
             acc[i] = simd16_add(acc[i], hlWeights[idInputBucket][index][i]);
         } else {
@@ -744,7 +744,7 @@ void NNUE::change1acc(oneAccumulator& acc, int index, int idInputBucket) const{
 }
 template<int f>
 void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index, int idInputBucket) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         if constexpr (f == 1) {
             accOut[pov][i] = simd16_add(accIn[pov][i], hlWeights[idInputBucket][index][i]);
         } else {
@@ -753,27 +753,27 @@ void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index,
     }
 }
 void NNUE::move3(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int indexcap, int idInputBucket) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         simd16 update = simd16_sub(hlWeights[idInputBucket][indexto][i], simd16_add(hlWeights[idInputBucket][indexfrom][i], hlWeights[idInputBucket][indexcap][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
 void NNUE::move2(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto, int idInputBucket) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         simd16 update = simd16_sub(hlWeights[idInputBucket][indexto][i], hlWeights[idInputBucket][indexfrom][i]);
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
 
 void NNUE::move2In(oneAccumulator& acc, int indexfrom, int indexto, int idInputBucket) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         simd16 update = simd16_sub(hlWeights[idInputBucket][indexto][i], hlWeights[idInputBucket][indexfrom][i]);
         acc[i] = simd16_add(acc[i], update);
     }
 }
 
 void NNUE::move4(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom1, int indexto1, int indexfrom2, int indexto2, int idInputBucket) const{
-    for(int i=0; i<HL_SIZE/nb16; i++){
+    for(int i=0; i<L1/nb16; i++){
         simd16 update = simd16_sub(simd16_add(hlWeights[idInputBucket][indexto1][i], hlWeights[idInputBucket][indexto2][i]), simd16_add(hlWeights[idInputBucket][indexfrom1][i], hlWeights[idInputBucket][indexfrom2][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }

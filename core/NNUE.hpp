@@ -27,7 +27,7 @@ const int QB = 64;
 const int BUCKET = 8;
 const int nbInputBuckets = 4;
 
-const int HL_SIZE = 384;
+const int L1 = 384;
 const int L2=16;
 const int L3=32;
 
@@ -44,7 +44,7 @@ const int inputBuckets[32] = {
 };
 const int DIVISOR=(31+BUCKET)/BUCKET;
 
-static_assert(HL_SIZE%nb16 == 0);
+static_assert(L1%nb16 == 0);
 
 int getInputBucket(int Kpos, bool side, bool mirror);
 
@@ -91,7 +91,7 @@ public:
         return isexcluded()?ThreatIndex(to, from):ThreatIndex(from, to);
     }
 };
-using oneAccumulator=simd16[HL_SIZE/nb16];
+using oneAccumulator=simd16[L1/nb16];
 class FinnytableNormal{
 public:
     big bitboards[8];
@@ -176,7 +176,7 @@ struct Layer1{
 };
 
 struct Layers{
-    Layer1<HL_SIZE, L2> l1;
+    Layer1<L1, L2> l1;
     Layer<L2, L3, QB*QB*QB> l2;
     Layer<L3, 1, 0, true> l3;
 };
@@ -191,7 +191,7 @@ class Accumulator{
     void getThreatUpdates(const PositionState& state1, const PositionState& state2, const Move& move);
     void applythreatsUpdates(Accumulator& accIn, bool side);
 public:
-    simd16 accs[4][HL_SIZE/nb16];
+    simd16 accs[4][L1/nb16];
     bool Kside[2];
     bool side;
     bool pstrefresh;
@@ -213,9 +213,9 @@ public:
 
 class NNUE{
 public:
-    alignas(64) simd16 hlWeights[nbInputBuckets][INPUT_SIZE][HL_SIZE/nb16];
-    alignas(64) simd8 threatWeights[THREAT_SIZE][HL_SIZE/nb8];
-    alignas(64) simd16 hlBiases[HL_SIZE/nb16];
+    alignas(64) simd16 hlWeights[nbInputBuckets][INPUT_SIZE][L1/nb16];
+    alignas(64) simd8 threatWeights[THREAT_SIZE][L1/nb8];
+    alignas(64) simd16 hlBiases[L1/nb16];
     Layers laterLayers[BUCKET];
 
     template<typename T=char>
