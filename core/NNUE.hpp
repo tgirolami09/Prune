@@ -127,10 +127,10 @@ template<int input, int output, int _clamp, bool isLast=false>
 struct Layer{
     simdint weights[output][input/nbint];
     int biases[output];
-    void forward(simdint x[input/nbint], int y[output]) const{
+    void forward(const simdint x[input/nbint], int y[output]) const{
         for(int i=0; i<output; i++){
             simdint partial = simdint_set1(0);
-            for(int j=0; j<input/nb16; j++){
+            for(int j=0; j<input/nbint; j++){
                 partial = simdint_add(partial, simdint_mullo(x[j], weights[i][j]));
             }
             y[i] = biases[i]+mysum(partial);
@@ -156,15 +156,15 @@ struct Layer1{
     alignas(64) simd8 weights[input*output/nb8];
     alignas(64) simdint biases[output/nbint];
     static constexpr int frame = sizeof(int32_t)/sizeof(int8_t);
-    void forward(uint32_t x[input/frame], simdint y[output/nbint]) const{
+    void forward(const uint32_t x[input/frame], simdint y[output/nbint]) const{
         for(int i=0; i<output/nbint; i++){
             y[i] = biases[i];
         }
         for(int i=0; i<input/frame; i++){
-            simd8 inp = ADDMM(set1_epi32)(x[i]);
+            const simd8 inp = ADDMM(set1_epi32)(x[i]);
             const int offset = i*frame*output/nb8;
             for(int j=0; j<output/nbint; j++){
-                y[j] = matrix_mul(y[j], inp, weights[offset+j*nbint/nb8]);
+                y[j] = matrix_mul(y[j], inp, weights[offset+j*nbint*frame/nb8]);
             }
         }
         for(int i=0; i<output/nbint; i++){

@@ -29,7 +29,11 @@ const char zero = 0;// for padding
 template<typename T, int Q>
 T _quantise(float w){
     w = clamp(w, -ftClip, ftClip);
-    return clamp<int>(round(w*Q), -numeric_limits<T>::max(), numeric_limits<T>::max());
+    w = round(w * static_cast<float>(Q));
+    if(is_same_v<T, int32_t>){
+        return static_cast<T>(w);
+    }
+    return static_cast<T>(clamp<float>(w, -numeric_limits<T>::max(), numeric_limits<T>::max()));
 }
 
 #ifdef __AVX512F__
@@ -73,8 +77,8 @@ int transpose(int n){
 
 template<int input, int output, int ob>
 struct layer{
-    float weights[input][ob*output];
-    float bias[ob*output];
+    alignas(64) float weights[input][ob*output];
+    alignas(64) float bias[ob*output];
     template<typename T1, typename T2, int Qbias, bool isL1=false>
     void quantise(int id, FILE* file){
         if constexpr(!isL1){
@@ -103,8 +107,8 @@ struct layer{
 
 template<int ib, int hl>
 struct inputlayer{
-    float threatweights[threatSize][hl];
-    float psqweights[ib][psqSize][hl];
+    alignas(64) float threatweights[threatSize][hl];
+    alignas(64) float psqweights[ib][psqSize][hl];
     float biases[hl];
     void quantise(FILE* file){
         for(int i=0; i<ib; i++)for(int j=0; j<psqSize; j++)for(float w:psqweights[i][j]){
