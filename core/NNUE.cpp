@@ -721,6 +721,19 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     subnet.l1.forward(HL1, HL2);
     subnet.l2.forward(HL2, HL3);
     subnet.l3.forward(reinterpret_cast<simd<32>*>(HL3), &finRes);
+    for(int i=0; i<L1; i++){
+        printf("%d ", ((uint8_t*)HL1)[i]);
+    }
+    printf("\n");
+    for(int i=0; i<L2; i++){
+        printf("%d ", ((int*)HL2)[i]);
+    }
+    printf("\n");
+    for(int i=0; i<L3; i++){
+        printf("%d ", ((int*)HL3)[i]);
+    }
+    printf("\n");
+    printf("%d\n", finRes);
     finRes = finRes/(QB*QB)*SCALE/(QB*QB);
     return finRes;
 }

@@ -43,28 +43,27 @@ template<int size>
 using simd=_simd;
 
 template<int size>
-constexpr size_t nb = sizeof(simd<size>)*8/size;
+constexpr int nb = sizeof(simd<size>)*8/size;
 
 template<typename T1, typename T2>
-constexpr size_t nbTypes = sizeof(T1)/sizeof(T2); 
-constexpr size_t I8inI32 = nbTypes<int32_t, int8_t>;
+constexpr int nbTypes = sizeof(T1)/sizeof(T2); 
+constexpr int I8inI32 = nbTypes<int32_t, int8_t>;
 #define CONCAT2(a, b) a ## b
 #define CONCAT(a, b) CONCAT2(a, b)
 #define ADDMM(func_name) CONCAT(MM, _ ## func_name)
 #define ADDSIZE(func_name) CONCAT(func_name, SIZE)
 
 // SIMD utility functions
-constexpr simd<16> simd16_zero(){
+inline simd<16> simd16_zero(){
     return ADDSIZE(ADDMM(setzero_si))();
 }
-constexpr simd<32> simdint_zero(){
+inline simd<32> simdint_zero(){
     return ADDSIZE(ADDMM(setzero_si))();
 }
-
-constexpr simd<16> simd16_set1(dbyte value){
+inline simd<16> simd16_set1(dbyte value){
     return ADDMM(set1_epi16)(value);
 }
-constexpr simd<32> simdint_set1(int value){
+inline simd<32> simdint_set1(int value){
     return ADDMM(set1_epi32)(value);
 }
 simd<32> simdint_add(const simd<32>& a, const simd<32>& b);

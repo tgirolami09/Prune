@@ -119,9 +119,9 @@ public:
 };
 
 
-static constexpr inline simd<32> mini = simdint_zero();
-static constexpr inline simd<32> maxiA = simdint_set1(QA);
-static constexpr inline simd<32> maxiB = simdint_set1(QB);
+static const inline simd<32> mini = simdint_zero();
+static const inline simd<32> maxiA = simdint_set1(QA);
+static const inline simd<32> maxiB = simdint_set1(QB);
 
 template<int input, int output, int _clamp, bool isLast=false>
 struct Layer{
