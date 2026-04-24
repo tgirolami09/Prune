@@ -3,7 +3,6 @@
 #include "Const.hpp"
 #include "simd_definitions.hpp"
 #include <fstream>
-#include <algorithm>
 #include "Move.hpp"
 #include "embeder.hpp"
 #include "GameState.hpp"
@@ -127,27 +126,8 @@ template<int input, int output, int _clamp, bool isLast=false>
 struct Layer{
     simdint weights[output][input/nbint];
     int biases[output];
-    void forward(const simdint x[input/nbint], int y[output]) const{
-        for(int i=0; i<output; i++){
-            simdint partial = simdint_set1(0);
-            for(int j=0; j<input/nbint; j++){
-                partial = simdint_add(partial, simdint_mullo(x[j], weights[i][j]));
-            }
-            y[i] = biases[i]+mysum(partial);
-            if constexpr(!isLast){
-                y[i] = clamp(y[i], 0, _clamp);
-            }
-        }
-    }
+    void forward(const simdint x[input/nbint], int y[output]) const;
 };
-
-inline simdint matrix_mul(simdint output, simd8 inputs, simd8 weights){
-#ifdef VNNI
-    return ADDMM(dpbusd_epi32(output, inputs, weights));
-#else
-    return ADDMM(add_epi32)(output, ADDMM(madd_epi16)(ADDMM(maddubs_epi16)(inputs, weights), simd16_set1(1)));
-#endif
-}
 
 template<int input, int output>
 struct Layer1{
@@ -156,23 +136,7 @@ struct Layer1{
     alignas(64) simd8 weights[input*output/nb8];
     alignas(64) simdint biases[output/nbint];
     static constexpr int frame = sizeof(int32_t)/sizeof(int8_t);
-    void forward(const uint32_t x[input/frame], simdint y[output/nbint]) const{
-        for(int i=0; i<output/nbint; i++){
-            y[i] = biases[i];
-        }
-        for(int i=0; i<input/frame; i++){
-            const simd8 inp = ADDMM(set1_epi32)(x[i]);
-            const int offset = i*frame*output/nb8;
-            for(int j=0; j<output/nbint; j++){
-                y[j] = matrix_mul(y[j], inp, weights[offset+j*nbint*frame/nb8]);
-            }
-        }
-        for(int i=0; i<output/nbint; i++){
-            y[i] = simdint_clamp(y[i], mini, simdint_set1(QB*128));
-            y[i] = simdint_mullo(y[i], y[i]);
-            y[i] = simdint_shr(y[i], 14);
-        }
-    }
+    void forward(const uint32_t x[input/frame], simdint y[output/nbint]) const;
 };
 
 struct Layers{

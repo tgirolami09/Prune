@@ -9,6 +9,7 @@
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "simd_definitions.hpp"
+#include <algorithm>
 
 using namespace std;
 
@@ -695,33 +696,75 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
 }
 
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
-    simd8 HL1[L1/nb8];
-    simdint HL2[L2/nbint];
-    simdint HL3[L3/nbint];
-    const auto& x1 = accs.accs[ side];
-    const auto& x3 = accs.accs[ side+2];
-    const auto& x2 = accs.accs[!side];
-    const auto& x4 = accs.accs[!side+2];
+    alignas(64) uint32_t HL1[L1/(sizeof(int)/sizeof(int8_t))];
+    simd8* HL1_simd = reinterpret_cast<simd8*>(HL1);
+    alignas(64) simdint HL2[L2/nbint];
+    alignas(64) int HL3[L3];
+    const auto x1 = accs.accs[ side];
+    const auto x3 = accs.accs[ side+2];
+    const auto x2 = accs.accs[!side];
+    const auto x4 = accs.accs[!side+2];
     const int half = L1/nb16/2;
     const int shift = 16-9;
     for(int i=0; i<half; i += 2){
         simd16 neurons1 = simd16_mulhi(simd16_min(simd16_add(x1[i  ], x3[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i  +half], x3[i  +half]), mini, maxiA), shift));
         simd16 neurons2 = simd16_mulhi(simd16_min(simd16_add(x1[i+1], x3[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i+1+half], x3[i+1+half]), mini, maxiA), shift));
-        HL1[i/2] = ADDMM(packus_epi16)(neurons1, neurons2);
+        HL1_simd[i/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     for(int i=0; i<half; i += 2){
         simd16 neurons1 = simd16_mulhi(simd16_min(simd16_add(x2[i  ], x4[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i  +half], x4[i  +half]), mini, maxiA), shift));
         simd16 neurons2 = simd16_mulhi(simd16_min(simd16_add(x2[i+1], x4[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA), shift));
-        HL1[i/2+L1/nb8/2] = ADDMM(packus_epi16)(neurons1, neurons2);
+        HL1_simd[i/2+L1/nb8/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     int finRes;
     const auto& subnet=laterLayers[idB];
-    subnet.l1.forward((uint32_t*)HL1, HL2);
-    subnet.l2.forward(HL2, (int*)HL3);
-    subnet.l3.forward(HL3, &finRes);
+    subnet.l1.forward(HL1, HL2);
+    subnet.l2.forward(HL2, HL3);
+    subnet.l3.forward(reinterpret_cast<simdint*>(HL3), &finRes);
     finRes = finRes/(QB*QB)*SCALE/(QB*QB);
     return finRes;
 }
+
+inline simdint matrix_mul(simdint output, simd8 inputs, simd8 weights){
+#ifdef VNNI
+    return ADDMM(dpbusd_epi32(output, inputs, weights));
+#else
+    return ADDMM(add_epi32)(output, ADDMM(madd_epi16)(ADDMM(maddubs_epi16)(inputs, weights), simd16_set1(1)));
+#endif
+}
+
+template<int input, int output>
+void Layer1<input, output>::forward(const uint32_t* x, simdint* y) const{
+    for(int i=0; i<output/nbint; i++){
+        y[i] = biases[i];
+    }
+    for(int i=0; i<input/frame; i++){
+        const simd8 inp = ADDMM(set1_epi32)(x[i]);
+        const int offset = i*frame*output/nb8;
+        for(int j=0; j<output/nbint; j++){
+            y[j] = matrix_mul(y[j], inp, weights[offset+j*nbint*frame/nb8]);
+        }
+    }
+    for(int i=0; i<output/nbint; i++){
+        y[i] = simdint_clamp(y[i], mini, simdint_set1(QB*128));
+        y[i] = simdint_mullo(y[i], y[i]);
+        y[i] = simdint_shr(y[i], 14);
+    }
+}
+template<int input, int output, int _clamp, bool isLast>
+void Layer<input, output, _clamp, isLast>::forward(const simdint* x, int* y) const{
+    for(int i=0; i<output; i++){
+        simdint partial = simdint_set1(0);
+        for(int j=0; j<input/nbint; j++){
+            partial = simdint_add(partial, simdint_mullo(x[j], weights[i][j]));
+        }
+        y[i] = biases[i]+mysum(partial);
+        if constexpr(!isLast){
+            y[i] = clamp(y[i], 0, _clamp);
+        }
+    }
+}
+
 template<int f>
 void NNUE::change1(Accumulator& accs, bool pov, int index, int idInputBucket) const{
     for(int i=0; i<L1/nb16; i++){
