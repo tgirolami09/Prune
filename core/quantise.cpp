@@ -37,15 +37,7 @@ T _quantise(float w){
     return static_cast<T>(clamp<float>(w, -numeric_limits<T>::max(), numeric_limits<T>::max()));
 }
 
-#ifdef __AVX512F__
-using simd=__m512i;
-#elif defined(__AVX2__)
-using simd=__m256i;
-#else
-using simd=__m128i;
-#endif
-
-constexpr int simdSize = sizeof(simd)/sizeof(int16_t);
+constexpr int simdSize = sizeof(_simd)/sizeof(int16_t);
 constexpr int mask = simdSize*2-1;
 alignas(64) constexpr array<int16_t, simdSize> first = []{
     array<int16_t, simdSize> res{};
@@ -62,7 +54,7 @@ alignas(64) constexpr array<int16_t, simdSize> second = []{
     return res;
 }();
 
-const simd _packed = ADDMM(packus_epi16)(*(simd*)&first, *(simd*)&second);
+const _simd _packed = ADDMM(packus_epi16)(*(_simd*)&first, *(_simd*)&second);
 const int8_t* packed = (int8_t*)&_packed;
 const array<int8_t, simdSize*2> depacked = [](){
     array<int8_t, simdSize*2> res{};

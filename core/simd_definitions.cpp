@@ -1,76 +1,60 @@
 #include "simd_definitions.hpp"
 
 // SIMD utility functions
-simd16 simd16_zero() {
-    return ADDSIZE(ADDMM(setzero_si))();
-}
-
-simdint simdint_zero() {
-    return simdint();
-}
-
-simd16 simd16_set1(dbyte value) {
-    return ADDMM(set1_epi16)(value);
-}
-
-simdint simdint_set1(int value) {
-    return ADDMM(set1_epi32)(value);
-}
-
-simdint simdint_add(const simdint& a, const simdint& b) {
+simd<32> simdint_add(const simd<32>& a, const simd<32>& b) {
     return ADDMM(add_epi32)(a, b);
 }
 
-simd16 simd16_sli(const simd16& a, int shift){
+simd<16> simd16_sli(const simd<16>& a, int shift){
     return ADDMM(slli_epi16)(a, shift);
 }
 
-simd16 simd16_mulhi(const simd16& a, const simd16& b){
+simd<16> simd16_mulhi(const simd<16>& a, const simd<16>& b){
     return ADDMM(mulhi_epi16)(a, b);
 }
 
-simd16 simd16_mullo(const simd16& a, const simd16& b) {
+simd<16> simd16_mullo(const simd<16>& a, const simd<16>& b) {
     return ADDMM(mullo_epi16)(a, b);
 }
 
-simdint simdint_shr(const simdint& a, int b){
+simd<32> simdint_shr(const simd<32>& a, int b){
     return ADDMM(srli_epi32)(a, b);
 }
 
-simd16 simd16_shr(const simd16& a, int b){
+simd<16> simd16_shr(const simd<16>& a, int b){
     return ADDMM(srli_epi16)(a, b);
 }
 
-simd16 simd16_min(const simd16& a, const simd16& b) {
+simd<16> simd16_min(const simd<16>& a, const simd<16>& b) {
     return ADDMM(min_epi16)(a, b);
 }
-simdint simdint_min(const simdint& a, const simdint& b) {
+simd<32> simdint_min(const simd<32>& a, const simd<32>& b) {
     return ADDMM(min_epi32)(a, b);
 }
-simdint simdint_max(const simdint& a, const simdint& b) {
+simd<32> simdint_max(const simd<32>& a, const simd<32>& b) {
     return ADDMM(max_epi32)(a, b);
 }
 
-simd16 simd16_clamp(const simd16& value, const simd16& min_val, const simd16& max_val) {
+simd<16> simd16_clamp(const simd<16>& value, const simd<16>& min_val, const simd<16>& max_val) {
     return ADDMM(min_epi16)(ADDMM(max_epi16)(value, min_val), max_val);
 }
-simd16 simd16_uclamp(const simd16& value, const simd16& min_val, const simd16& max_val) {
+simd<16> simd16_uclamp(const simd<16>& value, const simd<16>& min_val, const simd<16>& max_val) {
     return ADDMM(min_epu16)(ADDMM(max_epu16)(value, min_val), max_val);
 }
 
-simd16 simdint_clamp(const simdint& value, const simdint& min_val, const simdint& max_val) {
+simd<16> simdint_clamp(const simd<32>& value, const simd<32>& min_val, const simd<32>& max_val) {
     return ADDMM(min_epi32)(ADDMM(max_epi32)(value, min_val), max_val);
 }
 
-simdint simdint_mullo(const simdint& a, const simdint& b) {
+simd<32> simdint_mullo(const simd<32>& a, const simd<32>& b) {
     return ADDMM(mullo_epi32)(a, b);
 }
 
-simdint mull_add(const simd16& a, const simd16& b){
+simd<32> mull_add(const simd<16>& a, const simd<16>& b){
     return ADDMM(madd_epi16)(a, b);
 }
 
-int mysum(const simdint& x){
+int mysum(const simd<32>& x){
 #ifdef __AVX512F__
     return _mm512_reduce_add_epi32(x);
 #elif defined(__AVX2__)
@@ -98,26 +82,26 @@ int mysum(const simdint& x){
 #endif
 }
 
-simd16 simd16_add(const simd16& a, const simd16& b) {
+simd<16> simd16_add(const simd<16>& a, const simd<16>& b) {
     return ADDMM(add_epi16)(a, b);
 }
 
-simd16 simd16_sub(const simd16& a, const simd16& b) {
+simd<16> simd16_sub(const simd<16>& a, const simd<16>& b) {
     return ADDMM(sub_epi16)(a, b);
 }
-simd8 simd8_add(const simd8& a, const simd8& b) {
+simd<8> simd8_add(const simd<8>& a, const simd<8>& b) {
     return ADDMM(add_epi8)(a, b);
 }
 
-simd8 simd8_sub(const simd8& a, const simd8& b) {
+simd<8> simd8_sub(const simd<8>& a, const simd<8>& b) {
     return ADDMM(sub_epi8)(a, b);
 }
 #ifndef __AVX2__
-simd16 simdh8_16(const simdhalf& v){
+simd<16> simdh8_16(const simdhalf& v){
     return ADDMM(cvtepi8_epi16)(_mm_set_epi64x(0, v));
 }
 #else
-simd16 simdh8_16(const simdhalf& v){
+simd<16> simdh8_16(const simdhalf& v){
     return ADDMM(cvtepi8_epi16)(v);
 }
 #endif

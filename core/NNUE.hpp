@@ -2,6 +2,7 @@
 #define NNUE_CPP
 #include "Const.hpp"
 #include "simd_definitions.hpp"
+#include <cstdint>
 #include <fstream>
 #include "Move.hpp"
 #include "embeder.hpp"
@@ -43,7 +44,7 @@ const int inputBuckets[32] = {
 };
 const int DIVISOR=(31+BUCKET)/BUCKET;
 
-static_assert(L1%nb16 == 0);
+static_assert(L1%nb<16> == 0);
 
 int getInputBucket(int Kpos, bool side, bool mirror);
 
@@ -90,7 +91,7 @@ public:
         return isexcluded()?ThreatIndex(to, from):ThreatIndex(from, to);
     }
 };
-using oneAccumulator=simd16[L1/nb16];
+using oneAccumulator=simd<16>[L1/nb<16>];
 class FinnytableNormal{
 public:
     big bitboards[8];
@@ -118,25 +119,24 @@ public:
 };
 
 
-static const simdint mini = simdint_set1(0);
-static const simdint maxiA = simdint_set1(QA);
-static const simdint maxiB = simdint_set1(QB);
+static constexpr inline simd<32> mini = simdint_zero();
+static constexpr inline simd<32> maxiA = simdint_set1(QA);
+static constexpr inline simd<32> maxiB = simdint_set1(QB);
 
 template<int input, int output, int _clamp, bool isLast=false>
 struct Layer{
-    simdint weights[output][input/nbint];
+    simd<32> weights[output][input/nb<32>];
     int biases[output];
-    void forward(const simdint x[input/nbint], int y[output]) const;
+    void forward(const simd<32> x[input/nb<32>], int y[output]) const;
 };
 
 template<int input, int output>
 struct Layer1{
-    static constexpr int full=input/nb16;
+    static constexpr int full=input/nb<16>;
     static constexpr int half=full/2;
-    alignas(64) simd8 weights[input*output/nb8];
-    alignas(64) simdint biases[output/nbint];
-    static constexpr int frame = sizeof(int32_t)/sizeof(int8_t);
-    void forward(const uint32_t x[input/frame], simdint y[output/nbint]) const;
+    alignas(64) simd<8> weights[input*output/nb<8>];
+    alignas(64) simd<32> biases[output/nb<32>];
+    void forward(const uint32_t x[input/I8inI32], simd<32> y[output/nb<32>]) const;
 };
 
 struct Layers{
@@ -155,7 +155,7 @@ class Accumulator{
     void getThreatUpdates(const PositionState& state1, const PositionState& state2, const Move& move);
     void applythreatsUpdates(Accumulator& accIn, bool side);
 public:
-    simd16 accs[4][L1/nb16];
+    simd<16> accs[4][L1/nb<16>];
     bool Kside[2];
     bool side;
     bool pstrefresh;
@@ -166,10 +166,10 @@ public:
     updateBuffer update;
     Accumulator(){}
     void reinit(const Move& move, const PositionState& state1, const PositionState& state2, Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1, Index sub2=Index(), Index add2=Index());
-    const simd16* operator[](int idx) const{
+    const simd<16>* operator[](int idx) const{
         return accs[idx];
     }
-    simd16* operator[](int idx){
+    simd<16>* operator[](int idx){
         return accs[idx];
     }
     void updateSelf(Accumulator& accIn, FinnyTables& finny);
@@ -177,16 +177,16 @@ public:
 
 class NNUE{
 public:
-    alignas(64) simd16 hlWeights[nbInputBuckets][INPUT_SIZE][L1/nb16];
-    alignas(64) simd8 threatWeights[THREAT_SIZE][L1/nb8];
-    alignas(64) simd16 hlBiases[L1/nb16];
+    alignas(64) simd<16> hlWeights[nbInputBuckets][INPUT_SIZE][L1/nb<16>];
+    alignas(64) simd<8> threatWeights[THREAT_SIZE][L1/nb<8>];
+    alignas(64) simd<16> hlBiases[L1/nb<16>];
     Layers laterLayers[BUCKET];
 
     template<typename T=char>
     dbyte read_bytes(ifstream& file);
     // Helper to set individual elements in SIMD vectors
-    void set_simd16_element(simd16& vec, int index, dbyte value);
-    void set_simdint_element(simdint& vec, int index, int value);
+    void set_simd16_element(simd<16>& vec, int index, dbyte value);
+    void set_simdint_element(simd<32>& vec, int index, int value);
     NNUE(string name);
     NNUE();
     void initAcc(Accumulator& accs) const;
