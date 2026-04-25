@@ -132,8 +132,6 @@ struct Layer{
 
 template<int input, int output>
 struct Layer1{
-    static constexpr int full=input/nb<16>;
-    static constexpr int half=full/2;
     alignas(64) simd<8> weights[input*output/nb<8>];
     alignas(64) simd<32> biases[output/nb<32>];
     void forward(const uint32_t x[input/I8inI32], simd<32> y[output/nb<32>]) const;

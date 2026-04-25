@@ -56,22 +56,15 @@ alignas(64) constexpr array<int16_t, simdSize> second = []{
 
 const _simd _packed = ADDMM(packus_epi16)(*(_simd*)&first, *(_simd*)&second);
 const int8_t* packed = (int8_t*)&_packed;
-const array<int8_t, simdSize*2> depacked = [](){
-    array<int8_t, simdSize*2> res{};
-    for(int i=0; i<simdSize*2; i++){
-        res[packed[i]] = i;
-    }
-    return res;
-}();
 
 int transpose(int n){
-    return (n&~mask) | depacked[n&mask];
+    return (n&~mask) | packed[n&mask];
 }
 
 template<int input, int output, int ob>
 struct layer{
-    alignas(64) float weights[input][ob*output];
-    alignas(64) float bias[ob*output];
+    float weights[input][ob*output];
+    float bias[ob*output];
     template<typename T1, typename T2, int Qbias, bool isL1=false>
     void quantise(int id, FILE* file){
         if constexpr(!isL1){
@@ -82,10 +75,12 @@ struct layer{
                 }
             }
         }else{
-            for(int j=0; j<input; j++){
-                for(int i=0; i<output; i++){
-                    T1 quantised = _quantise<T1, QB>(weights[transpose(j)][output*id+i]);
-                    fwrite(&quantised, sizeof(T1), 1, file);
+            for(int i=0; i<input/I8inI32; i++){
+                for(int o=0; o<output; o++){
+                    for(int k=0; k<I8inI32; k++){
+                        T1 quantised = _quantise<T1, QB>(weights[transpose(i*I8inI32+k)][output*id+o]);
+                        fwrite(&quantised, sizeof(T1), 1, file);
+                    }
                 }
             }
         }
@@ -100,9 +95,9 @@ struct layer{
 
 template<int ib, int hl>
 struct inputlayer{
-    alignas(64) float threatweights[threatSize][hl];
-    alignas(64) float psqweights[ib+isFactorised][psqSize][hl];
-    alignas(64) float biases[hl];
+    float threatweights[threatSize][hl];
+    float psqweights[ib+isFactorised][psqSize][hl];
+    float biases[hl];
     void quantise(FILE* file){
         for(int i=0; i<ib; i++)for(int j=0; j<psqSize; j++)for(int k=0; k<hl; k++){
             float param = psqweights[i+isFactorised][j][k];
@@ -137,10 +132,10 @@ int main(int argc, char** argv){
     FILE* fin=fopen(argv[1], "r");
     FILE* fout=fopen(argv[2], "w");
     unique_ptr<nn> nnue = make_unique<nn>();
-    fread(&nnue->FT, 1, sizeof(nnue->FT), fin);
-    fread(&nnue->l1, 1, sizeof(nnue->l1), fin);
-    fread(&nnue->l2, 1, sizeof(nnue->l2), fin);
-    fread(&nnue->l3, 1, sizeof(nnue->l3), fin);
+    fread(&nnue->FT, sizeof(nnue->FT), 1, fin);
+    fread(&nnue->l1, sizeof(nnue->l1), 1, fin);
+    fread(&nnue->l2, sizeof(nnue->l2), 1, fin);
+    fread(&nnue->l3, sizeof(nnue->l3), 1, fin);
     fclose(fin);
     nnue->FT.quantise(fout);
     for(int id=0; id<OB; id++){
