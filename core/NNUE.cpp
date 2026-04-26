@@ -698,8 +698,8 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     alignas(64) uint32_t HL1[L1/I8inI32];
     simd<8>* HL1_simd = reinterpret_cast<simd<8>*>(HL1);
-    alignas(64) simd<32> HL2[L2/nb<32>];
-    alignas(64) int HL3[L3];
+    alignas(64) int HL2[L2];
+    alignas(64) simd<32> HL3[L3/nb<32>];
     const auto x1 = accs.accs[ side];
     const auto x3 = accs.accs[ side+2];
     const auto x2 = accs.accs[!side];
@@ -718,9 +718,9 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     }
     int finRes;
     const auto& subnet=laterLayers[idB];
-    subnet.l1.forward(HL1, HL2);
+    subnet.l1.forward(HL1, reinterpret_cast<simd<32>*>(HL2));
     subnet.l2.forward(HL2, HL3);
-    subnet.l3.forward(reinterpret_cast<simd<32>*>(HL3), &finRes);
+    subnet.l3.forward(HL3, &finRes);
     for(int i=0; i<L1; i++){
         printf("%d ", ((uint8_t*)HL1)[i]);
     }
@@ -764,18 +764,29 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
         y[o] = simdint_shr(y[o], 14);
     }
 }
-template<int input, int output, int _clamp, bool isLast>
-void Layer<input, output, _clamp, isLast>::forward(const simd<32>* x, int* y) const{
+template<int input, int output>
+void lastLayer<input, output>::forward(const simd<32>* x, int* y) const{
     for(int o=0; o<output; o++){
         simd<32> partial = simdint_set1(0);
         for(int i=0; i<input/nb<32>; i++){
             partial = simdint_add(partial, simdint_mullo(x[i], weights[o][i]));
         }
         y[o] = biases[o]+mysum(partial);
-        if constexpr(!isLast){
-            y[o] = clamp(y[o], 0, _clamp);
+    }
+}
+
+template<int input, int output, int _clamp>
+void midLayer<input, output, _clamp>::forward(const int* x, simd<32>* y) const{
+    for(int o=0; o<output/nb<32>; o++)
+        y[o] = biases[o];
+    for(int i=0; i<input; i++){
+        const simd<32> V=simdint_set1(x[i]);
+        for(int o=0; o<output/nb<32>; o++){
+            y[o] = simdint_add(y[o], simdint_mullo(V, weights[i][o]));
         }
     }
+    for(int o=0; o<output/nb<32>; o++)
+        y[o] = simdint_clamp(y[o], mini, simdint_set1(_clamp));
 }
 
 template<int f>

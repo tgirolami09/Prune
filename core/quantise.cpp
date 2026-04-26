@@ -65,12 +65,19 @@ template<int input, int output>
 struct layer{
     float weights[input][OB*output];
     float bias[OB*output];
-    template<typename T1, typename T2, int Qbias, bool isL1=false>
+    template<typename T1, typename T2, int Qbias, bool isL1, bool isLast>
     void quantise(int id, FILE* file){
-        if constexpr(!isL1){
-            for(int i=0; i<output; i++){
-                for(int j=0; j<input; j++){
-                    T1 quantised = _quantise<T1, QB>(weights[j][output*id+i]);
+        if constexpr(isLast){
+            for(int o=0; o<output; o++){
+                for(int i=0; i<input; i++){
+                    T1 quantised = _quantise<T1, QB>(weights[i][output*id+o]);
+                    fwrite(&quantised, sizeof(T1), 1, file);
+                }
+            }
+        }else if constexpr(!isL1){
+            for(int i=0; i<input; i++){
+                for(int o=0; o<output; o++){
+                    T1 quantised = _quantise<T1, QB>(weights[i][output*id+o]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
@@ -138,9 +145,9 @@ int main(int argc, char** argv){
     fclose(fin);
     nnue->FT.quantise(fout);
     for(int id=0; id<OB; id++){
-        nnue->l1.quantise<int8_t, int32_t, 128*QB, true>(id, fout);
-        nnue->l2.quantise<int32_t, int32_t, QB*QB*QB>(id, fout);
-        nnue->l3.quantise<int32_t, int32_t, QB*QB*QB*QB>(id, fout);
+        nnue->l1.quantise<int8_t, int32_t, 128*QB, true, false>(id, fout);
+        nnue->l2.quantise<int32_t, int32_t, QB*QB*QB, false, false>(id, fout);
+        nnue->l3.quantise<int32_t, int32_t, QB*QB*QB*QB, false, true>(id, fout);
     }
     fclose(fout);
 }

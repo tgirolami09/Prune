@@ -123,8 +123,15 @@ static const inline simd<32> mini = simdint_zero();
 static const inline simd<32> maxiA = simdint_set1(QA);
 static const inline simd<32> maxiB = simdint_set1(QB);
 
-template<int input, int output, int _clamp, bool isLast=false>
-struct Layer{
+template<int input, int output, int _clamp>
+struct midLayer{
+    simd<32> weights[input][output/nb<32>];
+    simd<32> biases[output/nb<32>];
+    void forward(const int x[input], simd<32> y[output/nb<32>]) const;
+};
+
+template<int input, int output>
+struct lastLayer{
     simd<32> weights[output][input/nb<32>];
     int biases[output];
     void forward(const simd<32> x[input/nb<32>], int y[output]) const;
@@ -139,8 +146,8 @@ struct Layer1{
 
 struct Layers{
     Layer1<L1, L2> l1;
-    Layer<L2, L3, QB*QB*QB> l2;
-    Layer<L3, 1, 0, true> l3;
+    midLayer<L2, L3, QB*QB*QB> l2;
+    lastLayer<L3, 1> l3;
 };
 
 class Accumulator{
