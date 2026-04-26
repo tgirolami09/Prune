@@ -35,13 +35,13 @@ extern StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 using timeMesure=chrono::high_resolution_clock;
 //Class to find the best in a situation
 class BestMoveFinder{
+    class LINE{
+    public:
+        int cmove;
+        int16_t argMoves[maxDepth];
+    };
     class usefull{
     private:
-        class LINE{
-        public:
-            int cmove;
-            int16_t argMoves[maxDepth];
-        };
         struct StackCase{
             Order order;
             int static_score;

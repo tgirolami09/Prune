@@ -652,7 +652,27 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         Move finalBestMove=bestMove;
         sbig lastUsedNodes = 0;
         string PV;
+        LINE Line;
+        memcpy(Line.argMoves, ss.PVlines[0].argMoves, ss.PVlines[0].cmove*sizeof(int16_t));
+        Line.cmove = ss.PVlines[0].cmove;
         do{
+            ss.stack[0].snap.save(state);
+            for(int i=0; i<Line.cmove; i++){
+                PositionSnapshot cursnap;
+                cursnap.save(state);
+                Move curMove;
+                curMove.moveInfo = Line.argMoves[i];
+                bool ttHit = false;
+                transposition.getEntry(state, ttHit);
+                state.initMove(curMove);
+                if(!ttHit){
+                    transposition.push(state, lastScore, EXACT, curMove, depth-i-1, ss.eval.getRaw(state.friendlyColor()), true);
+                }
+                state.playMoveForward(curMove);
+                ss.eval.playMove(curMove, state.friendlyColor(), &cursnap.board, &state.board);
+            }
+            ss.stack[0].snap.restore(state);
+            ss.eval.init(state);
             int alpha = lastScore-deltaDown;
             int beta = lastScore+deltaUp;
             ss.generator.initDangers(state);
