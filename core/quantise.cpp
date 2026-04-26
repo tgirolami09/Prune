@@ -61,10 +61,10 @@ int transpose(int n){
     return (n&~mask) | packed[n&mask];
 }
 
-template<int input, int output, int ob>
+template<int input, int output>
 struct layer{
-    float weights[input][ob*output];
-    float bias[ob*output];
+    float weights[input][OB*output];
+    float bias[OB*output];
     template<typename T1, typename T2, int Qbias, bool isL1=false>
     void quantise(int id, FILE* file){
         if constexpr(!isL1){
@@ -93,13 +93,12 @@ struct layer{
     }
 };
 
-template<int ib, int hl>
 struct inputlayer{
-    float threatweights[threatSize][hl];
-    float psqweights[ib+isFactorised][psqSize][hl];
-    float biases[hl];
+    float threatweights[threatSize][L1];
+    float psqweights[IB+isFactorised][psqSize][L1];
+    float biases[L1];
     void quantise(FILE* file){
-        for(int i=0; i<ib; i++)for(int j=0; j<psqSize; j++)for(int k=0; k<hl; k++){
+        for(int i=0; i<IB; i++)for(int j=0; j<psqSize; j++)for(int k=0; k<L1; k++){
             float param = psqweights[i+isFactorised][j][k];
             if constexpr(isFactorised){
                 param += psqweights[0][j][k];
@@ -122,10 +121,10 @@ struct inputlayer{
 };
 
 struct nn{
-    inputlayer<IB, L1> FT;
-    layer<L1*(2-isPW), L2, OB> l1;
-    layer<L2, L3, OB> l2;
-    layer<L3, 1, OB> l3;
+    inputlayer FT;
+    layer<L1*(2-isPW), L2> l1;
+    layer<L2, L3> l2;
+    layer<L3, 1> l3;
 };
 
 int main(int argc, char** argv){
