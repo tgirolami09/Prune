@@ -26,6 +26,7 @@ const int L3=32;
 const bool isPW=true;
 const bool isFactorised=true;
 const char zero = 0;// for padding
+const float scaler = (float)QA/(1 << 9);
 
 template<typename T, int Q>
 T _quantise(float w){
@@ -85,7 +86,7 @@ struct layer{
             for(int i=0; i<input/I8inI32; i++){
                 for(int o=0; o<output; o++){
                     for(int k=0; k<I8inI32; k++){
-                        T1 quantised = _quantise<T1, QB>(weights[transpose(i*I8inI32+k)][output*id+o]);
+                        T1 quantised = _quantise<T1, QB>(weights[transpose(i*I8inI32+k)][output*id+o]/(scaler*scaler));
                         fwrite(&quantised, sizeof(T1), 1, file);
                     }
                 }
