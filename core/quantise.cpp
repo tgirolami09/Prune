@@ -7,26 +7,18 @@
 #include <immintrin.h>
 #include <array>
 #include "simd_definitions.hpp"
+#include "NNUE.hpp"
 using namespace std;
 
-const int psqSize = 768;
-const int threatSize=60144;
-
-const int QA = 255;
-const int QB = 64;
 const float ftClip = 1.98F;
 
-const int OB=8;
-const int IB=4;
-
-const int L1=384;
-const int L2=16;
-const int L3=32;
+const int OB=BUCKET;
+const int IB=nbInputBuckets;
 
 const bool isPW=true;
 const bool isFactorised=true;
 const char zero = 0;// for padding
-const float scaler = (float)QA/(1 << 9);
+const float scaler = (float)QA/(1 << L1shift);
 
 template<typename T, int Q>
 T _quantise(float w){
@@ -71,24 +63,24 @@ struct layer{
         if constexpr(isLast){
             for(int o=0; o<output; o++){
                 for(int i=0; i<input; i++){
-                    T1 quantised = _quantise<T1, QB>(weights[i][output*id+o]);
+                    T1 quantised = _quantise<T1, QC>(weights[i][output*id+o]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
-        }else if constexpr(!isL1){
-            for(int i=0; i<input; i++){
-                for(int o=0; o<output; o++){
-                    T1 quantised = _quantise<T1, QB>(weights[i][output*id+o]);
-                    fwrite(&quantised, sizeof(T1), 1, file);
-                }
-            }
-        }else{
+        }else if constexpr(isL1){
             for(int i=0; i<input/I8inI32; i++){
                 for(int o=0; o<output; o++){
                     for(int k=0; k<I8inI32; k++){
                         T1 quantised = _quantise<T1, QB>(weights[transpose(i*I8inI32+k)][output*id+o]/(scaler*scaler));
                         fwrite(&quantised, sizeof(T1), 1, file);
                     }
+                }
+            }
+        }else{
+            for(int i=0; i<input; i++){
+                for(int o=0; o<output; o++){
+                    T1 quantised = _quantise<T1, QC>(weights[i][output*id+o]);
+                    fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
         }
@@ -102,11 +94,11 @@ struct layer{
 };
 
 struct inputlayer{
-    float threatweights[threatSize][L1];
-    float psqweights[IB+isFactorised][psqSize][L1];
+    float threatweights[THREAT_SIZE][L1];
+    float psqweights[IB+isFactorised][INPUT_SIZE][L1];
     float biases[L1];
     void quantise(FILE* file){
-        for(int i=0; i<IB; i++)for(int j=0; j<psqSize; j++)for(int k=0; k<L1; k++){
+        for(int i=0; i<IB; i++)for(int j=0; j<INPUT_SIZE; j++)for(int k=0; k<L1; k++){
             float param = psqweights[i+isFactorised][j][k];
             if constexpr(isFactorised){
                 param += psqweights[0][j][k];
@@ -115,7 +107,7 @@ struct inputlayer{
             fwrite(&quantised, sizeof(int16_t), 1, file);
         }
         while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
-        for(int i=0; i<threatSize; i++)for(float w:threatweights[i]){
+        for(int i=0; i<THREAT_SIZE; i++)for(float w:threatweights[i]){
             int8_t quantised = _quantise<int8_t, QA>(w);
             fwrite(&quantised, sizeof(int8_t), 1, file);
         }
@@ -146,9 +138,9 @@ int main(int argc, char** argv){
     fclose(fin);
     nnue->FT.quantise(fout);
     for(int id=0; id<OB; id++){
-        nnue->l1.quantise<int8_t, int32_t, 128*QB, true, false>(id, fout);
-        nnue->l2.quantise<int32_t, int32_t, QB*QB*QB, false, false>(id, fout);
-        nnue->l3.quantise<int32_t, int32_t, QB*QB*QB*QB, false, true>(id, fout);
+        nnue->l1.quantise<int8_t, int32_t, QC << L1shift, true, false>(id, fout);
+        nnue->l2.quantise<int32_t, int32_t, QC*QC*QC, false, false>(id, fout);
+        nnue->l3.quantise<int32_t, int32_t, QC*QC*QC*QC, false, true>(id, fout);
     }
     fclose(fout);
 }

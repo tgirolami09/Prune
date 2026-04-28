@@ -42,7 +42,7 @@ simd<16> simd16_uclamp(const simd<16>& value, const simd<16>& min_val, const sim
     return ADDMM(min_epu16)(ADDMM(max_epu16)(value, min_val), max_val);
 }
 
-simd<16> simdint_clamp(const simd<32>& value, const simd<32>& min_val, const simd<32>& max_val) {
+simd<32> simdint_clamp(const simd<32>& value, const simd<32>& min_val, const simd<32>& max_val) {
     return ADDMM(min_epi32)(ADDMM(max_epi32)(value, min_val), max_val);
 }
 
@@ -50,7 +50,7 @@ simd<32> simdint_mullo(const simd<32>& a, const simd<32>& b) {
     return ADDMM(mullo_epi32)(a, b);
 }
 
-simd<32> mull_add(const simd<16>& a, const simd<16>& b){
+simd<16> mull_add(const simd<16>& a, const simd<16>& b){
     return ADDMM(madd_epi16)(a, b);
 }
 

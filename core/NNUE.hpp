@@ -16,13 +16,30 @@ extern StatVar<sbig, 64, 0> TIupdateAddStat;
 extern StatVar<sbig, 64, 0> TIupdateTotStat;
 extern StatVar<sbig, 128, -128> TIupdateDiffStat;
 #endif
+
+constexpr inline int ilog2c(int n){
+    return (31^__builtin_clz(n))+!!(n&(n-1));
+}
+
+constexpr inline int _abs(int x){
+    return x < 0?-x:x;
+}
+
 const int maxThreatUpdates=80;
 
 const int INPUT_SIZE = 12*64;
 const int THREAT_SIZE = 60144;
 
-const int QA = 255;
-const int QB = 64;
+constexpr int QA = 255;
+constexpr int QB = 128;
+constexpr int QC = 64;
+constexpr int FT_BITS = 9;
+constexpr int FT_LSHIFT = 16-FT_BITS;
+
+constexpr int QA_bits = ilog2c(QA);
+constexpr int QB_bits = ilog2c(QB);
+constexpr int QC_bits = ilog2c(QC);
+constexpr int L1shift = _abs(16+QC_bits-FT_LSHIFT-QA_bits*2-QB_bits);
 
 const int BUCKET = 8;
 const int nbInputBuckets = 4;
@@ -121,7 +138,6 @@ public:
 
 static const inline simd<32> mini = simdint_zero();
 static const inline simd<32> maxiA = simdint_set1(QA);
-static const inline simd<32> maxiB = simdint_set1(QB);
 
 template<int input, int output, int _clamp>
 struct midLayer{
@@ -146,7 +162,7 @@ struct Layer1{
 
 struct Layers{
     Layer1<L1, L2> l1;
-    midLayer<L2, L3, QB*QB*QB> l2;
+    midLayer<L2, L3, QC*QC*QC> l2;
     lastLayer<L3, 1> l3;
 };
 

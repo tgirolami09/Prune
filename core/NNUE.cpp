@@ -705,15 +705,14 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     const auto x2 = accs.accs[!side];
     const auto x4 = accs.accs[!side+2];
     const int half = L1/nb<16>/2;
-    const int shift = 16-9;
     for(int i=0; i<half; i += 2){
-        simd<16> neurons1 = simd16_mulhi(simd16_min(simd16_add(x1[i  ], x3[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i  +half], x3[i  +half]), mini, maxiA), shift));
-        simd<16> neurons2 = simd16_mulhi(simd16_min(simd16_add(x1[i+1], x3[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i+1+half], x3[i+1+half]), mini, maxiA), shift));
+        simd<16> neurons1 = simd16_mulhi(simd16_min(simd16_add(x1[i  ], x3[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i  +half], x3[i  +half]), mini, maxiA), FT_LSHIFT));
+        simd<16> neurons2 = simd16_mulhi(simd16_min(simd16_add(x1[i+1], x3[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i+1+half], x3[i+1+half]), mini, maxiA), FT_LSHIFT));
         HL1_simd[i/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     for(int i=0; i<half; i += 2){
-        simd<16> neurons1 = simd16_mulhi(simd16_min(simd16_add(x2[i  ], x4[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i  +half], x4[i  +half]), mini, maxiA), shift));
-        simd<16> neurons2 = simd16_mulhi(simd16_min(simd16_add(x2[i+1], x4[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA), shift));
+        simd<16> neurons1 = simd16_mulhi(simd16_min(simd16_add(x2[i  ], x4[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i  +half], x4[i  +half]), mini, maxiA), FT_LSHIFT));
+        simd<16> neurons2 = simd16_mulhi(simd16_min(simd16_add(x2[i+1], x4[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA), FT_LSHIFT));
         HL1_simd[i/2+L1/nb<8>/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     int finRes;
@@ -734,7 +733,7 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     }
     printf("\n");
     printf("%d\n", finRes);
-    finRes = finRes/(QB*QB)*SCALE/(QB*QB);
+    finRes = finRes/(QC*QC)*SCALE/(QC*QC);
     return finRes;
 }
 
@@ -759,9 +758,9 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
         }
     }
     for(int o=0; o<output/nb<32>; o++){
-        y[o] = simdint_clamp(y[o], mini, simdint_set1(QB*128));
+        y[o] = simdint_clamp(y[o], mini, simdint_set1(QC << L1shift));
         y[o] = simdint_mullo(y[o], y[o]);
-        y[o] = simdint_shr(y[o], 14);
+        y[o] = simdint_shr(y[o], L1shift*2);
     }
 }
 template<int input, int output>
