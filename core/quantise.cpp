@@ -58,25 +58,25 @@ template<int input, int output>
 struct layer{
     float weights[input][OB*output];
     float bias[OB*output];
-    template<typename T1, typename T2, int Qbias, bool isL1, bool isLast>
+    template<typename T1, bool isL1, bool isLast>
     void quantise(int id, FILE* file){
-        if constexpr(isLast){
+        if constexpr(isLast){ // L3
             for(int o=0; o<output; o++){
                 for(int i=0; i<input; i++){
                     T1 quantised = _quantise<T1, QC>(weights[i][output*id+o]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
-        }else if constexpr(isL1){
+        }else if constexpr(isL1){ // L1
             for(int i=0; i<input/I8inI32; i++){
                 for(int o=0; o<output; o++){
                     for(int k=0; k<I8inI32; k++){
-                        T1 quantised = _quantise<T1, QB>(weights[transpose(i*I8inI32+k)][output*id+o]/(scaler*scaler));
+                        T1 quantised = _quantise<T1, QB>(weights[i*I8inI32+k][output*id+o]/(scaler*scaler));
                         fwrite(&quantised, sizeof(T1), 1, file);
                     }
                 }
             }
-        }else{
+        }else{ // L2
             for(int i=0; i<input; i++){
                 for(int o=0; o<output; o++){
                     T1 quantised = _quantise<T1, QC>(weights[i][output*id+o]);
@@ -84,14 +84,20 @@ struct layer{
                 }
             }
         }
-        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
+    }
+
+    template<typename T2, int Qbias>
+    void quantise_biases(int id, FILE* file){
         for(int i=0; i<output; i++){
             T2 quantised = _quantise<T2, Qbias>(bias[output*id+i]);
             fwrite(&quantised, sizeof(T2), 1, file);
         }
-        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
     }
 };
+
+void padd(FILE* file){
+    while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
+}
 
 struct inputlayer{
     float threatweights[THREAT_SIZE][L1];
@@ -99,24 +105,24 @@ struct inputlayer{
     float biases[L1];
     void quantise(FILE* file){
         for(int i=0; i<IB; i++)for(int j=0; j<INPUT_SIZE; j++)for(int k=0; k<L1; k++){
-            float param = psqweights[i+isFactorised][j][k];
+            float param = psqweights[i+isFactorised][j][transpose(k)];
             if constexpr(isFactorised){
-                param += psqweights[0][j][k];
+                param += psqweights[0][j][transpose(k)];
             }
             int16_t quantised = _quantise<int16_t, QA>(param);
             fwrite(&quantised, sizeof(int16_t), 1, file);
         }
-        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
-        for(int i=0; i<THREAT_SIZE; i++)for(float w:threatweights[i]){
-            int8_t quantised = _quantise<int8_t, QA>(w);
+        padd(file);
+        for(int i=0; i<THREAT_SIZE; i++)for(int k=0; k<L1; k++){
+            int8_t quantised = _quantise<int8_t, QA>(threatweights[i][transpose(k)]);
             fwrite(&quantised, sizeof(int8_t), 1, file);
         }
-        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
-        for(float b:biases){
-            int16_t quantised = _quantise<int16_t, QA>(b);
+        padd(file);
+        for(int k=0; k<L1; k++){
+            int16_t quantised = _quantise<int16_t, QA>(biases[transpose(k)]);
             fwrite(&quantised, sizeof(int16_t), 1, file);
         }
-        while(ftell(file)%64 != 0)fwrite(&zero, 1, 1, file);
+        padd(file);
     }
 };
 
@@ -138,9 +144,18 @@ int main(int argc, char** argv){
     fclose(fin);
     nnue->FT.quantise(fout);
     for(int id=0; id<OB; id++){
-        nnue->l1.quantise<int8_t, int32_t, QC << L1shift, true, false>(id, fout);
-        nnue->l2.quantise<int32_t, int32_t, QC*QC*QC, false, false>(id, fout);
-        nnue->l3.quantise<int32_t, int32_t, QC*QC*QC*QC, false, true>(id, fout);
+        nnue->l1.quantise<int8_t, true, false>(id, fout);
+        padd(fout);
+        nnue->l1.quantise_biases<int32_t, QC>(id, fout);
+        padd(fout);
+        nnue->l2.quantise<int32_t, false, false>(id, fout);
+        padd(fout);
+        nnue->l2.quantise_biases<int32_t, QC*QC*QC>(id, fout);
+        padd(fout);
+        nnue->l3.quantise<int32_t, false, true>(id, fout);
+        padd(fout);
+        nnue->l3.quantise_biases<int32_t, QC*QC*QC*QC>(id, fout);
+        padd(fout);
     }
     fclose(fout);
 }

@@ -695,6 +695,13 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
     }
 }
 
+inline simd<16> pairwise(simd<16> apsq, simd<16> athr, simd<16> bpsq, simd<16> bthr){
+    return simd16_mulhi(
+                         simd16_min(simd16_add(apsq, athr), A_16),
+            simd16_sli(simd16_clamp(simd16_add(bpsq, bthr), zero_16, A_16), FT_LSHIFT)
+    );
+}
+
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     alignas(64) uint32_t HL1[L1/I8inI32];
     simd<8>* HL1_simd = reinterpret_cast<simd<8>*>(HL1);
@@ -706,13 +713,13 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     const auto x4 = accs.accs[!side+2];
     const int half = L1/nb<16>/2;
     for(int i=0; i<half; i += 2){
-        simd<16> neurons1 = simd16_mulhi(simd16_min(simd16_add(x1[i  ], x3[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i  +half], x3[i  +half]), mini, maxiA), FT_LSHIFT));
-        simd<16> neurons2 = simd16_mulhi(simd16_min(simd16_add(x1[i+1], x3[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x1[i+1+half], x3[i+1+half]), mini, maxiA), FT_LSHIFT));
+        simd<16> neurons1 = pairwise(x1[i  ], x3[i  ],   x1[i  +half], x3[i  +half]);
+        simd<16> neurons2 = pairwise(x1[i+1], x3[i+1],   x1[i+1+half], x3[i+1+half]);
         HL1_simd[i/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     for(int i=0; i<half; i += 2){
-        simd<16> neurons1 = simd16_mulhi(simd16_min(simd16_add(x2[i  ], x4[i  ]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i  +half], x4[i  +half]), mini, maxiA), FT_LSHIFT));
-        simd<16> neurons2 = simd16_mulhi(simd16_min(simd16_add(x2[i+1], x4[i+1]), maxiA), simd16_sli(simd16_clamp(simd16_add(x2[i+1+half], x4[i+1+half]), mini, maxiA), FT_LSHIFT));
+        simd<16> neurons1 = pairwise(x2[i  ], x4[i  ],   x2[i  +half], x4[i  +half]);
+        simd<16> neurons2 = pairwise(x2[i+1], x4[i+1],   x2[i+1+half], x4[i+1+half]);
         HL1_simd[i/2+L1/nb<8>/2] = ADDMM(packus_epi16)(neurons1, neurons2);
     }
     int finRes;
@@ -720,19 +727,6 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     subnet.l1.forward(HL1, reinterpret_cast<simd<32>*>(HL2));
     subnet.l2.forward(HL2, HL3);
     subnet.l3.forward(HL3, &finRes);
-    for(int i=0; i<L1; i++){
-        printf("%d ", ((uint8_t*)HL1)[i]);
-    }
-    printf("\n");
-    for(int i=0; i<L2; i++){
-        printf("%d ", ((int*)HL2)[i]);
-    }
-    printf("\n");
-    for(int i=0; i<L3; i++){
-        printf("%d ", ((int*)HL3)[i]);
-    }
-    printf("\n");
-    printf("%d\n", finRes);
     finRes = finRes/(QC*QC)*SCALE/(QC*QC);
     return finRes;
 }
@@ -748,7 +742,7 @@ inline simd<32> matrix_mul(simd<32> output, simd<8> inputs, simd<8> weights){
 template<int input, int output>
 void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
     for(int o=0; o<output/nb<32>; o++){
-        y[o] = biases[o];
+        y[o] = simdint_zero();//biases[o];
     }
     for(int i=0; i<input/I8inI32; i++){
         const simd<8> inp = ADDMM(set1_epi32)(x[i]);
@@ -758,9 +752,10 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
         }
     }
     for(int o=0; o<output/nb<32>; o++){
-        y[o] = simdint_clamp(y[o], mini, simdint_set1(QC << L1shift));
+        y[o] = ADDMM(srai_epi32)(y[o], L1shift);
+        y[o] = simdint_add(y[o], biases[o]);
+        y[o] = simdint_clamp(y[o], zero_32, simdint_set1(QC));
         y[o] = simdint_mullo(y[o], y[o]);
-        y[o] = simdint_shr(y[o], L1shift*2);
     }
 }
 template<int input, int output>
@@ -785,7 +780,7 @@ void midLayer<input, output, _clamp>::forward(const int* x, simd<32>* y) const{
         }
     }
     for(int o=0; o<output/nb<32>; o++)
-        y[o] = simdint_clamp(y[o], mini, simdint_set1(_clamp));
+        y[o] = simdint_clamp(y[o], zero_32, simdint_set1(_clamp));
 }
 
 template<int f>
