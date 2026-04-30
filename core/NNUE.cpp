@@ -742,7 +742,7 @@ inline simd<32> matrix_mul(simd<32> output, simd<8> inputs, simd<8> weights){
 template<int input, int output>
 void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
     for(int o=0; o<output/nb<32>; o++){
-        y[o] = simdint_zero();//biases[o];
+        y[o] = biases[o];
     }
     for(int i=0; i<input/I8inI32; i++){
         const simd<8> inp = ADDMM(set1_epi32)(x[i]);
@@ -752,10 +752,9 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
         }
     }
     for(int o=0; o<output/nb<32>; o++){
-        y[o] = ADDMM(srai_epi32)(y[o], L1shift);
-        y[o] = simdint_add(y[o], biases[o]);
-        y[o] = simdint_clamp(y[o], zero_32, simdint_set1(QC));
+        y[o] = simdint_clamp(y[o], zero_32, simdint_set1(QC << L1shift));
         y[o] = simdint_mullo(y[o], y[o]);
+        y[o] = simdint_shr(y[o], L1shift*2);
     }
 }
 template<int input, int output>

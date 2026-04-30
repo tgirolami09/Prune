@@ -146,7 +146,7 @@ int main(int argc, char** argv){
     for(int id=0; id<OB; id++){
         nnue->l1.quantise<int8_t, true, false>(id, fout);
         padd(fout);
-        nnue->l1.quantise_biases<int32_t, QC>(id, fout);
+        nnue->l1.quantise_biases<int32_t, QC << L1shift>(id, fout);
         padd(fout);
         nnue->l2.quantise<int32_t, false, false>(id, fout);
         padd(fout);
