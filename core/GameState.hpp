@@ -115,6 +115,7 @@ public :
     bool twofoldFast();
     bool threefoldFast();
     void castlingFromMask(big mask);
+    int material();
 };
 
 const string startpos="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

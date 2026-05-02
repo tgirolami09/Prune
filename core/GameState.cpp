@@ -592,3 +592,11 @@ bool GameState::threefoldFast(){
     }
     return false;
 }
+int GameState::material(){
+    return
+        countbit(board.pieces[PAWN  ])*1 +
+        countbit(board.pieces[KNIGHT])*3 +
+        countbit(board.pieces[BISHOP])*3 +
+        countbit(board.pieces[ROOK  ])*5 +
+        countbit(board.pieces[QUEEN ])*9;
+}

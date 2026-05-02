@@ -12,6 +12,7 @@
 #include "BestMoveFinder.hpp"
 #include "TimeManagement.hpp"
 #include "TablebaseProbe.hpp"
+#include "wdlModel.hpp"
 #include <set>
 #include <iostream>
 #include <cmath>
@@ -146,6 +147,7 @@ const Option Options[] = {
     Option("SyzygyProbeDepth", "spin", "1", 1, 100),
     Option("SyzygyProbeLimit", "spin", "7", 0, 7),
     Option("Minimal", "check", "false"),
+    Option("UCI_ShowWDL", "check", "true"),
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -493,6 +495,11 @@ void manageSearch(){
                                 bestMoveFinder.minimal=true;
                             else
                                 bestMoveFinder.minimal = false;
+                        }else if(parsed[i].second == "UCI_ShowWDL"){
+                            if(parsed[i+1].second == "true")
+                                WDLmodel::enabled = true;
+                            else
+                                WDLmodel::enabled = false;
                         }
                         i += incr;
                     }
