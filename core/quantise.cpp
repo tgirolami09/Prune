@@ -29,6 +29,22 @@ T _quantise(float w){
     }
     return static_cast<T>(clamp<float>(w, -numeric_limits<T>::max(), numeric_limits<T>::max()));
 }
+int clamphigh = 0;
+int clamplow  = 0;
+int8_t _quantise_threat(float w){
+    w = clamp(w, -ftClip, ftClip);
+    w = round(w * static_cast<float>(QA));
+    int I = static_cast<int32_t>(w);
+    if(I > numeric_limits<int8_t>::max()){
+        clamphigh++;
+        I = numeric_limits<int8_t>::max();
+    }
+    if(I < -numeric_limits<int8_t>::max()){
+        clamplow++;
+        I = -numeric_limits<int8_t>::max();
+    }
+    return static_cast<int8_t>(I);
+}
 
 constexpr int simdSize = sizeof(_simd)/sizeof(int16_t);
 constexpr int mask = simdSize*2-1;
@@ -114,9 +130,10 @@ struct inputlayer{
         }
         padd(file);
         for(int i=0; i<THREAT_SIZE; i++)for(int k=0; k<L1; k++){
-            int8_t quantised = _quantise<int8_t, QA>(threatweights[i][transpose(k)]);
+            int8_t quantised = _quantise_threat(threatweights[i][transpose(k)]);
             fwrite(&quantised, sizeof(int8_t), 1, file);
         }
+        printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow, THREAT_SIZE*L1);
         padd(file);
         for(int k=0; k<L1; k++){
             int16_t quantised = _quantise<int16_t, QA>(biases[transpose(k)]);
