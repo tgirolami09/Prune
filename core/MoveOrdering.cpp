@@ -6,7 +6,7 @@
 #include "tunables.hpp"
 
 #ifdef DEBUG_MACRO
-StatVar<sbig, maxHistory, -maxHistory> quiethistPreStat;
+StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPreStat;
 StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
 #endif
 
@@ -117,7 +117,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
             nbPriority++;
         }else{
 #ifdef DEBUG_MACRO
-            int moveHistory = history.getHistoryScore(moves[i], state.friendlyColor());
+            int moveHistory = history.getHistoryScore(moves[i], state.friendlyColor(), state);
             if(moveHistory != maxHistory){
                 if(moves[i].isTactical()){
                     capthistPreStat.update(moveHistory);

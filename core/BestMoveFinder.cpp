@@ -20,7 +20,7 @@ int nmpVerifAllNode=0,
     nmpVerifCutNode=0,
     nmpVerifPassCutNode=0,
     nmpVerifPassAllNode=0;
-StatVar<sbig, maxHistory, -maxHistory> quiethistPostStat;
+StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
 StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 

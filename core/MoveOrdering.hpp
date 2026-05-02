@@ -8,7 +8,7 @@
 
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
-extern StatVar<sbig, maxHistory, -maxHistory> quiethistPreStat;
+extern StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPreStat;
 extern StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
 #endif
 
