@@ -739,16 +739,31 @@ inline simd<32> matrix_mul(simd<32> output, simd<8> inputs, simd<8> weights){
 #endif
 }
 
+inline simd<32> matrix_mul2(simd<32> output, simd<8> inputs1, simd<8> inputs2, simd<8> weights1, simd<8> weights2){
+#ifdef VNNI
+    return ADDMM(dpbusd_epi32(ADDMM(dpbusd_epi32(output, inputs1, weights1)), inputs2, weights2));
+#else
+    auto partial_sums1 = ADDMM(maddubs_epi16)(inputs1, weights1);
+    auto partial_sums2 = ADDMM(maddubs_epi16)(inputs2, weights2);
+
+    return ADDMM(add_epi32)(output, ADDMM(madd_epi16)(simd16_add(partial_sums1, partial_sums2), simd16_set1(1)));
+#endif
+}
+
 template<int input, int output>
 void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
     for(int o=0; o<output/nb<32>; o++){
         y[o] = biases[o];
     }
-    for(int i=0; i<input/I8inI32; i++){
-        const simd<8> inp = ADDMM(set1_epi32)(x[i]);
-        const int offset = i*I8inI32*output/nb<8>;
+    for(int i=0; i<input/I8inI32; i += 2){
+        const simd<8> inp1 = ADDMM(set1_epi32)(x[i  ]);
+        const simd<8> inp2 = ADDMM(set1_epi32)(x[i+1]);
+        const int offset1 =  i   *I8inI32*output/nb<8>;
+        const int offset2 = (i+1)*I8inI32*output/nb<8>;
         for(int o=0; o<output/nb<32>; o++){
-            y[o] = matrix_mul(y[o], inp, weights[offset+o*nb<32>*I8inI32/nb<8>]);
+            y[o] = matrix_mul2(y[o], 
+                inp1, inp2,
+                weights[offset1+o*nb<32>*I8inI32/nb<8>], weights[offset2+o*nb<32>*I8inI32/nb<8>]);
         }
     }
     for(int o=0; o<output/nb<32>; o++){
