@@ -837,6 +837,24 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if(verbose){
         printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));
     }
+    if(limitWay == 1 && tm.hardBound == 1){
+        localSS.stack[0].snap.save(state);
+        Move bestMove=nullMove;
+        int bestScore = -INF;
+        for(int idMove = 0; idMove < order.nbMoves; idMove++){
+            state.playMoveForward(order.moves[idMove]);
+            localSS.eval.playMove(order.moves[idMove], !state.friendlyColor(), &localSS.stack[0].snap.board, &state.board);
+            int score = -localSS.eval.getRaw(state.friendlyColor());
+            if(score > bestScore){
+                bestMove = order.moves[idMove];
+                bestScore = score;
+            }
+            localSS.eval.undoMove(order.moves[idMove], !state.friendlyColor());
+            localSS.stack[0].snap.restore(state);
+        }
+        printf("info depth 0 seldepth 0 score %s nodes 1 nps 0 time 0 pv %s\n", scoreToStr(bestScore, material).c_str(), bestMove.to_str().c_str());
+        return make_tuple(bestMove, nullMove, bestScore, vector<depthInfo>());
+    }
     for(int i=0; i<nbThreads-1; i++){
         helperThreads[i].launch(actDepth, limitWay);
     }
