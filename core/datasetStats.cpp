@@ -126,16 +126,18 @@ int main(int argc, char** argv){
     filtering filter;
     big countFiltered=0;
     big countUnfiltered=0;
-    HyperLogLog uniqueness(10);
+    HyperLogLog uniqueness(20);
     LegalMoveGenerator movegen;
     for(int idFile=1; idFile<argc; idFile++){
         FILE* file=fopen(argv[idFile], "r");
         fseek(file, 0, SEEK_END);
         long file_size = ftell(file);
         fseek(file, 0, SEEK_SET);
+        int idGame = 0;
         while(ftell(file) < file_size){
             GamePlayed game = readGame(file);
             //movegen.initDangers(game.startPos);
+            idGame++;
             for(MoveInfo move:game.game){
                 bool inCheck = movegen.initDangers(game.startPos);
                 game.startPos.initMove(move.move);
@@ -144,10 +146,12 @@ int main(int argc, char** argv){
                 uniqueness.add(game.startPos.zobristHash);
                 game.startPos.playMove(move.move);
             }
-            big nbPos = countFiltered+countUnfiltered;
-            big countUnique = uniqueness.count();
-            printf("\r%s %s/%s(%s %.2f) : %.2f %.2f                   ", niceNumber(countFiltered).c_str(), niceNumber(countUnfiltered).c_str(), niceNumber(nbPos).c_str(), niceNumber(countUnique).c_str(), countUnique*100.0/nbPos, (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
-            fflush(stdout);
+            if((idGame&16383) == 0){
+                big nbPos = countFiltered+countUnfiltered;
+                big countUnique = uniqueness.count();
+                printf("\r%s %s/%s(%s %.2f) : %.2f %.2f                   ", niceNumber(countFiltered).c_str(), niceNumber(countUnfiltered).c_str(), niceNumber(nbPos).c_str(), niceNumber(countUnique).c_str(), countUnique*100.0/nbPos, (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
+                fflush(stdout);
+            }
         }
     }
     big nbPos = countFiltered+countUnfiltered;
