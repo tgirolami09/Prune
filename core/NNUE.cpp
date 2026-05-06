@@ -733,7 +733,7 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
 
 inline simd<32> matrix_mul(simd<32> output, simd<8> inputs, simd<8> weights){
 #ifdef VNNI
-    return ADDMM(dpbusd_epi32(output, inputs, weights));
+    return ADDMM(dpbusd_epi32)(output, inputs, weights);
 #else
     return ADDMM(add_epi32)(output, ADDMM(madd_epi16)(ADDMM(maddubs_epi16)(inputs, weights), simd16_set1(1)));
 #endif
@@ -741,7 +741,7 @@ inline simd<32> matrix_mul(simd<32> output, simd<8> inputs, simd<8> weights){
 
 inline simd<32> matrix_mul2(simd<32> output, simd<8> inputs1, simd<8> inputs2, simd<8> weights1, simd<8> weights2){
 #ifdef VNNI
-    return ADDMM(dpbusd_epi32(ADDMM(dpbusd_epi32(output, inputs1, weights1)), inputs2, weights2));
+    return ADDMM(dpbusd_epi32)(ADDMM(dpbusd_epi32)(output, inputs1, weights1), inputs2, weights2);
 #else
     auto partial_sums1 = ADDMM(maddubs_epi16)(inputs1, weights1);
     auto partial_sums2 = ADDMM(maddubs_epi16)(inputs2, weights2);
