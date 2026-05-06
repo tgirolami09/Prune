@@ -1,9 +1,9 @@
 CC=g++
 ADDOPTION?=
 DEBUGOPT?=
+NETNAME?=
 CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 -I../Fathom/src $(ADDOPTION)
 OPT?=-O3 -flto -funroll-loops
-DOWNLOADNET?=true
 SHELL := /bin/bash
 # Fathom tablebase library
 FATHOM_DIR = ../Fathom/src
@@ -21,6 +21,7 @@ SOURCES := $(filter-out spsa.cpp,$(SOURCES))
 SOURCES := $(filter-out datasetStats.cpp,$(SOURCES))
 SOURCES := $(filter-out testTI.cpp,$(SOURCES))
 SOURCES := $(filter-out quantise.cpp,$(SOURCES))
+SOURCES := $(filter-out permute.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
@@ -82,8 +83,9 @@ ifeq ($(OS),Windows)
 else
     NULL_DEVICE = /dev/null
 endif
-ifeq ($(DOWNLOADNET), true)
+ifeq ($(NETNAME), )
 	NEEDINGFILE=download
+	NETNAME=$(shell tail -1 nn-name.txt)
 else
 	NEEDINGFILE=
 endif
@@ -94,11 +96,19 @@ all: engine.cpp $(OBJECTS)
 download:
 	@if [ ! -f model.bin ]; then \
 		echo "File missing, downloading..."; \
-		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin"; \
-	elif [ "$$(sha256sum model.bin | cut -c1-7)" != "$$(grep -P ".{7}$$" nn-name.txt -o)" ]; then \
+		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell head -1 nn-name.txt)/model.bin"; \
+	elif [ "$$(sha256sum model.bin | cut -c1-7)" != "$$(head -1 nn-name.txt | grep -P ".{7}$$" -o)" ]; then \
 		echo "SHA mismatch, re-downloading..."; \
-		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell cat nn-name.txt)/model.bin"; \
+		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell head -1 nn-name.txt)/model.bin"; \
 	fi
+
+permute: permute.cpp
+	$(CC) -m64 $(OPT) $(ARCHCOM) -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
+
+$(NETNAME): $(NEEDINGFILE)
+
+model.bin: $(NETNAME) permute
+	./permute $(NETNAME).bin model.bin
 
 unittest: unittest.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
@@ -133,7 +143,7 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 %HCE.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
 
-embeder.o: embeder.cpp $(NEEDINGFILE)
+embeder.o: embeder.cpp model.bin
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
 
 embederHCE.o: embeder.cpp

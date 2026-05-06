@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <memory>
 #include <immintrin.h>
-#include <array>
 #include "simd_definitions.hpp"
 #include "NNUE.hpp"
 using namespace std;
@@ -44,30 +43,6 @@ int8_t _quantise_threat(float w){
         I = -numeric_limits<int8_t>::max();
     }
     return static_cast<int8_t>(I);
-}
-
-constexpr int simdSize = sizeof(_simd)/sizeof(int16_t);
-constexpr int mask = simdSize*2-1;
-alignas(64) constexpr array<int16_t, simdSize> first = []{
-    array<int16_t, simdSize> res{};
-    for(int i=0; i<simdSize; i++){
-        res[i] = i;
-    }
-    return res;
-}();
-alignas(64) constexpr array<int16_t, simdSize> second = []{
-    array<int16_t, simdSize> res{};
-    for(int i=0; i<simdSize; i++){
-        res[i] = i+simdSize;
-    }
-    return res;
-}();
-
-const _simd _packed = ADDMM(packus_epi16)(*(_simd*)&first, *(_simd*)&second);
-const int8_t* packed = (int8_t*)&_packed;
-
-int transpose(int n){
-    return (n&~mask) | packed[n&mask];
 }
 
 template<int input, int output>
@@ -121,22 +96,22 @@ struct inputlayer{
     float biases[L1];
     void quantise(FILE* file){
         for(int i=0; i<IB; i++)for(int j=0; j<INPUT_SIZE; j++)for(int k=0; k<L1; k++){
-            float param = psqweights[i+isFactorised][j][transpose(k)];
+            float param = psqweights[i+isFactorised][j][k];
             if constexpr(isFactorised){
-                param += psqweights[0][j][transpose(k)];
+                param += psqweights[0][j][k];
             }
             int16_t quantised = _quantise<int16_t, QA>(param);
             fwrite(&quantised, sizeof(int16_t), 1, file);
         }
         padd(file);
         for(int i=0; i<THREAT_SIZE; i++)for(int k=0; k<L1; k++){
-            int8_t quantised = _quantise_threat(threatweights[i][transpose(k)]);
+            int8_t quantised = _quantise_threat(threatweights[i][k]);
             fwrite(&quantised, sizeof(int8_t), 1, file);
         }
         printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow, THREAT_SIZE*L1);
         padd(file);
         for(int k=0; k<L1; k++){
-            int16_t quantised = _quantise<int16_t, QA>(biases[transpose(k)]);
+            int16_t quantised = _quantise<int16_t, QA>(biases[k]);
             fwrite(&quantised, sizeof(int16_t), 1, file);
         }
         padd(file);
