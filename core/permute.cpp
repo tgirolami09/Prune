@@ -24,8 +24,16 @@ alignas(64) constexpr array<int16_t, simdSize> second = []{
 const _simd _packed = ADDMM(packus_epi16)(*(_simd*)&first, *(_simd*)&second);
 const int8_t* packed = (int8_t*)&_packed;
 
+const array<int8_t, simdSize*2> unpacked = []{
+    array<int8_t, simdSize*2> res{};
+    for(int i=0; i<simdSize*2; i++){
+        res[packed[i]] = i;
+    }
+    return res;
+}();
+
 int permute(int n){
-    return (n&~mask) | packed[n&mask];
+    return (n&~mask) | unpacked[n&mask];
 }
 
 template<int input, int output, typename wtype>
