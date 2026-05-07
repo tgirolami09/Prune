@@ -6,14 +6,14 @@
 static constexpr bool isPW = true;
 constexpr int simdSize = nb<16>;
 constexpr int mask = simdSize*2-1;
-alignas(64) constexpr array<int16_t, simdSize> first = []{
+alignas(64) constexpr auto first = []{
     array<int16_t, simdSize> res{};
     for(int i=0; i<simdSize; i++){
         res[i] = i;
     }
     return res;
 }();
-alignas(64) constexpr array<int16_t, simdSize> second = []{
+alignas(64) constexpr auto second = []{
     array<int16_t, simdSize> res{};
     for(int i=0; i<simdSize; i++){
         res[i] = i+simdSize;
@@ -24,7 +24,7 @@ alignas(64) constexpr array<int16_t, simdSize> second = []{
 const _simd _packed = ADDMM(packus_epi16)(*(_simd*)&first, *(_simd*)&second);
 const int8_t* packed = (int8_t*)&_packed;
 
-const array<int8_t, simdSize*2> unpacked = []{
+const auto unpacked = []{
     array<int8_t, simdSize*2> res{};
     for(int i=0; i<simdSize*2; i++){
         res[packed[i]] = i;
@@ -52,7 +52,6 @@ struct lastLayers{
     layer<L1*(2-isPW), L2, int8_t> l1;
     layer<L2, L3, int32_t> l2;
     layer<L3, 1, int32_t> l3;
-
 };
 
 struct nn{
