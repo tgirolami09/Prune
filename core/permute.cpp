@@ -6,14 +6,14 @@
 static constexpr bool isPW = true;
 constexpr int simdSize = nb<16>;
 constexpr int mask = simdSize*2-1;
-alignas(64) constexpr auto first = []{
+alignas(64) const auto first = []{
     array<int16_t, simdSize> res{};
     for(int i=0; i<simdSize; i++){
         res[i] = i;
     }
     return res;
 }();
-alignas(64) constexpr auto second = []{
+alignas(64) const auto second = []{
     array<int16_t, simdSize> res{};
     for(int i=0; i<simdSize; i++){
         res[i] = i+simdSize;
