@@ -296,7 +296,7 @@ int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState&
     int raw_eval = getRaw(c);
     return correctEval(raw_eval, ch, state, parameters);
 }
-int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const GameState &state, const tunables& parameters) const{
+int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const GameState &state, __attribute__((unused)) const tunables& parameters) const{
     raw_eval += ch.probe(state);
 #if !defined(DATAGEN) && !defined(HCE)
     int nbQ = presentPieces[WHITE][QUEEN]+presentPieces[BLACK][QUEEN];
