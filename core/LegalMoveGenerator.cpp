@@ -243,7 +243,7 @@ void load_table(){
     __attribute__((unused)) big magic=0;
     __attribute__((unused)) int decR=0, minimum=0, size=0;
     int total = 0;
-    int step;
+    int step = 0;
     for(int i=0; i<128; i++){
         indexesTable[i] = i ? indexesTable[i-1]+step : 0;
 #ifndef USE_PEXT
