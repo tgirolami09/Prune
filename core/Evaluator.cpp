@@ -4,11 +4,13 @@
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "tunables.hpp"
+#include <algorithm>
 #ifndef HCE
 #include "NNUE.hpp"
 #endif
 #include <assert.h>
 #include <cstring>
+#include "TablebaseProbe.hpp"
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
 StatVar<big, 48*1024, 0> matScalingStats;
@@ -309,9 +311,9 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const G
     matScalingStats.update(mat);
 #endif
     int matScaling = raw_eval*(mat+parameters.mats_offset)/(48*1024);
-    return matScaling;
+    return clamp(matScaling, -TB_WIN_SCORE+100, TB_WIN_SCORE-100);
 #else
-    return raw_eval;
+    return clamp(raw_eval, -TB_WIN_SCORE+100, TB_WIN_SCORE-100);
 #endif
 }
 void IncrementalEvaluator::undoMove(Move move, bool c){

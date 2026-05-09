@@ -1,5 +1,6 @@
 #include "wdlModel.hpp"
 #include <cmath>
+#include "TablebaseProbe.hpp"
 
 namespace WDLmodel{
     bool enabled = true;
@@ -21,6 +22,7 @@ namespace WDLmodel{
     }
 
     int normalize(int score, int material){
+        if(score < -TB_WIN_SCORE+100 || score > TB_WIN_SCORE-100)return score;
         return score*100/wdlParams(material).first;
 }
 }
