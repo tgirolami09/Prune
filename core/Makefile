@@ -65,10 +65,10 @@ else
 	CPUSETNAME=-$(CPUSET)
 endif
 EXTENSION=
+VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
 ifeq ($(EXE), )
 	NAME=prune-$(OS)-$(REC)
 	SHORTNAME=prune$(REC)
-	VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
 	ifeq ($(OS), Windows)
 		NAME := $(NAME).exe
 		SHORTNAME := $(SHORTNAME).exe
