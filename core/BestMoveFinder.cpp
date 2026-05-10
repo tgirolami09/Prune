@@ -3,6 +3,7 @@
 #include "Evaluator.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
+#include "TablebaseProbe.hpp"
 #include "TranspositionTable.hpp"
 #include <chrono>
 #include <cmath>
@@ -195,7 +196,11 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         int wdl = tbProbe.probeWDL(state);
         if (wdl != TB_RESULT_INVALID) {
             ss.tbHits++;
-            return TablebaseProbe::wdlToScore(wdl, rootDist);
+            int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
+            if(wdl == TB_RESULT_WIN)tbScore += rootDist;
+            if(wdl == TB_RESULT_LOSS)tbScore -= rootDist;
+            if(wdl != TB_RESULT_LOSS && tbScore >= beta)return tbScore;
+            if(wdl != TB_RESULT_WIN  && tbScore <= alpha)return tbScore;
         }
     }
     int& staticEval = ss.stack[rootDist].static_score;
@@ -320,22 +325,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (wdl != TB_RESULT_INVALID) {
             ss.tbHits++;
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
-            // For wins/losses, cut off immediately
-            if (wdl == TB_RESULT_WIN || wdl == TB_RESULT_LOSS) {
-                if constexpr(isPV) ss.beginLine(rootDist);
-                return tbScore;
-            }
-            // Here we can only have DRAW, BLESSED_LOSS and CURSED_WIN. All are treated as a draw.
-            // For draws at non-PV nodes, return immediately. At PV nodes, only use beta cutoff.
-            else {
-                if constexpr(!isPV) {
-                    return tbScore;  // No PV concern at non-PV nodes
-                }
-                if (tbScore >= beta) {
-                    ss.beginLine(rootDist);
-                    return tbScore;
-                }
-            }
+            if(wdl == TB_RESULT_WIN)tbScore += rootDist;
+            if(wdl == TB_RESULT_LOSS)tbScore -= rootDist;
+            if(wdl != TB_RESULT_LOSS && tbScore >= beta)return tbScore;
+            if(wdl != TB_RESULT_WIN  && tbScore <= alpha)return tbScore;
         }
     }
     if(depth <= 0 || (!isRoot && depth == 1 && (!inCheck && (static_eval+100 < alpha || static_eval > beta+100)))){
@@ -779,43 +772,9 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor()), material).c_str());
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
-    // Tablebase probe at root (always do this)
-    Move tbMove = nullMove;
-    int tbWdl = TB_RESULT_INVALID;
     if (tbProbe.canProbe(state, localSS.eval.getNbMan())) {
-        tbWdl = tbProbe.probeRoot(state, tbMove);
-        if (tbWdl != TB_RESULT_INVALID) {
-            if (verbose) {
-                printf("info string Tablebase hit: ");
-                switch (tbWdl) {
-                    case TB_RESULT_WIN: printf("Win"); break;
-                    case TB_RESULT_CURSED_WIN: printf("Cursed Win"); break;
-                    case TB_RESULT_DRAW: printf("Draw"); break;
-                    case TB_RESULT_BLESSED_LOSS: printf("Blessed Loss"); break;
-                    case TB_RESULT_LOSS: printf("Loss"); break;
-                }
-                printf("\n");
-                fflush(stdout);
-            }
-            // In all positions return  perfect move from egtb
-            if(verbose)
-                printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(TablebaseProbe::wdlToScore(tbWdl, 0), material).c_str());
-            if (tbWdl == TB_RESULT_WIN){
-                running = false;
-                return make_tuple(tbMove, nullMove, MAXIMUM, vector<depthInfo>());
-            }
-            else if (tbWdl == TB_RESULT_LOSS){
-                running = false;
-                return make_tuple(tbMove, nullMove, MINIMUM, vector<depthInfo>());
-            }
-            // Only possibilities are : TB_RESULT_DRAW, TB_RESULT_CURSED_WIN and TB_RESULT_BLESSED_LOSS. All are treated as draw
-            else{
-                running = false;
-                return make_tuple(tbMove, nullMove, 0, vector<depthInfo>());
-            }
-        }
         // DTZ probe failed (no DTZ files) - try WDL-only fallback to filter root moves
-        int wdlFallback = tbProbe.probeRootWDLFallback(state, order.moves, order.nbMoves);
+        int wdlFallback = tbProbe.rootFiltering(state, order.moves, order.nbMoves);
         if (wdlFallback != TB_RESULT_INVALID) {
             wdlFilterNb = order.nbMoves;
             for (int i = 0; i < order.nbMoves; i++)
