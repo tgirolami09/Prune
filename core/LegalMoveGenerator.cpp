@@ -362,43 +362,45 @@ inline big LegalMoveGenerator::pseudoLegalKnightMoves(int knightPosition){
     return KnightMoves[knightPosition];
 }
 
-template<bool IsWhite>
+template<bool IsWhite, bool canDiag, bool canHorizontal>
 big LegalMoveGenerator::pseudoLegalPawnMoves(int pawnPosition, big Pieces, int friendKingPos, big moveMask, big captureMask, big enPieces, int enPassant, big enemyRooks){
     big pawnMoveMask = 0;
     big pawnAttackMask = 0;
+    if constexpr(canHorizontal)
+        if (moveMask != 0){
+            int pieceRow = row(pawnPosition);
+            constexpr int startRow = IsWhite ? 1 : 6;
 
-    if (moveMask != 0){
-        int pieceRow = row(pawnPosition);
-        constexpr int startRow = IsWhite ? 1 : 6;
-
-        //Single pawn push (check there are no pieces on target square)
-        big pushMask = IsWhite ? (1ULL << (pawnPosition + 8)) : (1ULL << (pawnPosition - 8));
-        pawnMoveMask |= pushMask & (~Pieces);
-
-        //Double pawn push
-        if (pieceRow == startRow && pawnMoveMask){
-            if constexpr (IsWhite) pushMask <<= 8;
-            else pushMask >>= 8;
+            //Single pawn push (check there are no pieces on target square)
+            big pushMask = IsWhite ? (1ULL << (pawnPosition + 8)) : (1ULL << (pawnPosition - 8));
             pawnMoveMask |= pushMask & (~Pieces);
+
+            //Double pawn push
+            if (pieceRow == startRow && pawnMoveMask){
+                if constexpr (IsWhite) pushMask <<= 8;
+                else pushMask >>= 8;
+                pawnMoveMask |= pushMask & (~Pieces);
+            }
         }
-    }
 
     //Just dangers created by pawns (no filtering by actual pieces that could be taken)
+    pawnMoveMask &= moveMask;
     constexpr int colorIdx = IsWhite ? 0 : 1;
-    pawnAttackMask = attackPawns[colorIdx * 64 + pawnPosition];
+    if constexpr(canDiag){
+        pawnAttackMask = attackPawns[colorIdx * 64 + pawnPosition];
 
-    big finalMoveMask = (pawnMoveMask & moveMask) | (pawnAttackMask & captureMask & enPieces);
+        pawnMoveMask |= (pawnAttackMask & captureMask & enPieces);
 
-    // En passant: the captured pawn is one rank behind the EP square
-    constexpr int epCapturedOffset = IsWhite ? -8 : 8;
-    if (enPassant != -1 && ((pawnAttackMask & (1ull << enPassant)) != 0) && ((captureMask & (1ull << (enPassant + epCapturedOffset))) != 0)){
-        big kingAsRook = pseudoLegalRookMoves(friendKingPos, Pieces ^ ((1ull << pawnPosition) | (1ull << (enPassant + epCapturedOffset))));
-        if((row(friendKingPos) != row(enPassant + epCapturedOffset)) | ((kingAsRook&enemyRooks) == 0)){
-            finalMoveMask |= (1ull << enPassant);
+        // En passant: the captured pawn is one rank behind the EP square
+        constexpr int epCapturedOffset = IsWhite ? -8 : 8;
+        if (enPassant != -1 && ((pawnAttackMask & (1ull << enPassant)) != 0) && ((captureMask & (1ull << (enPassant + epCapturedOffset))) != 0)){
+            big kingAsRook = pseudoLegalRookMoves(friendKingPos, Pieces ^ ((1ull << pawnPosition) | (1ull << (enPassant + epCapturedOffset))));
+            if((row(friendKingPos) != row(enPassant + epCapturedOffset)) | ((kingAsRook&enemyRooks) == 0)){
+                pawnMoveMask |= (1ull << enPassant);
+            }
         }
     }
-
-    return finalMoveMask;
+    return pawnMoveMask;
 }  
 
 template<bool IsWhite>
@@ -568,14 +570,14 @@ void LegalMoveGenerator::legalPawnMoves(big pawnMask, int lastDoublePawnPush, bi
     for (big bb = pawnMask; bb; bb &= bb - 1){
         int sq = __builtin_ctzll(bb);
         big sqBit = 1ULL << sq;
-        big pawnMoveMask = pseudoLegalPawnMoves<IsWhite>(sq, Pieces, friendlyKingPosition, moveMask, captureMask, allEnemies, lastDoublePawnPush, enemyRooks);
-
+        big pawnMoveMask;
         // Apply pin restrictions
         if (sqBit & pinD12)
-            pawnMoveMask &= pinD12;     // diag-pinned: can only capture along pin ray
+            pawnMoveMask = pseudoLegalPawnMoves<IsWhite, true, false>(sq, Pieces, friendlyKingPosition, moveMask, captureMask, allEnemies, lastDoublePawnPush, enemyRooks)&pinD12;     // diag-pinned: can only capture along pin ray
         else if (sqBit & pinHV)
-            pawnMoveMask &= pinHV;      // HV-pinned: can only push along pin file
-
+            pawnMoveMask = pseudoLegalPawnMoves<IsWhite, false, true>(sq, Pieces, friendlyKingPosition, moveMask, captureMask, allEnemies, lastDoublePawnPush, enemyRooks)&pinHV;     // horizontal pin
+        else
+            pawnMoveMask = pseudoLegalPawnMoves<IsWhite, true, true>(sq, Pieces, friendlyKingPosition, moveMask, captureMask, allEnemies, lastDoublePawnPush, enemyRooks); // no pin
         maskToMoves<true>(sq, pawnMoveMask, pawnMoves, nbMoves, PAWN, promotQueen);
     }
 }
