@@ -1,6 +1,6 @@
 <div align="center">
     <h1>Prune</h1>
-    <img src="forest4.jpeg" alt="drawing" width="300"/>
+    <img src="logo.png" alt="drawing" width="300"/>
 </div>
 
 this is a hobby project made by two passionate about informatic.
