@@ -61,7 +61,7 @@ public:
                 }
             }
             printf("    %.2f : %.2f (%.2f %.2f)\n", percent,
-                ((double)(cum[left]-search)*(left-1+mini)+(search-cum[left-1])*(left+mini))/(cum[left]-cum[left-1]),
+                ((double)(cum[left]-search)*(left-1+mini)+(double)(search-cum[left-1])*(left+mini))/(cum[left]-cum[left-1]),
                 (double)cum[left]*100/cum[maxi-mini+1], (double)cum[left-1]*100/cum[maxi-mini+1]);
         }
     }

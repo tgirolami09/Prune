@@ -136,7 +136,7 @@ int TablebaseProbe::probeWDL(const GameState& state) const {
     stateToFathom(state, white, black, kings, queens, rooks, bishops, knights, pawns, ep, turn);
 
     unsigned result = tb_probe_wdl(white, black, kings, queens, rooks, bishops,
-                                    knights, pawns, 0, 0, ep, turn);
+                                    knights, pawns, state.rule50_count(), 0, ep, turn);
 
     if (result == TB_RESULT_FAILED) return TB_RESULT_INVALID;
     return static_cast<int>(result);
@@ -206,7 +206,7 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     return TB_GET_WDL(result);
 }
 
-int TablebaseProbe::probeRootWDLFallback(const GameState& state, Move* moves, int& nbMoves) const {
+int TablebaseProbe::rootFiltering(const GameState& state, Move* moves, int& nbMoves) const {
     if (!initialized) return TB_RESULT_INVALID;
 
     uint64_t white, black, kings, queens, rooks, bishops, knights, pawns;
@@ -215,11 +215,15 @@ int TablebaseProbe::probeRootWDLFallback(const GameState& state, Move* moves, in
     stateToFathom(state, white, black, kings, queens, rooks, bishops, knights, pawns, ep, turn);
 
     TbRootMoves results;
-    int ok = tb_probe_root_wdl(white, black, kings, queens, rooks, bishops,
+    int ok = tb_probe_root_dtz(white, black, kings, queens, rooks, bishops,
+                                knights, pawns, state.rule50_count(),
+                                0, ep, turn, true, true, &results);
+    if (!ok || results.size == 0){    
+        ok = tb_probe_root_wdl(white, black, kings, queens, rooks, bishops,
                                 knights, pawns, state.rule50_count(),
                                 0, ep, turn, true, &results);
-    if (!ok || results.size == 0) return TB_RESULT_INVALID;
-
+        if (!ok || results.size == 0) return TB_RESULT_INVALID;
+    }
     // Find the best (highest) rank across all moves.
     // WdlToRank[] in Fathom: LOSS=-1000, BLESSED_LOSS=-899, DRAW=0, CURSED_WIN=899, WIN=1000
     int32_t bestRank = results.moves[0].tbRank;
@@ -227,14 +231,14 @@ int TablebaseProbe::probeRootWDLFallback(const GameState& state, Move* moves, in
         if (results.moves[i].tbRank > bestRank)
             bestRank = results.moves[i].tbRank;
     }
-
     // Map best rank back to TB_RESULT_* constant
     int wdl;
-    if      (bestRank >= 1000) wdl = TB_RESULT_WIN;
-    else if (bestRank >= 899)  wdl = TB_RESULT_CURSED_WIN;
-    else if (bestRank > -899)  wdl = TB_RESULT_DRAW;
-    else if (bestRank > -1000) wdl = TB_RESULT_BLESSED_LOSS;
-    else                       wdl = TB_RESULT_LOSS;
+    int lowerbound;
+    if      (bestRank >= 900) wdl = TB_RESULT_WIN, lowerbound = 900;
+    else if (bestRank >= 100)  wdl = TB_RESULT_CURSED_WIN, lowerbound = 100;
+    else if (bestRank > -100)  wdl = TB_RESULT_DRAW, lowerbound = -100;
+    else if (bestRank > -900) wdl = TB_RESULT_BLESSED_LOSS, lowerbound = -899;
+    else                       wdl = TB_RESULT_LOSS, lowerbound = -1000;
 
     // Promotion mapping: Fathom (NONE=0,Q=1,R=2,B=3,N=4) -> engine piece type
     const int promoMap[] = {-1, QUEEN, ROOK, BISHOP, KNIGHT};
@@ -248,7 +252,7 @@ int TablebaseProbe::probeRootWDLFallback(const GameState& state, Move* moves, in
 
         bool keep = false;
         for (unsigned j = 0; j < results.size; j++) {
-            if (results.moves[j].tbRank != bestRank) continue;
+            if (results.moves[j].tbRank < lowerbound) continue;
 
             unsigned fathomFrom = TB_MOVE_FROM(results.moves[j].move);
             unsigned fathomTo   = TB_MOVE_TO(results.moves[j].move);

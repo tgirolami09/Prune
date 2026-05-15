@@ -1,6 +1,6 @@
 <div align="center">
     <h1>Prune</h1>
-    <img src="forest4.jpeg" alt="drawing" width="300"/>
+    <img src="logo.png" alt="drawing" width="300"/>
 </div>
 
 this is a hobby project made by two passionate about informatic.
@@ -8,15 +8,14 @@ this is a hobby project made by two passionate about informatic.
 currently, the engine includes:
 - Evaluation:
     - nnue
-        - 1024 HL
-        - 8 output buckets
-        - horizontal mirroring
-        - 10 iterations from random net
+        - (60144+768x4hm -> 384-pw)x2 -> (16 -> 32 -> 1)x8
+        - 13 iterations from random net
     - trained on self-gen data using [bullet](https://github.com/jw1912/bullet) (if you want the data used to train it, you can directly ask one of us)
     - correction history :
         - pawn
         - previous move
         - continuation move
+        - minor+king pieces
     - material scaling
 - Search:
     - iterative Deepening
@@ -65,12 +64,8 @@ currently, the engine includes:
         - print (print the current position [after the moves])
         - position kiwipete (set kiwipete's position)
 - option :
-    - nnueFile
-        - for bullet format quantised
-        - random will init a random net
-        - embed will use the embeded one
     - SyzygyPath: path to Syzygy tablebase files
-    - SyzygyProbeDepth *(TBSEARCH build only)*: minimum search depth to probe tablebases
+    - SyzygyProbeDepth: minimum search depth to probe tablebases
     - SyzygyProbeLimit: maximum piece count to probe (0–7)
     - TB scoring: WIN = 20000 - ply, LOSS = -20000 + ply, DRAW = 0; ply adjustment prefers faster wins and slower losses; cursed win/blessed loss are treated as draws since the 50-move rule makes them unachievable in practice
     - the other ones should be known, refer to the stockfish readme

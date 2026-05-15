@@ -12,6 +12,7 @@
 #include "BestMoveFinder.hpp"
 #include "TimeManagement.hpp"
 #include "TablebaseProbe.hpp"
+#include "wdlModel.hpp"
 #include <set>
 #include <iostream>
 #include <cmath>
@@ -146,6 +147,7 @@ const Option Options[] = {
     Option("SyzygyProbeDepth", "spin", "1", 1, 100),
     Option("SyzygyProbeLimit", "spin", "7", 0, 7),
     Option("Minimal", "check", "false"),
+    Option("UCI_ShowWDL", "check", "true"),
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -394,6 +396,7 @@ void manageSearch(){
                 TIupdateRemStat.print("TIupdateRem");
                 TIupdateTotStat.print("TIupdateTot");
                 TIupdateDiffStat.print("TIupdateDiff");
+                matScalingStats.print("matScaling");
 #endif
             }else if(command == "arch"){
 #ifdef __AVX512F__
@@ -492,6 +495,11 @@ void manageSearch(){
                                 bestMoveFinder.minimal=true;
                             else
                                 bestMoveFinder.minimal = false;
+                        }else if(parsed[i].second == "UCI_ShowWDL"){
+                            if(parsed[i+1].second == "true")
+                                WDLmodel::enabled = true;
+                            else
+                                WDLmodel::enabled = false;
                         }
                         i += incr;
                     }
@@ -504,7 +512,6 @@ void manageSearch(){
                 istringstream moves(parsed[0].second);
                 string curMove;
                 bool isExact = true;
-                SEE_BB bb(state->root);
                 while(moves >> curMove){
                     if(curMove == "ge"){
                         isExact=false;
@@ -524,7 +531,7 @@ void manageSearch(){
                         if(move.capture != -2)
                             res += value_pieces[max(0, cap)];
                     }else
-                        res = see_ge(bb, 0, move, state->root, value_pieces);
+                        res = see_ge(0, move, state->root, value_pieces);
                     printf("%s : %d\n", move.to_str().c_str(), res);
                 }
                 snap.restore(state->root);
@@ -553,6 +560,7 @@ void manageSearch(){
                 TIupdateRemStat.print("TIupdateRem");
                 TIupdateTotStat.print("TIupdateTot");
                 TIupdateDiffStat.print("TIupdateDiff");
+                matScalingStats.print("matScaling");
 #endif
             }
             fflush(stdout);

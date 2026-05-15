@@ -3,6 +3,7 @@
 #include "Evaluator.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
+#include "TablebaseProbe.hpp"
 #include "TranspositionTable.hpp"
 #include <chrono>
 #include <cmath>
@@ -10,15 +11,17 @@
 #include <cstdint>
 #include <cstring>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <cassert>
+#include "wdlModel.hpp"
 
 #ifdef DEBUG_MACRO
 int nmpVerifAllNode=0,
     nmpVerifCutNode=0,
     nmpVerifPassCutNode=0,
     nmpVerifPassAllNode=0;
-StatVar<sbig, maxHistory, -maxHistory> quiethistPostStat;
+StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
 StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
@@ -57,12 +60,24 @@ int absoluteScore(int score, int rootDist){
 
 }
 
-string scoreToStr(int score){
+string scoreToStr(int score, int material){
+    string res;
     if(score > MAXIMUM-maxDepth)
-        return ((string)"mate ")+to_string((MAXIMUM-score+1)/2);
-    if(score < MINIMUM+maxDepth)
-        return ((string)"mate ")+to_string((-(MAXIMUM+score))/2);
-    return "cp "+to_string(score);
+        res = ((string)"mate ")+to_string((MAXIMUM-score+1)/2);
+    else if(score < MINIMUM+maxDepth)
+        res = ((string)"mate ")+to_string((-(MAXIMUM+score))/2);
+    else{
+        int normscore = score;
+        if(WDLmodel::enabled)
+            normscore = WDLmodel::normalize(score, material);
+        res = "cp "+to_string(normscore);
+    }
+    if(WDLmodel::enabled){
+        const auto [w, l] = WDLmodel::wdl(score, material);
+        int d = 1000-w-l;
+        res += " wdl " + to_string(w) + " " + to_string(d) + " " + to_string(l);
+    }
+    return res;
 }
 
 //Class to find the best in a situation
@@ -165,7 +180,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(isPV && relDepth > ss.seldepth)ss.seldepth = relDepth;
     //dbyte hint;
     const int rootDist = relDepth-startRelDepth;
-    if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor()), ss.correctionHistory, state);
+    if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor()), ss.correctionHistory, state, parameters);
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
     if(ttHit){
@@ -181,7 +196,11 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         int wdl = tbProbe.probeWDL(state);
         if (wdl != TB_RESULT_INVALID) {
             ss.tbHits++;
-            return TablebaseProbe::wdlToScore(wdl, rootDist);
+            int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
+            if(wdl == TB_RESULT_WIN)tbScore += rootDist;
+            if(wdl == TB_RESULT_LOSS)tbScore -= rootDist;
+            if(wdl != TB_RESULT_LOSS && tbScore >= beta)return tbScore;
+            if(wdl != TB_RESULT_WIN  && tbScore <= alpha)return tbScore;
         }
     }
     int& staticEval = ss.stack[rootDist].static_score;
@@ -195,7 +214,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
                 raw_eval = ttEntry.raw_eval;
             else
                 raw_eval = ss.eval.getRaw(state.friendlyColor());
-            staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
+            staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state, parameters);
         }
         if(staticEval >= beta){
             transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval, isPV);
@@ -263,7 +282,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         cutnode = false;
     bool allnode = !cutnode && !isPV;
     const int rootDist = relDepth-startRelDepth;
-    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
+    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters);
     if(isPV)ss.seldepth = max(ss.seldepth.load(), relDepth);
     transposition.prefetch(state);
     if(MAXIMUM-rootDist <= alpha)return MAXIMUM-rootDist;
@@ -295,7 +314,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             raw_eval = ttEntry.raw_eval;
         else
             raw_eval = ss.eval.getRaw(state.friendlyColor());
-        static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state);
+        static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state, parameters);
     }else{
         static_eval = INF;
         raw_eval = INF;
@@ -306,22 +325,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (wdl != TB_RESULT_INVALID) {
             ss.tbHits++;
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
-            // For wins/losses, cut off immediately
-            if (wdl == TB_RESULT_WIN || wdl == TB_RESULT_LOSS) {
-                if constexpr(isPV) ss.beginLine(rootDist);
-                return tbScore;
-            }
-            // Here we can only have DRAW, BLESSED_LOSS and CURSED_WIN. All are treated as a draw.
-            // For draws at non-PV nodes, return immediately. At PV nodes, only use beta cutoff.
-            else {
-                if constexpr(!isPV) {
-                    return tbScore;  // No PV concern at non-PV nodes
-                }
-                if (tbScore >= beta) {
-                    ss.beginLine(rootDist);
-                    return tbScore;
-                }
-            }
+            if(wdl == TB_RESULT_WIN)tbScore += rootDist;
+            if(wdl == TB_RESULT_LOSS)tbScore -= rootDist;
+            if(wdl != TB_RESULT_LOSS && tbScore >= beta)return tbScore;
+            if(wdl != TB_RESULT_WIN  && tbScore <= alpha)return tbScore;
         }
     }
     if(depth <= 0 || (!isRoot && depth == 1 && (!inCheck && (static_eval+100 < alpha || static_eval > beta+100)))){
@@ -466,7 +473,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(ss.history.isKiller(curMove, rootDist))
             moveHistory = maxHistory;
         else
-            moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor());
+            moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
             if(!curMove.isTactical()){
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
@@ -507,20 +514,14 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
             if(rankMove > 0){
                 int addRedDepth = 0;
-                if(rankMove > 3 && depth > 3){
+                if(rankMove > 3 && depth > 2){
                     addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
                 score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
-                bool fullSearch = false;
-                if((score > alpha && score < beta) || (isPV && score == beta && beta == alpha+1)){
-                    fullSearch = true;
-                }
-                if(addRedDepth && score >= beta)
-                    fullSearch = true;
-                if(fullSearch){
+                if(score > alpha && (score < beta || isPV || addRedDepth)){
                     ss.generator.initDangers(state);
                     score = -negamax<isPV, limitWay>(ss, depth-reductionDepth, state, -beta, -alpha, relDepth+1, !cutnode);
                 }
@@ -535,8 +536,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.nbCutoff++;
             if(isRoot)ss.rootBest=curMove;
             if(rankMove == 0)ss.nbFirstCutoff++;
-            ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor());
-            ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth);
+            ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
+            ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
             if(!curMove.isTactical()){
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
@@ -638,13 +639,14 @@ template<int limitWay>
 bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth){
     vector<depthInfo> allInfos;
     chrono::milliseconds softBoundTime{tm.softBound};
+    const int material = state.material();
     Move bestMove=nullMove;
     int depthMax = maxDepth;
     if(ss.mainThread && limitWay == 2){
         depthMax = tm.hardBound;
     }
     Record rec{};
-    int lastScore = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state);
+    int lastScore = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters);
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
     char lastline[1000];
@@ -687,7 +689,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
                 updatemainSS(ss, rec);
                 sbig totNodes = ss.nodes;
                 double tcpu = getElapsedTime().count()/1'000'000'000.0;
-                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, finalBestMove.to_str().c_str());
+                printf("info depth %d seldepth %d score %s %s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore, material).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, finalBestMove.to_str().c_str());
                 fflush(stdout);
             }
         }while(running && !smp_abort);
@@ -702,7 +704,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             if(tcpu != 0)speed = totNodes/tcpu;
             if(verbose && bestScore != -INF){
                 char line[1000] = "info depth %d seldepth %d score %s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s string branching factor %.3f first cutoff %.3f\n";
-                snprintf(lastline, 1000, line, depth, ss.seldepth-startRelDepth, scoreToStr(bestScore).c_str(), totNodes, (int)(speed), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
+                snprintf(lastline, 1000, line, depth, ss.seldepth-startRelDepth, scoreToStr(bestScore, material).c_str(), totNodes, (int)(speed), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, PV.c_str(), pow(totNodes, 1.0/depth), (double)ss.nbFirstCutoff/ss.nbCutoff);
                 if(!minimal){
                     printf("%s", lastline);
                     fflush(stdout);
@@ -726,6 +728,7 @@ template<int limitWay>
 bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth){
     verbose = _verbose;
     wdlFilterNb = 0;
+    const int material = state.material();
     hardBoundTime = chrono::milliseconds{tm.hardBound*1000};
     startSearch = timeMesure::now();
     chrono::milliseconds softBoundTime{tm.softBound};
@@ -758,7 +761,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         if(inCheck)score = MINIMUM;
         else score = 0;
         if(verbose)
-            printf("info depth 1 seldepth 0 score %s nodes 0\n", scoreToStr(score).c_str());
+            printf("info depth 1 seldepth 0 score %s nodes 0\n", scoreToStr(score, 0).c_str());
         return make_tuple(nullMove, nullMove, score, vector<depthInfo>());
     }
     running = true;
@@ -766,44 +769,12 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if(order.nbMoves == 1 && limitWay == 0){
         running = false;
         if(verbose)
-            printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor())).c_str());
+            printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor()), material).c_str());
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
-    // Tablebase probe at root (always do this)
-    Move tbMove = nullMove;
-    int tbWdl = TB_RESULT_INVALID;
     if (tbProbe.canProbe(state, localSS.eval.getNbMan())) {
-        tbWdl = tbProbe.probeRoot(state, tbMove);
-        if (tbWdl != TB_RESULT_INVALID) {
-            if (verbose) {
-                printf("info string Tablebase hit: ");
-                switch (tbWdl) {
-                    case TB_RESULT_WIN: printf("Win"); break;
-                    case TB_RESULT_CURSED_WIN: printf("Cursed Win"); break;
-                    case TB_RESULT_DRAW: printf("Draw"); break;
-                    case TB_RESULT_BLESSED_LOSS: printf("Blessed Loss"); break;
-                    case TB_RESULT_LOSS: printf("Loss"); break;
-                }
-                printf("\n");
-                fflush(stdout);
-            }
-            // In all positions return  perfect move from egtb
-            if (tbWdl == TB_RESULT_WIN){
-                running = false;
-                return make_tuple(tbMove, nullMove, MAXIMUM, vector<depthInfo>());
-            }
-            else if (tbWdl == TB_RESULT_LOSS){
-                running = false;
-                return make_tuple(tbMove, nullMove, MINIMUM, vector<depthInfo>());
-            }
-            // Only possibilities are : TB_RESULT_DRAW, TB_RESULT_CURSED_WIN and TB_RESULT_BLESSED_LOSS. All are treated as draw
-            else{
-                running = false;
-                return make_tuple(tbMove, nullMove, 0, vector<depthInfo>());
-            }
-        }
         // DTZ probe failed (no DTZ files) - try WDL-only fallback to filter root moves
-        int wdlFallback = tbProbe.probeRootWDLFallback(state, order.moves, order.nbMoves);
+        int wdlFallback = tbProbe.rootFiltering(state, order.moves, order.nbMoves);
         if (wdlFallback != TB_RESULT_INVALID) {
             wdlFilterNb = order.nbMoves;
             for (int i = 0; i < order.nbMoves; i++)
@@ -824,6 +795,24 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     }
     if(verbose){
         printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));
+    }
+    if(limitWay == 1 && tm.hardBound == 1){
+        localSS.stack[0].snap.save(state);
+        Move bestMove=nullMove;
+        int bestScore = -INF;
+        for(int idMove = 0; idMove < order.nbMoves; idMove++){
+            state.playMoveForward(order.moves[idMove]);
+            localSS.eval.playMove(order.moves[idMove], !state.friendlyColor(), &localSS.stack[0].snap.board, &state.board);
+            int score = -localSS.eval.getRaw(state.friendlyColor());
+            if(score > bestScore){
+                bestMove = order.moves[idMove];
+                bestScore = score;
+            }
+            localSS.eval.undoMove(order.moves[idMove], !state.friendlyColor());
+            localSS.stack[0].snap.restore(state);
+        }
+        printf("info depth 0 seldepth 0 score %s nodes 1 nps 0 time 0 pv %s\n", scoreToStr(bestScore, material).c_str(), bestMove.to_str().c_str());
+        return make_tuple(bestMove, nullMove, bestScore, vector<depthInfo>());
     }
     for(int i=0; i<nbThreads-1; i++){
         helperThreads[i].launch(actDepth, limitWay);
@@ -857,7 +846,8 @@ int BestMoveFinder::testQuiescenceSearch(GameState& state){
     int score = quiescenceSearch<false, true, false>(localSS, state, -INF, INF, 0);
     clock_t end = clock();
     double tcpu = double(end-start)/CLOCKS_PER_SEC;
-    printf("speed: %d; Qnodes:%" PRId64 " score %s\n\n", (int)(localSS.nodes/tcpu), localSS.nodes.load(), scoreToStr(score).c_str());
+    const int material = state.material();
+    printf("speed: %d; Qnodes:%" PRId64 " score %s\n\n", (int)(localSS.nodes/tcpu), localSS.nodes.load(), scoreToStr(score, material).c_str());
     return 0;
 }
 

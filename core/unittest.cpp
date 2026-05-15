@@ -6,7 +6,7 @@
 #include <vector>
 #include "viriformatUtil.hpp"
 using namespace std;
-const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
+const int value_pieces[7] = {100, 299, 300, 500, 900, 100000, 0};
 string suitFens[71] = {
     "6k1/1pp4p/p1pb4/6q1/3P1pRr/2P4P/PP1Br1P1/5RKN w - -",
     "5rk1/1pp2q1p/p1pb4/8/3P1NP1/2P5/1P1BQ1P1/5RK1 b - -",
@@ -99,11 +99,12 @@ void testSEE(){
         Move move;
         move.from_uci(suitMoves[i]);
         state.initMove(move);
-        SEE_BB bb(state);
         int threshold = -fastSEE(move, state, value_pieces);
         if(move.capture != -2)
             threshold += value_pieces[max<int8_t>(0, move.capture)];
-        if(!see_ge(bb, threshold, move, state, value_pieces))
+        if(!see_ge(threshold, move, state, value_pieces))
+            printf("%s & %s & %d\n", suitFens[i].c_str(), suitMoves[i].c_str(), threshold);
+        if(see_ge(threshold+1, move, state, value_pieces))
             printf("%s & %s & %d\n", suitFens[i].c_str(), suitMoves[i].c_str(), threshold);
     }
 }
@@ -163,7 +164,8 @@ const PTest TestsPerft[] = {
         347600,
         5076659
     }},
-    {"R7/5pk1/P5p1/6r1/8/6p1/r4PK1/5R2 w - - 0 36", {20, 464, 10317, 257367}}
+    {"R7/5pk1/P5p1/6r1/8/6p1/r4PK1/5R2 w - - 0 36", {20, 464, 10317, 257367}},
+    {"4B3/5p2/6k1/8/4pq1p/8/2Q2P2/5K2 b - - 0 177", {24, 596, 13459, 337274, 7596070}}
 };
 
 void testPerft(){

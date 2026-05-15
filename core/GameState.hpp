@@ -49,6 +49,9 @@ struct PositionState{
     big getMask(int piece) const{
         return pieces[type(piece)]&colors[color(piece)];
     }
+    big occupancy() const{
+        return colors[WHITE] | colors[BLACK];
+    }
 };
 
 struct PositionSnapshot;
@@ -112,6 +115,7 @@ public :
     bool twofoldFast();
     bool threefoldFast();
     void castlingFromMask(big mask);
+    int material();
 };
 
 const string startpos="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

@@ -25,3 +25,4 @@ prune*
 !Fathom/**
 *.json
 *perf.data*
+!logo.png

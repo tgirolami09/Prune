@@ -114,6 +114,9 @@ void GamePlayed::clear(){
 GamePlayed readGame(FILE* file){
     GamePlayed game;
     memset(game.startPos.board.pieces, 0, sizeof(game.startPos.board.pieces));
+    game.startPos.board.colors[WHITE] = 0;
+    game.startPos.board.colors[BLACK] = 0;
+    game.startPos.zobristHash = 0;
     big occupied=0;
     fastRead(occupied, file);
     occupied = reverse_col(occupied);

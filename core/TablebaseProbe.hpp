@@ -54,7 +54,7 @@ public:
     // WDL-only root probe fallback (for when DTZ files are missing).
     // Filters moves[] in-place to only those with the optimal WDL rank.
     // Returns best WDL (TB_RESULT_*) or TB_RESULT_INVALID on failure.
-    int probeRootWDLFallback(const GameState& state, Move* moves, int& nbMoves) const;
+    int rootFiltering(const GameState& state, Move* moves, int& nbMoves) const;
 
     // Convert WDL result to centipawn score adjusted for ply
     static int wdlToScore(int wdl, int ply);

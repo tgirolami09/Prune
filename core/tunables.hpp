@@ -32,7 +32,13 @@ public:
         qvalue,
         lmr_base,
         lmr_div,
-        mchp_mul;
+        mchp_mul,
+        mats_pawn,
+        mats_knight,
+        mats_bishop,
+        mats_rook,
+        mats_queen,
+        mats_offset;
     float
         aw_mul,
         nodetm_base,

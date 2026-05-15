@@ -28,7 +28,7 @@ extern int
     nmpVerifCutNode,
     nmpVerifPassCutNode,
     nmpVerifPassAllNode;
-extern StatVar<sbig, maxHistory, -maxHistory> quiethistPostStat;
+extern StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
 extern StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 

@@ -16,7 +16,7 @@ tunables::tunables():
     fp_mul(148),
     fp_max_depth(5),
     lmr_history(531),
-    mo_mul_malus(32),
+    mo_mul_malus(256),
     aw_base(20),
     see_born(1),
     pvalue(104),
@@ -27,6 +27,12 @@ tunables::tunables():
     lmr_base(851),
     lmr_div(335),
     mchp_mul(1600),
+    mats_pawn(0),
+    mats_knight(1024),
+    mats_bishop(1024),
+    mats_rook(2048),
+    mats_queen(4096),
+    mats_offset(36864),
     aw_mul(1.9495),
     nodetm_base(2.13688),
     nodetm_mul(1.37487)
@@ -60,7 +66,13 @@ vector<int*> tunables::to_tune_int(){
         &qvalue,
         &lmr_base,
         &lmr_div,
-        &mchp_mul
+        &mchp_mul,
+        &mats_pawn,
+        &mats_knight,
+        &mats_bishop,
+        &mats_rook,
+        &mats_queen,
+        &mats_offset
     };
 }
 

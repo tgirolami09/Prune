@@ -13,21 +13,6 @@ big rook_empty[64];
 big bishop_full[64];
 big rook_full[64];
 
-inline big mask_empty_rook(int square){
-    return (clipped_col[square&7]|clipped_row[square >> 3])&(~(1ULL << square));
-}
-inline big mask_empty_bishop(int square){
-    int col=square&7, row=square >> 3;
-    return clipped_diag[col+row] ^ clipped_idiag[row-col+7];
-}
-inline big mask_full_rook(int square){
-    return (mask_col[square&7]|mask_row[square >> 3])&(~(1ULL << square));
-}
-inline big mask_full_bishop(int square){
-    int col=square&7, row=square >> 3;
-    return mask_diag[col+row] ^ mask_idiag[row-col+7];
-}
-
 __attribute__((constructor(101))) void init_lines(){
     big row = MAX_BIG >> (8*7+2) << 1;
     big col = 0x0001010101010100ULL;
@@ -60,9 +45,11 @@ __attribute__((constructor(101))) void init_lines(){
         mask_idiag[i] = idiag;
     }
     for(int i=0; i<64; i++){
-        bishop_empty[i] = mask_empty_bishop(i);
-        bishop_full[i] = mask_full_bishop(i);
-        rook_empty[i] = mask_empty_rook(i);
-        rook_full[i] = mask_full_rook(i);
+        int colP=i&7, rowP=i>>3;
+        big maskPos = ~(1ULL << i);
+        bishop_empty[i] = clipped_diag[colP+rowP] ^ clipped_idiag[rowP-colP+7];
+        bishop_full[i] = mask_diag[colP+rowP] ^ mask_idiag[rowP-colP+7];
+        rook_empty[i] = (clipped_col[colP]|clipped_row[rowP])&maskPos;
+        rook_full[i] = (mask_col[colP]|mask_row[rowP])&maskPos;
     }
 }

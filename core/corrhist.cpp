@@ -35,17 +35,21 @@ void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int weight){
 void corrhists::update(const GameState& state, int diff, int depth){
     int bonus = diff*corrhistGrain;
     int weight = max(depth+1, 16);
+    int lastmoveid = state.getLastMove().moveInfo+(1 << 15);
+    int contmoveid = state.getContMove().moveInfo+(1 << 15);
     pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, weight);
-    prevMove.update(state.getLastMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
-    cont.update(state.getContMove().moveInfo+(1<<15), state.friendlyColor(), bonus, weight);
+    prevMove.update(lastmoveid, state.friendlyColor(), bonus, weight);
+    cont.update(contmoveid^(lastmoveid*0xa28f&((1 << 16)-1)), state.friendlyColor(), bonus, weight);
     minor.update(state.minorZobrist, state.friendlyColor(), bonus, weight);
 }
 
 int corrhists::probe(const GameState& state) const{
+    int lastmoveid = state.getLastMove().moveInfo+(1 << 15);
+    int contmoveid = state.getContMove().moveInfo+(1 << 15);
     int diff = (
         pawns.probe(state.pawnZobrist, state.friendlyColor()) +
-        cont.probe(state.getContMove().moveInfo+(1<<15), state.friendlyColor()) +
-        prevMove.probe(state.getLastMove().moveInfo+(1<<15), state.friendlyColor()) +
+        cont.probe(contmoveid^(lastmoveid*0xa28f&((1 << 16)-1)), state.friendlyColor()) +
+        prevMove.probe(lastmoveid, state.friendlyColor()) +
         minor.probe(state.minorZobrist, state.friendlyColor())
     )/corrhistGrain;
 #ifdef DEBUG_MACRO
