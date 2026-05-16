@@ -43,6 +43,7 @@ void HelpOrdering::init(tunables& Parameters){
     }
     this->parameters = Parameters;
     memset(history, 0, sizeof(history));
+    memset(conthist, 0, sizeof(conthist));
     memset(captHist, 0, sizeof(captHist));
 }
 void HelpOrdering::updateHistory(int bonus, int& hist){
