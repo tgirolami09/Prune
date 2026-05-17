@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <fstream>
 bool DEBUG = false;
+#define TUNE
 int nbThreads=1;
 #include "BestMoveFinder.hpp"
 #include "Const.hpp"
@@ -19,7 +21,6 @@ int nbThreads=1;
 #include <vector>
 #include <cassert>
 #include <sstream>
-#include <set>
 using namespace std;
 using namespace std::chrono;
 
@@ -51,24 +52,25 @@ int nbIters;
 int nbThreadsSPSA;
 int baseTime, increment;
 int memory;
-int moveOverhead = 10;
-float alpha = 0.602, _gamma = 0.101, lr=0.01, grain = 0.05;
+const int moveOverhead = 10;
+const float alpha = 0.602, _gamma = 0.101, lr=0.02, grain = 0.05, a_ratio=0.1;
 class internalState{
 public:
-    vector<float> state;
-    vector<float> firstState;
+    vector<TunableFloat> state;
+    vector<TunableFloat> firstState;
     internalState(int nbParams):state(nbParams, 1), firstState(nbParams, 1){
     }
     internalState(tunables tun){
         int nbParams = tun.to_tune_int().size()+tun.to_tune_float().size();
-        state.resize(nbParams);
-        firstState.resize(nbParams);
+        state.resize(nbParams, 1);
+        firstState.resize(nbParams, 1);
         int i = 0;
-        for(int *j:tun.to_tune_int()){
-            firstState[i] = state[i] = *j;
+        for(TunableInt *j:tun.to_tune_int()){
+            TunableFloat x((float)j->value, j->minimum, j->maximum, j->c_end, j->r_end);
+            firstState[i] = state[i] = x;
             i++;
         }
-        for(float *j:tun.to_tune_float()){
+        for(TunableFloat* j:tun.to_tune_float()){
             firstState[i] = state[i] = *j;
             i++;
         }
@@ -77,11 +79,11 @@ public:
         return round(state[idx]*precision)/precision;
     }
     float getUpdate(int idx, float evolution, int precision=1){
-        return max(1.0f, round((state[idx]+evolution*firstState[idx])*precision)/precision);
+        return clamp(round((state[idx]+evolution)*precision)/precision, state[idx].minimum, state[idx].maximum);
     }
     void updateParam(int idx, float evolution){
-        state[idx] += evolution*firstState[idx];
-        state[idx] = max(state[idx], 1.0f);
+        state[idx].value += evolution;
+        state[idx].value = clamp(state[idx].value, state[idx].minimum, state[idx].maximum);
     }
     void print(ofstream& file){
         for(float i:state){
@@ -165,9 +167,9 @@ public:
     int idSPSA;
     int nbFinished;
     int nbLaunched;
-    double ak, ck;
+    float c_compression, r_compression;
     vector<string> pairs;
-    vector<float> randoms;
+    vector<int> randoms;
     map<int, int> M;
     int score;
     stateIter():frozenParams(0){} // to have a default constructor
@@ -175,7 +177,7 @@ public:
         randoms.clear();
         M.clear();
         pairs.clear();
-        idSPSA = id;
+        idSPSA = id+1;
         frozenParams = *globParams;
         score = 0;
         parameters = globParams;
@@ -183,15 +185,30 @@ public:
         nbLaunched = nbFinished = 0;
         std::mt19937 gen(idSPSA);
         std::uniform_int_distribution d(0, 1);
-        const int n = nbIters*nbGamesPerIter;
-        const double A = 0.1*n;
-        const double a = pow(n+A, alpha)*lr*grain*grain;
-        const double c = grain*pow(n, _gamma);
-        const int k=idSPSA*nbGamesPerIter;
-        ak = a / pow(k + 1 + A, alpha);
-        ck = c / pow(k + 1, _gamma);
+        c_compression = pow(idSPSA, _gamma);
+        r_compression = pow(nbIters*a_ratio+idSPSA, alpha);
         for(int i=0; i<(int)parameters->state.size(); i++)
-            randoms.push_back((d(gen)*2-1)*ck);
+            randoms.push_back(d(gen)*2-1);
+    }
+
+    pair<float, float> calc(TunableInt v){
+        float a_end = v.r_end*pow(v.c_end, 2);
+        float a = a_end*pow((a_ratio+1)*idSPSA, alpha);
+        float c_value = v.c_end*pow(idSPSA, _gamma);
+        float c = max(c_value/c_compression, 0.5f);
+        float r = a/r_compression/pow(c, 2);
+        //printf("%f %f\n", c, r);
+        return {c, r};
+    }
+
+    pair<float, float> calc(TunableFloat v){
+        float a_end = v.r_end*pow(v.c_end, 2);
+        float a = a_end*pow((a_ratio+1)*idSPSA, alpha);
+        float c_value = v.c_end*pow(idSPSA, _gamma);
+        float c = c_value/c_compression;
+        float r = a/r_compression/pow(c, 2);
+        //printf("%f %f\n", c, r);
+        return {c, r};
     }
 
     string init_players(int id, bool& lastGame){
@@ -206,14 +223,16 @@ public:
         int idPlayer = nbLaunched&1; //second game of the pair we switch the players
         for(int x=0; x<2; x++){
             int sign = idPlayer?-1:1;
-            vector<int*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
+            vector<TunableInt*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
             for(int i = 0; i<(int)Vs.size(); i++){
-                *Vs[i] = frozenParams.getUpdate(i, randoms[i]*sign);
+                auto [c, r] = calc(*Vs[i]);
+                *Vs[i] = frozenParams.getUpdate(i, randoms[i]*sign*c);
             }
-            vector<float*> Vfs = threads[id].getPlayer(idPlayer).parameters.to_tune_float();
+            vector<TunableFloat*> Vfs = threads[id].getPlayer(idPlayer).parameters.to_tune_float();
             int offset = Vs.size();
             for(int i = 0; i<(int)Vfs.size(); i++){
-                *Vfs[i] = frozenParams.getUpdate(i+offset, randoms[i+offset]*sign, 1000);
+                auto [c, r] = calc(*Vfs[i]);
+                *Vfs[i] = frozenParams.getUpdate(i+offset, randoms[i+offset]*sign*c, 1000);
             }
             idPlayer ^= 1;
         }
@@ -230,13 +249,15 @@ public:
     }
 
     double diffloss(){
-        return (double)score/nbGamesPerIter;
+        return (double)score;
     }
 
     void apply(){
         double loss = diffloss();
-        for(int i=0; i<(int)parameters->state.size(); i++)
-            parameters->updateParam(i, loss*ak/(randoms[i]*ck));
+        for(int i=0; i<(int)parameters->state.size(); i++){
+            auto [c, r] = calc(parameters->state[i]);
+            parameters->updateParam(i, c*r*loss*randoms[i]);
+        }
     }
 };
 
@@ -317,7 +338,7 @@ void play_games(int id){
 
 int main(int argc, char** argv){
     if(argc == 1){
-        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:)( <memory> <baseTime> <increment>) (another optional)<logFile> <added params>(to continue)\n", argv[0]);
+        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:)( <memory> <baseTime> <increment>) (another optional)<logFile>\n", argv[0]);
         printf("book: a file name that contains a list of fens\n");
         printf("nbGames Per Iter: number of games per SPSA iters\n");
         printf("nbIter: number of SPSA iters\n");
@@ -348,28 +369,27 @@ int main(int argc, char** argv){
     internalState state((tunables()));
     int nbPassedIters = 0;
     int nbFinishedGames = 0;
+    bool restart = false;
     if(argc > 5){
         memory = atoi(argv[5]);
         baseTime = atoi(argv[6]);
         increment = atoi(argv[7]);
         if(argc > 8){
             string line;
-            ifstream oldLog(argv[8]);
-            set<int> S;
-            if(argc > 9){
-                stringstream addedparams(argv[9]);
-                int x;
-                while(addedparams >> x)S.insert(x);
+            string refile = argv[8];
+            printf("%s %d\n", refile.c_str(), refile == "re");
+            if(refile == "re"){
+                refile = "spsaOut.log";
+                restart = true;
             }
+            ifstream oldLog(refile.c_str());
+            assert(oldLog.is_open());
             bool iseven = true;
             while(getline(oldLog, line)){
                 if(!iseven){
                     stringstream ss(line);
                     int idParam = 0;
-                    while(S.count(idParam))idParam++;
-                    while(ss >> state.state[idParam++]){
-                        while(S.count(idParam))idParam++;
-                    }
+                    while(ss >> state.state[idParam++].value);
                     idSPSA++;
                 }
                 iseven = !iseven;
@@ -381,7 +401,7 @@ int main(int argc, char** argv){
             printf("%d\n", idSPSA);
         }
     }
-    int alreadyMadeGames = nbFinishedGames;
+    const int alreadyMadeGames = nbFinishedGames;
     memory *= hashMul;
     stateIter S;
     S.init(idSPSA++, &state);
@@ -405,7 +425,11 @@ int main(int argc, char** argv){
     printf("all threads has been launched\n");
     int threadUp = nbThreadsSPSA;
     auto start = high_resolution_clock::now();
-    ofstream logFile("spsaOut.log");
+    ofstream logFile;
+    if(restart)
+        logFile.open("spsaOut.log", std::ios::app);
+    else
+        logFile.open("spsaOut.log");
     while(threadUp){
         for(int i=0; i<nbThreadsSPSA; i++){
             if(threads[i].check_finished()){
@@ -424,7 +448,7 @@ int main(int argc, char** argv){
                 }
                 auto end = high_resolution_clock::now();
                 int passedTime = duration_cast<milliseconds>(end-start).count();
-                printf("\r%d/%d iters %d/%d games, speed: %.2fg/s time remaining: %s      ", nbPassedIters, nbIters, nbFinishedGames, nbIters*nbGamesPerIter, ((nbFinishedGames-alreadyMadeGames)*1000.0)/passedTime, secondsToStr(((long)nbIters*nbGamesPerIter-nbFinishedGames+alreadyMadeGames)*passedTime/(nbFinishedGames*1000)).c_str());
+                printf("\r%d/%d iters %d/%d games, speed: %.2fg/s time remaining: %s      ", nbPassedIters, nbIters, nbFinishedGames, nbIters*nbGamesPerIter, ((nbFinishedGames-alreadyMadeGames)*1000.0)/passedTime, secondsToStr(((long)nbIters*nbGamesPerIter-nbFinishedGames)*passedTime/((nbFinishedGames-alreadyMadeGames)*1000)).c_str());
                 fflush(stdout);
                 if(islast || Qiters.back().nbLaunched >= nbGamesPerIter){
                     if(idSPSA >= nbIters){

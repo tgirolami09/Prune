@@ -27,7 +27,7 @@ tunables::tunables():
     lmr_base(851),
     lmr_div(335),
     mchp_mul(1600),
-    mats_pawn(0),
+    mats_pawn(1, 1, 400),
     mats_knight(1024),
     mats_bishop(1024),
     mats_rook(2048),
@@ -38,27 +38,27 @@ tunables::tunables():
     nodetm_mul(1.37487)
 {}
 
-vector<int*> tunables::to_tune_int(){
+vector<TunableInt*> tunables::to_tune_int(){
     return {
-        &iir_min_depth,
-        &iir_validity_depth,
+        //&iir_min_depth,
+        //&iir_validity_depth,
         &rfp_improving,
         &rfp_nimproving,
         &nmp_red_depth_div,
         &nmp_red_base,
-        &se_validity_depth,
-        &se_min_depth,
-        &se_dext_margin,
-        &lmp_base,
-        &lmp_mul,
+        //&se_validity_depth,
+        //&se_min_depth,
+        //&se_dext_margin,
+        //&lmp_base,
+        //&lmp_mul,
         &mhp_mul,
         &fp_base,
         &fp_mul,
-        &fp_max_depth,
+        //&fp_max_depth,
         &lmr_history,
         &mo_mul_malus,
-        &aw_base,
-        &see_born,
+        //&aw_base,
+        //&see_born,
         &pvalue,
         &nvalue,
         &bvalue,
@@ -76,10 +76,10 @@ vector<int*> tunables::to_tune_int(){
     };
 }
 
-vector<float*> tunables::to_tune_float(){
+vector<TunableFloat*> tunables::to_tune_float(){
     return {
-        &aw_mul,
-        &nodetm_base,
-        &nodetm_mul
+        //&aw_mul,
+        //&nodetm_base,
+        //&nodetm_mul
     };
 }

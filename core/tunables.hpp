@@ -1,12 +1,131 @@
 #ifndef TUNABLE_HPP
 #define TUNABLE_HPP
+#include <cstdlib>
 #include <vector>
+#include <cassert>
 using namespace std;
+#define TUNE
+#ifdef TUNE
+struct TunableInt{
+    int value;
+    int minimum, maximum;
+    float c_end;
+    float r_end;
+    explicit TunableInt(int v):value(v),minimum(v/2), maximum(v*2){
+        c_end = abs(maximum-minimum)/20.0;
+        r_end = 0.002 / (min(0.5f, c_end) / 0.5);
+    }
+    explicit TunableInt(int v, int mi, int ma):value(v),minimum(mi), maximum(ma){
+        c_end = abs(maximum-minimum)/20.0;
+        r_end = 0.002 / (min(0.5f, c_end) / 0.5);
+    }
+    operator int() const{
+        return value;
+    }
+    operator float() const{
+        return value;
+    }
+    int operator-() const{
+        return -value;
+    }
+    void operator=(int a){
+        value = a;
+    }
+    template<typename T>
+    T operator*(T a) const{
+        return a*value;
+    }
+    template<typename T>
+    int operator*=(T a){
+        return value *= a;
+    }
+    template<typename T>
+    T operator+(T a) const{
+        return a+value;
+    }
+    template<typename T>
+    int operator+=(T a){
+        return value += a;
+    }
+    template<typename T>
+    T operator-(T a) const{
+        return a+value;
+    }
+    template<typename T>
+    int operator-=(T a){
+        return value += a;
+    }
+    bool operator<(int a) const{
+        return value < a;
+    }
+    bool operator<=(int a) const{
+        return value <= a;
+    }
+    bool operator>(int a) const{
+        return value > a;
+    }
+    bool operator>=(int a) const{
+        return value >= a;
+    }
+    
+};
 
+template<typename T>
+T operator*(T a, TunableInt b){
+    return b*a;
+}
+template<typename T>
+T operator+(T a, TunableInt b){
+    return b+a;
+}
+template<typename T>
+T operator-(T a, TunableInt b){
+    return a+-b;
+}
+template<typename T>
+bool operator<(T a, TunableInt b){
+    return b>a;
+}
+template<typename T>
+bool operator<=(T a, TunableInt b){
+    return b>=a;
+}
+template<typename T>
+bool operator>(T a, TunableInt b){
+    return b<a;
+}
+template<typename T>
+bool operator>=(T a, TunableInt b){
+    return b<=a;
+}
+
+
+struct TunableFloat{
+    float value;
+    float minimum, maximum;
+    float c_end, r_end;
+    TunableFloat(float v):value(v),minimum(v/2), maximum(v*2){
+        assert(v > 0);
+        c_end = abs(maximum-minimum)/20;
+        r_end = 0.002;
+    }
+    TunableFloat(float v, float mi, float ma, float ce, float re):value(v), minimum(mi), maximum(ma), c_end(ce), r_end(re){}
+    operator float(){
+        return value;
+    }
+    void operator=(float a){
+        value = a;
+    }
+};
+#else
+using TunableFloat=float;
+using TunableInt=int;
+#endif
 class tunables{
 public:
     tunables();
-    int iir_min_depth,
+    TunableInt
+        iir_min_depth,
         iir_validity_depth,
         rfp_improving,
         rfp_nimproving,
@@ -39,11 +158,11 @@ public:
         mats_rook,
         mats_queen,
         mats_offset;
-    float
+    TunableFloat
         aw_mul,
         nodetm_base,
         nodetm_mul;
-    vector<int*> to_tune_int();
-    vector<float*> to_tune_float();
+    vector<TunableInt*> to_tune_int();
+    vector<TunableFloat*> to_tune_float();
 };
 #endif
