@@ -4,7 +4,7 @@
 #include <vector>
 #include <cassert>
 using namespace std;
-#define TUNE
+
 #ifdef TUNE
 struct TunableInt{
     int value;

@@ -132,7 +132,7 @@ coreGen: collectData.cpp $(OBJECTS)
 	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^ $(LDFLAGS)
 
 spsa: spsa.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS) -DTUNE
 
 spsaHCE: spsa.cpp $(OBJECTSHCE)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsaHCE $^ $(VERSIONNING) -DHCE $(LDFLAGS)

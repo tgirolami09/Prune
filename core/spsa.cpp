@@ -171,12 +171,12 @@ public:
     int nbLaunched;
     float c_compression, r_compression;
     vector<string> pairs;
-    vector<int> randoms;
+    vector<int> flips;
     map<int, int> M;
     int score;
     stateIter():frozenParams(0, 0){} // to have a default constructor
     void init(int id, internalState* globParams){
-        randoms.clear();
+        flips.clear();
         M.clear();
         pairs.clear();
         idSPSA = id+1;
@@ -190,20 +190,20 @@ public:
         c_compression = pow(idSPSA, _gamma);
         r_compression = pow(nbIters*a_ratio+idSPSA, alpha);
         for(int i=0; i<(int)parameters->state.size(); i++)
-            randoms.push_back(d(gen)*2-1);
+            flips.push_back(d(gen)*2-1);
     }
     template<typename T>
     pair<float, float> calc(T v, bool needclamp=false){
         static_assert(is_same<T, TunableInt>() || is_same<T, TunableFloat>(), "object should be tunable");
         float a_end = v.r_end*pow(v.c_end, 2);
-        float a = a_end*pow((a_ratio+1)*nbIters, alpha);
+        float a_value = a_end*pow((a_ratio+1)*nbIters, alpha);
 
         float c_value = v.c_end*pow(nbIters, _gamma);
 
         float c = c_value/c_compression;
         if(is_same<T, TunableInt>() || needclamp)
             c = max(c, 0.5f);
-        float r = a/r_compression/pow(c, 2);
+        float r = a_value/r_compression/pow(c, 2);
         //printf("%f %f\n", c, r);
         return {c, r};
     }
@@ -223,13 +223,13 @@ public:
             vector<TunableInt*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
             for(int i = 0; i<(int)Vs.size(); i++){
                 auto [c, r] = calc(*Vs[i]);
-                *Vs[i] = frozenParams.getUpdate(i, randoms[i]*sign*c);
+                *Vs[i] = frozenParams.getUpdate(i, flips[i]*sign*c);
             }
             vector<TunableFloat*> Vfs = threads[id].getPlayer(idPlayer).parameters.to_tune_float();
             int offset = Vs.size();
             for(int i = 0; i<(int)Vfs.size(); i++){
                 auto [c, r] = calc(*Vfs[i]);
-                *Vfs[i] = frozenParams.getUpdate(i+offset, randoms[i+offset]*sign*c, 1000);
+                *Vfs[i] = frozenParams.getUpdate(i+offset, flips[i+offset]*sign*c, 1000);
             }
             idPlayer ^= 1;
         }
@@ -256,7 +256,7 @@ public:
             float v = parameters->state[i].value;
             float tot = c*r*loss;
             printf("%f %f (%.2f%%) %f %f (%.2f%%) %f %f (%.2f%%)\n", v, c, c*100/v, r, c*r, c*r*100/v, loss, tot, tot*100/v);
-            parameters->updateParam(i, c*r*loss*randoms[i]);
+            parameters->updateParam(i, c*r*loss*flips[i]);
         }
     }
 };
