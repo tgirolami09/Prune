@@ -58,15 +58,17 @@ class internalState{
 public:
     vector<TunableFloat> state;
     vector<TunableFloat> firstState;
-    internalState(int nbParams):state(nbParams, 1), firstState(nbParams, 1){
+    int nbInts;
+    internalState(int nbParams, int _nbInts):state(nbParams, 1), firstState(nbParams, 1), nbInts(_nbInts){
     }
     internalState(tunables tun){
         int nbParams = tun.to_tune_int().size()+tun.to_tune_float().size();
+        nbInts = tun.to_tune_int().size();
         state.resize(nbParams, 1);
         firstState.resize(nbParams, 1);
         int i = 0;
         for(TunableInt *j:tun.to_tune_int()){
-            TunableFloat x((float)j->value, j->minimum, j->maximum, j->c_end, j->r_end);
+            TunableFloat x(j->value, j->minimum, j->maximum, j->c_end, j->r_end);
             firstState[i] = state[i] = x;
             i++;
         }
@@ -172,7 +174,7 @@ public:
     vector<int> randoms;
     map<int, int> M;
     int score;
-    stateIter():frozenParams(0){} // to have a default constructor
+    stateIter():frozenParams(0, 0){} // to have a default constructor
     void init(int id, internalState* globParams){
         randoms.clear();
         M.clear();
@@ -190,22 +192,17 @@ public:
         for(int i=0; i<(int)parameters->state.size(); i++)
             randoms.push_back(d(gen)*2-1);
     }
-
-    pair<float, float> calc(TunableInt v){
+    template<typename T>
+    pair<float, float> calc(T v, bool needclamp=false){
+        static_assert(is_same<T, TunableInt>() || is_same<T, TunableFloat>(), "object should be tunable");
         float a_end = v.r_end*pow(v.c_end, 2);
-        float a = a_end*pow((a_ratio+1)*idSPSA, alpha);
-        float c_value = v.c_end*pow(idSPSA, _gamma);
-        float c = max(c_value/c_compression, 0.5f);
-        float r = a/r_compression/pow(c, 2);
-        //printf("%f %f\n", c, r);
-        return {c, r};
-    }
+        float a = a_end*pow((a_ratio+1)*nbIters, alpha);
 
-    pair<float, float> calc(TunableFloat v){
-        float a_end = v.r_end*pow(v.c_end, 2);
-        float a = a_end*pow((a_ratio+1)*idSPSA, alpha);
-        float c_value = v.c_end*pow(idSPSA, _gamma);
+        float c_value = v.c_end*pow(nbIters, _gamma);
+
         float c = c_value/c_compression;
+        if(is_same<T, TunableInt>() || needclamp)
+            c = max(c, 0.5f);
         float r = a/r_compression/pow(c, 2);
         //printf("%f %f\n", c, r);
         return {c, r};
@@ -217,7 +214,7 @@ public:
         if(nbLaunched&1){
             fen = pairs[nbLaunched/2]; //recup the same fen as the other game of the pair
         }else{
-            frozenParams = *parameters; // we can now update the frozen ones, this is just to assure the base parameters are the sames between the pairs games
+            //frozenParams = *parameters; // we can now update the frozen ones, this is just to assure the base parameters are the sames between the pairs games
             fen = pairs[nbLaunched/2] = fens[idFen++];
         }
         int idPlayer = nbLaunched&1; //second game of the pair we switch the players
@@ -255,7 +252,10 @@ public:
     void apply(){
         double loss = diffloss();
         for(int i=0; i<(int)parameters->state.size(); i++){
-            auto [c, r] = calc(parameters->state[i]);
+            auto [c, r] = calc(parameters->state[i], i < parameters->nbInts);
+            float v = parameters->state[i].value;
+            float tot = c*r*loss;
+            printf("%f %f (%.2f%%) %f %f (%.2f%%) %f %f (%.2f%%)\n", v, c, c*100/v, r, c*r, c*r*100/v, loss, tot, tot*100/v);
             parameters->updateParam(i, c*r*loss*randoms[i]);
         }
     }
@@ -409,7 +409,7 @@ int main(int argc, char** argv){
     Qiters.push_back(S);
     vector<int> games(nbThreadsSPSA, -1);
     threads = new HelperThread[nbThreadsSPSA];
-    printf("start tuning with %ld parameters %d threads tc=%.1f+%.1f memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
+    printf("start tuning with %ld parameters %d threads tc=%.5f+%.5f memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
     for(int i=0; i<nbThreadsSPSA; i++){
         threads[i].t = thread(play_games, i);
         bool islast = false;
