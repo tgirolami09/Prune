@@ -53,7 +53,7 @@ int nbThreadsSPSA;
 int baseTime, increment;
 int memory;
 const int moveOverhead = 10;
-const float alpha = 0.602, _gamma = 0.101, lr=0.02, grain = 0.05, a_ratio=0.1;
+const float alpha = 0.602, _gamma = 0.101, a_ratio=0.1;
 class internalState{
 public:
     vector<TunableFloat> state;
@@ -219,7 +219,7 @@ public:
         }
         int idPlayer = nbLaunched&1; //second game of the pair we switch the players
         for(int x=0; x<2; x++){
-            int sign = idPlayer?-1:1;
+            int sign = x?-1:1;
             vector<TunableInt*> Vs = threads[id].getPlayer(idPlayer).parameters.to_tune_int();
             for(int i = 0; i<(int)Vs.size(); i++){
                 auto [c, r] = calc(*Vs[i]);

@@ -36,7 +36,7 @@ int& HelpOrdering::getTactIndex(Move move, bool c){
 bool HelpOrdering::fastEq(Move a, Move b) const{
     return a.moveInfo == b.moveInfo;
 }
-void HelpOrdering::init(tunables& Parameters){
+void HelpOrdering::init(const tunables& Parameters){
     for(int i=0; i<maxDepth; i++){
         killers[i][0] = nullMove;
         killers[i][1] = nullMove;

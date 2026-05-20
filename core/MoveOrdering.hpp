@@ -23,7 +23,7 @@ class HelpOrdering{
     void updateMove(int bonus, Move move, bool c, const GameState& state);
 public:
     tunables parameters;
-    void init(tunables& parameters);
+    void init(const tunables& parameters);
     void addKiller(Move move, int depth, int relDepth, bool c, const GameState& state);
     bool isKiller(Move move, int relDepth) const;
     int getHistoryScore(Move move, bool c, const GameState& state) const;

@@ -24,6 +24,7 @@ SOURCES := $(filter-out quantise.cpp,$(SOURCES))
 SOURCES := $(filter-out permute.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o) $(FATHOM_OBJ)
+OBJECTSTUNE := $(SOURCES:%.cpp=%TUNE.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
 ifeq ($(OS), Windows_NT)
 	OS = Windows
@@ -131,8 +132,8 @@ HCE: engine.cpp $(OBJECTSHCE)
 coreGen: collectData.cpp $(OBJECTS)
 	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^ $(LDFLAGS)
 
-spsa: spsa.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS) -DTUNE
+spsa: spsa.cpp $(OBJECTSTUNE)
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS)
 
 spsaHCE: spsa.cpp $(OBJECTSHCE)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsaHCE $^ $(VERSIONNING) -DHCE $(LDFLAGS)
@@ -142,6 +143,9 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 
 %HCE.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
+
+%TUNE.o: %.cpp
+	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DTUNE
 
 embeder.o: embeder.cpp model.bin
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp

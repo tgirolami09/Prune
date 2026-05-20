@@ -107,7 +107,11 @@ public:
     chrono::milliseconds hardBoundTime;
     ~BestMoveFinder();
     void stop();
+    #ifdef TUNE
     tunables parameters;
+    #else
+    static constexpr tunables parameters{};
+    #endif
 private:
     usefull localSS;
     vector<HelperThread> helperThreads;

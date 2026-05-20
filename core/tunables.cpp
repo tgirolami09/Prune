@@ -1,42 +1,4 @@
 #include "tunables.hpp"
-tunables::tunables():
-    iir_min_depth(3),
-    iir_validity_depth(4),
-    rfp_improving(94),
-    rfp_nimproving(163),
-    nmp_red_depth_div(263),
-    nmp_red_base(2793),
-    se_validity_depth(3),
-    se_min_depth(6),
-    se_dext_margin(17),
-    lmp_base(4),
-    lmp_mul(4),
-    mhp_mul(1618),
-    fp_base(329),
-    fp_mul(148),
-    fp_max_depth(5),
-    lmr_history(531),
-    mo_mul_malus(256),
-    aw_base(20),
-    see_born(1),
-    pvalue(104),
-    nvalue(280),
-    bvalue(271),
-    rvalue(487),
-    qvalue(990),
-    lmr_base(851),
-    lmr_div(335),
-    mchp_mul(1600),
-    mats_pawn(1, 1, 400),
-    mats_knight(1024),
-    mats_bishop(1024),
-    mats_rook(2048),
-    mats_queen(4096),
-    mats_offset(36864),
-    aw_mul(1.9495),
-    nodetm_base(2.13688),
-    nodetm_mul(1.37487)
-{}
 
 vector<TunableInt*> tunables::to_tune_int(){
     return {
