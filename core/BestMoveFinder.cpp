@@ -325,8 +325,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (wdl != TB_RESULT_INVALID) {
             ss.tbHits++;
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
-            if(wdl == TB_RESULT_WIN)tbScore += rootDist;
-            if(wdl == TB_RESULT_LOSS)tbScore -= rootDist;
+            if(wdl == TB_RESULT_WIN)tbScore -= rootDist;
+            else if(wdl == TB_RESULT_LOSS)tbScore += rootDist;
+            else return tbScore;
             if(wdl != TB_RESULT_LOSS && tbScore >= beta)return tbScore;
             if(wdl != TB_RESULT_WIN  && tbScore <= alpha)return tbScore;
         }
