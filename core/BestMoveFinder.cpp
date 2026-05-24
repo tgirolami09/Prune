@@ -872,6 +872,8 @@ void BestMoveFinder::reinit(size_t count){
 }
 
 Perft::Perft(){}
+
+template<bool bulk>
 big Perft::_perft(GameState& state, ubyte depth){
     visitedNodes++;
     if(depth == 0)return 1;
@@ -881,18 +883,19 @@ big Perft::_perft(GameState& state, ubyte depth){
     big dangerPositions = 0;
     generator.initDangers(state);
     int nbMoves=generator.generateLegalMoves(state, inCheck, stack[depth], dangerPositions);
-    //if(depth == 1)return nbMoves;
+    if constexpr(bulk)if(depth == 1)return nbMoves;
     big count=0;
     for(int i=0; i<nbMoves; i++){
         PositionSnapshot snap;
         snap.save(state);
         state.playMoveForward(stack[depth][i]);
-        big nbNodes=_perft(state, depth-1);
+        big nbNodes=_perft<bulk>(state, depth-1);
         snap.restore(state);
         count += nbNodes;
     }
     return count;
 }
+template<bool bulk>
 big Perft::perft(GameState& state, ubyte depth, bool verbose){
     visitedNodes = 0;
     if(depth == 0)return 1;
@@ -905,25 +908,28 @@ big Perft::perft(GameState& state, ubyte depth, bool verbose){
     big count=0;
     for(int i=0; i<nbMoves; i++){
         clock_t startMove=clock();
-        big startVisitedNodes = visitedNodes;
+        big startVisitedNodes = count;
         PositionSnapshot snap;
         snap.save(state);
         state.playMoveForward(moves[i]);
-        big nbNodes=_perft(state, depth-1);
+        big nbNodes=_perft<bulk>(state, depth-1);
         snap.restore(state);
         clock_t end=clock();
         double tcpu = double(end-startMove)/CLOCKS_PER_SEC;
+        count += nbNodes;
         if(verbose){
-            printf("%s: %" PRId64 " (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (visitedNodes-startVisitedNodes)/tcpu);
+            printf("%s: %" PRId64 " (%d/%d %.2fs => %.0f n/s)\n", moves[i].to_str().c_str(), nbNodes, i+1, nbMoves, tcpu, (count-startVisitedNodes)/tcpu);
             fflush(stdout);
         }
-        count += nbNodes;
     }
     clock_t end=clock();
     double tcpu = double(end-start)/CLOCKS_PER_SEC;
     if(verbose){
-        printf("%.3f : %.3f nps %" PRId64 " visited nodes\n", tcpu, visitedNodes/tcpu, visitedNodes);
+        printf("%.3f : %.3f nps %" PRId64 " visited nodes\n", tcpu, count/tcpu, visitedNodes);
         fflush(stdout);
     }
     return count;
 }
+
+template big Perft::perft<false>(GameState&, ubyte, bool);
+template big Perft::perft<true>(GameState&, ubyte, bool);

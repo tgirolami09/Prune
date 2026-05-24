@@ -147,7 +147,9 @@ public:
     LegalMoveGenerator generator;
     Perft();
     big visitedNodes;
+    template<bool bulk>
     big _perft(GameState& state, ubyte depth);
+    template<bool bulk>
     big perft(GameState& state, ubyte depth, bool verbose=true);
     void reinit(size_t count);
 };

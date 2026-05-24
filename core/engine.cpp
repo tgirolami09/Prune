@@ -118,7 +118,7 @@ void manageInput(){
         fflush(stdout);
     }
 }
-const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete", "perft"};
+const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete", "perft", "nonbulk"};
 class Option{
 public:
     string name;
@@ -164,10 +164,16 @@ pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool
     return {softBound, hardBound};
 }
 
-bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool verbose=true){
+bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool verbose, bool& printmove){
     if(!args.empty()){
         if(args[0].first == "perft"){
-            printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, stoi(args[0].second)));
+            printmove = false;
+            big result;
+            if(args[1].first == "nonbulk")
+                result = doPerft.perft<false>(state.root, stoi(args[0].second));
+            else
+                result = doPerft.perft<true>(state.root, stoi(args[0].second));
+            printf("Nodes searched: %" PRId64 "\n", result);
             return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
         }else if((args[0].first == "btime" || args[0].first == "wtime")){
             int btime=0, wtime=0, winc=0, binc=0;
@@ -331,7 +337,8 @@ void manageSearch(){
                     testState->movesFromRoot = {};
                     testState->root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    bestMoveResponse res=goCommand(parsed, *testState, false);
+                    bool _;
+                    bestMoveResponse res=goCommand(parsed, *testState, false, _);
                     vector<depthInfo> infos = get<3>(res);
                     if(DEBUG)
                         printf("fen: %s score: %d nodes: %" PRId64 "\n", testState->root.toFen().c_str(), get<2>(res), infos.empty()?0:infos.back().node);
@@ -436,15 +443,18 @@ void manageSearch(){
                     }
                 }
             }else if(command == "go"){
-                bestMoveResponse res=goCommand(parsed, *state, true);
+                bool printmove = true;
+                bestMoveResponse res=goCommand(parsed, *state, true, printmove);
                 Move bm = get<0>(res);
                 Move ponder=get<1>(res);
-                if(ponder.moveInfo == nullMove.moveInfo)
-                    printf("bestmove %s\n", bm.moveInfo == nullMove.moveInfo ? "0000" : bm.to_str().c_str());
-                else
-                    printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
-                lastMove = ponder;
-                bestMoveFinder.aging();
+                if(printmove){
+                    if(ponder.moveInfo == nullMove.moveInfo)
+                        printf("bestmove %s\n", bm.moveInfo == nullMove.moveInfo ? "0000" : bm.to_str().c_str());
+                    else
+                        printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
+                    lastMove = ponder;
+                    bestMoveFinder.aging();
+                }
             }else if(command == "uci"){
 #ifdef VERSION
                 string v=VERSION;
