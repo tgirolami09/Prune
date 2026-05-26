@@ -800,7 +800,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         }
     }
     if(verbose){
-        printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64 "B by entry)\n", transposition.modulo, (big)transposition.modulo*sizeof(infoScore)/hashMul, (big)sizeof(infoScore));
+        printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64 "B by cluster)\n", transposition.modulo, (big)transposition.modulo*sizeof(Cluster)/hashMul, (big)sizeof(Cluster));
     }
     if(limitWay == 1 && tm.hardBound == 1){
         localSS.stack[0].snap.save(state);
