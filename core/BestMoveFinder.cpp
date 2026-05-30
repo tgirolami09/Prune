@@ -82,8 +82,7 @@ string scoreToStr(int score, int material){
 
 //Class to find the best in a situation
 
-BestMoveFinder::BestMoveFinder(int memory, bool mute):transposition(memory), helperThreads(0){
-    book = load_book("book.bin", mute);
+BestMoveFinder::BestMoveFinder(int memory):transposition(memory), helperThreads(0){
 }
 BestMoveFinder::BestMoveFinder():transposition(hashMul), helperThreads(0){
 }
@@ -739,29 +738,10 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     startSearch = timeMesure::now();
     chrono::milliseconds softBoundTime{tm.softBound};
     vector<depthInfo> allInfos;
-    bool moveInTable = false;
-    Move bookMove = findPolyglot(state,moveInTable,book);
     bool inCheck;
     Order order;
     localSS.reinit(state);
     order.nbMoves = localSS.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
-    //Return early because a move was found in a book
-    if (moveInTable){
-        moveInTable = false;
-        for(int i=0; i<order.nbMoves; i++){
-            if(order.moves[i].moveInfo == bookMove.moveInfo){
-                moveInTable = true;
-                break;
-            }
-        }
-        if(moveInTable){
-            if(verbose)
-                printf("info string Found book move for fen : %s\n",state.toFen().c_str());
-            return make_tuple(bookMove, nullMove, INF, vector<depthInfo>());
-        }else if(verbose){
-            printf("info string bad move find in table %s (in %s)\n", bookMove.to_str().c_str(), state.toFen().c_str());
-        }
-    }
     if(order.nbMoves == 0){
         int score;
         if(inCheck)score = MINIMUM;

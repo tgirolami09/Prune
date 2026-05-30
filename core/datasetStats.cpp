@@ -7,6 +7,7 @@
 #include <random>
 #include <cassert>
 #include <string>
+#include <set>
 using namespace std;
 
 string niceNumber(big N){
@@ -126,8 +127,9 @@ int main(int argc, char** argv){
     filtering filter;
     big countFiltered=0;
     big countUnfiltered=0;
-    HyperLogLog uniqueness(20);
+    set<string> uniqueness;
     LegalMoveGenerator movegen;
+    //Move legalMoves[maxMoves];
     for(int idFile=1; idFile<argc; idFile++){
         FILE* file=fopen(argv[idFile], "r");
         fseek(file, 0, SEEK_END);
@@ -141,19 +143,31 @@ int main(int argc, char** argv){
             for(MoveInfo move:game.game){
                 bool inCheck = movegen.initDangers(game.startPos);
                 game.startPos.initMove(move.move);
+                //big dng = 0;
+                //int nbmoves = movegen.generateLegalMoves(game.startPos, inCheck, legalMoves, dng);
+                //bool islegal = false;
+                //for(int i=0; i<nbmoves; i++){
+                //    if(legalMoves[i].moveInfo == move.move.moveInfo)
+                //        islegal = true;
+                //}
+                //if(!islegal){
+                //    printf("\n%s %s\n", game.startPos.toFen().c_str(), move.move.to_str().c_str());
+                //    break;
+                //}
                 if(filter.filter(game.startPos, move, inCheck, game.result))countFiltered++;
                 else countUnfiltered++;
-                uniqueness.add(game.startPos.zobristHash);
+                uniqueness.insert(game.startPos.toFen());
                 game.startPos.playMove(move.move);
+                //movegen.initDangers(game.startPos);
             }
             if((idGame&16383) == 0){
                 big nbPos = countFiltered+countUnfiltered;
-                big countUnique = uniqueness.count();
+                big countUnique = uniqueness.size();
                 printf("\r%s %s/%s(%s %.2f) : %.2f %.2f                   ", niceNumber(countFiltered).c_str(), niceNumber(countUnfiltered).c_str(), niceNumber(nbPos).c_str(), niceNumber(countUnique).c_str(), countUnique*100.0/nbPos, (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
                 fflush(stdout);
             }
         }
     }
     big nbPos = countFiltered+countUnfiltered;
-    printf("\n%ld %ld/%ld (%ld): %.2f %.2f\n", countFiltered, countUnfiltered, nbPos, uniqueness.count(), (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
+    printf("\n%ld %ld/%ld (%ld): %.2f %.2f\n", countFiltered, countUnfiltered, nbPos, uniqueness.size(), (double)countFiltered*100/nbPos, (double)(countUnfiltered)*100/nbPos);
 }

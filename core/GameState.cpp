@@ -6,7 +6,9 @@
 using namespace std;
 
 big zobrist[nbZobrist];
-
+static inline int posCastlingRook(bool side, bool c){
+    return ((7-side*7)+c*(8*7));
+}
 __attribute__((constructor)) void init_zobrs(){
     big state(42);
     for(int idz=0; idz<nbZobrist; idz++){
@@ -18,6 +20,13 @@ __attribute__((constructor)) void init_zobrs(){
 }
 
 GameState::GameState(){
+    board.reset();
+    zobristHash = 0;
+    minorZobrist = 0;
+    pawnZobrist = 0;
+    turnNumber = 0;
+    lastDoublePawnPush = -1;
+    castlingMask = 0;
 }
 
 void GameState::updateZobrists(int piece, bool color, int square){
@@ -59,9 +68,7 @@ void GameState::fromFen(string fen){
     else
         movesSinceBeginning[0] = nullMove;
     id += 2;
-    for(int side=0; side<2; side++)
-        for(int kingside=0; kingside<2; kingside++)
-            castlingRights[side][kingside] = 0;
+    castlingMask = 0;
     if(fen[id] == '-')
         id++;
     else{
@@ -77,13 +84,9 @@ void GameState::fromFen(string fen){
             if(tolower(fen[id]) == 'q'){
                 isKing = false;
             }
-            castlingRights[isBlack][isKing] = 1;
-            zobristHash ^= zobrist[zobrCastle+isBlack*2+isKing];
-        }
-    }
-    for(int c=0; c<2; c++){
-        for(int side=0; side<2; side++){
-            posRook[c][side] = castlingRights[c][side] ? (7-side*7)+c*(8*7) : -1;
+            int pos = posCastlingRook(isKing, isBlack);
+            castlingMask |= 1ULL << pos;
+            zobristHash ^= zobrist[zobrCastle+pos];
         }
     }
     id++;
@@ -136,7 +139,7 @@ string GameState::toFen() const{
         for(int side=0; side < 2; side++){
             char s=side?'k':'q';
             if(!c)s = toupper(s);
-            if(castlingRights[c][side]){
+            if(castlingMask & (1ULL << posCastlingRook(side, c))){
                 castlingPart += s;
             }
         }
@@ -158,25 +161,6 @@ string GameState::toFen() const{
     return fen;
 }
 
-big GameState::castlingMask(){
-    big res = 0;
-    for(int c=0; c<2; c++){
-        for(int side=0; side<2; side++){
-            if(castlingRights[c][side])
-                res |= 1ULL << (56*c+7*!side);
-        }
-    }
-    return res;
-}
-
-void GameState::castlingFromMask(big mask){
-    for(int c=0; c<2; c++){
-        for(int side=0; side<2; side++){
-            castlingRights[c][side] = bool(mask & (1ULL << (56*c+7*!side)));
-        }
-    }
-
-}
 
 int GameState::friendlyColor() const{
     //Turn 1 is white (so friend on odd is white)
@@ -233,12 +217,9 @@ int GameState::playMove(Move move){
     if(move.capture != -2){
         const bool enColor=enemyColor();
         if(move.capture == ROOK){
-            if(move.to() == posRook[enColor][0] && castlingRights[enColor][0]){
-                zobristHash ^= zobrist[zobrCastle + enColor*2];
-                castlingRights[enColor][0] = false;
-            }else if(move.to() == posRook[enColor][1] && castlingRights[enColor][1]){
-                zobristHash ^= zobrist[zobrCastle + enColor*2 + 1];
-                castlingRights[enColor][1] = false;
+            if((1ULL << move.to()) & castlingMask){
+                castlingMask ^= 1ULL << move.to();
+                zobristHash ^= zobrist[zobrCastle+move.to()];
             }
         }
         int pieceCapture = move.capture>=0?move.capture:PAWN;
@@ -266,13 +247,19 @@ int GameState::playMove(Move move){
         lastDoublePawnPush = -1;
     }
     if(move.piece == KING){
-        if(castlingRights[curColor][0]){
-            zobristHash ^= zobrist[zobrCastle + curColor*2];
-            castlingRights[curColor][0] = false;
-        }
-        if(castlingRights[curColor][1]){
-            zobristHash ^= zobrist[zobrCastle + curColor*2 + 1];
-            castlingRights[curColor][1] = false;
+        big cM = castlingMask & mask_row[row(move.from())];
+        if(cM){
+            {
+                int idx = __builtin_ctzll(cM);
+                zobristHash ^= zobrist[zobrCastle+idx];
+                castlingMask ^= 1ULL << idx;
+            }
+            cM &= cM-1;
+            if(cM){
+                int idx = __builtin_ctzll(cM);
+                zobristHash ^= zobrist[zobrCastle+idx];
+                castlingMask ^= 1ULL << idx;
+            }
         }
         if(abs(move.to()-move.from()) == 2){//castling
             int startRook=move.from(), endRook=move.to();
@@ -289,12 +276,9 @@ int GameState::playMove(Move move){
             board.addPiece(endRook  , ROOK, curColor);
         }
     }else if(move.piece == ROOK){
-        if(move.from() == posRook[curColor][0] && castlingRights[curColor][0]){
-            zobristHash ^= zobrist[zobrCastle + curColor*2];
-            castlingRights[curColor][0] = false;
-        }else if(move.from() == posRook[curColor][1] && castlingRights[curColor][1]){
-            zobristHash ^= zobrist[zobrCastle + curColor*2 + 1];
-            castlingRights[curColor][1] = false;
+        if((1ULL << move.from()) & castlingMask){
+            castlingMask ^= 1ULL << move.from();
+            zobristHash ^= zobrist[zobrCastle+move.from()];
         }
     }
     turnNumber++;
@@ -399,7 +383,7 @@ void GameState::print() const{
         for(int side=0; side < 2; side++){
             char s=side?'k':'q';
             if(!c)s = toupper(s);
-            if(castlingRights[c][side])
+            if(castlingMask & (1ULL << posCastlingRook(side, c)))
                 printf("%c", s);
         }
     }
@@ -458,12 +442,9 @@ void GameState::playMoveForward(Move move){
 
         // Rook captured: revoke castling rights directly (no deathRook needed)
         if(move.capture == ROOK){
-            if(move.to() == posRook[enColor][0] && castlingRights[enColor][0]){
-                zobristHash ^= zobrist[zobrCastle + enColor*2];
-                castlingRights[enColor][0] = false;
-            }else if(move.to() == posRook[enColor][1] && castlingRights[enColor][1]){
-                zobristHash ^= zobrist[zobrCastle + enColor*2 + 1];
-                castlingRights[enColor][1] = false;
+            if((1ULL << move.to()) & castlingMask){
+                castlingMask ^= 1ULL << move.to();
+                zobristHash ^= zobrist[zobrCastle+move.to()];
             }
         }
     }
@@ -497,13 +478,19 @@ void GameState::playMoveForward(Move move){
 
     // King move: revoke all castling rights for this color
     if(move.piece == KING){
-        if(castlingRights[curColor][0]){
-            zobristHash ^= zobrist[zobrCastle + curColor*2];
-            castlingRights[curColor][0] = false;
-        }
-        if(castlingRights[curColor][1]){
-            zobristHash ^= zobrist[zobrCastle + curColor*2 + 1];
-            castlingRights[curColor][1] = false;
+        big cM = castlingMask & mask_row[row(move.from())];
+        if(cM){
+            {
+                int idx = __builtin_ctzll(cM);
+                zobristHash ^= zobrist[zobrCastle+idx];
+                castlingMask ^= 1ULL << idx;
+            }
+            cM &= cM-1;
+            if(cM){
+                int idx = __builtin_ctzll(cM);
+                zobristHash ^= zobrist[zobrCastle+idx];
+                castlingMask ^= 1ULL << idx;
+            }
         }
         // Castling: move the rook
         if(abs(move.to()-move.from()) == 2){
@@ -522,13 +509,10 @@ void GameState::playMoveForward(Move move){
         }
     }else if(move.piece == ROOK){
         // Rook moves from starting square: revoke that castling right
-        if(move.from() == posRook[curColor][0] && castlingRights[curColor][0]){
-            zobristHash ^= zobrist[zobrCastle + curColor*2];
-            castlingRights[curColor][0] = false;
-        }else if(move.from() == posRook[curColor][1] && castlingRights[curColor][1]){
-            zobristHash ^= zobrist[zobrCastle + curColor*2 + 1];
-            castlingRights[curColor][1] = false;
-        }
+            if((1ULL << move.from()) & castlingMask){
+                castlingMask ^= 1ULL << move.from();
+                zobristHash ^= zobrist[zobrCastle+move.from()];
+            }
     }
 
     // Advance turn

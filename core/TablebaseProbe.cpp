@@ -70,8 +70,7 @@ bool TablebaseProbe::canProbe(const GameState& state, int nbMan) const {
     if (nbMan > (int)tbLargest || nbMan > probeLimit) return false;
 
     // Cannot probe with castling rights
-    if (state.castlingRights[WHITE][0] || state.castlingRights[WHITE][1] ||
-        state.castlingRights[BLACK][0] || state.castlingRights[BLACK][1]) {
+    if (state.castlingMask) {
         return false;
     }
 
@@ -125,8 +124,7 @@ int TablebaseProbe::probeWDL(const GameState& state) const {
     if (!initialized) return TB_RESULT_INVALID;
 
     // Cannot probe with castling rights
-    if (state.castlingRights[WHITE][0] || state.castlingRights[WHITE][1] ||
-        state.castlingRights[BLACK][0] || state.castlingRights[BLACK][1]) {
+    if (state.castlingMask) {
         return TB_RESULT_INVALID;
     }
 

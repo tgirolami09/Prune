@@ -9,6 +9,7 @@
 #define dbyte int16_t
 #define sbig int64_t
 using namespace std;
+#define forceinline __attribute__((always_inline))
 extern int nbThreads;
 extern bool DEBUG;
 const big MAX_BIG=~0ULL;

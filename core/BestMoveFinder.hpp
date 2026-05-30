@@ -8,7 +8,6 @@
 #include "Evaluator.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
-#include "loadpolyglot.hpp"
 #include "TablebaseProbe.hpp"
 #include <vector>
 #include "tunables.hpp"
@@ -93,14 +92,13 @@ class BestMoveFinder{
         void launch(int relDepth, int limitWay);
         void wait_thread();
     };
-    unordered_map<uint64_t,PolyglotEntry> book;
 
     //Returns the best move given a position and time to use
     transpositionTable transposition;
 public:
     std::atomic<bool> running;
     bool minimal = false;
-    BestMoveFinder(int memory, bool mute=false);
+    BestMoveFinder(int memory);
     BestMoveFinder();
     sbig hardBound;
     timeMesure::time_point startSearch;

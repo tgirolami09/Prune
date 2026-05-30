@@ -169,10 +169,15 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
         if(args[0].first == "perft"){
             printmove = false;
             big result;
+            PositionSnapshot snap;
+            snap.save(state.root);
+            for(Move move:state.movesFromRoot)
+                state.root.playPartialMoveForward(move);
             if(args[1].first == "nonbulk")
                 result = doPerft.perft<false>(state.root, stoi(args[0].second));
             else
                 result = doPerft.perft<true>(state.root, stoi(args[0].second));
+            snap.restore(state.root);
             printf("Nodes searched: %" PRId64 "\n", result);
             return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
         }else if((args[0].first == "btime" || args[0].first == "wtime")){

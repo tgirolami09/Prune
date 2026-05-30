@@ -1,7 +1,6 @@
 #include "GameState.hpp"
 #include "Evaluator.hpp"
 #include "BestMoveFinder.hpp"
-#include "polyglotHash.hpp"
 #include <string>
 #include <vector>
 #include "viriformatUtil.hpp"
@@ -174,7 +173,7 @@ void testPerft(){
         GameState game;
         game.fromFen(test.fen);
         for(int depth=0; depth<(int)test.expResults.size(); depth++){
-            int res = perft.perft(game, depth+1, false);
+            int res = perft.perft<true>(game, depth+1, false);
             if(test.expResults[depth] != res){
                 printf("ERROR : fen %s expected %d != result %d\n", test.fen.c_str(), test.expResults[depth], res);
             }
@@ -191,17 +190,6 @@ const pair<string, big> TestsPolyHash[] = {
     {"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3", 0x652a607ca3f242c1},
     {"r1bqkbnr/ppp1pppp/2n5/3p4/3P4/4PN2/PPP2PPP/RNBQKB1R b KQkq - 1 3", 15834916877423137634ul}
 };
-
-void testPolyHash(){
-    for(auto test:TestsPolyHash){
-        GameState game;
-        game.fromFen(test.first);
-        big resHash = polyglotHash(game);
-        if(resHash != test.second){
-            printf("ERROR : fen %s\nexpected %016" PRIx64 "\nresult   %016" PRIx64 "\n", test.first.c_str(), test.second, resHash);
-        }
-    }
-}
 
 vector<string> Games[] = {
     {"e2e4", "e7e5", "d1h5", "e8e7", "h5e5"},
@@ -232,6 +220,5 @@ void testViri(){
 int main(){
     testSEE();
     testPerft();
-    testPolyHash();
     testViri();
 }

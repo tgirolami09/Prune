@@ -403,20 +403,28 @@ big LegalMoveGenerator::pseudoLegalPawnMoves(int pawnPosition, big Pieces, int f
     return pawnMoveMask;
 }  
 
-template<bool IsWhite>
-big LegalMoveGenerator::pseudoLegalKingMoves(int kingPosition, big Pieces, bool kingCastling, bool queenCastling){
-    constexpr int color = IsWhite ? 0 : 1;
+template<bool IsWhite, bool Castle>
+big LegalMoveGenerator::pseudoLegalKingMoves(int kingPosition, big Pieces, big cMask){
     big kingEndMask = normalKingMoves[kingPosition];
-
-    if(kingCastling && !(pieceCastlingMasks[color][1]&(Pieces)) && !(attackCastlingMasks[color][1] & allDangerSquares)){
-        constexpr int posKingSideCastle = color * 56 + 1;
-        kingEndMask |= 1ULL << posKingSideCastle;
-    }
-
-    if(queenCastling && !(pieceCastlingMasks[color][0]&(Pieces)) && !(attackCastlingMasks[color][0] & allDangerSquares)){
-        constexpr int posQueenSideCastle = color * 56 + 5;
-        kingEndMask |= 1ULL << posQueenSideCastle;
-    }
+    if constexpr(Castle){if(cMask){
+        {
+            int pos = __builtin_ctzll(cMask);
+            int poscastle = kingposCastle[pos > kingPosition]|(kingPosition&0b111000);
+            big ray1 = directions[kingPosition][pos]&~(1ULL << pos);
+            big ray2 = directions[kingPosition][poscastle]|(1ULL << kingPosition);
+            if(!(ray1&Pieces) && !(ray2&allDangerSquares))
+                kingEndMask |= 1ULL << poscastle;
+        }
+        cMask &= cMask-1;
+        if(cMask){
+            int pos = __builtin_ctzll(cMask);
+            int poscastle = kingposCastle[pos > kingPosition]|(kingPosition&0b111000);
+            big ray1 = directions[kingPosition][pos]&~(1ULL << pos);
+            big ray2 = directions[kingPosition][poscastle]|(1ULL << kingPosition);
+            if(!(ray1&Pieces) && !(ray2&allDangerSquares))
+                kingEndMask |= 1ULL << poscastle;
+        }
+    }}
     return kingEndMask;
 }
 
@@ -548,7 +556,7 @@ int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, i
 
 void LegalMoveGenerator::dealWithEnemyKing(int enemyKingPos){
     //Castling args are false so template param is irrelevant
-    big dangerSquares = pseudoLegalKingMoves<false>(enemyKingPos, 0, false, false);
+    big dangerSquares = pseudoLegalKingMoves<false, false>(enemyKingPos, 0, 0);
     allDangerSquares |= dangerSquares;
 }
 
@@ -556,7 +564,7 @@ template<bool IsWhite>
 void LegalMoveGenerator::legalKingMoves(const GameState& state, Move* moves, int& nbMoves, big Pieces, big captureMask){
     constexpr int color = IsWhite ? 0 : 1;
     int kingPos = __builtin_ctzll(state.getFriendlyMask(KING));
-    big kingEndMask = pseudoLegalKingMoves<IsWhite>(kingPos, Pieces, state.castlingRights[color][1], state.castlingRights[color][0]);
+    big kingEndMask = pseudoLegalKingMoves<IsWhite, true>(kingPos, Pieces, state.castlingMask & mask_row[color*7]);
     kingEndMask &= (~allFriends);
     kingEndMask &= (~allDangerSquares);
     //In case only captures need to be generated
@@ -835,7 +843,7 @@ Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
     LVAmove.capture = capturedPiece;
     LVAmove.updateTo(posCapture);
     //From here we have the pinned pieces, the number of checkers, and the danger squares
-    big kingEndMask = pseudoLegalKingMoves<IsWhite>(friendlyKingPosition, allPieces, false, false);
+    big kingEndMask = pseudoLegalKingMoves<IsWhite, false>(friendlyKingPosition, allPieces, 0);
     kingEndMask &= (~allDangerSquares);
     if(kingEndMask & captureMask){
         LVAmove.updateFrom(friendlyKingPosition);
