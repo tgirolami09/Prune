@@ -44,7 +44,7 @@ constexpr int L1shift = _abs(16+QC_bits-FT_LSHIFT-QA_bits*2-QB_bits);
 const int BUCKET = 8;
 const int nbInputBuckets = 4;
 
-const int L1 = 384;
+const int L1 = 512;
 const int L2=16;
 const int L3=32;
 
