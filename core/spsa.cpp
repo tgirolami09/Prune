@@ -118,7 +118,7 @@ public:
     condition_variable cv;
     BestMoveFinder player0, player1;
     GameState state;
-    HelperThread():player0(memory, true), player1(memory, true){}
+    HelperThread():player0(memory), player1(memory){}
     int ans;
     bool zombie;
     void init(){

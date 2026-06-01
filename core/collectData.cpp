@@ -49,7 +49,7 @@ public:
     GameState state;
     GamePlayed game;
     Move legalMoves[maxMoves];
-    threadHelper():player0(alloted_space, true), player1(alloted_space, true){}
+    threadHelper():player0(alloted_space), player1(alloted_space){}
     void init(string fen){
         player0.clear();
         player1.clear();
