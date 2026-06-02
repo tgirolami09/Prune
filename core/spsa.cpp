@@ -253,9 +253,6 @@ public:
         double loss = diffloss();
         for(int i=0; i<(int)parameters->state.size(); i++){
             auto [c, r] = calc(parameters->state[i], i < parameters->nbInts);
-            float v = parameters->state[i].value;
-            float tot = c*r*loss;
-            printf("%f %f (%.2f%%) %f %f (%.2f%%) %f %f (%.2f%%)\n", v, c, c*100/v, r, c*r, c*r*100/v, loss, tot, tot*100/v);
             parameters->updateParam(i, c*r*loss*flips[i]);
         }
     }

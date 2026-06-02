@@ -150,6 +150,9 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 embeder.o: embeder.cpp model.bin
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
 
+embederTUNE.o: embeder.cpp model.bin
+	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
+
 embederHCE.o: embeder.cpp
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
