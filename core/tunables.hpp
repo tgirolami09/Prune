@@ -156,6 +156,8 @@ public:
         mats_rook(2001),
         mats_queen(3528),
         mats_offset(38758),
+        see_mul_quiet(60),
+        see_mul_tact(80),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -193,7 +195,9 @@ public:
         mats_bishop,
         mats_rook,
         mats_queen,
-        mats_offset;
+        mats_offset,
+        see_mul_quiet,
+        see_mul_tact;
     TunableFloat
         aw_mul,
         nodetm_base,

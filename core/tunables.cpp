@@ -34,7 +34,9 @@ vector<TunableInt*> tunables::to_tune_int(){
         &mats_bishop,
         &mats_rook,
         &mats_queen,
-        &mats_offset
+        &mats_offset,
+        &see_mul_quiet,
+        &see_mul_tact
     };
 }
 
