@@ -406,7 +406,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     int firstMoveExtension = 0;
     if(!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= depth && ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && excludedMove == nullMove.moveInfo && abs(ttEntry.score) < MAXIMUM-maxDepth){
-        int goal = ttEntry.score - depth;
+        int goal = ttEntry.score - depth*parameters.se_dmul/1024;
         int score = negamax<false, limitWay>(ss, (depth-1)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMoveInfo);
         if(score < goal){
             firstMoveExtension++;
@@ -485,7 +485,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
                 if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
-                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+moveHistory/64;
+                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+moveHistory*parameters.fp_hmul/4096;
                 if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
                 }

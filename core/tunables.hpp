@@ -158,6 +158,8 @@ public:
         mats_offset(38758),
         see_mul_quiet(60),
         see_mul_tact(80),
+        fp_hmul(64),
+        se_dmul(1024),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -197,7 +199,9 @@ public:
         mats_queen,
         mats_offset,
         see_mul_quiet,
-        see_mul_tact;
+        see_mul_tact,
+        fp_hmul,
+        se_dmul;
     TunableFloat
         aw_mul,
         nodetm_base,
