@@ -172,8 +172,9 @@ void BestMoveFinder::HelperThread::wait_thread(){
 
 template<int limitWay, bool isPV, bool isCalc>
 int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth){
-    if(!running || smp_abort)return 0;
     if(limitWay == 0 && (ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
+    if constexpr(limitWay == 1)if(ss.nodes >= hardBound)running=false;
+    if(!running || smp_abort)return 0;
     if(ss.eval.isInsufficientMaterial() || state.rule50_count() > 100)return 0;
     ss.nodes++;
     if(isPV && relDepth > ss.seldepth)ss.seldepth = relDepth;
@@ -271,7 +272,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
 template<bool isPV, int limitWay>
 inline int BestMoveFinder::Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth){
     int score = quiescenceSearch<limitWay, isPV, true>(ss, state, alpha, beta, relDepth);
-    if constexpr(limitWay == 1)if(ss.nodes > hardBound)running=false;
     return score;
 }
 
@@ -287,6 +287,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(MAXIMUM-rootDist <= alpha)return MAXIMUM-rootDist;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
     if constexpr(limitWay == 0)if((ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)running=false;
+    if constexpr(limitWay == 1)if(ss.nodes >= hardBound)running = false;
     if(!running || smp_abort)return 0;
     if(state.rule50_count() >= 100 || ss.eval.isInsufficientMaterial()){
         if constexpr (isPV)ss.beginLine(rootDist);
