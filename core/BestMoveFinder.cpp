@@ -348,7 +348,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(lastEval != INVALID){
             if(!isPV && ttEntry.depth >= depth)
                 return lastEval;
-            else
+            else if(abs(lastEval) < MAXIMUM-maxDepth)
                 expected_score = lastEval;
         }
         lastBest = transposition.getMove(ttEntry);
