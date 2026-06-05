@@ -160,8 +160,9 @@ public:
         see_mul_tact(80),
         fp_hmul(64),
         se_dmul(1024),
-        mainHistWeight(1024),
-        prevHistWeight(1024),
+        mainHistWeight(683),
+        prevHistWeight(683),
+        contHist2Weight(683),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -205,7 +206,8 @@ public:
         fp_hmul,
         se_dmul,
         mainHistWeight,
-        prevHistWeight;
+        prevHistWeight,
+        contHist2Weight;
     TunableFloat
         aw_mul,
         nodetm_base,

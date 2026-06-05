@@ -93,7 +93,7 @@ public :
     int playMove(Move move);
     void playNullMove();
     Move getLastMove() const;
-    Move getContMove() const;
+    Move getContMove(int k=2) const;
     Move playPartialMove(Move move);
     int getPiece(int square) const;
     int getfullPiece(int square) const;

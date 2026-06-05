@@ -308,9 +308,9 @@ Move GameState::getLastMove() const{
     return nullMove;
 }
 
-Move GameState::getContMove() const{
-    if(turnNumber > 1 && (movesSinceBeginning[0].moveInfo != nullMove.moveInfo || turnNumber > 2))
-        return movesSinceBeginning[turnNumber-2];
+Move GameState::getContMove(int k) const{
+    if(turnNumber > k-1 && (movesSinceBeginning[0].moveInfo != nullMove.moveInfo || turnNumber > k))
+        return movesSinceBeginning[turnNumber-k];
     return nullMove;
 }
 
