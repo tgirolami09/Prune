@@ -683,10 +683,10 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             bestMove = (bestScore != -INF && ss.rootBest.moveInfo != nullMove.moveInfo) ? ss.rootBest : finalBestMove;
             string limit;
             if(bestScore <= alpha){
-                deltaDown = max<int>(deltaDown*parameters.aw_mul, lastScore-bestScore+1);
+                deltaDown = deltaDown*parameters.aw_mul;
                 limit = "upperbound";
             }else if(bestScore >= beta){
-                deltaUp = max<int>(deltaUp*parameters.aw_mul, bestScore-lastScore+1);
+                deltaUp = deltaUp*parameters.aw_mul;
                 finalBestMove = bestMove;
                 limit = "lowerbound";
                 ponderMove = nullMove;
