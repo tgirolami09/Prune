@@ -133,7 +133,7 @@ public:
         se_min_depth(6),
         se_dext_margin(17),
         lmp_base(4),
-        lmp_mul(1),
+        lmp_mul(3),
         mhp_mul(1888),
         fp_base(291),
         fp_mul(147),
