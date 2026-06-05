@@ -485,7 +485,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
             if(!curMove.isTactical()){
-                if(triedMove > depth*depth*(parameters.lmp_mul-improving)+parameters.lmp_base)continue;
+                if(triedMove > depth*depth*(parameters.lmp_mul+improving)+parameters.lmp_base)continue;
                 if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
                 int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+moveHistory*parameters.fp_hmul/4096;
