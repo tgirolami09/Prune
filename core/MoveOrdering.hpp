@@ -17,7 +17,6 @@ class HelpOrdering{
     int history[2][64][64];
     int conthist[2][6][64][2][6][64];
     int captHist[2][nbPieces+4][6][64];
-    int& getIndex(Move move, bool c);
     int& getTactIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;
     void updateMove(int bonus, Move move, bool c, const GameState& state);

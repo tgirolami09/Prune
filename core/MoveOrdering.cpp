@@ -18,14 +18,6 @@ int getrand(big& state){
     return z ^ (z >> 31);
 }
 
-int& HelpOrdering::getIndex(Move move, bool c){
-    if(!move.isTactical())
-        return history[c][move.from()][move.to()];
-    else if(move.promotion() == -1)
-        return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
-    else
-        return captHist[c][move.promotion()-KNIGHT+nbPieces][max<int>(move.capture, 0)][move.to()];
-}
 int& HelpOrdering::getTactIndex(Move move, bool c){
     if(move.promotion() == -1)
         return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
@@ -85,7 +77,7 @@ bool HelpOrdering::isKiller(Move move, int relDepth) const{
 int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) const{
     if(!move.isTactical()){
         Move lastmove = state.getLastMove();
-        return history[c][move.from()][move.to()]+conthist[!c][lastmove.piece][lastmove.to()][c][move.piece][move.to()];
+        return (history[c][move.from()][move.to()]*parameters.mainHistWeight+conthist[!c][lastmove.piece][lastmove.to()][c][move.piece][move.to()]*parameters.prevHistWeight)/1024;
     }else if(move.promotion() == -1)
         return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
     else
