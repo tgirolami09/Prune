@@ -160,9 +160,9 @@ public:
         see_mul_tact(80),
         fp_hmul(64),
         se_dmul(1024),
-        mainHistWeight(256),
-        prevHistWeight(768),
-        pawnHistWeight(1024),
+        mainHistWeight(683),
+        prevHistWeight(683),
+        pawnHistWeight(683),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
