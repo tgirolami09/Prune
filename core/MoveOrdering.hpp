@@ -12,11 +12,13 @@ extern StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPreStat;
 extern StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
 #endif
 
+constexpr int pawnHistSize=2048;
+
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
     int conthist[1][2][6][64][6][64];
-    int pawnHist[2][1024][6][64];
+    int pawnHist[2][pawnHistSize][6][64];
     int captHist[2][nbPieces+4][6][64];
     int& getTactIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;

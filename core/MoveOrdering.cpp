@@ -50,7 +50,7 @@ void HelpOrdering::updateMove(int bonus, Move move, bool c, const GameState& sta
     }else{
         updateHistory(bonus, history[c][move.from()][move.to()]);
         Move lastmove = state.getLastMove();
-        int pawnIdx = state.pawnZobrist&1023;
+        int pawnIdx = state.pawnZobrist&(pawnHistSize-1);
         updateHistory(bonus, conthist[0][c][lastmove.piece][lastmove.to()][move.piece][move.to()]);
         updateHistory(bonus, pawnHist[c][pawnIdx][move.piece][move.to()]);
     }
@@ -81,7 +81,7 @@ int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) con
     if(!move.isTactical()){
         Move lastmove = state.getLastMove();
         int hist = 0;
-        int pawnIdx = state.pawnZobrist&1023;
+        int pawnIdx = state.pawnZobrist&(pawnHistSize-1);
         hist += history[c][move.from()][move.to()]*parameters.mainHistWeight;
         hist += conthist[0][c][lastmove.piece][lastmove.to()][move.piece][move.to()]*parameters.prevHistWeight;
         hist += pawnHist[c][pawnIdx][move.piece][move.to()]*parameters.pawnHistWeight;
