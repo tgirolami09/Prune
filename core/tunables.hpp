@@ -161,8 +161,8 @@ public:
         fp_hmul(64),
         se_dmul(1024),
         mainHistWeight(1024),
-        prevHistWeight(896),
-        contHist2Weight(128),
+        prevHistWeight(128),
+        contHist2Weight(896),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
