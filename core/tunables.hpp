@@ -162,7 +162,7 @@ public:
         se_dmul(1024),
         mainHistWeight(256),
         prevHistWeight(768),
-        contHist2Weight(1024),
+        pawnHistWeight(1024),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -207,7 +207,7 @@ public:
         se_dmul,
         mainHistWeight,
         prevHistWeight,
-        contHist2Weight;
+        pawnHistWeight;
     TunableFloat
         aw_mul,
         nodetm_base,

@@ -36,6 +36,7 @@ void HelpOrdering::init(const tunables& Parameters){
     this->parameters = Parameters;
     memset(history, 0, sizeof(history));
     memset(conthist, 0, sizeof(conthist));
+    memset(pawnHist, 0, sizeof(pawnHist));
     memset(captHist, 0, sizeof(captHist));
 }
 void HelpOrdering::updateHistory(int bonus, int& hist){
@@ -49,9 +50,9 @@ void HelpOrdering::updateMove(int bonus, Move move, bool c, const GameState& sta
     }else{
         updateHistory(bonus, history[c][move.from()][move.to()]);
         Move lastmove = state.getLastMove();
-        Move contmove2 = state.getContMove();
+        int pawnIdx = state.pawnZobrist&1023;
         updateHistory(bonus, conthist[0][c][lastmove.piece][lastmove.to()][move.piece][move.to()]);
-        updateHistory(bonus, conthist[1][c][contmove2.piece][contmove2.to()][move.piece][move.to()]);
+        updateHistory(bonus, pawnHist[c][pawnIdx][move.piece][move.to()]);
     }
 }
 
@@ -81,9 +82,10 @@ int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) con
         Move lastmove = state.getLastMove();
         Move contmove2 = state.getContMove();
         int hist = 0;
+        int pawnIdx = state.pawnZobrist&1023;
         hist += history[c][move.from()][move.to()]*parameters.mainHistWeight;
         hist += conthist[0][c][lastmove.piece][lastmove.to()][move.piece][move.to()]*parameters.prevHistWeight;
-        hist += conthist[1][c][contmove2.piece][contmove2.to()][move.piece][move.to()]*parameters.contHist2Weight;
+        hist += pawnHist[c][pawnIdx][move.piece][move.to()]*parameters.pawnHistWeight;
         return hist/1024;
     }else if(move.promotion() == -1)
         return captHist[c][move.piece][max<int8_t>(move.capture, 0)][move.to()];
