@@ -80,7 +80,6 @@ bool HelpOrdering::isKiller(Move move, int relDepth) const{
 int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) const{
     if(!move.isTactical()){
         Move lastmove = state.getLastMove();
-        Move contmove2 = state.getContMove();
         int hist = 0;
         int pawnIdx = state.pawnZobrist&1023;
         hist += history[c][move.from()][move.to()]*parameters.mainHistWeight;
