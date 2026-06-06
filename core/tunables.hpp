@@ -103,6 +103,26 @@ bool operator>=(T a, TunableInt b){
     return b<=a;
 }
 
+struct TunableHistory{//pack all history-specific tunables
+    TunableInt order;
+    TunableInt mhp;
+    TunableInt fp;
+    TunableInt lmr;
+    TunableInt mul_malus, mul_bonus;
+    constexpr TunableHistory(TunableInt _order, TunableInt _mhp, TunableInt _fp, TunableInt _lmr, TunableInt _mul_malus, TunableInt _mul_bonus):
+        order(_order), mhp(_mhp), fp(_fp), lmr(_lmr), mul_malus(_mul_malus), mul_bonus(_mul_bonus){}
+    constexpr TunableHistory(int _order, int _mhp, int _fp, int _lmr, int _mul_malus, int _mul_bonus):
+        order(_order), mhp(_mhp), fp(_fp), lmr(_lmr), mul_malus(_mul_malus), mul_bonus(_mul_bonus){}
+    enum{ORDER=0, MHP=1, FP=2, LMR=3};
+    template<int id>
+    const TunableInt& getByID() const{
+        if constexpr(id == ORDER)return order;
+        else if constexpr(id == MHP  )return mhp;
+        else if constexpr(id == FP   )return fp;
+        else if constexpr(id == LMR  )return lmr;
+        else static_assert(false, "the id should be in the enum");
+    }
+};
 
 struct TunableFloat{
     float value;
@@ -139,7 +159,6 @@ public:
         fp_mul(147),
         fp_max_depth(5),
         lmr_history(575),
-        mo_mul_malus(268),
         aw_base(21),
         see_born(1),
         pvalue(108),
@@ -160,9 +179,11 @@ public:
         see_mul_tact(80),
         fp_hmul(64),
         se_dmul(1024),
-        mainHistWeight(683),
-        prevHistWeight(683),
-        pawnHistWeight(683),
+        capthist_mul_bonus(512),
+        capthist_mul_malus(268),
+        mainHist(683, 1024, 1024, 1024, 268, 512),
+        prevHist(683, 1024, 1024, 1024, 268, 512),
+        pawnHist(TunableInt(683), TunableInt(0, 0, 2048), TunableInt(0, 0, 2048), TunableInt(0, 0, 2048), TunableInt(268), TunableInt(512)),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -184,7 +205,6 @@ public:
         fp_mul,
         fp_max_depth,
         lmr_history,
-        mo_mul_malus,
         aw_base,
         see_born,
         pvalue,
@@ -205,9 +225,12 @@ public:
         see_mul_tact,
         fp_hmul,
         se_dmul,
-        mainHistWeight,
-        prevHistWeight,
-        pawnHistWeight;
+        capthist_mul_bonus,
+        capthist_mul_malus;
+    TunableHistory
+        mainHist,
+        prevHist,
+        pawnHist;
     TunableFloat
         aw_mul,
         nodetm_base,

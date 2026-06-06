@@ -22,12 +22,16 @@ class HelpOrdering{
     int captHist[2][nbPieces+4][6][64];
     int& getTactIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;
-    void updateMove(int bonus, Move move, bool c, const GameState& state);
+    void bonusMove(int bonus, Move move, bool c, const GameState& state);
+    void malusMove(int bonus, Move move, bool c, const GameState& state);
 public:
     tunables parameters;
     void init(const tunables& parameters);
     void addKiller(Move move, int depth, int relDepth, bool c, const GameState& state);
     bool isKiller(Move move, int relDepth) const;
+    template<int id>
+    int getQuietScore(Move move, bool c, const GameState& state) const;
+    template<int id>
     int getHistoryScore(Move move, bool c, const GameState& state) const;
     void updateHistory(int bonus, int& hist);
     void negUpdate(Move[maxMoves], int upto, bool c, int depth, const GameState& state);

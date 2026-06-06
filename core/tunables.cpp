@@ -1,7 +1,7 @@
 #include "tunables.hpp"
 
 vector<TunableInt*> tunables::to_tune_int(){
-    return {
+    vector<TunableInt*> res={
         //&iir_min_depth,
         //&iir_validity_depth,
         &rfp_improving,
@@ -18,7 +18,8 @@ vector<TunableInt*> tunables::to_tune_int(){
         &fp_mul,
         //&fp_max_depth,
         &lmr_history,
-        &mo_mul_malus,
+        &capthist_mul_bonus,
+        &capthist_mul_malus,
         &aw_base,
         //&see_born,
         &pvalue,
@@ -40,6 +41,15 @@ vector<TunableInt*> tunables::to_tune_int(){
         &fp_hmul,
         &se_dmul,
     };
+    for(auto history:{prevHist, mainHist, pawnHist}){
+        res.push_back(&history.mhp);
+        res.push_back(&history.fp);
+        res.push_back(&history.order);
+        res.push_back(&history.lmr);
+        res.push_back(&history.mul_bonus);
+        res.push_back(&history.mul_malus);
+    }
+    return res;
 }
 
 vector<TunableFloat*> tunables::to_tune_float(){

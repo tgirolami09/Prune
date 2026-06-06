@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <cassert>
+#include "tunables.hpp"
 #include "wdlModel.hpp"
 
 #ifdef DEBUG_MACRO
@@ -482,13 +483,15 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(ss.history.isKiller(curMove, rootDist))
             moveHistory = maxHistory;
         else
-            moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
+            moveHistory = ss.history.getHistoryScore<TunableHistory::LMR>(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
             if(!curMove.isTactical()){
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
-                if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
+                const int mhp_hist = ss.history.getQuietScore<TunableHistory::MHP>(curMove, state.friendlyColor(), state);
+                if(mhp_hist < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
-                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+moveHistory*parameters.fp_hmul/4096;
+                const int fp_hist = ss.history.getQuietScore<TunableHistory::FP>(curMove, state.friendlyColor(), state);
+                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+fp_hist*parameters.fp_hmul/4096;
                 if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
                 }
