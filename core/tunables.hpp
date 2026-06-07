@@ -183,7 +183,7 @@ public:
         capthist_mul_malus(268),
         mainHist(683, 1024, 1024, 1024, 268, 512),
         prevHist(683, 1024, 1024, 1024, 268, 512),
-        pawnHist(TunableInt(683), TunableInt(0, 0, 2048), TunableInt(0, 0, 2048), TunableInt(0, 0, 2048), TunableInt(268), TunableInt(512)),
+        contHist(TunableInt(683), TunableInt(0, 0, 2048), TunableInt(0, 0, 2048), TunableInt(0, 0, 2048), TunableInt(268), TunableInt(512)),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -230,7 +230,7 @@ public:
     TunableHistory
         mainHist,
         prevHist,
-        pawnHist;
+        contHist;
     TunableFloat
         aw_mul,
         nodetm_base,

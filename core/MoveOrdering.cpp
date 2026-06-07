@@ -37,7 +37,6 @@ void HelpOrdering::init(const tunables& Parameters){
     this->parameters = Parameters;
     memset(history, 0, sizeof(history));
     memset(conthist, 0, sizeof(conthist));
-    memset(pawnHist, 0, sizeof(pawnHist));
     memset(captHist, 0, sizeof(captHist));
 }
 void HelpOrdering::updateHistory(int bonus, int& hist){
@@ -51,9 +50,9 @@ void HelpOrdering::bonusMove(int depth, Move move, bool c, const GameState& stat
     }else{
         updateHistory(depth*parameters.mainHist.mul_bonus, history[c][move.from()][move.to()]);
         Move lastmove = state.getLastMove();
-        int pawnIdx = state.pawnZobrist&(pawnHistSize-1);
+        Move contmove = state.getContMove();
         updateHistory(depth*parameters.prevHist.mul_bonus, conthist[0][c][lastmove.piece][lastmove.to()][move.piece][move.to()]);
-        updateHistory(depth*parameters.pawnHist.mul_bonus, pawnHist[c][pawnIdx][move.piece][move.to()]);
+        updateHistory(depth*parameters.contHist.mul_bonus, conthist[1][c][contmove.piece][contmove.to()][move.piece][move.to()]);
     }
 }
 
@@ -63,9 +62,9 @@ void HelpOrdering::malusMove(int depth, Move move, bool c, const GameState& stat
     }else{
         updateHistory(-depth*parameters.mainHist.mul_malus, history[c][move.from()][move.to()]);
         Move lastmove = state.getLastMove();
-        int pawnIdx = state.pawnZobrist&(pawnHistSize-1);
+        Move contmove = state.getContMove();
         updateHistory(-depth*parameters.prevHist.mul_malus, conthist[0][c][lastmove.piece][lastmove.to()][move.piece][move.to()]);
-        updateHistory(-depth*parameters.pawnHist.mul_malus, pawnHist[c][pawnIdx][move.piece][move.to()]);
+        updateHistory(-depth*parameters.contHist.mul_malus, conthist[1][c][contmove.piece][contmove.to()][move.piece][move.to()]);
     }
 }
 
@@ -94,11 +93,11 @@ bool HelpOrdering::isKiller(Move move, int relDepth) const{
 template<int id>
 int HelpOrdering::getQuietScore(Move move, bool c, const GameState& state) const{
     Move lastmove = state.getLastMove();
+    Move contmove = state.getContMove();
     int hist = 0;
-    int pawnIdx = state.pawnZobrist&(pawnHistSize-1);
     hist += history[c][move.from()][move.to()]*parameters.mainHist.getByID<id>();
     hist += conthist[0][c][lastmove.piece][lastmove.to()][move.piece][move.to()]*parameters.prevHist.getByID<id>();
-    hist += pawnHist[c][pawnIdx][move.piece][move.to()]*parameters.pawnHist.getByID<id>();
+    hist += conthist[0][c][contmove.piece][contmove.to()][move.piece][move.to()]*parameters.contHist.getByID<id>();
     return hist/1024;
 }
 template int HelpOrdering::getQuietScore<0>(Move, bool, const GameState&) const;

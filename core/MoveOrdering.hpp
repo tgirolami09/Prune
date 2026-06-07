@@ -17,8 +17,7 @@ constexpr int pawnHistSize=2048;
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
-    int conthist[1][2][6][64][6][64];
-    int pawnHist[2][pawnHistSize][6][64];
+    int conthist[2][2][6][64][6][64];
     int captHist[2][nbPieces+4][6][64];
     int& getTactIndex(Move move, bool c);
     bool fastEq(Move a, Move b) const;

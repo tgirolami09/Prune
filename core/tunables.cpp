@@ -41,7 +41,7 @@ vector<TunableInt*> tunables::to_tune_int(){
         &fp_hmul,
         &se_dmul,
     };
-    for(auto history:{prevHist, mainHist, pawnHist}){
+    for(auto history:{prevHist, mainHist, contHist}){
         res.push_back(&history.mhp);
         res.push_back(&history.fp);
         res.push_back(&history.order);
