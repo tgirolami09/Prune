@@ -97,7 +97,7 @@ int HelpOrdering::getQuietScore(Move move, bool c, const GameState& state) const
     int hist = 0;
     hist += history[c][move.from()][move.to()]*parameters.mainHist.getByID<id>();
     hist += conthist[0][c][lastmove.piece][lastmove.to()][move.piece][move.to()]*parameters.prevHist.getByID<id>();
-    hist += conthist[0][c][contmove.piece][contmove.to()][move.piece][move.to()]*parameters.contHist.getByID<id>();
+    hist += conthist[1][c][contmove.piece][contmove.to()][move.piece][move.to()]*parameters.contHist.getByID<id>();
     return hist/1024;
 }
 template int HelpOrdering::getQuietScore<0>(Move, bool, const GameState&) const;
