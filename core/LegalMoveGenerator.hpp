@@ -7,9 +7,8 @@ using namespace std;
 
 class  __attribute__((packed)) constTable{
 public:
-    big magic;
-    int decR;
     int bits;
+    big magic;
 };
 
 big parseInt(int& pointer);

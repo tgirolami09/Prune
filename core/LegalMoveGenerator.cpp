@@ -241,7 +241,7 @@ static big get_mask(bool is_rook, big id, big square){
 
 void load_table(){
     __attribute__((unused)) big magic=0;
-    __attribute__((unused)) int decR=0, minimum=0, size=0;
+    __attribute__((unused)) int minimum=0, size=0;
     int total = 0;
     int step = 0;
     for(int i=0; i<128; i++){
@@ -256,7 +256,6 @@ void load_table(){
     tableMagic = (big*)calloc(total, sizeof(big));
     for(int current = 0; current<128; current++){
         magic = constantsMagic[current].magic;
-        decR = constantsMagic[current].decR;
         minimum = constantsMagic[current].bits;
         const bool is_rook = current >= 64;
         const int square = current%64;
@@ -273,7 +272,7 @@ void load_table(){
             const big key = id;
 #else
             const big res = mask*magic;
-            const big key = (res&(MAX_BIG>>decR)) >> (64-decR-minimum);
+            const big key = res >> (64-minimum);
 #endif
             const big res_mask = get_usefull(is_rook, mask, square);
             if(key >= (big)size){
@@ -338,7 +337,7 @@ big moves_table(int index, big mask_pieces, big mask){
 #ifdef USE_PEXT
     int tIndex = _pext_u64(mask_pieces, mask);
 #else
-    int tIndex = ((mask_pieces&mask)*constantsMagic[index].magic & (MAX_BIG >> constantsMagic[index].decR)) >> (64-constantsMagic[index].decR-constantsMagic[index].bits);
+    int tIndex = ((mask_pieces&mask)*constantsMagic[index].magic) >> (64-constantsMagic[index].bits);
 #endif
     return tableMagic[indexesTable[index]+tIndex];
 }
