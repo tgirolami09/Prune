@@ -30,6 +30,7 @@ public :
     void swapMove();
     void updateFrom(int from_square);
     void updateTo(int to_square);
+    void resetTo(int to_square);
     void updatePromotion(int promotionPiece);
     void from_uci(string move);
     string to_str() const;

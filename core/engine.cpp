@@ -18,6 +18,7 @@
 #include <cmath>
 int nbThreads = 1;
 bool DEBUG = false;
+bool isdfrc = false;
 using namespace std;
 
 
@@ -148,6 +149,7 @@ const Option Options[] = {
     Option("SyzygyProbeLimit", "spin", "7", 0, 7),
     Option("Minimal", "check", "false"),
     Option("UCI_ShowWDL", "check", "true"),
+    Option("UCI_Chess960", "check", "false")
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -516,6 +518,11 @@ void manageSearch(){
                                 WDLmodel::enabled = true;
                             else
                                 WDLmodel::enabled = false;
+                        }else if(parsed[i].second == "UCI_Chess960"){
+                            if(parsed[i+1].second == "true")
+                                isdfrc = true;
+                            else
+                                isdfrc = false;
                         }
                         i += incr;
                     }

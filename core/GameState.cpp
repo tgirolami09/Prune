@@ -316,6 +316,9 @@ void GameState::initMove(Move& move){
     int colorPiece = color(board.mailbox[move.from()]);
     if(mover == KING && (board.colors[colorPiece] & (1ULL << move.to()))){
         move.setFlag(Move::fcastle);
+    }if(mover == KING && !isdfrc && abs(move.from()-move.to()) == 2){
+        move.setFlag(Move::fcastle);
+        move.resetTo(move.to()+(move.to() > move.from()?2:-1));
     }
 }
 

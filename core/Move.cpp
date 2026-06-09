@@ -44,8 +44,12 @@ void Move::updateTo(int to_square){
     moveInfo |= (uint16_t)( to_square );
 }
 
+void Move::resetTo(int to_square){
+    moveInfo &= ~clearTo;
+    moveInfo |= (uint16_t)( to_square );
+}
+
 void Move::updatePromotion(int promotionPiece){
-    moveInfo &= ~clearPromot;
     setFlag(fpromo);
     moveInfo |= (uint16_t)((promotionPiece-1) << 14);
 }
@@ -60,7 +64,11 @@ void Move::from_uci(string move){
 }
 
 string Move::to_str() const{
-    string newRes = to_uci(from())+to_uci(to());
+    string newRes;
+    if(getFlag() == fcastle && !isdfrc){
+        newRes = to_uci(from())+to_uci(toMover());
+    }else
+        newRes = to_uci(from())+to_uci(to());
     if (getFlag() == fpromo){
         newRes += id_to_piece[promotion()+1];
     }

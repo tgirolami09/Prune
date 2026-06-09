@@ -12,6 +12,7 @@ using namespace std;
 #define forceinline __attribute__((always_inline))
 extern int nbThreads;
 extern bool DEBUG;
+extern bool isdfrc;
 const big MAX_BIG=~0ULL;
 const int WHITE=0;
 const int BLACK=1; // odd = black
