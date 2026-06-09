@@ -336,6 +336,10 @@ static inline void updateZobr(big& zobristHash, big& pawnZobrist, big& minorZobr
 ExpendedMove GameState::playMove(Move move){
     if(lastDoublePawnPush != -1)
         zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+    if(board.isChanger(move))
+        rule50[turnNumber+1] = 0;
+    else
+        rule50[turnNumber+1] = rule50[turnNumber]+1;
     const bool curColor=friendlyColor();
     const int piece = getPiece(move.from());
     const int toSquare = move.toMover();
@@ -405,10 +409,6 @@ ExpendedMove GameState::playMove(Move move){
     turnNumber++;
     zobristHash ^= zobrist[zobrTurn];
     repHist[turnNumber] = zobristHash;
-    if(board.isChanger(move))
-        rule50[turnNumber] = 0;
-    else
-        rule50[turnNumber] = rule50[turnNumber-1]+1;
     return movesSinceBeginning[turnNumber-1];
 }
 

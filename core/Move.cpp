@@ -70,7 +70,7 @@ string Move::to_str() const{
     }else
         newRes = to_uci(from())+to_uci(to());
     if (getFlag() == fpromo){
-        newRes += id_to_piece[promotion()+1];
+        newRes += id_to_piece[promotion()];
     }
     return newRes;
 }
