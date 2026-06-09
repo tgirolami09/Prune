@@ -228,7 +228,7 @@ int TablebaseProbe::rootFiltering(const GameState& state, Move* moves, int& nbMo
     else                       wdl = TB_RESULT_LOSS, lowerbound = -1000;
 
     // Promotion mapping: Fathom (NONE=0,Q=1,R=2,B=3,N=4) -> engine piece type
-    const int promoMap[] = {-1, QUEEN, ROOK, BISHOP, KNIGHT};
+    const int promoMap[] = {0, QUEEN, ROOK, BISHOP, KNIGHT};
 
     // Filter moves[] in-place: keep only moves matching a best-rank TbRootMove
     int newNb = 0;

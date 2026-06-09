@@ -550,7 +550,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove == 0)ss.nbFirstCutoff++;
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
             ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
-            if(curEMove.capture != -2 && (curEMove.piece != PAWN || curEMove.move.promotion() == -1)){
+            if(curEMove.capture == SPACE && curEMove.move.getFlag() != Move::fpromo){
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
             }

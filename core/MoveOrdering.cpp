@@ -64,7 +64,7 @@ void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth, 
 }
 
 void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c, const GameState& state){
-    if(state.getPiece(move.to()) == SPACE || state.board.isCastling(move)){
+    if(state.getPiece(move.to()) == SPACE || move.getFlag() == Move::fcastle){
         if(!fastEq(move, killers[relDepth][0])){
             killers[relDepth][1] = killers[relDepth][0];
             killers[relDepth][0] = move;

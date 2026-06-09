@@ -303,8 +303,9 @@ void play_games(int id){
                 result = (ss.state.enemyColor() == WHITE)*2;
                 break;
             }
-            if(bm.capture != -2){
-                phase -= (bm.capture != BISHOP && bm.capture != KNIGHT)+1;
+            int capture = ss.state.board.getCapture(bm);
+            if(capture != -2){
+                phase -= (capture != BISHOP && capture != KNIGHT)+1;
             }
             if(bm.promotion() == KNIGHT || bm.promotion() == BISHOP)
                 phase -= 1;
