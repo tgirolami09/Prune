@@ -4,20 +4,27 @@
 #include "Functions.hpp"
 #include "Const.hpp"
 using namespace std;
-const int16_t clearTo = 0x3f;
-const int16_t clearFrom = 0x3f<<6;
-const int16_t clearPromot = -4096; // 0xf << 12
+const uint16_t clearTo = 0x3f;
+const uint16_t clearFrom = 0x3f<<6;
+const uint16_t clearPromot = 0x3 << 14; // 0xf << 12
 //Represents a move
 class Move{
 public :
-    int8_t piece;
-    //-1 by capturing by en passant
-    int8_t capture = -2;
-    //Stores end_pos / start_pos / promoteTo
-    int16_t moveInfo = -4096;
+    enum{fnormal=0, fcastle=1, fpromo=2, fep=3};
+    //Stores promotion|flag|from|to
+    // if flag == 1 => Castling
+    // if flag == 2 => Promotion
+    // if flag == 3 => En Passanr
+    // promotion = 2 bits
+    // flag = 2 bit
+    // from = 6 bits
+    // to = 6 bits
+    uint16_t moveInfo = 0;
+    int getFlag() const;
     int from() const;
     int to() const;
     int8_t promotion() const;
+    void setFlag(int flag);
     //Swaps from/to values
     void swapMove();
     void updateFrom(int from_square);
@@ -26,11 +33,16 @@ public :
     void from_uci(string move);
     string to_str() const;
     bool operator==(Move o) const;
-    bool isTactical() const;
-    bool isChanger() const;
     int getMovePart() const;
-    bool isCastling() const;
 };
-// const Move nullMove={0, 0, 0, -1, -2, -4096};
-const Move nullMove = {0, -2, -4096};
+
+class ExpendedMove{
+public:
+    Move move;
+    int piece;
+    int capture;
+};
+
+const Move nullMove = {0};
+const ExpendedMove EnullMove = {{0}, 0, -2};
 #endif

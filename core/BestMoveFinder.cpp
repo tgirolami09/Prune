@@ -240,11 +240,11 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         int flag;
         Move capture = order.pop_max(flag);
         if(bestEval >= MINIMUM+maxDepth){
-            if(capture.isTactical() && !(flag&1))continue;
-            else if(!capture.isTactical())continue;
+            if(state.board.isTactical(capture) && !(flag&1))continue;
+            else if(!state.board.isTactical(capture))continue;
         }
         ss.stack[rootDist].snap.save(state);
-        state.playMoveForward(capture);//don't care about repetition
+        state.playMove(capture);//don't care about repetition
         ss.eval.playMove(capture, !state.friendlyColor(), &ss.stack[rootDist].snap.board, &state.board);
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(capture, !state.friendlyColor());
@@ -372,7 +372,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 ss.stack[rootDist].snap.save(state);
-                state.playNullMoveForward();
+                state.playNullMove();
                 ss.generator.initDangers(state);
                 int v = -negamax<false, limitWay>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
                 ss.stack[rootDist].snap.restore(state);
@@ -450,7 +450,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(isRoot)
             ss.rootBest = order.moves[0];
         ss.stack[rootDist].snap.save(state);
-        state.playMoveForward(order.moves[0]);
+        state.playMove(order.moves[0]);
         if(state.twofoldFast()){
             ss.stack[rootDist].snap.restore(state);
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
@@ -484,7 +484,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         else
             moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
-            if(!curMove.isTactical()){
+            if(!state.board.isTactical(curMove)){
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
                 if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
@@ -496,7 +496,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(!isPV && moveHistory < -parameters.mchp_mul*depth*depth && depth <= 4)
                     continue;
             }
-            int see_born = curMove.isTactical()? -parameters.see_mul_tact*depth: -parameters.see_mul_quiet*depth*depth;
+            int see_born = !state.board.isTactical(curMove) ? -parameters.see_mul_tact*depth: -parameters.see_mul_quiet*depth*depth;
             if(!see_ge(see_born, curMove, state, value_pieces))
                 continue;
         }
@@ -511,7 +511,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
 #endif
         int score;
         ss.stack[rootDist].snap.save(state);
-        state.playMoveForward(curMove);
+        ExpendedMove curEMove = state.playMove(curMove);
         bool isDraw = false;
         triedMove++;
         if(state.twofoldFast()){
@@ -550,7 +550,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(rankMove == 0)ss.nbFirstCutoff++;
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
             ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
-            if(!curMove.isTactical()){
+            if(curEMove.capture != -2 && (curEMove.piece != PAWN || curEMove.move.promotion() == -1)){
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
             }
@@ -576,7 +576,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if((!isRoot || typeNode != UPPERBOUND) && excludedMove == nullMove.moveInfo){
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth, raw_eval, isPV);
     }
-    if(!inCheck && (!bestMove.isTactical()) && abs(bestScore) < MAXIMUM-maxDepth &&
+    if(!inCheck && (!state.board.isTactical(bestMove)) && abs(bestScore) < MAXIMUM-maxDepth &&
         (typeNode != UPPERBOUND || bestScore < static_eval)){
         ss.correctionHistory.update(state, bestScore-static_eval, depth);
     }
@@ -638,8 +638,8 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
     PositionSnapshot snap;
     snap.save(state);
     for(Move move:movesFromRoot){
-        state.playPartialMoveForward(move);
-        for(int i=0; i<nbThreads-1; i++)helperThreads[i].localState.playPartialMoveForward(move);
+        state.playPartialMove(move);
+        for(int i=0; i<nbThreads-1; i++)helperThreads[i].localState.playPartialMove(move);
         actDepth++;
     }
     bestMoveResponse res=goState<limitWay>(state, tm, verbose, actDepth);
@@ -794,7 +794,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         Move bestMove=nullMove;
         int bestScore = -INF;
         for(int idMove = 0; idMove < order.nbMoves; idMove++){
-            state.playMoveForward(order.moves[idMove]);
+            state.playMove(order.moves[idMove]);
             localSS.eval.playMove(order.moves[idMove], !state.friendlyColor(), &localSS.stack[0].snap.board, &state.board);
             int score = -localSS.eval.getRaw(state.friendlyColor());
             if(score > bestScore){
@@ -875,7 +875,7 @@ big Perft::_perft(GameState& state, ubyte depth){
     for(int i=0; i<nbMoves; i++){
         PositionSnapshot snap;
         snap.save(state);
-        state.playMoveForward(stack[depth][i]);
+        state.playMove(stack[depth][i]);
         big nbNodes=_perft<bulk>(state, depth-1);
         snap.restore(state);
         count += nbNodes;
@@ -898,7 +898,7 @@ big Perft::perft(GameState& state, ubyte depth, bool verbose){
         big startVisitedNodes = count;
         PositionSnapshot snap;
         snap.save(state);
-        state.playMoveForward(moves[i]);
+        state.playMove(moves[i]);
         big nbNodes=_perft<bulk>(state, depth-1);
         snap.restore(state);
         clock_t end=clock();

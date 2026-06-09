@@ -167,19 +167,8 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     int to = fathomTo ^ 7;
 
     // Determine piece type from engine position
-    int piece = type(state.board.mailbox[from]);
-    int capture = -2;  // No capture by default
-
-    // Check if there's a capture (using engine squares)
-    int oppColor = 1 - state.friendlyColor();
-    if(state.board.colors[oppColor]&(1ULL << to)){
-        capture = type(state.board.mailbox[to]);
-    }
 
     // Handle en passant
-    if (TB_GET_EP(result)) {
-        capture = -1;  // Engine's EP indicator
-    }
 
     // Convert promotion piece type
     // Fathom: QUEEN=1, ROOK=2, BISHOP=3, KNIGHT=4
@@ -191,14 +180,14 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     }
 
     // Construct the move
-    bestMove.piece = piece;
-    bestMove.capture = capture;
-    bestMove.moveInfo = -4096;  // Clear first
+    bestMove.moveInfo = 0;  // Clear first
     bestMove.moveInfo |= (int16_t)(to);
     bestMove.moveInfo |= (int16_t)(from << 6);
     if (promotion != -1) {
-        bestMove.moveInfo &= ~(-4096);
-        bestMove.moveInfo |= (int16_t)(promotion << 12);
+        bestMove.updatePromotion(promotion);
+    }
+    if (TB_GET_EP(result)) {
+        bestMove.setFlag(Move::fep);
     }
 
     return TB_GET_WDL(result);

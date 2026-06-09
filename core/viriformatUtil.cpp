@@ -40,23 +40,11 @@ MoveInfo::MoveInfo(){
 }
 const uint16_t coltofield=7<<6;
 void MoveInfo::dump(FILE* datafile){
+    static constexpr int transfo[4] = {0, 2, 3, 1};
     int to = move.to()^0x07, from=move.from()^0x07;
     uint16_t mv = to << 6 | from;
-    int type = 0;
-    if(move.capture == -1) // en passant (move.catpure == -1 is for en passant, move.capture == -2 for no capture (ik it's strange))
-        type = 1;
-    else if(move.piece == KING && abs(move.from()-move.to()) == 2){ //is a castling
-        type = 2;
-        // king takes rook notation
-        if(from > to)
-            mv &= ~coltofield;
-        else
-            mv |= coltofield;
-    }
-    if(move.promotion() != -1){ // for promotion
-        mv |= (move.promotion()-1) << 12;
-        type = 3;
-    }
+    mv |= (move.promotion()-(move.getFlag() == Move::fpromo)) << 12;
+    int type = transfo[move.getFlag()];
     mv |= type << 14;
     fastWrite(mv, datafile);
     fastWrite<int16_t>(score, datafile);
@@ -170,10 +158,9 @@ GamePlayed readGame(FILE* file){
         int type=mv>>14;
         int promo = (mv >> 12) & 0b11;
         if(type == 1)
-            move.move.capture = -1;
+            move.move.setFlag(Move::fep);
         else if(type == 2){
-            if(to > from)to -= 2;
-            else to++;
+            move.move.setFlag(Move::fcastle);
         }
         else if(type == 3)
             move.move.updatePromotion(promo+1);

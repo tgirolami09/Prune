@@ -306,17 +306,10 @@ void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMo
         Move base;// = {(int8_t)start, (int8_t)bit, piece};
         base.updateFrom(start);
         base.updateTo(bit);
-        base.piece = piece;
         big _mask = 1ULL << bit;
-        //There is a capture
-        if(_mask&allEnemies)
-            for(int i=0; i<6; i++)
-                if(enemyPieces[i]&_mask){ base.capture = i; break; }
         if(isPawn && (row(bit) == 7 || row(bit) == 0)){
-            int8_t piecesPromot[4] = {KNIGHT, BISHOP, ROOK, QUEEN};
-            int _start=0;
-            if(promotQueen)
-                _start=3;
+            static constexpr int8_t piecesPromot[4] = {KNIGHT, BISHOP, ROOK, QUEEN};
+            int _start=3*promotQueen;
             for(int i=_start; i<4; i++){
                 moves[nbMoves] = base;
                 // moves[nbMoves].promoteTo = typePiece;
@@ -324,9 +317,11 @@ void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMo
                 nbMoves++;
             }
         }else{
-            if(isPawn && (col(start) != col(bit)) && base.capture == -2){
-                base.capture = -1;
+            if(isPawn && (col(start) != col(bit)) && !(_mask & allEnemies)){
+                base.setFlag(Move::fep);
             }
+            if(piece == KING && (friendlyPieces[ROOK]&_mask))
+                base.setFlag(Move::fcastle);
             moves[nbMoves] = base;
             nbMoves++;
         }
@@ -412,7 +407,7 @@ big LegalMoveGenerator::pseudoLegalKingMoves(int kingPosition, big Pieces, big c
             big ray1 = directions[kingPosition][pos]&~(1ULL << pos);
             big ray2 = directions[kingPosition][poscastle]|(1ULL << kingPosition);
             if(!(ray1&Pieces) && !(ray2&allDangerSquares))
-                kingEndMask |= 1ULL << poscastle;
+                kingEndMask |= 1ULL << pos;
         }
         cMask &= cMask-1;
         if(cMask){
@@ -421,7 +416,7 @@ big LegalMoveGenerator::pseudoLegalKingMoves(int kingPosition, big Pieces, big c
             big ray1 = directions[kingPosition][pos]&~(1ULL << pos);
             big ray2 = directions[kingPosition][poscastle]|(1ULL << kingPosition);
             if(!(ray1&Pieces) && !(ray2&allDangerSquares))
-                kingEndMask |= 1ULL << poscastle;
+                kingEndMask |= 1ULL << pos;
         }
     }}
     return kingEndMask;
@@ -564,8 +559,8 @@ void LegalMoveGenerator::legalKingMoves(const GameState& state, Move* moves, int
     constexpr int color = IsWhite ? 0 : 1;
     int kingPos = __builtin_ctzll(state.getFriendlyMask(KING));
     big kingEndMask = pseudoLegalKingMoves<IsWhite, true>(kingPos, Pieces, state.castlingMask & mask_row[color*7]);
-    kingEndMask &= (~allFriends);
-    kingEndMask &= (~allDangerSquares);
+    kingEndMask &= (~allFriends)|state.castlingMask;
+    kingEndMask &= (~allDangerSquares)|state.castlingMask;
     //In case only captures need to be generated
     kingEndMask &= (captureMask);
 
@@ -831,22 +826,12 @@ Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
     }
 
     captureMask = 1ULL << posCapture;
-
-    int capturedPiece = PAWN;
-    for(int i=1; i<6; i++){
-        if(enemyPieces[i]&captureMask){
-            capturedPiece = i;
-            break;
-        }
-    }
-    LVAmove.capture = capturedPiece;
     LVAmove.updateTo(posCapture);
     //From here we have the pinned pieces, the number of checkers, and the danger squares
     big kingEndMask = pseudoLegalKingMoves<IsWhite, false>(friendlyKingPosition, allPieces, 0);
     kingEndMask &= (~allDangerSquares);
     if(kingEndMask & captureMask){
         LVAmove.updateFrom(friendlyKingPosition);
-        LVAmove.piece = KING;
         return LVAmove;
     }
     big fromCaseBishop = moves_table(posCapture, allPieces, mask_empty_bishop(posCapture));
@@ -865,7 +850,6 @@ Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
             int sq = __builtin_ctzll(bb);
             big sqBit = 1ULL << sq;
             if ((sqBit & pinned) && !(pinned & captureMask)) continue;
-            LVAmove.piece = piece;
             LVAmove.updateFrom(sq);
             if(piece == PAWN && (row(posCapture) == 0 || row(posCapture) == 7)){
                 LVAmove.updatePromotion(QUEEN);

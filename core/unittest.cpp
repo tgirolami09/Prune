@@ -88,7 +88,7 @@ string suitMoves[71] = {
     "f6d5","b8b3","b8b4","c8c1","f5c2","a5a2","a5a2","d5e7","d3e4","e4d6",
     "e4d6","d5c6","d5c6","d5c6","d7d8q","d7d8q","d7d8q","c7c8q","c7c8q","c7c8q",
     "g5f6","g5f6","g5f6","c7b8q","g1h2","c6d8","c7d8q","e6d8","e3d1","c3d1",
-    "e1g1"
+    "e1h1"
 };
 
 void testSEE(){
@@ -99,8 +99,9 @@ void testSEE(){
         move.from_uci(suitMoves[i]);
         state.initMove(move);
         int threshold = -fastSEE(move, state, value_pieces);
-        if(move.capture != -2)
-            threshold += value_pieces[max<int8_t>(0, move.capture)];
+        int capture = state.board.getCapture(move);
+        if(capture != SPACE)
+            threshold += value_pieces[capture];
         if(!see_ge(threshold, move, state, value_pieces))
             printf("%s & %s & %d\n", suitFens[i].c_str(), suitMoves[i].c_str(), threshold);
         if(see_ge(threshold+1, move, state, value_pieces))
@@ -193,8 +194,8 @@ const pair<string, big> TestsPolyHash[] = {
 
 vector<string> Games[] = {
     {"e2e4", "e7e5", "d1h5", "e8e7", "h5e5"},
-    {"e2e4", "e7e5", "g1f3", "g8f6", "f1c4", "f8c5", "e1g1", "e8g8"},
-    {"e2e4", "d7d5", "g1f3", "c8g4", "f1b5", "b8c6", "e1g1", "d8d6", "f1e1", "e8c8"}
+    {"e2e4", "e7e5", "g1f3", "g8f6", "f1c4", "f8c5", "e1h1", "e8h8"},
+    {"e2e4", "d7d5", "g1f3", "c8g4", "f1b5", "b8c6", "e1h1", "d8d6", "f1e1", "e8h8"}
 };
 
 void testViri(){

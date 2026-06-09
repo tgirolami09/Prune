@@ -172,7 +172,8 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
             PositionSnapshot snap;
             snap.save(state.root);
             for(Move move:state.movesFromRoot)
-                state.root.playPartialMoveForward(move);
+                state.root.playPartialMove(move);
+            state.root.print();
             if(args[1].first == "nonbulk")
                 result = doPerft.perft<false>(state.root, stoi(args[0].second));
             else
@@ -258,7 +259,7 @@ void manageSearch(){
                 PositionSnapshot snap;
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMoveForward(move);
+                    state->root.playPartialMove(move);
                 ieval->init(state->root);
                 int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
@@ -303,7 +304,7 @@ void manageSearch(){
                 PositionSnapshot snap;
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMoveForward(move);
+                    state->root.playPartialMove(move);
                 ieval->init(state->root);
                 int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 snap.restore(state->root);
@@ -523,7 +524,7 @@ void manageSearch(){
                 PositionSnapshot snap;
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMoveForward(move);
+                    state->root.playPartialMove(move);
                 istringstream moves(parsed[0].second);
                 string curMove;
                 bool isExact = true;
@@ -534,16 +535,16 @@ void manageSearch(){
                     }
                     Move move;
                     move.from_uci(curMove);
-                    move.piece = type(state->root.getfullPiece(move.from()));
+                    int piece = type(state->root.getfullPiece(move.from()));
                     int cap = type(state->root.getfullPiece(move.to()));
-                    move.capture = cap != SPACE ? cap : -2;
-                    if(move.capture == -2 && move.piece == PAWN && abs(move.from()-move.to()) != 8 && abs(move.from()-move.to()) != 16)
-                        move.capture = -1;
+                    int capture = cap != SPACE ? cap : -2;
+                    if(capture == -2 && piece == PAWN && abs(move.from()-move.to()) != 8 && abs(move.from()-move.to()) != 16)
+                        move.setFlag(Move::fep);
                     int res;
                     const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
                     if(isExact){
                         res = -fastSEE(move, state->root, value_pieces);
-                        if(move.capture != -2)
+                        if(capture != -2)
                             res += value_pieces[max(0, cap)];
                     }else
                         res = see_ge(0, move, state->root, value_pieces);
@@ -559,7 +560,7 @@ void manageSearch(){
                 PositionSnapshot snap;
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMoveForward(move);
+                    state->root.playPartialMove(move);
                 state->root.print();
                 snap.restore(state->root);
             }else if(command == "stats"){

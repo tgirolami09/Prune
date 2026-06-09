@@ -52,6 +52,18 @@ struct PositionState{
     forceinline big occupancy() const{
         return colors[WHITE] | colors[BLACK];
     }
+    bool isChanger(const Move& move) const{
+        return type(mailbox[move.from()]) == PAWN || type(mailbox[move.to()]) != SPACE;
+    }
+    bool isTactical(const Move& move) const{
+        return (type(mailbox[move.to()]) != SPACE && !isCastling(move)) || move.getFlag() > Move::fcastle;
+    }
+    bool isCastling(const Move& move) const{
+        return move.getFlag() == Move::fcastle;
+    }
+    int getCapture(const Move& move) const{
+        return type(mailbox[move.to()])*(move.getFlag() != Move::fep)+(SPACE-ROOK)*(move.getFlag() == Move::fcastle);
+    }
 };
 
 struct PositionSnapshot;
@@ -59,7 +71,7 @@ struct PositionSnapshot;
 //Represents a state in the game
 class GameState{
     // (not necessary if we create new states for exploration)
-    Move movesSinceBeginning[maxPly]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
+    ExpendedMove movesSinceBeginning[maxPly]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
     big repHist[maxPly];
     int rule50[maxPly];
 
@@ -85,15 +97,13 @@ public :
     string toFen() const;
     int friendlyColor() const;
     int enemyColor() const;
-    template<bool back>
-    bool isEnPassantPossibility(const Move& move);
+    bool isEnPassantPossibility(const int piece, const Move& move);
     int rule50_count() const;
     bool twofold() const;
     bool threefold() const;
-    int playMove(Move move);
     void playNullMove();
-    Move getLastMove() const;
-    Move getContMove() const;
+    ExpendedMove getLastMove() const;
+    ExpendedMove getContMove() const;
     Move playPartialMove(Move move);
     int getPiece(int square) const;
     int getfullPiece(int square) const;
@@ -103,9 +113,7 @@ public :
     void initMove(Move& move);
 
     // Forward-only move application (no undo support needed)
-    void playMoveForward(Move move);
-    void playNullMoveForward();
-    Move playPartialMoveForward(Move move);
+    ExpendedMove playMove(Move move);
     // Optimized repetition detection: step by 2 (zobrist includes turn bit)
     bool twofoldFast();
     bool threefoldFast();

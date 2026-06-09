@@ -119,7 +119,7 @@ int fastSEE(const Move& move, const GameState& state, const int* value_pieces){
     int pieceType;
     ubyte stack[16];
     int idStack = 0;
-    int lastPiece = move.piece;
+    int lastPiece = state.getPiece(move.from());
     while((atk = getLVA(square, state, stm, occupancy, pieceType)) != -1){
         stack[idStack++] = lastPiece;
         occupancy ^= 1ULL << atk;
@@ -148,12 +148,14 @@ big firstTouch(int square, int square2, big occupancy){
 }
 
 bool see_ge(int born, const Move& move, const GameState& state, const int* value_pieces){
+    if(move.getMovePart() == Move::fcastle)
+        return born < 0;
     int square = move.to();
     //occupancy ^= 1ULL << move.from();
     bool stm = state.friendlyColor();
     int atk = move.from();
-    int lastPiece = move.capture != -2 ? max<int8_t>(0, move.capture) : 6;
-    int pieceType = move.piece;
+    int lastPiece = state.board.getCapture(move);
+    int pieceType = state.getPiece(move.from());
     bool sstm = stm;
     const big diagPieces = state.board.pieces[BISHOP] | state.board.pieces[QUEEN];
     const big hvPieces = state.board.pieces[ROOK] | state.board.pieces[QUEEN];
@@ -211,10 +213,9 @@ bool see_ge(int born, const Move& move, const GameState& state, const int* value
 
 int score_move(const Move& move, int historyScore, const GameState& state, const int* value_pieces){
     int score = 0;
-    if(move.isTactical()){
-        int cap = move.capture;
-        if(cap == -1)cap = 0;
-        if(cap != -2)
+    if(state.board.isTactical(move)){
+        int cap = state.board.getCapture(move);
+        if(cap != SPACE)
             score += cap*6;
         if(move.promotion() != -1)score += move.promotion();
         score *= maxHistory*2;
@@ -363,10 +364,12 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 template<int f>
 void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const PositionState* state1, __attribute__((unused)) const PositionState* state2){
     static_assert(f == -1 || f == 1, "f has to be either -1 or 1");
-    int toPiece = move.piece;
+    int toPiece = state1->mailbox[move.from()];
+    int piece = state1->mailbox[move.from()];
+    int capture = state1->getCapture(move)-(move.getFlag() == Move::fep);
     if(move.promotion() != -1){
         toPiece = move.promotion();
-        changePiece<-f, false>(move.from(), move.piece, c);
+        changePiece<-f, false>(move.from(), piece, c);
         changePiece<f, false>(move.to(), toPiece, c);
     }
 #ifdef HCE
@@ -375,16 +378,16 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) c
         changePiece<f, false>(move.to(), toPiece, c);
     }
 #else
-    Index sub1(move.from(), move.piece, c),
+    Index sub1(move.from(), piece, c),
         add1(move.to(), toPiece, c),
         sub2,
         add2;
     bool mirror=false;
 #endif
-    if(move.capture != -2){
+    if(capture != SPACE){
         int posCapture = move.to();
-        int pieceCapture = move.capture;
-        if(move.capture == -1){ // for en passant
+        int pieceCapture = capture;
+        if(capture == -1){ // for en passant
             if(c == WHITE)posCapture -= 8;
             else posCapture += 8;
             pieceCapture = PAWN;
@@ -394,7 +397,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) c
         if(f == 1)
             sub2 = Index(posCapture, pieceCapture, !c);
 #endif
-    }if(move.piece == KING){
+    }if(piece == KING){
 #ifndef HCE
         if((col(move.from()) > 3) != (col(move.to()) > 3))
             mirror = true;
@@ -433,23 +436,25 @@ void IncrementalEvaluator::backStack(){
 }
 
 void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& state, Move move, bool c){
-    int toPiece = (move.promotion() == -1) ? move.piece : move.promotion(); //for promotion
+    int piece = state.getPiece(move.from());
+    int toPiece = piece | move.promotion(); //for promotion
+    int capture = state.board.getCapture(move)-(move.getFlag() == Move::fep);
     bool mirror = false;
-    if(move.piece == KING && (col(move.from()) > 3) != (col(move.to()) > 3))
+    if(piece == KING && (col(move.from()) > 3) != (col(move.to()) > 3))
         mirror = true;
-    changePiece<-1, true>(move.from(), move.piece, c, !mirror);
+    changePiece<-1, true>(move.from(), piece, c, !mirror);
     changePiece<1, true>(move.to(), toPiece, c, !mirror);
-    if(move.capture != -2){
+    if(capture != -2){
         int posCapture = move.to();
-        int pieceCapture = move.capture;
-        if(move.capture == -1){ // for en passant
+        int pieceCapture = capture;
+        if(capture == -1){ // for en passant
             if(c == WHITE)posCapture -= 8;
             else posCapture += 8;
             pieceCapture = PAWN;
         }
         changePiece<-1, true>(posCapture, pieceCapture, !c, !mirror);
     }
-    if(move.piece == KING && abs(move.from()-move.to()) == 2){ //castling
+    if(piece == KING && abs(move.from()-move.to()) == 2){ //castling
         int rookStart = move.from();
         int rookEnd = move.to();
         if(move.from() > move.to()){//queen side
