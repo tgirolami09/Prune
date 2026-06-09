@@ -217,7 +217,7 @@ int score_move(const Move& move, int historyScore, const GameState& state, const
         int cap = state.board.getCapture(move);
         if(cap != SPACE)
             score += cap*6;
-        if(move.promotion() != -1)score += move.promotion();
+        if(move.getFlag() == Move::fpromo)score += move.promotion();
         score *= maxHistory*2;
         if(see_ge(0, move, state, value_pieces))
             score |= 1<<28;
@@ -364,12 +364,11 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 template<int f>
 void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const PositionState& state1, __attribute__((unused)) const PositionState& state2){
     static_assert(f == -1 || f == 1, "f has to be either -1 or 1");
-    int toPiece = state1.mailbox[move.from()];
-    int piece = state1.mailbox[move.from()];
-    int capture = state1.getCapture(move)-(move.getFlag() == Move::fep);
-    int toSquare = move.toMover();
+    const int toPiece = type(state1.mailbox[move.from()])|move.promotion();
+    const int piece = type(state1.mailbox[move.from()]);
+    const int capture = state1.getCapture(move)-(move.getFlag() == Move::fep);
+    const int toSquare = move.toMover();
     if(move.getFlag() == Move::fpromo){
-        toPiece = move.promotion();
         changePiece<-f, false>(move.from(), piece, c);
         changePiece<f, false>(move.to(), toPiece, c);
     }

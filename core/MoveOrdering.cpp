@@ -22,7 +22,7 @@ int getrand(big& state){
 int& HelpOrdering::getTactIndex(const GameState& state, Move move, bool c){
     int piece = state.getPiece(move.from());
     int capture = state.getPiece(move.to());
-    if(move.promotion() == -1)
+    if(move.getFlag() != Move::fpromo)
         return captHist[c][piece][max<int8_t>(capture, 0)][move.to()];
     else
         return captHist[c][move.promotion()-KNIGHT+nbPieces][max<int>(capture, 0)][move.to()];
@@ -81,7 +81,7 @@ int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) con
     if(!state.board.isTactical(move)){
         ExpendedMove lastmove = state.getLastMove();
         return (history[c][move.from()][move.to()]*parameters.mainHistWeight+conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]*parameters.prevHistWeight)/1024;
-    }else if(move.promotion() == -1)
+    }else if(move.getFlag() != Move::fpromo)
         return captHist[c][state.getPiece(move.from())][(move.getFlag() != Move::fep)*state.getPiece(move.to())][move.to()];
     else
         return captHist[c][move.promotion()-KNIGHT+nbPieces][state.getPiece(move.to())][move.to()];
