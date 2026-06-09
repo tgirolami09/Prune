@@ -397,29 +397,8 @@ big LegalMoveGenerator::pseudoLegalPawnMoves(int pawnPosition, big Pieces, int f
     return pawnMoveMask;
 }  
 
-template<bool IsWhite, bool Castle>
-big LegalMoveGenerator::pseudoLegalKingMoves(int kingPosition, big Pieces, big cMask){
-    big kingEndMask = normalKingMoves[kingPosition];
-    if constexpr(Castle){if(cMask){
-        {
-            int pos = __builtin_ctzll(cMask);
-            int poscastle = kingposCastle[pos > kingPosition]|(kingPosition&0b111000);
-            big ray1 = directions[kingPosition][pos]&~(1ULL << pos);
-            big ray2 = directions[kingPosition][poscastle]|(1ULL << kingPosition);
-            if(!(ray1&Pieces) && !(ray2&allDangerSquares))
-                kingEndMask |= 1ULL << pos;
-        }
-        cMask &= cMask-1;
-        if(cMask){
-            int pos = __builtin_ctzll(cMask);
-            int poscastle = kingposCastle[pos > kingPosition]|(kingPosition&0b111000);
-            big ray1 = directions[kingPosition][pos]&~(1ULL << pos);
-            big ray2 = directions[kingPosition][poscastle]|(1ULL << kingPosition);
-            if(!(ray1&Pieces) && !(ray2&allDangerSquares))
-                kingEndMask |= 1ULL << pos;
-        }
-    }}
-    return kingEndMask;
+big LegalMoveGenerator::pseudoLegalKingMoves(int kingPosition){
+    return normalKingMoves[kingPosition];
 }
 
 template<bool IsWhite>
@@ -550,7 +529,7 @@ int LegalMoveGenerator::dealWithEnemyRooks(big enemyRookPositions, big Pieces, i
 
 void LegalMoveGenerator::dealWithEnemyKing(int enemyKingPos){
     //Castling args are false so template param is irrelevant
-    big dangerSquares = pseudoLegalKingMoves<false, false>(enemyKingPos, 0, 0);
+    big dangerSquares = pseudoLegalKingMoves(enemyKingPos);
     allDangerSquares |= dangerSquares;
 }
 
@@ -558,9 +537,33 @@ template<bool IsWhite>
 void LegalMoveGenerator::legalKingMoves(const GameState& state, Move* moves, int& nbMoves, big Pieces, big captureMask){
     constexpr int color = IsWhite ? 0 : 1;
     int kingPos = __builtin_ctzll(state.getFriendlyMask(KING));
-    big kingEndMask = pseudoLegalKingMoves<IsWhite, true>(kingPos, Pieces, state.castlingMask & mask_row[color*7]);
-    kingEndMask &= (~allFriends)|state.castlingMask;
-    kingEndMask &= (~allDangerSquares)|state.castlingMask;
+    big kingEndMask = pseudoLegalKingMoves(kingPos);
+    big cMask = state.castlingMask & mask_row[color*7] & ~pinHV;
+    kingEndMask &= (~allFriends);
+    kingEndMask &= (~allDangerSquares);
+    if(cMask){
+        {
+            int pos = __builtin_ctzll(cMask);
+            int poscastle = kingposCastle[pos > kingPos]|(kingPos&0b111000);
+            int posnr = rookposCastle[pos > kingPos]|(pos&0b111000);
+            big ray1 = (directions[kingPos][poscastle]|directions[pos][posnr])&~((1ULL << pos)|(1ULL << kingPos));
+            big ray2 = directions[kingPos][poscastle]|(1ULL << kingPos);
+            //print_mask(ray1|ray2);
+            if(!(ray1&Pieces) && !(ray2&allDangerSquares))
+                kingEndMask |= 1ULL << pos;
+        }
+        cMask &= cMask-1;
+        if(cMask){
+            int pos = __builtin_ctzll(cMask);
+            int poscastle = kingposCastle[pos > kingPos]|(kingPos&0b111000);
+            int posnr = rookposCastle[pos > kingPos]|(pos&0b111000);
+            big ray1 = (directions[kingPos][poscastle]|directions[pos][posnr])&~((1ULL << pos)|(1ULL << kingPos));
+            big ray2 = directions[kingPos][poscastle]|(1ULL << kingPos);
+            //print_mask(ray1|ray2);
+            if(!(ray1&Pieces) && !(ray2&allDangerSquares))
+                kingEndMask |= 1ULL << pos;
+        }
+    }
     //In case only captures need to be generated
     kingEndMask &= (captureMask);
 
@@ -828,7 +831,7 @@ Move LegalMoveGenerator::getLVAImpl(int posCapture, GameState& state){
     captureMask = 1ULL << posCapture;
     LVAmove.updateTo(posCapture);
     //From here we have the pinned pieces, the number of checkers, and the danger squares
-    big kingEndMask = pseudoLegalKingMoves<IsWhite, false>(friendlyKingPosition, allPieces, 0);
+    big kingEndMask = pseudoLegalKingMoves(friendlyKingPosition);
     kingEndMask &= (~allDangerSquares);
     if(kingEndMask & captureMask){
         LVAmove.updateFrom(friendlyKingPosition);

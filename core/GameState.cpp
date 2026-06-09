@@ -356,13 +356,6 @@ ExpendedMove GameState::playMove(Move move){
         updateZobrists(pieceCapture, enColor, posCapture);
         board.remPiece(posCapture, pieceCapture, enColor);
     }
-    if(move.getFlag() != Move::fpromo){
-        updateZobrists(piece, curColor, toSquare);
-        board.addPiece(toSquare, piece, curColor);
-    }else{
-        board.addPiece(move.to(), move.promotion(), curColor);
-        updateZobrists(move.promotion(), curColor, move.to());
-    }
     board.remPiece(move.from(), piece, curColor);
     if(isEnPassantPossibility(piece, move)){
         lastDoublePawnPush = 8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
@@ -398,6 +391,13 @@ ExpendedMove GameState::playMove(Move move){
             castlingMask ^= 1ULL << move.from();
             zobristHash ^= zobrist[zobrCastle+move.from()];
         }
+    }
+    if(move.getFlag() != Move::fpromo){
+        updateZobrists(piece, curColor, toSquare);
+        board.addPiece(toSquare, piece, curColor);
+    }else{
+        board.addPiece(move.to(), move.promotion(), curColor);
+        updateZobrists(move.promotion(), curColor, move.to());
     }
     turnNumber++;
     zobristHash ^= zobrist[zobrTurn];

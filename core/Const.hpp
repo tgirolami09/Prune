@@ -65,5 +65,6 @@ const int KILLER_ADVANTAGE = 1<<20;
 const int maxHistory=16384;
 
 constexpr int kingposCastle[2] = {1, 5};
+constexpr int rookposCastle[2] = {2, 4};
 
 #endif

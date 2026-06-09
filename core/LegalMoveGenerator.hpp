@@ -46,8 +46,7 @@ private:
     big pseudoLegalKnightMoves(int knightPosition);
     template<bool IsWhite, bool canCapture, bool canQuiet>
     big pseudoLegalPawnMoves(int pawnPosition, big allPieces, int friendKingPos, big moveMask = -1, big captureMask = -1, big enemyPieces = -1, int enPassant = -1, big enemyRooks = 0);
-    template<bool IsWhite, bool Castle>
-    big pseudoLegalKingMoves(int kingPosition, big Pieces, big castlingMask);
+    big pseudoLegalKingMoves(int kingPosition);
     template<bool IsWhite>
     int dealWithEnemyPawns(big enemyPawnPositions, int friendKingPos);
     int dealWithEnemyKnights(big enemyKnightPositions, int friendKingPos);
