@@ -364,9 +364,9 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 template<int f>
 void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const PositionState& state1, __attribute__((unused)) const PositionState& state2){
     static_assert(f == -1 || f == 1, "f has to be either -1 or 1");
-    const int toPiece = type(state1.mailbox[move.from()])|move.promotion();
     const int piece = type(state1.mailbox[move.from()]);
-    const int capture = state1.getCapture(move)-(move.getFlag() == Move::fep);
+    const int toPiece = piece|move.promotion();
+    const int capture = state1.getCapture(move);
     const int toSquare = move.toMover();
     if(move.getFlag() == Move::fpromo){
         changePiece<-f, false>(move.from(), piece, c);
@@ -387,7 +387,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) c
     if(capture != SPACE){
         int posCapture = move.to();
         int pieceCapture = capture;
-        if(capture == -1){ // for en passant
+        if(move.getFlag() == Move::fep){
             if(c == WHITE)posCapture -= 8;
             else posCapture += 8;
             pieceCapture = PAWN;
@@ -431,17 +431,17 @@ void IncrementalEvaluator::backStack(){
 void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& state, Move move, bool c){
     int piece = state.getPiece(move.from());
     int toPiece = piece | move.promotion(); //for promotion
-    int capture = state.board.getCapture(move)-(move.getFlag() == Move::fep);
+    int capture = state.board.getCapture(move);
     int toSquare = move.toMover();
     bool mirror = false;
     if(piece == KING && (col(move.from()) > 3) != (col(toSquare) > 3))
         mirror = true;
     changePiece<-1, true>(move.from(), piece, c, !mirror);
     changePiece<1, true>(toSquare, toPiece, c, !mirror);
-    if(capture != -2){
+    if(capture != SPACE){
         int posCapture = move.to();
         int pieceCapture = capture;
-        if(capture == -1){ // for en passant
+        if(move.getFlag() == Move::fep){ // for en passant
             if(c == WHITE)posCapture -= 8;
             else posCapture += 8;
             pieceCapture = PAWN;

@@ -304,7 +304,7 @@ void play_games(int id){
                 break;
             }
             int capture = ss.state.board.getCapture(bm);
-            if(capture != -2){
+            if(capture != SPACE){
                 phase -= (capture != BISHOP && capture != KNIGHT)+1;
             }
             if(bm.promotion() == KNIGHT || bm.promotion() == BISHOP)

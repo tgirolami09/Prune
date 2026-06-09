@@ -343,7 +343,7 @@ ExpendedMove GameState::playMove(Move move){
     const bool curColor=friendlyColor();
     const int piece = getPiece(move.from());
     const int toSquare = move.toMover();
-    const int capture = board.getCapture(move)-(move.getFlag() == Move::fep);
+    const int capture = board.getCapture(move);
     movesSinceBeginning[turnNumber] = {move, piece, capture};
     updateZobrists(piece, curColor, move.from());
     if(capture != SPACE){
@@ -354,9 +354,9 @@ ExpendedMove GameState::playMove(Move move){
                 zobristHash ^= zobrist[zobrCastle+move.to()];
             }
         }
-        int pieceCapture = capture>=0?capture:PAWN;
+        int pieceCapture = capture;
         int posCapture = move.to();
-        if(capture == -1){
+        if(move.getFlag() == Move::fep){
             if(enColor == BLACK)posCapture -= 8;
             else posCapture += 8;
         }
