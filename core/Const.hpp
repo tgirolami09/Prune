@@ -64,4 +64,6 @@ const int KILLER_ADVANTAGE = 1<<20;
 //const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
 const int maxHistory=16384;
 
+constexpr int kingposCastle[2] = {1, 5};
+
 #endif

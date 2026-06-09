@@ -23,6 +23,7 @@ public :
     int getFlag() const;
     int from() const;
     int to() const;
+    int toMover() const;
     int8_t promotion() const;
     void setFlag(int flag);
     //Swaps from/to values

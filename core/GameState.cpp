@@ -335,7 +335,7 @@ ExpendedMove GameState::playMove(Move move){
         zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
     const bool curColor=friendlyColor();
     const int piece = getPiece(move.from());
-    const int toSquare = move.getFlag() == Move::fcastle ? (move.to()&56)|kingposCastle[move.from() < move.to()] : move.to();
+    const int toSquare = move.toMover();
     const int capture = board.getCapture(move)-(move.getFlag() == Move::fep);
     movesSinceBeginning[turnNumber] = {move, piece, capture};
     updateZobrists(piece, curColor, move.from());

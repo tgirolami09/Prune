@@ -12,7 +12,6 @@ const int zobrTurn=zobrPassant+8;
 const int nbZobrist=zobrTurn+1;
 const int sizeThreeFold=8192;
 extern big zobrist[nbZobrist];
-constexpr int kingposCastle[2] = {1, 5};
 struct PositionState{
     big pieces[6];
     big colors[2];

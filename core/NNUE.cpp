@@ -302,10 +302,10 @@ void Accumulator::updatePiece(const int8_t mailbox[64], const int piece, const b
 }
 
 void Accumulator::getThreatUpdates(const PositionState& state1, const PositionState& state2, const Move& move){
-    const int piece = state1.mailbox[move.from()];
+    const int piece = type(state1.mailbox[move.from()]);
     const int toPiece = move.promotion() | piece;
-    const bool isCapture = type(state1.mailbox[move.to()]) != SPACE;
     const int capture = type(state1.mailbox[move.to()]);
+    const bool isCapture = capture != SPACE;
     if(move.getFlag() == Move::fep){//en passant
         defstaterelated(state1);
         const int enpassantpos = move.to()+((side == WHITE)?-8:8);

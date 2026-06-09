@@ -9,6 +9,10 @@ int Move::to() const{
     return (moveInfo) & 0x3f;
 }
 
+int Move::toMover() const{
+    return getFlag() == fcastle ? (to()&56)|kingposCastle[from() < to()] : to();
+}
+
 int8_t Move::promotion() const{
     return (moveInfo >> 14)+(getFlag() == fpromo);
 }
