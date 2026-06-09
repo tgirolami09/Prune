@@ -21,11 +21,11 @@ int getrand(big& state){
 
 int& HelpOrdering::getTactIndex(const GameState& state, Move move, bool c){
     int piece = state.getPiece(move.from());
-    int capture = state.getPiece(move.to());
+    int capture = state.board.getCapture(move);
     if(move.getFlag() != Move::fpromo)
-        return captHist[c][piece][max<int8_t>(capture, 0)][move.to()];
+        return captHist[c][piece][capture][move.to()];
     else
-        return captHist[c][move.promotion()-KNIGHT+nbPieces][max<int>(capture, 0)][move.to()];
+        return captHist[c][move.promotion()-KNIGHT+nbPieces][capture][move.to()];
 
 }
 bool HelpOrdering::fastEq(Move a, Move b) const{
@@ -81,10 +81,14 @@ int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) con
     if(!state.board.isTactical(move)){
         ExpendedMove lastmove = state.getLastMove();
         return (history[c][move.from()][move.to()]*parameters.mainHistWeight+conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]*parameters.prevHistWeight)/1024;
-    }else if(move.getFlag() != Move::fpromo)
-        return captHist[c][state.getPiece(move.from())][(move.getFlag() != Move::fep)*state.getPiece(move.to())][move.to()];
-    else
-        return captHist[c][move.promotion()-KNIGHT+nbPieces][state.getPiece(move.to())][move.to()];
+    }else{
+        int capture = state.board.getCapture(move);
+        int piece = state.getPiece(move.from());
+        if(move.getFlag() != Move::fpromo)
+            return captHist[c][piece][capture][move.to()];
+        else
+            return captHist[c][move.promotion()-KNIGHT+nbPieces][capture][move.to()];
+    }
 }
 
 int HelpOrdering::getMoveScore(Move move, bool c, int relDepth, const GameState& state) const{
