@@ -337,10 +337,7 @@ static inline void updateZobr(big& zobristHash, big& pawnZobrist, big& minorZobr
 ExpendedMove GameState::playMove(Move move){
     if(lastDoublePawnPush != -1)
         zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
-    if(board.isChanger(move))
-        rule50[turnNumber+1] = 0;
-    else
-        rule50[turnNumber+1] = rule50[turnNumber]+1;
+    rule50[turnNumber+1] = (rule50[turnNumber]+1)*!board.isChanger(move);
     const bool curColor=friendlyColor();
     const int piece = getPiece(move.from());
     const int toSquare = move.toMover();
@@ -349,11 +346,9 @@ ExpendedMove GameState::playMove(Move move){
     updateZobrists(piece, curColor, move.from());
     if(capture != SPACE){
         const bool enColor=enemyColor();
-        if(capture == ROOK){
-            if((1ULL << move.to()) & castlingMask){
-                castlingMask ^= 1ULL << move.to();
-                zobristHash ^= zobrist[zobrCastle+move.to()];
-            }
+        if((1ULL << move.to()) & castlingMask*(capture == ROOK)){
+            castlingMask ^= 1ULL << move.to();
+            zobristHash ^= zobrist[zobrCastle+move.to()];
         }
         int pieceCapture = capture;
         int posCapture = move.to();
@@ -394,19 +389,12 @@ ExpendedMove GameState::playMove(Move move){
             board.remPiece(startRook, ROOK, curColor);
             board.addPiece(endRook  , ROOK, curColor);
         }
-    }else if(piece == ROOK){
-        if((1ULL << move.from()) & castlingMask){
-            castlingMask ^= 1ULL << move.from();
-            zobristHash ^= zobrist[zobrCastle+move.from()];
-        }
+    }else if((1ULL << move.from()) & castlingMask*(piece == ROOK)){
+        castlingMask ^= 1ULL << move.from();
+        zobristHash ^= zobrist[zobrCastle+move.from()];
     }
-    if(move.getFlag() != Move::fpromo){
-        updateZobrists(piece, curColor, toSquare);
-        board.addPiece(toSquare, piece, curColor);
-    }else{
-        board.addPiece(move.to(), move.promotion(), curColor);
-        updateZobrists(move.promotion(), curColor, move.to());
-    }
+    updateZobrists(piece|move.promotion(), curColor, toSquare);
+    board.addPiece(toSquare, piece|move.promotion(), curColor);
     turnNumber++;
     zobristHash ^= zobrist[zobrTurn];
     repHist[turnNumber] = zobristHash;

@@ -56,8 +56,8 @@ public:
         if(state.turnNumber < min_ply) return true;
         if(filter_check && inCheck)return true;
         if(abs(move.score) > max_eval)return true;
-        if(filter_tactical && move.move.isTactical())return true;
-        if(filter_castling && move.move.isCastling())return true;
+        if(filter_tactical && state.board.isTactical(move.move))return true;
+        if(filter_castling && move.move.getFlag() == Move::fcastle)return true;
         int nbMan = countbit(state.board.colors[WHITE]|state.board.colors[BLACK]);
         if(nbMan < min_pieces)return true;
         int value_pieces[5] = {1, 3, 3, 5, 9};
