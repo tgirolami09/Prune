@@ -335,8 +335,7 @@ static inline void updateZobr(big& zobristHash, big& pawnZobrist, big& minorZobr
 }
 
 ExpendedMove GameState::playMove(Move move){
-    if(lastDoublePawnPush != -1)
-        zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)];
+    zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)]*(lastDoublePawnPush != -1);
     rule50[turnNumber+1] = (rule50[turnNumber]+1)*!board.isChanger(move);
     const bool curColor=friendlyColor();
     const int piece = getPiece(move.from());
@@ -346,7 +345,7 @@ ExpendedMove GameState::playMove(Move move){
     updateZobrists(piece, curColor, move.from());
     if(capture != SPACE){
         const bool enColor=enemyColor();
-        if((1ULL << move.to()) & castlingMask*(capture == ROOK)){
+        if(((big)(capture == ROOK) << move.to()) & castlingMask){
             castlingMask ^= 1ULL << move.to();
             zobristHash ^= zobrist[zobrCastle+move.to()];
         }
@@ -372,15 +371,14 @@ ExpendedMove GameState::playMove(Move move){
             {
                 int idx = __builtin_ctzll(cM);
                 zobristHash ^= zobrist[zobrCastle+idx];
-                castlingMask ^= 1ULL << idx;
             }
             cM &= cM-1;
             if(cM){
                 int idx = __builtin_ctzll(cM);
                 zobristHash ^= zobrist[zobrCastle+idx];
-                castlingMask ^= 1ULL << idx;
             }
         }
+        castlingMask &= ~mask_row[row(move.from())];
         if(move.getFlag() == Move::fcastle){//castling
             int startRook = move.to();
             int endRook = toSquare+2*(move.from() > move.to())-1;
@@ -389,7 +387,7 @@ ExpendedMove GameState::playMove(Move move){
             board.remPiece(startRook, ROOK, curColor);
             board.addPiece(endRook  , ROOK, curColor);
         }
-    }else if((1ULL << move.from()) & castlingMask*(piece == ROOK)){
+    }else if(((big)(piece == ROOK) << move.from()) & castlingMask){
         castlingMask ^= 1ULL << move.from();
         zobristHash ^= zobrist[zobrCastle+move.from()];
     }

@@ -54,11 +54,11 @@ struct PositionState{
     forceinline bool isChanger(const Move& move) const{
         return type(mailbox[move.from()]) == PAWN || type(mailbox[move.to()]) != SPACE;
     }
-    forceinline bool isTactical(const Move& move) const{
-        return (type(mailbox[move.to()]) != SPACE && !isCastling(move)) || move.getFlag() > Move::fcastle;
-    }
     forceinline bool isCastling(const Move& move) const{
         return move.getFlag() == Move::fcastle;
+    }
+    forceinline bool isTactical(const Move& move) const{
+        return move.getFlag() > Move::fcastle || (!move.getFlag() && type(mailbox[move.to()]) != SPACE);
     }
     forceinline int getCapture(const Move& move) const{
         return type(mailbox[move.to()])*(move.getFlag() != Move::fep)+(SPACE-ROOK)*(move.getFlag() == Move::fcastle);
