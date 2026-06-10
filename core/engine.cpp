@@ -176,7 +176,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
             for(Move move:state.movesFromRoot)
                 state.root.playPartialMove(move);
             state.root.print();
-            if(args[1].first == "nonbulk")
+            if(args.size() > 1 && args[1].first == "nonbulk")
                 result = doPerft.perft<false>(state.root, stoi(args[0].second));
             else
                 result = doPerft.perft<true>(state.root, stoi(args[0].second));

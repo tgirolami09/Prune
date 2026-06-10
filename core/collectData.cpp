@@ -1,5 +1,6 @@
 int nbThreads = 1;
 bool DEBUG=false;
+bool isdfrc = true;
 #define DATAGEN //disable material scaling for example
 #include "BestMoveFinder.hpp"
 #include "Evaluator.hpp"
@@ -62,8 +63,8 @@ public:
         MoveInfo curProc;
         curProc.move = move;
         curProc.score = 0;
-        state.playMove(move);
         eval.playNoBack(state, move, state.friendlyColor());
+        state.playMove(move);
         game.game.push_back(curProc);
     }
     BestMoveFinder& getPlayer(){

@@ -67,5 +67,9 @@ const int maxHistory=16384;
 
 constexpr int kingposCastle[2] = {1, 5};
 constexpr int rookposCastle[2] = {2, 4};
+constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+
+extern big directions[64][64];
+extern big fullDir[64][64];
 
 #endif

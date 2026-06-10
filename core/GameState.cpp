@@ -82,7 +82,8 @@ void GameState::fromFen(string fen){
             char position = tolower(fen[id]);
             int pos;
             if(position == 'q' || position == 'k'){
-                pos = posCastlingRook(position == 'k', isBlack);
+                int upto = posCastlingRook(position == 'k', isBlack);
+                pos = __builtin_ctzll(directions[__builtin_ctzll(board.getMask(KING*2+isBlack))][upto]&board.getMask(ROOK*2+isBlack));
             }else{
                 pos = isBlack*56+7-(position-'a');
             }

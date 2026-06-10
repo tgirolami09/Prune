@@ -17,8 +17,6 @@ big pieceCastlingMasks[2][2];
 big attackCastlingMasks[2][2];
 big normalKingMoves[64];
 big attackPawns[128];
-big directions[64][64];
-big fullDir[64][64];
 big* tableMagic;
 int indexesTable[128];
 const constTable* constantsMagic = (const constTable*)magicsData;
@@ -121,40 +119,6 @@ void precomputePawnsAttack(){
                 attackPawns[key] |= 1ull<<(square + 7 * moveFactor);
             if(pieceCol != rightLimit)
                 attackPawns[key] |= 1ull<<(square + 9 * moveFactor);
-        }
-    }
-}
-void precomputeDirections(){
-    //Set everything to 0 first just to be sure
-    for (int i = 0; i < 64; ++i){
-        for (int j = 0; j < 64; ++j){
-            directions[i][j] = 0;
-            fullDir[i][j] = 0;
-        }    
-    }
-    for(int row=0; row<8; row++){
-        for(int col=0; col<8; col++){
-            int square = row*8+col;
-            for(int idDir=0; idDir<8; idDir++){
-                int r=row+dirs[idDir][0];
-                int c=col+dirs[idDir][1];
-                big mask = 0;
-                while(r >= 0 && r < 8 && c >= 0 && c < 8){
-                    int sq = (r*8+c);
-                    mask |= 1ULL << sq;
-                    directions[square][sq] = mask; // line of 1 between square and sq
-                    r += dirs[idDir][0];
-                    c += dirs[idDir][1];
-                }
-                r=row+dirs[idDir][0];
-                c=col+dirs[idDir][1];
-                while(r >= 0 && r < 8 && c >= 0 && c < 8){
-                    int sq = (r*8+c);
-                    fullDir[square][sq] = mask; // line of 1 from square in the direction of sq
-                    r += dirs[idDir][0];
-                    c += dirs[idDir][1];
-                }
-            }
         }
     }
 }
@@ -291,7 +255,6 @@ void clear_table(){
 __attribute__((constructor(102)))
 void init_consts_legalMove(){
     PrecomputeKnightMoveData();
-    precomputeDirections();
     load_table();
     precomputeCastlingMasks();
     precomputeNormlaKingMoves();
