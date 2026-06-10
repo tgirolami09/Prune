@@ -25,7 +25,7 @@ int& HelpOrdering::getTactIndex(const GameState& state, Move move, bool c){
     if(move.getFlag() != Move::fpromo)
         return captHist[c][piece][capture][move.to()];
     else
-        return captHist[c][move.promotion()-KNIGHT+nbPieces][capture][move.to()];
+        return captHist[c][move.promotion()-KNIGHT+nbPieces][capture-1][move.to()];
 
 }
 bool HelpOrdering::fastEq(Move a, Move b) const{
@@ -87,7 +87,7 @@ int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state) con
         if(move.getFlag() != Move::fpromo)
             return captHist[c][piece][capture][move.to()];
         else
-            return captHist[c][move.promotion()-KNIGHT+nbPieces][capture][move.to()];
+            return captHist[c][move.promotion()-KNIGHT+nbPieces][capture-1][move.to()];
     }
 }
 
