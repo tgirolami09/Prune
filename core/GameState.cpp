@@ -12,11 +12,13 @@ static inline int posCastlingRook(bool side, bool c){
 __attribute__((constructor)) void init_zobrs(){
     big state(42);
     for(int idz=0; idz<nbZobrist; idz++){
+        if(idz == zobrCastle)idz++;
         big z = (state += 0x9E3779B97F4A7C15ULL);
         z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
         z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
         zobrist[idz] = z ^ (z >> 31);
     }
+    zobrist[zobrCastle] = 0;
 }
 
 GameState::GameState(){
@@ -88,7 +90,7 @@ void GameState::fromFen(string fen){
                 pos = isBlack*56+7-(position-'a');
             }
             castlingMask |= 1ULL << pos;
-            zobristHash ^= zobrist[zobrCastle+pos];
+            zobristHash ^= zobrist[zobrCastle+pos+1];
         }
     }
     id++;
@@ -347,7 +349,7 @@ ExpendedMove GameState::playMove(Move move){
         const bool enColor=enemyColor();
         if(((big)(capture == ROOK) << move.to()) & castlingMask){
             castlingMask ^= 1ULL << move.to();
-            zobristHash ^= zobrist[zobrCastle+move.to()];
+            zobristHash ^= zobrist[zobrCastle+move.to()+1];
         }
         int pieceCapture = capture;
         int posCapture = move.to();
@@ -367,17 +369,11 @@ ExpendedMove GameState::playMove(Move move){
     }
     if(piece == KING){
         big cM = castlingMask & mask_row[row(move.from())];
-        if(cM){
-            {
-                int idx = __builtin_ctzll(cM);
-                zobristHash ^= zobrist[zobrCastle+idx];
-            }
-            cM &= cM-1;
-            if(cM){
-                int idx = __builtin_ctzll(cM);
-                zobristHash ^= zobrist[zobrCastle+idx];
-            }
-        }
+        int idx1 = __builtin_ffsll(cM);
+        zobristHash ^= zobrist[zobrCastle+idx1];
+        cM &= cM-1;
+        int idx2 = __builtin_ffsll(cM);
+        zobristHash ^= zobrist[zobrCastle+idx2];
         castlingMask &= ~mask_row[row(move.from())];
         if(move.getFlag() == Move::fcastle){//castling
             int startRook = move.to();
@@ -389,7 +385,7 @@ ExpendedMove GameState::playMove(Move move){
         }
     }else if(((big)(piece == ROOK) << move.from()) & castlingMask){
         castlingMask ^= 1ULL << move.from();
-        zobristHash ^= zobrist[zobrCastle+move.from()];
+        zobristHash ^= zobrist[zobrCastle+move.from()+1];
     }
     updateZobrists(piece|move.promotion(), curColor, toSquare);
     board.addPiece(toSquare, piece|move.promotion(), curColor);

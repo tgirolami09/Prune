@@ -280,11 +280,10 @@ void LegalMoveGenerator::maskToMoves(int start, big mask, Move* moves, int& nbMo
                 nbMoves++;
             }
         }else{
-            if(isPawn && (col(start) != col(bit)) && !(_mask & allEnemies)){
-                base.setFlag(Move::fep);
-            }
-            if(piece == KING && (friendlyPieces[ROOK]&_mask))
-                base.setFlag(Move::fcastle);
+            base.setFlag(
+                Move::fcastle*(piece == KING && (friendlyPieces[ROOK]&_mask)) |
+                Move::fep    *(isPawn && (col(start) != col(bit)) && !(_mask & allEnemies))
+            );
             moves[nbMoves] = base;
             nbMoves++;
         }
