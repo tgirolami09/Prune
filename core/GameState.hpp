@@ -51,16 +51,16 @@ struct PositionState{
     forceinline big occupancy() const{
         return colors[WHITE] | colors[BLACK];
     }
-    bool isChanger(const Move& move) const{
+    forceinline bool isChanger(const Move& move) const{
         return type(mailbox[move.from()]) == PAWN || type(mailbox[move.to()]) != SPACE;
     }
-    bool isTactical(const Move& move) const{
+    forceinline bool isTactical(const Move& move) const{
         return (type(mailbox[move.to()]) != SPACE && !isCastling(move)) || move.getFlag() > Move::fcastle;
     }
-    bool isCastling(const Move& move) const{
+    forceinline bool isCastling(const Move& move) const{
         return move.getFlag() == Move::fcastle;
     }
-    int getCapture(const Move& move) const{
+    forceinline int getCapture(const Move& move) const{
         return type(mailbox[move.to()])*(move.getFlag() != Move::fep)+(SPACE-ROOK)*(move.getFlag() == Move::fcastle);
     }
 };
