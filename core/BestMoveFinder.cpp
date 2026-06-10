@@ -502,7 +502,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
 #ifdef DEBUG_MACRO
         if(moveHistory != maxHistory){
-            if(curMove.isTactical()){
+            if(state.board.isTactical(curMove)){
                 capthistPostStat.update(moveHistory);
             }else{
                 quiethistPostStat.update(moveHistory);
