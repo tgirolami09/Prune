@@ -103,6 +103,26 @@ bool operator>=(T a, TunableInt b){
     return b<=a;
 }
 
+struct TunableHist{
+    TunableInt
+        order,
+        lmr,
+        mhp,
+        fp;
+    TunableInt
+        bonus,
+        malus;
+    constexpr TunableHist(int _order, int _lmr, int _mhp, int _fp, int _bonus, int _malus):
+        order(_order), lmr(_lmr), mhp(_mhp), fp(_fp), bonus(_bonus), malus(_malus){}
+    enum{ORDER, LMR, MHP, FP};
+    template<int id>
+    const TunableInt& getParam() const{
+        if constexpr(id == ORDER)return order;
+        else if constexpr(id == LMR)return lmr;
+        else if constexpr(id == MHP)return mhp;
+        else if constexpr(id == FP)return fp;
+    }
+};
 
 struct TunableFloat{
     float value;
@@ -139,7 +159,8 @@ public:
         fp_mul(147),
         fp_max_depth(5),
         lmr_history(575),
-        mo_mul_malus(268),
+        capthist_mul_malus(268),
+        capthist_mul_bonus(512),
         aw_base(21),
         see_born(1),
         pvalue(108),
@@ -160,8 +181,8 @@ public:
         see_mul_tact(80),
         fp_hmul(64),
         se_dmul(1024),
-        mainHistWeight(1024),
-        prevHistWeight(1024),
+        mainHist(1024, 1024, 1024, 1024, 512, 268),
+        prevHist(1024, 1024, 1024, 1024, 512, 268),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -183,7 +204,8 @@ public:
         fp_mul,
         fp_max_depth,
         lmr_history,
-        mo_mul_malus,
+        capthist_mul_malus,
+        capthist_mul_bonus,
         aw_base,
         see_born,
         pvalue,
@@ -203,9 +225,10 @@ public:
         see_mul_quiet,
         see_mul_tact,
         fp_hmul,
-        se_dmul,
-        mainHistWeight,
-        prevHistWeight;
+        se_dmul;
+    TunableHist
+        mainHist,
+        prevHist;
     TunableFloat
         aw_mul,
         nodetm_base,
