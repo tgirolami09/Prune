@@ -498,6 +498,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     continue;
             }
             int see_born = !state.board.isTactical(curMove) ? -parameters.see_mul_tact*depth: -parameters.see_mul_quiet*depth*depth;
+            if constexpr(isPV)see_born -= (int)parameters.se_pv_offset;
             if(!see_ge(see_born, curMove, state, value_pieces))
                 continue;
         }
