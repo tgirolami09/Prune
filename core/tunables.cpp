@@ -21,7 +21,6 @@ vector<TunableInt*> tunables::to_tune_int(){
         &capthist_mul_malus,
         &capthist_mul_bonus,
         &aw_base,
-        //&see_born,
         &pvalue,
         &nvalue,
         &bvalue,
