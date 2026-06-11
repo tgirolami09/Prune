@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <cassert>
+#include "tunables.hpp"
 #include "wdlModel.hpp"
 
 #ifdef DEBUG_MACRO
@@ -478,21 +479,21 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n", depth, curMove.to_str().c_str(), rankMove+1, ss.nodes.load(), flag);
             fflush(stdout);
         }
-        int moveHistory;
-        if(ss.history.isKiller(curMove, rootDist))
-            moveHistory = maxHistory;
-        else
-            moveHistory = ss.history.getHistoryScore(curMove, state.friendlyColor(), state);
+        bool isKiller = ss.history.isKiller(curMove, rootDist);
+        const int lmr_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::LMR>(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth){
             if(!state.board.isTactical(curMove)){
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
-                if(moveHistory < -parameters.mhp_mul*depth && triedMove >= 1)
+                const int mhp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::MHP>(curMove, state.friendlyColor(), state);
+                if(mhp_hist < -parameters.mhp_mul*depth && triedMove >= 1)
                     continue;
-                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+moveHistory*parameters.fp_hmul/4096;
+                const int fp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::FP>(curMove, state.friendlyColor(), state);
+                int futilityValue = static_eval+parameters.fp_base+parameters.fp_mul*depth+fp_hist*parameters.fp_hmul/4096;
                 if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
                 }
             }else{
+                int moveHistory = isKiller?maxHistory:ss.history.getCaptScore(curMove, state.friendlyColor(), state);
                 if(!isPV && moveHistory < -parameters.mchp_mul*depth*depth && depth <= 4)
                     continue;
             }
@@ -501,7 +502,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 continue;
         }
 #ifdef DEBUG_MACRO
-        if(moveHistory != maxHistory){
+        {
+            int moveHistory = ss.history.getHistoryScore<TunableHist::ORDER>(curMove, state.friendlyColor(), state);
             if(state.board.isTactical(curMove)){
                 capthistPostStat.update(moveHistory);
             }else{
@@ -528,7 +530,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 int addRedDepth = 0;
                 if(rankMove > 3 && depth > 2){
                     addRedDepth = static_cast<int>(parameters.lmr_base + log(depth) * log(rankMove) * parameters.lmr_div);
-                    addRedDepth -= (moveHistory)*parameters.lmr_history/maxHistory;
+                    addRedDepth -= lmr_hist*parameters.lmr_history/maxHistory;
                     addRedDepth /= 1024;
                     addRedDepth = max(addRedDepth, 0);
                 }
