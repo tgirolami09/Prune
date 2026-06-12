@@ -180,7 +180,7 @@ public:
         mats_offset(38758),
         see_mul_quiet(60),
         see_mul_tact(80),
-        se_pv_offset(0, 0, 200),
+        se_pv_offset(100, 0, 200),
         mainHist(1024, 1024, 1024, 1024, 512, 268),
         prevHist(1024, 1024, 1024, 1024, 512, 268),
         aw_mul(1.9495),
