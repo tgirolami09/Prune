@@ -1,3 +1,4 @@
+bool isdfrc = true;
 #include "GameState.hpp"
 #include "Evaluator.hpp"
 #include "BestMoveFinder.hpp"
