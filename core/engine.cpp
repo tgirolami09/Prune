@@ -119,7 +119,7 @@ void manageInput(){
         fflush(stdout);
     }
 }
-const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete", "perft", "nonbulk"};
+const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete", "perft", "nonbulk", "frc", "dfrc"};
 class Option{
 public:
     string name;
@@ -448,6 +448,13 @@ void manageSearch(){
                             move.from_uci(curMove);
                             state->movesFromRoot.push_back(move);
                         }
+                    }else if(arg.first == "frc"){
+                        state->root.setDFRC(stoi(arg.second), stoi(arg.second));
+                    }else if(arg.first == "dfrc"){
+                        istringstream ids(arg.second);
+                        int idwhite, idblack;
+                        ids >> idwhite >> idblack;
+                        state->root.setDFRC(idwhite, idblack);
                     }
                 }
             }else if(command == "go"){
@@ -584,6 +591,13 @@ void manageSearch(){
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
 #endif
+            }else if(command == "fen"){
+                PositionSnapshot snap;
+                snap.save(state->root);
+                for(Move move:state->movesFromRoot)
+                    state->root.playPartialMove(move);
+                printf("%s\n", state->root.toFen().c_str());
+                snap.restore(state->root);
             }
             fflush(stdout);
             {

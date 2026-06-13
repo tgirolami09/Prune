@@ -40,6 +40,16 @@ void GameState::updateZobrists(int piece, bool color, int square){
         minorZobrist ^= zobr;
 }
 
+static inline big inv_pext(big n, big mask){
+    big res=0;
+    while(mask){
+        res |= (n&1) << __builtin_ctzll(mask);
+        mask &= mask-1;
+        n >>= 1;
+    }
+    return res;
+}
+
 void GameState::setDFRC(int idWhite, int idBlack){
     zobristHash=0;
     pawnZobrist = 0;
@@ -49,22 +59,31 @@ void GameState::setDFRC(int idWhite, int idBlack){
     movesSinceBeginning[0] = EnullMove;
     board.colors[WHITE] = (1 << 16)-1;
     board.colors[BLACK] = board.colors[WHITE] << (6*8);
+    static constexpr big knightsTable[10] = {
+        0b00011,
+        0b00101,
+        0b01001,
+        0b10001,
+        0b00110,
+        0b01010,
+        0b10010,
+        0b01100,
+        0b10100,
+        0b11000,
+    };
     for(int c=0; c<2; c++){
         int id = c == WHITE ? idWhite : idBlack;
         int idN = id/96;
         id %= 96;
         int idQ = id/16;
         int idB = id%16;
-        int idB1 = (id/4)*2, idB2 = (id%4)*2+1;
-        if(idB1 < idB2)swap(idB1, idB2);
-        idQ += idQ >= idB2;
-        idQ += idQ >= idB1;
+        assert(idN < 10 && idQ < 6 && idB < 16);
+        int idB1 = (idB/4)*2, idB2 = (idB%4)*2+1;
         big maskB = (1 << idB1)|(1 << idB2);
-        big maskQ = 1 << idQ;
-        big maskN = 0;
-        big maskRKR = ((1 << 8)-1)^(maskB|maskQ|maskN);
-        big maskR = (1 << __builtin_ctzll(maskRKR)) | (1 << (31^__builtin_clzll(maskRKR)));
-        big maskK = maskRKR^maskR;
+        big maskQ = inv_pext(1 << idQ, ~maskB);
+        big maskN = inv_pext(knightsTable[idN], ~(maskB|maskQ));
+        big maskR = inv_pext(0b101, ~(maskB|maskQ|maskN));
+        big maskK = inv_pext(0b010, ~(maskB|maskQ|maskN));
         const int shiftPieces = c == WHITE ? 0 : 56;
         const int shiftPawn = c == WHITE ? 8 : 48;
         board.pieces[KING  ] |= maskK << shiftPieces;
@@ -74,7 +93,28 @@ void GameState::setDFRC(int idWhite, int idBlack){
         board.pieces[KNIGHT] |= maskN << shiftPieces;
         board.pieces[PAWN  ] |= ((1ULL << 8)-1) << shiftPawn;
     }
-    board.resetmailbox();
+    for(int piece=KNIGHT; piece <= KING; piece++)
+        board.pieces[piece] = reverse_col(board.pieces[piece]);
+    castlingMask = board.pieces[ROOK];
+    
+    for(int piece=0; piece<=KING; piece++){
+        big mask = board.pieces[piece];
+        while(mask){
+            int pos = __builtin_ctzll(mask);
+            int idP = piece*2+!(board.colors[WHITE]&(1ULL << pos));
+            board.mailbox[pos] = idP;
+            updateZobrists(type(idP), color(idP), pos);
+            mask &= mask-1;
+        }
+    }
+    big cMask = castlingMask;
+    while(cMask){
+        zobristHash ^= zobrist[zobrCastle+__builtin_ffsll(cMask)];
+        cMask &= cMask-1;
+    }
+    lastDoublePawnPush = -1;
+    repHist[turnNumber] = zobristHash;
+    rule50[turnNumber] = 0;
 }
 
 void GameState::fromFen(string fen){
