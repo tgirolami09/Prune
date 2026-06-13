@@ -40,6 +40,43 @@ void GameState::updateZobrists(int piece, bool color, int square){
         minorZobrist ^= zobr;
 }
 
+void GameState::setDFRC(int idWhite, int idBlack){
+    zobristHash=0;
+    pawnZobrist = 0;
+    minorZobrist = 0;
+    board.reset();
+    turnNumber = 1;
+    movesSinceBeginning[0] = EnullMove;
+    board.colors[WHITE] = (1 << 16)-1;
+    board.colors[BLACK] = board.colors[WHITE] << (6*8);
+    for(int c=0; c<2; c++){
+        int id = c == WHITE ? idWhite : idBlack;
+        int idN = id/96;
+        id %= 96;
+        int idQ = id/16;
+        int idB = id%16;
+        int idB1 = (id/4)*2, idB2 = (id%4)*2+1;
+        if(idB1 < idB2)swap(idB1, idB2);
+        idQ += idQ >= idB2;
+        idQ += idQ >= idB1;
+        big maskB = (1 << idB1)|(1 << idB2);
+        big maskQ = 1 << idQ;
+        big maskN = 0;
+        big maskRKR = ((1 << 8)-1)^(maskB|maskQ|maskN);
+        big maskR = (1 << __builtin_ctzll(maskRKR)) | (1 << (31^__builtin_clzll(maskRKR)));
+        big maskK = maskRKR^maskR;
+        const int shiftPieces = c == WHITE ? 0 : 56;
+        const int shiftPawn = c == WHITE ? 8 : 48;
+        board.pieces[KING  ] |= maskK << shiftPieces;
+        board.pieces[QUEEN ] |= maskQ << shiftPieces;
+        board.pieces[ROOK  ] |= maskR << shiftPieces;
+        board.pieces[BISHOP] |= maskB << shiftPieces;
+        board.pieces[KNIGHT] |= maskN << shiftPieces;
+        board.pieces[PAWN  ] |= ((1ULL << 8)-1) << shiftPawn;
+    }
+    board.resetmailbox();
+}
+
 void GameState::fromFen(string fen){
     zobristHash=0;
     pawnZobrist = 0;
@@ -425,4 +462,8 @@ int GameState::material(){
         countbit(board.pieces[BISHOP])*3 +
         countbit(board.pieces[ROOK  ])*5 +
         countbit(board.pieces[QUEEN ])*9;
+}
+
+void GameState::castlingFromMask(big mask){
+    castlingMask = mask;
 }

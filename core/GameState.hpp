@@ -42,6 +42,17 @@ struct PositionState{
         memset(colors, 0, sizeof(colors));
         memset(mailbox, SPACE*2, sizeof(mailbox));
     }
+    void resetmailbox(){
+        memset(mailbox, SPACE*2, sizeof(mailbox));
+        for(int piece=0; piece<=KING; piece++){
+            big mask = pieces[piece];
+            while(mask){
+                int pos = __builtin_ctzll(mask);
+                mailbox[pos] = piece*2+!(colors[WHITE]&(1ULL << pos));
+                mask &= mask-1;
+            }
+        }
+    }
     forceinline big getMask(int piece, bool color) const{
         return pieces[piece]&colors[color];
     }
@@ -96,6 +107,7 @@ public :
     int lastDoublePawnPush;
     big castlingMask;
     GameState();
+    void setDFRC(int idWhite, int idBlack);
     void fromFen(string fen);
     string toFen() const;
     int friendlyColor() const;
