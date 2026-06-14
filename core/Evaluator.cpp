@@ -374,7 +374,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) c
     }
 #ifdef HCE
     else{
-        changePiece<-f, false>(move.from(), move.piece, c);
+        changePiece<-f, false>(move.from(), piece, c);
         changePiece<f, false>(toSquare, toPiece, c);
     }
 #else
