@@ -32,11 +32,11 @@ ifeq ($(OS), Windows_NT)
 	CC=clang++
 	CFLAGS := $(CFLAGS) -static
 	OPT := $(OPT) -fuse-ld=lld
-	LDFLAGS=
+	myLDFLAGS=
 else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
-	LDFLAGS=-lpthread
+	myLDFLAGS=-lpthread
 endif
 CFLAGSALL=$(CFLAGS) $(DEBUGOPT)
 ifneq ($(ARCH), unknow)
@@ -92,6 +92,9 @@ else
 	NEEDINGFILE=
 endif
 
+override CPPFLAGS += $(CFLAGSALL) $(OPT) $(ARCHCOM) $(ADDOPTION)
+override LDFLAGS += $(myLDFLAGS)
+
 all: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
 
@@ -118,6 +121,8 @@ unittest: unittest.cpp $(OBJECTS)
 prune: engine.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) $(LDFLAGS)
 
+-include $(DEPENDS)
+
 netScale: netScale.cpp $(OBJECTS)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS)
 
@@ -135,24 +140,6 @@ coreGen: collectData.cpp $(OBJECTS)
 
 spsa: spsa.cpp $(OBJECTSTUNE)
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS)
-
-spsaHCE: spsa.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsaHCE $^ $(VERSIONNING) -DHCE $(LDFLAGS)
-
-%.o: %.cpp
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
-
--include $(DEPENDS)
-
-%HCE.o: %.cpp
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
-
--include $(DEPENDS)
-
-%TUNE.o: %.cpp
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DTUNE
-
--include $(DEPENDS)
 
 embeder.o: embeder.cpp model.bin
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
