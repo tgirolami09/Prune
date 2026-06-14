@@ -1,9 +1,14 @@
-CC=g++
 ADDOPTION?=
 DEBUGOPT?=
 NETNAME?=
-CFLAGS=-Werror -Wshadow -Wall -Wextra -MMD -std=gnu++17 -I../Fathom/src $(ADDOPTION)
+myCPPFLAGS=-Werror -Wshadow -Wall -Wextra -MMD -std=gnu++17 -I../Fathom/src $(ADDOPTION)
 OPT?=-O3 -flto -funroll-loops
+
+TUNE?=false
+HCE?=false
+DATAGEN?=false
+UNITTEST?=false
+
 SHELL := /bin/bash
 # Fathom tablebase library
 FATHOM_DIR = ../Fathom/src
@@ -24,21 +29,44 @@ SOURCES := $(filter-out quantise.cpp,$(SOURCES))
 SOURCES := $(filter-out permute.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
 DEPENDS := $(OBJECTS:%.o=%.d)
-OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o) $(FATHOM_OBJ)
-OBJECTSTUNE := $(SOURCES:%.cpp=%TUNE.o) $(FATHOM_OBJ)
-OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
+
+MAIN?=engine.cpp
+MAINFLAGS=
+THENET=model.bin
+BASENAME=prune
+ADDSUFFIX=true
+ifneq ($(MAIN), engine.cpp)
+	BASENAME=$(MAIN:%.cpp=%)
+	ADDSUFFIX=false
+endif
+ifeq ($(MAIN), collectData.cpp)
+	BASENAME=coreGen
+	MAINFLAGS := -fopenmp
+	ADDSUFFIX=false
+endif
+ifeq ($(HCE), true)
+	OBJECTS := $(filter-out NNUE.o,$(OBJECTS))
+	myCPPFLAGS := $(myCPPFLAGS) -DHCE
+	THENET :=
+	BASENAME := pruneHCE
+endif
+ifeq ($(TUNE), true)
+	myCPPFLAGS := $(myCPPFLAGS) -DTUNE
+	BASENAME := spsa
+	MAIN=spsa.cpp
+endif
+
+myLDFLAGS=-lm
 ifeq ($(OS), Windows_NT)
 	OS = Windows
-	CC=clang++
 	CFLAGS := $(CFLAGS) -static
 	OPT := $(OPT) -fuse-ld=lld
-	myLDFLAGS=
 else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)
-	myLDFLAGS=-lpthread
+	myLDFLAGS := $(myLDFLAGS) -lpthread
 endif
-CFLAGSALL=$(CFLAGS) $(DEBUGOPT)
+myCPPFLAGS := $(myCPPFLAGS) $(DEBUGOPT)
 ifneq ($(ARCH), unknow)
 	ARCHCOM=-march=$(ARCH)
 else
@@ -61,16 +89,16 @@ ifeq ($(ARCH), native)
 else
 	ARCHNAME=-$(ARCH)
 endif
-ifeq ($(CPUSET), unknow)
-	CPUSETNAME=
-else
-	CPUSETNAME=-$(CPUSET)
-endif
 EXTENSION=
 VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
 ifeq ($(EXE), )
-	NAME=prune-$(OS)-$(REC)
-	SHORTNAME=prune$(REC)
+	ifeq ($(ADDSUFFIX), true)
+		NAME=$(BASENAME)-$(OS)-$(REC)
+		SHORTNAME=$(BASENAME)$(REC)
+	else
+		NAME=$(BASENAME)
+		SHORTNAME=$(BASENAME)
+	endif
 	ifeq ($(OS), Windows)
 		NAME := $(NAME).exe
 		SHORTNAME := $(SHORTNAME).exe
@@ -92,11 +120,11 @@ else
 	NEEDINGFILE=
 endif
 
-override CPPFLAGS += $(CFLAGSALL) $(OPT) $(ARCHCOM) $(ADDOPTION)
+override CPPFLAGS += $(myCPPFLAGS) $(OPT) $(ARCHCOM) $(ADDOPTION)
 override LDFLAGS += $(myLDFLAGS)
 
-all: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS)
+all: $(MAIN) $(OBJECTS)
+	$(CXX) -m64 $(myCPPFLAGS) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS) $(MAINFLAGS)
 
 download:
 	@if [ ! -f model.bin ]; then \
@@ -108,50 +136,20 @@ download:
 	fi
 
 permute: permute.cpp
-	$(CC) -m64 $(OPT) $(ARCHCOM) -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
+	$(CXX) -m64 $(OPT) $(ARCHCOM) -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
 
 $(NETNAME): $(NEEDINGFILE)
 
 model.bin: $(NETNAME) permute
 	./permute $(NETNAME).bin model.bin
 
-unittest: unittest.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
-
-prune: engine.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) $(LDFLAGS)
+prune: $(MAIN) $(OBJECTS)
+	$(CXX) -m64 $(myCPPFLAGS) $(OPT) $(ARCHCOM) -o $(SHORTNAME) $^ $(VERSIONNING) $(LDFLAGS) $(MAINFLAGS)
 
 -include $(DEPENDS)
 
-netScale: netScale.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o netScale $^ $(VERSIONNING) $(LDFLAGS)
-
-datastat: datasetStats.cpp $(OBJECTS)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $^ $(VERSIONNING) $(LDFLAGS)
-
-pruneHCE: engine.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE$(REC) $^ $(VERSIONNING) -DHCE $(LDFLAGS)
-
-HCE: engine.cpp $(OBJECTSHCE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o pruneHCE-$(OS)-$(REC)$(EXTENSION) $^ $(VERSIONNING) -DHCE $(LDFLAGS)
-
-coreGen: collectData.cpp $(OBJECTS)
-	$(CC) $(CFLAGSALL) $(OPT) $(ARCHCOM) -fopenmp -o $@ $^ $(LDFLAGS)
-
-spsa: spsa.cpp $(OBJECTSTUNE)
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o spsa $^ $(VERSIONNING) $(LDFLAGS)
-
-embeder.o: embeder.cpp model.bin
-	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
-
-embederTUNE.o: embeder.cpp model.bin
-	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
-
-embederHCE.o: embeder.cpp
-	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
-
-testTI: $(OBJECTS) testTI.cpp
-	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
+embeder.o: embeder.cpp $(THENET)
+	$(CXX) -m64 $(myCPPFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
 
 clean:
 	rm -f $(OBJECTS) $(DEPENDS)
@@ -162,4 +160,4 @@ re:
 
 # Compile Fathom tablebase library (C code)
 $(FATHOM_OBJ): $(FATHOM_DIR)/tbprobe.c
-	$(CC) -c -O3 -std=c++17 $(ARCHCOM) -D_CRT_SECURE_NO_WARNINGS -I$(FATHOM_DIR) -o $@ $<
+	$(CC) -c -O3 $(ARCHCOM) -D_CRT_SECURE_NO_WARNINGS -I$(FATHOM_DIR) -o $@ $<
