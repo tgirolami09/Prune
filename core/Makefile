@@ -2,7 +2,7 @@ CC=g++
 ADDOPTION?=
 DEBUGOPT?=
 NETNAME?=
-CFLAGS=-Werror -Wshadow -Wall -Wextra -std=gnu++17 -I../Fathom/src $(ADDOPTION)
+CFLAGS=-Werror -Wshadow -Wall -Wextra -MMD -std=gnu++17 -I../Fathom/src $(ADDOPTION)
 OPT?=-O3 -flto -funroll-loops
 SHELL := /bin/bash
 # Fathom tablebase library
@@ -23,6 +23,7 @@ SOURCES := $(filter-out testTI.cpp,$(SOURCES))
 SOURCES := $(filter-out quantise.cpp,$(SOURCES))
 SOURCES := $(filter-out permute.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
+DEPENDS := $(OBJECTS:%.o=%.d)
 OBJECTSHCE := $(SOURCES:%.cpp=%HCE.o) $(FATHOM_OBJ)
 OBJECTSTUNE := $(SOURCES:%.cpp=%TUNE.o) $(FATHOM_OBJ)
 OBJECTSHCE := $(filter-out NNUEHCE.o,$(OBJECTSHCE))
@@ -141,11 +142,17 @@ spsaHCE: spsa.cpp $(OBJECTSHCE)
 %.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^
 
+-include $(DEPENDS)
+
 %HCE.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DHCE
 
+-include $(DEPENDS)
+
 %TUNE.o: %.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -c $(VERSIONNING) -o $@ $^ -DTUNE
+
+-include $(DEPENDS)
 
 embeder.o: embeder.cpp model.bin
 	$(CC) -m64 $(CFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
@@ -160,7 +167,7 @@ testTI: $(OBJECTS) testTI.cpp
 	$(CC) -m64 $(CFLAGSALL) $(OPT) $(ARCHCOM) -o $@ $(VERSIONNING) $^ $(LDFLAGS)
 
 clean:
-	rm $(OBJECTS) $(DEPENDS)
+	rm -f $(OBJECTS) $(DEPENDS)
 
 re:
 	$(MAKE) clean
