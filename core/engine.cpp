@@ -614,8 +614,11 @@ void manageSearch(){
             }
             cv_command.notify_one();
         }
-        unique_lock<mutex> lock(mtx_new_command);
-        cv_new_command.wait(lock, []{return endQ != startQ;});
+        if(!stop_all && endQ == startQ){
+            fflush(stdout);
+            unique_lock<mutex> lock(mtx_new_command);
+            cv_new_command.wait(lock, []{return endQ != startQ || stop_all;});
+        }
     }
 }
 
