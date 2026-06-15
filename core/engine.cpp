@@ -1,3 +1,4 @@
+#include <mutex>
 #include <sstream>
 #include <tuple>
 #include <thread>
@@ -95,6 +96,8 @@ atomic<bool> stop_all=false;
 bool exec_command;
 mutex mtx_command;
 condition_variable cv_command;
+condition_variable cv_new_command;
+mutex mtx_new_command;
 
 void manageInput(){
     while(!stop_all){
@@ -112,9 +115,14 @@ void manageInput(){
         }else if(com == "quit"){
             bestMoveFinder.running = false;
             stop_all = true;
+            unique_lock<mutex> lock(mtx_new_command);
+            endQ++;
+            cv_new_command.notify_one();
         }else{
+            unique_lock<mutex> lock(mtx_new_command);
             inpQueue[endQ%sizeQ] = com;
             endQ++;
+            cv_new_command.notify_one();
         }
         fflush(stdout);
     }
@@ -606,7 +614,8 @@ void manageSearch(){
             }
             cv_command.notify_one();
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
+        unique_lock<mutex> lock(mtx_new_command);
+        cv_new_command.wait(lock, []{return endQ != startQ;});
     }
 }
 
