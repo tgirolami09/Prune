@@ -35,6 +35,7 @@ MAINFLAGS=
 THENET=model.bin
 BASENAME=prune
 ADDSUFFIX=true
+NOTMAIN=
 ifneq ($(MAIN), engine.cpp)
 	BASENAME=$(MAIN:%.cpp=%)
 	ADDSUFFIX=false
@@ -51,9 +52,10 @@ ifeq ($(HCE), true)
 	BASENAME := pruneHCE
 endif
 ifeq ($(TUNE), true)
-	myCPPFLAGS := $(myCPPFLAGS) -DTUNE
+	NOTMAIN := $(NOTMAIN) -DTUNE
 	BASENAME := spsa
 	MAIN=spsa.cpp
+	ADDSUFFIX=false
 endif
 
 myLDFLAGS=-lm
@@ -120,7 +122,7 @@ else
 	NEEDINGFILE=
 endif
 
-override CPPFLAGS += $(myCPPFLAGS) $(OPT) $(ARCHCOM) $(ADDOPTION)
+override CPPFLAGS += $(myCPPFLAGS) $(NOTMAIN) $(OPT) $(ARCHCOM) $(ADDOPTION)
 override LDFLAGS += $(myLDFLAGS)
 
 all: $(MAIN) $(OBJECTS)
@@ -136,7 +138,7 @@ download:
 	fi
 
 permute: permute.cpp
-	$(CXX) -m64 $(OPT) $(ARCHCOM) -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
+	$(CXX) -m64 $(OPT) $(ARCHCOM) $(myCPPFLAGS) -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
 
 $(NETNAME): $(NEEDINGFILE)
 

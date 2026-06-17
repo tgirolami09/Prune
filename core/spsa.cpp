@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <fstream>
 bool DEBUG = false;
+bool isdfrc=true;
 #define TUNE
 int nbThreads=1;
 #include "BestMoveFinder.hpp"
