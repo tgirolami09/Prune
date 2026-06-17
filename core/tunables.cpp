@@ -11,13 +11,18 @@ vector<TunableInt*> tunables::to_tune_int(){
         //&se_validity_depth,
         //&se_min_depth,
         &se_dext_margin,
+        &se_dmul,
         //&lmp_base,
         //&lmp_mul,
         &mhp_mul,
+        &mchp_mul,
         &fp_base,
         &fp_mul,
         //&fp_max_depth,
+        &fp_hmul,
         &lmr_history,
+        &lmr_base,
+        &lmr_div,
         &capthist_mul_malus,
         &capthist_mul_bonus,
         &aw_base,
@@ -26,9 +31,6 @@ vector<TunableInt*> tunables::to_tune_int(){
         &bvalue,
         &rvalue,
         &qvalue,
-        &lmr_base,
-        &lmr_div,
-        &mchp_mul,
         &mats_pawn,
         &mats_knight,
         &mats_bishop,
@@ -37,8 +39,7 @@ vector<TunableInt*> tunables::to_tune_int(){
         &mats_offset,
         &see_mul_quiet,
         &see_mul_tact,
-        &fp_hmul,
-        &se_dmul
+        &se_pv_offset,
     };
     for(TunableHist* tunshist:{&mainHist, &prevHist}){
         tuns.push_back(&tunshist->order);
