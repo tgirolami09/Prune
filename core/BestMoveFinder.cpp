@@ -25,10 +25,10 @@ StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
 StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
-BestMoveFinder::usefull::usefull(const GameState& state, tunables& parameters):nodes(0), bestMoveNodes(0), seldepth(0), tbHits(0),rootBest(nullMove), mainThread(true){
+BestMoveFinder::usefull::usefull(const GameState& state, const tunables& histparameters):nodes(0), bestMoveNodes(0), seldepth(0), tbHits(0),rootBest(nullMove), mainThread(true){
     eval.init(state);
     generator.initDangers(state);
-    history.init(parameters);
+    history.init(histparameters);
     correctionHistory.reset();
 }
 BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), tbHits(0),rootBest(nullMove), mainThread(true){}

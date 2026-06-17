@@ -61,7 +61,7 @@ class BestMoveFinder{
         HelpOrdering history;
         corrhists correctionHistory;
         int min_nmp_ply=0;
-        usefull(const GameState& state, tunables& parameters);
+        usefull(const GameState& state, const tunables& parameters);
         usefull();
         void reinit(const GameState& state);
         string PVprint(LINE pvLine);
