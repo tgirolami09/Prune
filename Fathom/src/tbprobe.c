@@ -193,8 +193,12 @@ static unsigned lsb(uint64_t b) {
 #endif
 #endif
 
-#define max(a,b) a > b ? a : b
-#define min(a,b) a < b ? a : b
+#ifndef max
+  #define max(a,b) a > b ? a : b
+#endif
+#ifndef min
+  #define min(a,b) a < b ? a : b
+#endif
 
 #include "stdendian.h"
 
