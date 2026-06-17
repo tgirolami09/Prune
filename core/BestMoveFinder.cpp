@@ -662,6 +662,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
     char lastline[1000];
+    string PV;
     for(int depth=1; depth<=depthMax && running && !smp_abort; depth++){
         int deltaUp = parameters.aw_base;
         int deltaDown = parameters.aw_base;
@@ -671,7 +672,6 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         int bestScore;
         Move finalBestMove=bestMove;
         sbig lastUsedNodes = 0;
-        string PV;
         do{
             int alpha = lastScore-deltaDown;
             int beta = lastScore+deltaUp;
