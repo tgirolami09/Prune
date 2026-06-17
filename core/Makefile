@@ -58,7 +58,7 @@ ifeq ($(TUNE), true)
 	ADDSUFFIX=false
 endif
 
-myLDFLAGS=-lm
+myLDFLAGS=
 ifeq ($(OS), Windows_NT)
 	OS = Windows
 	CFLAGS := $(CFLAGS) -static
