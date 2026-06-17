@@ -162,7 +162,11 @@ void GameState::fromFen(string fen){
             int pos;
             if(position == 'q' || position == 'k'){
                 int upto = posCastlingRook(position == 'k', isBlack);
-                pos = __builtin_ctzll(directions[__builtin_ctzll(board.getMask(KING*2+isBlack))][upto]&board.getMask(ROOK*2+isBlack));
+                int kingpos = __builtin_ctzll(board.getMask(KING*2+isBlack));
+                big rmask = directions[kingpos][upto]&board.getMask(ROOK*2+isBlack);
+                if(position == 'q')
+                    pos = 63^__builtin_clzll(rmask);
+                else pos = __builtin_ctzll(rmask);
             }else{
                 pos = isBlack*56+7-(position-'a');
             }
