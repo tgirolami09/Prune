@@ -60,6 +60,7 @@ struct nn{
 };
 
 int main(int argc, char** argv){
+    assert(argc > 2);
     unique_ptr<nn> nn_in  = make_unique<nn>();
     unique_ptr<nn> nn_out = make_unique<nn>();
     FILE* fin = fopen(argv[1], "r");
