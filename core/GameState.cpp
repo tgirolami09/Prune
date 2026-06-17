@@ -407,15 +407,6 @@ void GameState::initMove(Move& move){
 }
 
 // Inline zobrist update for forward-only move application
-static inline void updateZobr(big& zobristHash, big& pawnZobrist, big& minorZobrist,
-                               int piece, bool color, int square){
-    big zobr = zobrist[(color*6+piece)*64+square];
-    zobristHash ^= zobr;
-    if(piece == PAWN)
-        pawnZobrist ^= zobr;
-    if(piece == KNIGHT || piece == BISHOP || piece == KING)
-        minorZobrist ^= zobr;
-}
 
 ExpendedMove GameState::playMove(Move move){
     zobristHash ^= zobrist[zobrPassant+col(lastDoublePawnPush)]*(lastDoublePawnPush != -1);
