@@ -63,6 +63,8 @@ ifeq ($(OS), Windows_NT)
 	OS = Windows
 	CFLAGS := $(CFLAGS) -static
 	OPT := $(OPT) -fuse-ld=lld
+	CXX=clang++
+	CC=clang
 else
 	OS=$(shell uname -s)
 	PROCESSOR_ARCHITECTURE=$(shell uname -m)

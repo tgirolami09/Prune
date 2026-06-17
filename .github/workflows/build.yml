@@ -34,7 +34,7 @@ jobs:
       - name: Build project
         working-directory: ./core
         run: |
-          make ARCH=haswell
+          make -j ARCH=haswell
 
       - name: Build HCE version
         working-directory: ./core
