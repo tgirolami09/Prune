@@ -138,7 +138,7 @@ download:
 	fi
 
 permute: permute.cpp
-	$(CXX) -m64 $(OPT) $(ARCHCOM) $(myCPPFLAGS) -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
+	$(CXX) -m64 $(OPT) $(ARCHCOM) -std=gnu++17 -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
 
 $(NETNAME): $(NEEDINGFILE)
 
