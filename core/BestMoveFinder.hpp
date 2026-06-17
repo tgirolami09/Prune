@@ -55,7 +55,6 @@ class BestMoveFinder{
         atomic<sbig> nodes;
         atomic<sbig> bestMoveNodes;
         atomic<int> seldepth;
-        atomic<sbig> nbCutoff, nbFirstCutoff;
         sbig tbHits;
         Move rootBest;
         bool mainThread;
@@ -74,8 +73,6 @@ class BestMoveFinder{
 
     struct Record{
         sbig nodes;
-        sbig nbFirstCutoff;
-        sbig nbCutoff;
         sbig tbHits;
     };
 
