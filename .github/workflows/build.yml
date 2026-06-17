@@ -39,7 +39,7 @@ jobs:
       - name: Build HCE version
         working-directory: ./core
         run: |
-          make HCE ARCH=haswell
+          make -B -j HCE=true ARCH=haswell
 
       - name: Test bench (Linux/macOS)
         if: runner.os != 'Windows'
