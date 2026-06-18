@@ -487,7 +487,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
         bool isKiller = ss.history.isKiller(curMove, rootDist);
         const int lmr_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::LMR>(curMove, state.friendlyColor(), state);
-        if(bestScore >= MINIMUM+maxDepth){
+        if(bestScore >= MINIMUM+maxDepth && !isRoot){
             if(!state.board.isTactical(curMove)){
                 if(triedMove > depth*depth*parameters.lmp_mul+parameters.lmp_base)continue;
                 const int mhp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::MHP>(curMove, state.friendlyColor(), state);
@@ -552,7 +552,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
         ss.stack[rootDist].snap.restore(state);
         if(!running || smp_abort)return bestScore;
-        ss.searchedMoves++;
+        ss.searchedMoves += isRoot;
         if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval, isPV);
             if(isRoot)ss.rootBest=curMove;
@@ -713,7 +713,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         bestMove = finalBestMove;
         if(bestScore != -INF){
             lastScore = bestScore;
-            if(limit == "" && ss.searchedMoves == 0)
+            if(limit == "" && ss.searchedMoves != ss.stack[1].order.nbMoves)
                 limit = " lowerbound";
         }else{
             depth--;
