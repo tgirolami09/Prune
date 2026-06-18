@@ -5,10 +5,16 @@
 #include <cstring>
 #include <thread>
 #include <cmath>
+#ifndef _WIN32
+#include <sys/mman.h>
+#endif
 
 transpositionTable::transpositionTable(size_t count){
     count /= sizeof(Cluster);
     table = (Cluster*)calloc(count, sizeof(Cluster));
+#ifdef MADV_HUGEPAGE
+    madvise(table, count*sizeof(Cluster), MADV_HUGEPAGE);
+#endif
     modulo=count;
     age = 0;
 }
