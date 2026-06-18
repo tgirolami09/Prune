@@ -683,6 +683,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
                 limit = " lowerbound";
                 ponderMove = nullMove;
             }else{
+                limit = "";
                 finalBestMove = bestMove;
                 PV = ss.PVprint(ss.PVlines[0]);
                 if(ss.PVlines[0].cmove > 1)ponderMove.moveInfo = ss.PVlines[0].argMoves[1];
