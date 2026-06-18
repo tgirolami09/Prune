@@ -522,6 +522,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         ss.stack[rootDist].snap.save(state);
         ExpendedMove curEMove = state.playMove(curMove);
         bool isDraw = false;
+        ss.stack[rootDist].searchedMoves[triedMove] = curMove;
         triedMove++;
         if(state.twofoldFast()){
             score = MIDDLE;
@@ -557,7 +558,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval, isPV);
             if(isRoot)ss.rootBest=curMove;
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
-            ss.history.negUpdate(order.moves, rankMove, state.friendlyColor(), depth, state);
+            ss.history.negUpdate(ss.stack[rootDist].searchedMoves, triedMove-1, state.friendlyColor(), depth, state);
             if(curEMove.capture == SPACE && curEMove.move.getFlag() != Move::fpromo){
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
