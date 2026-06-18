@@ -8,13 +8,25 @@
 #ifndef _WIN32
 #include <sys/mman.h>
 #endif
+constexpr size_t HugePage2MB = 2*1024*1024;
+constexpr size_t DefaultAlign = 4096;
 
 transpositionTable::transpositionTable(size_t count){
-    count /= sizeof(Cluster);
-    table = (Cluster*)calloc(count, sizeof(Cluster));
+    size_t size = count/sizeof(Cluster)*sizeof(Cluster);
+#ifdef MADV_HUGEPAGE
+    const size_t alignement = size > HugePage2MB?HugePage2MB:DefaultAlign;
+#else
+    const size_t alignement = DefaultAlign;
+#endif
+    size = ((size-1)/alignement+1)*alignement;
+#ifdef _WIN32
+    table = (Cluster*)(_aligned_malloc(size, alignment));
+#endif
+    table = (Cluster*)std::aligned_alloc(alignement, size);
 #ifdef MADV_HUGEPAGE
     madvise(table, count*sizeof(Cluster), MADV_HUGEPAGE);
 #endif
+    count = size/sizeof(Cluster);
     modulo=count;
     age = 0;
 }
