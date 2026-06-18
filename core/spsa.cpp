@@ -143,7 +143,7 @@ public:
         return idPlayer?player0:player1;
     }
     bestMoveResponse getEval(int idPlayer, TM tm){
-        return getPlayer(idPlayer).goState<0>(state, tm, false, ply);
+        return getPlayer(idPlayer).goState<1>(state, tm, false, ply);
     }
     void set_result(int result){
         ans = result;
@@ -268,7 +268,6 @@ void play_games(int id){
     while(1){
         ss.wait_notification();
         if(ss.fen == "-")return;
-        int times[2] = {baseTime, baseTime};
         int result = 1;
         ss.state.fromFen(ss.fen);
         int phase = countbit(
@@ -282,11 +281,8 @@ void play_games(int id){
         );
         ss.ply = 0;
         while(1){
-            auto start = high_resolution_clock::now();
             int player = ss.state.friendlyColor() == BLACK;
-            auto res=ss.getEval(player, TM(moveOverhead, times[0], times[1], increment, increment, ss.state.friendlyColor()));
-            auto end = high_resolution_clock::now();
-            int used_time = duration_cast<milliseconds>(end - start).count();
+            auto res=ss.getEval(player, TM(baseTime, baseTime));
             Move bm=get<0>(res);
             if(bm.moveInfo == nullMove.moveInfo){
                 int score = get<2>(res);
@@ -295,14 +291,8 @@ void play_games(int id){
                     result = (ss.state.enemyColor() == WHITE)*2;
                     break;
                 }
-                printf("score: %d fen: %s ply: %d times: %d %d\n", get<2>(res), ss.state.toFen().c_str(), ss.ply, times[player], times[player^1]);
+                printf("score: %d fen: %s ply: %d\n", get<2>(res), ss.state.toFen().c_str(), ss.ply);
                 assert(false);
-            }
-            times[player] -= used_time;
-            if(times[player] < 0){
-                printf("loss on time on thread %d, last time used = %d, time now remains=%d\n", id, used_time, times[player]);
-                result = (ss.state.enemyColor() == WHITE)*2;
-                break;
             }
             int capture = ss.state.board.getCapture(bm);
             if(capture != SPACE){
@@ -310,7 +300,6 @@ void play_games(int id){
             }
             if(bm.promotion() == KNIGHT || bm.promotion() == BISHOP)
                 phase -= 1;
-            times[player] += increment;
             ss.state.playMove(bm);
             ss.ply++;
             if(ss.state.threefold()){
@@ -343,8 +332,7 @@ int main(int argc, char** argv){
         printf("nbIter: number of SPSA iters\n");
         printf("nbThreads: number of threads (each thread will run one game at the time)\n");
         printf("memory: memory per player in MB\n");
-        printf("baseTime: base time on the clock in milliseconds\n");
-        printf("increment: increment per move in milliseconds\n");
+        printf("baseTime: base time in nodes\n");
         printf("logFile: to continue from a stopped spsa\n");
         printf("added params: in case of restarted spsa, take in account in the reading of the file that paramaters were added in place x1 x2 etc. all the x1... should be between \" \" (like \"1 2 3\")\n");
         return 0;
@@ -363,7 +351,7 @@ int main(int argc, char** argv){
     nbIters = atoi(argv[3]);
     nbThreadsSPSA = atoi(argv[4]);
     memory = 16;
-    baseTime = 10000, increment = 100;
+    baseTime = 1000;
     int idSPSA = 0;
     internalState state((tunables()));
     int nbPassedIters = 0;
@@ -372,10 +360,9 @@ int main(int argc, char** argv){
     if(argc > 5){
         memory = atoi(argv[5]);
         baseTime = atoi(argv[6]);
-        increment = atoi(argv[7]);
-        if(argc > 8){
+        if(argc > 7){
             string line;
-            string refile = argv[8];
+            string refile = argv[7];
             printf("%s %d\n", refile.c_str(), refile == "re");
             if(refile == "re"){
                 refile = "spsaOut.log";
