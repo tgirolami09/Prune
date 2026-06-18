@@ -60,6 +60,7 @@ class BestMoveFinder{
         bool mainThread;
         HelpOrdering history;
         corrhists correctionHistory;
+        int searchedMoves = 0;
         int min_nmp_ply=0;
         usefull(const GameState& state, const tunables& parameters);
         usefull();
