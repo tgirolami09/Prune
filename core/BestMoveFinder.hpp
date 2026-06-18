@@ -43,6 +43,7 @@ class BestMoveFinder{
         };
         struct StackCase{
             Order order;
+            Move searchedMoves[maxMoves];
             int static_score;
             int raw_eval;
             PositionSnapshot snap;
