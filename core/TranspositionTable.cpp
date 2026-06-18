@@ -14,15 +14,16 @@ constexpr size_t DefaultAlign = 4096;
 transpositionTable::transpositionTable(size_t count){
     size_t size = count/sizeof(Cluster)*sizeof(Cluster);
 #ifdef MADV_HUGEPAGE
-    const size_t alignement = size > HugePage2MB?HugePage2MB:DefaultAlign;
+    const size_t alignment = size > HugePage2MB?HugePage2MB:DefaultAlign;
 #else
-    const size_t alignement = DefaultAlign;
+    const size_t alignment = DefaultAlign;
 #endif
-    size = ((size-1)/alignement+1)*alignement;
+    size = ((size-1)/alignment+1)*alignment;
 #ifdef _WIN32
     table = (Cluster*)(_aligned_malloc(size, alignment));
+#else
+    table = (Cluster*)std::aligned_alloc(alignment, size);
 #endif
-    table = (Cluster*)std::aligned_alloc(alignement, size);
 #ifdef MADV_HUGEPAGE
     madvise(table, count*sizeof(Cluster), MADV_HUGEPAGE);
 #endif
