@@ -96,6 +96,6 @@ for the version naming, we currently use the following :
 - chessprogramming wiki
     - warn for new dev, can be outdated, so don't forget to sprt every changes
 - especially to :
-    - swedishchef (the dev from pawnocchio and vine) for helping me debugging the viriformat writer, and giving me some search ideas
-    - Ciekce, who helped me a lot making working the threat net (by giving me his bullet config, and helping me debugging it)
-    - Yooshie, who helped me to know some speedup techniques for the ti, directly or by his code
+    - [swedishchef](https://github.com/JonathanHallstrom/) (the dev from pawnocchio and vine) for helping me debugging the viriformat writer, and giving me some search ideas
+    - [Ciekce](https://github.com/Ciekce/), who helped me a lot making working the threat net (by giving me his bullet config, and helping me debugging it)
+    - [Yoshie](https://github.com/Yoshie2000/), who helped me to know some speedup techniques for the ti, directly or by his code

@@ -1,3 +1,4 @@
+#include <mutex>
 #include <sstream>
 #include <tuple>
 #include <thread>
@@ -18,6 +19,7 @@
 #include <cmath>
 int nbThreads = 1;
 bool DEBUG = false;
+bool isdfrc = false;
 using namespace std;
 
 
@@ -94,6 +96,8 @@ atomic<bool> stop_all=false;
 bool exec_command;
 mutex mtx_command;
 condition_variable cv_command;
+condition_variable cv_new_command;
+mutex mtx_new_command;
 
 void manageInput(){
     while(!stop_all){
@@ -111,14 +115,19 @@ void manageInput(){
         }else if(com == "quit"){
             bestMoveFinder.running = false;
             stop_all = true;
+            unique_lock<mutex> lock(mtx_new_command);
+            endQ++;
+            cv_new_command.notify_one();
         }else{
+            unique_lock<mutex> lock(mtx_new_command);
             inpQueue[endQ%sizeQ] = com;
             endQ++;
+            cv_new_command.notify_one();
         }
         fflush(stdout);
     }
 }
-const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete", "perft"};
+const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete", "perft", "nonbulk", "frc", "dfrc"};
 class Option{
 public:
     string name;
@@ -148,6 +157,7 @@ const Option Options[] = {
     Option("SyzygyProbeLimit", "spin", "7", 0, 7),
     Option("Minimal", "check", "false"),
     Option("UCI_ShowWDL", "check", "true"),
+    Option("UCI_Chess960", "check", "false")
 };
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
@@ -164,10 +174,22 @@ pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool
     return {softBound, hardBound};
 }
 
-bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool verbose=true){
+bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool verbose, bool& printmove){
     if(!args.empty()){
         if(args[0].first == "perft"){
-            printf("Nodes searched: %" PRId64 "\n", doPerft.perft(state.root, stoi(args[0].second)));
+            printmove = false;
+            big result;
+            PositionSnapshot snap;
+            snap.save(state.root);
+            for(Move move:state.movesFromRoot)
+                state.root.playPartialMove(move);
+            state.root.print();
+            if(args.size() > 1 && args[1].first == "nonbulk")
+                result = doPerft.perft<false>(state.root, stoi(args[0].second));
+            else
+                result = doPerft.perft<true>(state.root, stoi(args[0].second));
+            snap.restore(state.root);
+            printf("Nodes searched: %" PRId64 "\n", result);
             return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
         }else if((args[0].first == "btime" || args[0].first == "wtime")){
             int btime=0, wtime=0, winc=0, binc=0;
@@ -247,7 +269,7 @@ void manageSearch(){
                 PositionSnapshot snap;
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMoveForward(move);
+                    state->root.playPartialMove(move);
                 ieval->init(state->root);
                 int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 for(int r=7; r >= 0; r--){
@@ -292,7 +314,7 @@ void manageSearch(){
                 PositionSnapshot snap;
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMoveForward(move);
+                    state->root.playPartialMove(move);
                 ieval->init(state->root);
                 int overall_eval = ieval->getRaw(state->root.friendlyColor());
                 snap.restore(state->root);
@@ -331,7 +353,8 @@ void manageSearch(){
                     testState->movesFromRoot = {};
                     testState->root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
-                    bestMoveResponse res=goCommand(parsed, *testState, false);
+                    bool _;
+                    bestMoveResponse res=goCommand(parsed, *testState, false, _);
                     vector<depthInfo> infos = get<3>(res);
                     if(DEBUG)
                         printf("fen: %s score: %d nodes: %" PRId64 "\n", testState->root.toFen().c_str(), get<2>(res), infos.empty()?0:infos.back().node);
@@ -433,18 +456,28 @@ void manageSearch(){
                             move.from_uci(curMove);
                             state->movesFromRoot.push_back(move);
                         }
+                    }else if(arg.first == "frc"){
+                        state->root.setDFRC(stoi(arg.second), stoi(arg.second));
+                    }else if(arg.first == "dfrc"){
+                        istringstream ids(arg.second);
+                        int idwhite, idblack;
+                        ids >> idwhite >> idblack;
+                        state->root.setDFRC(idwhite, idblack);
                     }
                 }
             }else if(command == "go"){
-                bestMoveResponse res=goCommand(parsed, *state, true);
+                bool printmove = true;
+                bestMoveResponse res=goCommand(parsed, *state, true, printmove);
                 Move bm = get<0>(res);
                 Move ponder=get<1>(res);
-                if(ponder.moveInfo == nullMove.moveInfo)
-                    printf("bestmove %s\n", bm.moveInfo == nullMove.moveInfo ? "0000" : bm.to_str().c_str());
-                else
-                    printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
-                lastMove = ponder;
-                bestMoveFinder.aging();
+                if(printmove){
+                    if(ponder.moveInfo == nullMove.moveInfo)
+                        printf("bestmove %s\n", bm.moveInfo == nullMove.moveInfo ? "0000" : bm.to_str().c_str());
+                    else
+                        printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
+                    lastMove = ponder;
+                    bestMoveFinder.aging();
+                }
             }else if(command == "uci"){
 #ifdef VERSION
                 string v=VERSION;
@@ -500,6 +533,11 @@ void manageSearch(){
                                 WDLmodel::enabled = true;
                             else
                                 WDLmodel::enabled = false;
+                        }else if(parsed[i].second == "UCI_Chess960"){
+                            if(parsed[i+1].second == "true")
+                                isdfrc = true;
+                            else
+                                isdfrc = false;
                         }
                         i += incr;
                     }
@@ -508,7 +546,7 @@ void manageSearch(){
                 PositionSnapshot snap;
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMoveForward(move);
+                    state->root.playPartialMove(move);
                 istringstream moves(parsed[0].second);
                 string curMove;
                 bool isExact = true;
@@ -519,17 +557,16 @@ void manageSearch(){
                     }
                     Move move;
                     move.from_uci(curMove);
-                    move.piece = type(state->root.getfullPiece(move.from()));
-                    int cap = type(state->root.getfullPiece(move.to()));
-                    move.capture = cap != SPACE ? cap : -2;
-                    if(move.capture == -2 && move.piece == PAWN && abs(move.from()-move.to()) != 8 && abs(move.from()-move.to()) != 16)
-                        move.capture = -1;
+                    int piece = type(state->root.getfullPiece(move.from()));
+                    int capture = type(state->root.getfullPiece(move.to()));
+                    if(capture == SPACE && piece == PAWN && abs(move.from()-move.to()) != 8 && abs(move.from()-move.to()) != 16)
+                        move.setFlag(Move::fep), capture = 0;
                     int res;
                     const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
                     if(isExact){
                         res = -fastSEE(move, state->root, value_pieces);
-                        if(move.capture != -2)
-                            res += value_pieces[max(0, cap)];
+                        if(capture == SPACE)
+                            res += value_pieces[capture];
                     }else
                         res = see_ge(0, move, state->root, value_pieces);
                     printf("%s : %d\n", move.to_str().c_str(), res);
@@ -544,7 +581,7 @@ void manageSearch(){
                 PositionSnapshot snap;
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
-                    state->root.playPartialMoveForward(move);
+                    state->root.playPartialMove(move);
                 state->root.print();
                 snap.restore(state->root);
             }else if(command == "stats"){
@@ -562,6 +599,13 @@ void manageSearch(){
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
 #endif
+            }else if(command == "fen"){
+                PositionSnapshot snap;
+                snap.save(state->root);
+                for(Move move:state->movesFromRoot)
+                    state->root.playPartialMove(move);
+                printf("%s\n", state->root.toFen().c_str());
+                snap.restore(state->root);
             }
             fflush(stdout);
             {
@@ -570,7 +614,11 @@ void manageSearch(){
             }
             cv_command.notify_one();
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
+        if(!stop_all && endQ == startQ){
+            fflush(stdout);
+            unique_lock<mutex> lock(mtx_new_command);
+            cv_new_command.wait(lock, []{return endQ != startQ || stop_all;});
+        }
     }
 }
 

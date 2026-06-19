@@ -9,8 +9,10 @@
 #define dbyte int16_t
 #define sbig int64_t
 using namespace std;
+#define forceinline __attribute__((always_inline))
 extern int nbThreads;
 extern bool DEBUG;
+extern bool isdfrc;
 const big MAX_BIG=~0ULL;
 const int WHITE=0;
 const int BLACK=1; // odd = black
@@ -62,5 +64,12 @@ const ubyte UPPERBOUND = 2;
 const int KILLER_ADVANTAGE = 1<<20;
 //const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
 const int maxHistory=16384;
+
+constexpr int kingposCastle[2] = {1, 5};
+constexpr int rookposCastle[2] = {2, 4};
+constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+
+extern big directions[64][64];
+extern big fullDir[64][64];
 
 #endif

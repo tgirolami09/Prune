@@ -13,7 +13,7 @@ TM::TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color):e
     originLowerBound = softBound = time/30+inc*2/3;
 }
 
-sbig TM::updateSoft(sbig bestMoveNodes, sbig totalNodes, int16_t bestmove, tunables& parameters, bool verbose){
+sbig TM::updateSoft(sbig bestMoveNodes, sbig totalNodes, int16_t bestmove, const tunables& parameters, bool verbose){
     if(!enableUpdate)return softBound;
     if(lastbestMove == bestmove)nbInARow++;
     else{

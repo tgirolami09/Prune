@@ -11,7 +11,7 @@ public:
     int nbInARow;
     TM(int moveOverhead, int wtime, int btime, int binc, int winc, bool color);
     TM(int softBound, int hardBound);
-    sbig updateSoft(sbig bestMoveNodes, sbig totalNodes, int16_t bestmove, tunables& parameters, bool verbose);
+    sbig updateSoft(sbig bestMoveNodes, sbig totalNodes, int16_t bestmove, const tunables& parameters, bool verbose);
 };
 
 #endif

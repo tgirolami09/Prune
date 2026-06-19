@@ -7,7 +7,9 @@
 #include <random>
 #include <cassert>
 #include <string>
+#include <set>
 using namespace std;
+bool isdfrc=true;
 
 string niceNumber(big N){
     int count=0;
@@ -55,8 +57,8 @@ public:
         if(state.turnNumber < min_ply) return true;
         if(filter_check && inCheck)return true;
         if(abs(move.score) > max_eval)return true;
-        if(filter_tactical && move.move.isTactical())return true;
-        if(filter_castling && move.move.isCastling())return true;
+        if(filter_tactical && state.board.isTactical(move.move))return true;
+        if(filter_castling && move.move.getFlag() == Move::fcastle)return true;
         int nbMan = countbit(state.board.colors[WHITE]|state.board.colors[BLACK]);
         if(nbMan < min_pieces)return true;
         int value_pieces[5] = {1, 3, 3, 5, 9};
@@ -128,6 +130,7 @@ int main(int argc, char** argv){
     big countUnfiltered=0;
     HyperLogLog uniqueness(20);
     LegalMoveGenerator movegen;
+    //Move legalMoves[maxMoves];
     for(int idFile=1; idFile<argc; idFile++){
         FILE* file=fopen(argv[idFile], "r");
         fseek(file, 0, SEEK_END);
@@ -141,10 +144,22 @@ int main(int argc, char** argv){
             for(MoveInfo move:game.game){
                 bool inCheck = movegen.initDangers(game.startPos);
                 game.startPos.initMove(move.move);
+                //big dng = 0;
+                //int nbmoves = movegen.generateLegalMoves(game.startPos, inCheck, legalMoves, dng);
+                //bool islegal = false;
+                //for(int i=0; i<nbmoves; i++){
+                //    if(legalMoves[i].moveInfo == move.move.moveInfo)
+                //        islegal = true;
+                //}
+                //if(!islegal){
+                //    printf("\n%s %s\n", game.startPos.toFen().c_str(), move.move.to_str().c_str());
+                //    break;
+                //}
                 if(filter.filter(game.startPos, move, inCheck, game.result))countFiltered++;
                 else countUnfiltered++;
                 uniqueness.add(game.startPos.zobristHash);
                 game.startPos.playMove(move.move);
+                //movegen.initDangers(game.startPos);
             }
             if((idGame&16383) == 0){
                 big nbPos = countFiltered+countUnfiltered;

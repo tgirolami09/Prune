@@ -8,7 +8,6 @@
 #include "Evaluator.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "MoveOrdering.hpp"
-#include "loadpolyglot.hpp"
 #include "TablebaseProbe.hpp"
 #include <vector>
 #include "tunables.hpp"
@@ -44,6 +43,7 @@ class BestMoveFinder{
         };
         struct StackCase{
             Order order;
+            Move searchedMoves[maxMoves];
             int static_score;
             int raw_eval;
             PositionSnapshot snap;
@@ -56,14 +56,14 @@ class BestMoveFinder{
         atomic<sbig> nodes;
         atomic<sbig> bestMoveNodes;
         atomic<int> seldepth;
-        atomic<sbig> nbCutoff, nbFirstCutoff;
         sbig tbHits;
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
         corrhists correctionHistory;
+        int searchedMoves = 0;
         int min_nmp_ply=0;
-        usefull(const GameState& state, tunables& parameters);
+        usefull(const GameState& state, const tunables& parameters);
         usefull();
         void reinit(const GameState& state);
         string PVprint(LINE pvLine);
@@ -75,8 +75,6 @@ class BestMoveFinder{
 
     struct Record{
         sbig nodes;
-        sbig nbFirstCutoff;
-        sbig nbCutoff;
         sbig tbHits;
     };
 
@@ -93,21 +91,24 @@ class BestMoveFinder{
         void launch(int relDepth, int limitWay);
         void wait_thread();
     };
-    unordered_map<uint64_t,PolyglotEntry> book;
 
     //Returns the best move given a position and time to use
     transpositionTable transposition;
 public:
     std::atomic<bool> running;
     bool minimal = false;
-    BestMoveFinder(int memory, bool mute=false);
+    BestMoveFinder(int memory);
     BestMoveFinder();
     sbig hardBound;
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
     ~BestMoveFinder();
     void stop();
+    #ifdef TUNE
     tunables parameters;
+    #else
+    static constexpr tunables parameters{};
+    #endif
 private:
     usefull localSS;
     vector<HelperThread> helperThreads;
@@ -147,7 +148,9 @@ public:
     LegalMoveGenerator generator;
     Perft();
     big visitedNodes;
+    template<bool bulk>
     big _perft(GameState& state, ubyte depth);
+    template<bool bulk>
     big perft(GameState& state, ubyte depth, bool verbose=true);
     void reinit(size_t count);
 };

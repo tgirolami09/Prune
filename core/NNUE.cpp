@@ -302,10 +302,11 @@ void Accumulator::updatePiece(const int8_t mailbox[64], const int piece, const b
 }
 
 void Accumulator::getThreatUpdates(const PositionState& state1, const PositionState& state2, const Move& move){
-    const int toPiece = move.promotion() == -1 ? move.piece : move.promotion();
-    const bool isCapture = move.capture != -2;
-    const int capture = move.capture;
-    if(move.capture == -1){//en passant
+    const int piece = type(state1.mailbox[move.from()]);
+    const int toPiece = move.promotion() | piece;
+    const int capture = type(state1.mailbox[move.to()]);
+    const bool isCapture = capture != SPACE;
+    if(move.getFlag() == Move::fep){//en passant
         defstaterelated(state1);
         const int enpassantpos = move.to()+((side == WHITE)?-8:8);
         updatePiece(state1.mailbox, PAWN, side, move.from(), true, -1);
@@ -315,7 +316,7 @@ void Accumulator::getThreatUpdates(const PositionState& state1, const PositionSt
         updatePiece(state2.mailbox, PAWN, side, move.to(), false, -1);
         updateXrays(state2.mailbox, move.from(), false, move.to());
         updateXrays<true>(state2.mailbox, enpassantpos, false, move.to()); //remove the common rook side ray
-    }else if(move.isCastling()){
+    }else if(state1.isCastling(move)){
         defstaterelated(state1);
         updatePiece(state1.mailbox, ROOK, side, update.sub2[0].square, true, -1);
         defstaterelated(state2);
@@ -323,15 +324,15 @@ void Accumulator::getThreatUpdates(const PositionState& state1, const PositionSt
     }else{
         defstaterelated(state1);
         //first remove the threat that will disappear because of the move
-        if(move.piece != KING)
-            updatePiece(state1.mailbox, move.piece, side, move.from(), true, -1);
+        if(piece != KING)
+            updatePiece(state1.mailbox, piece, side, move.from(), true, -1);
         if(isCapture){
             updatePiece(state1.mailbox, capture, !side, move.to(), true, move.from()); // threat including move.from has already been removed
         }else
             updateXrays(state1.mailbox, move.to(), true, move.from()); // threat including move.from has already been removed
         //then add the new threats
         defstaterelated(state2);
-        if(move.piece != KING)
+        if(piece != KING)
             updatePiece(state2.mailbox, toPiece, side, move.to(), false, -1);
         updateXrays(state2.mailbox, move.from(), false, move.to()); // threat including move.to() has already been added by addPiece
     }

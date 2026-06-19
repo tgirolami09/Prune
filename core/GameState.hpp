@@ -7,50 +7,65 @@
 using namespace std;
 const int maxPly = 8848*2+2;
 const int zobrCastle=64*2*6;
-const int zobrPassant=zobrCastle+4;
+const int zobrPassant=zobrCastle+65;
 const int zobrTurn=zobrPassant+8;
 const int nbZobrist=zobrTurn+1;
 const int sizeThreeFold=8192;
 extern big zobrist[nbZobrist];
-
 struct PositionState{
     big pieces[6];
     big colors[2];
     int8_t mailbox[64];
-    void remPiece(int position, int piecetype, bool color){
+    forceinline void remPiece(int position, int piecetype, bool color){
         pieces[piecetype] ^= 1ULL << position;
         colors[color] ^= 1ULL << position;
         mailbox[position] = SPACE*2;
     }
-    void addPiece(int position, int piecetype, bool color){
+    forceinline void addPiece(int position, int piecetype, bool color){
         pieces[piecetype] ^= 1ULL << position;
         colors[color] ^= 1ULL << position;
         mailbox[position] = (piecetype << 1) | color;
     }
 
-    void remPiece(int position, int fullpiece){
+    forceinline void remPiece(int position, int fullpiece){
         pieces[type(fullpiece)] ^= 1ULL << position;
         colors[color(fullpiece)] ^= 1ULL << position;
         mailbox[position] = SPACE*2;
     }
-    void addPiece(int position, int fullpiece){
+    forceinline void addPiece(int position, int fullpiece){
         pieces[type(fullpiece)] ^= 1ULL << position;
         colors[color(fullpiece)] ^= 1ULL << position;
         mailbox[position] = fullpiece;
     }
-    void reset(){
+    forceinline void reset(){
         memset(pieces, 0, sizeof(pieces));
         memset(colors, 0, sizeof(colors));
         memset(mailbox, SPACE*2, sizeof(mailbox));
     }
-    big getMask(int piece, bool color) const{
+    forceinline big getMask(int piece, bool color) const{
         return pieces[piece]&colors[color];
     }
-    big getMask(int piece) const{
+    forceinline big getMask(int piece) const{
         return pieces[type(piece)]&colors[color(piece)];
     }
-    big occupancy() const{
+    forceinline big occupancy() const{
         return colors[WHITE] | colors[BLACK];
+    }
+    forceinline bool isChanger(const Move& move) const{
+        return  type(mailbox[move.from()]) == PAWN ||                                       // mover == PAWN (takes care of ep+promo)
+                (type(mailbox[move.to()]) != SPACE && move.getFlag() != Move::fcastle);     // capture and not castling
+    }
+    forceinline bool isCastling(const Move& move) const{
+        return move.getFlag() == Move::fcastle;
+    }
+    forceinline bool isTactical(const Move& move) const{
+        return move.getFlag() > Move::fcastle ||                            //promotion+ep
+                (!move.getFlag() && type(mailbox[move.to()]) != SPACE);     //!castling + capture
+    }
+    forceinline int getCapture(const Move& move) const{
+        return type(mailbox[move.to()])*                            //normal capture
+                (move.getFlag() != Move::fep)+                      //ep => x0 => capture=0=PAWN
+                (SPACE-ROOK)*(move.getFlag() == Move::fcastle);     //castle => previous=ROOK => ROOK+SPACE-ROOK = SPACE => no capture
     }
 };
 
@@ -59,15 +74,12 @@ struct PositionSnapshot;
 //Represents a state in the game
 class GameState{
     // (not necessary if we create new states for exploration)
-    Move movesSinceBeginning[maxPly]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
+    ExpendedMove movesSinceBeginning[maxPly]; // maximum number of moves https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
     big repHist[maxPly];
     int rule50[maxPly];
 
 
     //Contains a bitboard of the white pieces, then a bitboard of the black pieces
-    short posRook[2][2];
-    short deathRook[2][2];
-    int startEnPassant;
     void testPawnZobr();
 
     friend struct PositionSnapshot;
@@ -82,22 +94,20 @@ public :
     PositionState board;
     //End of last double pawn push, (-1) if last move was not a double pawn push
     int lastDoublePawnPush;
-    bool castlingRights[2][2];
-
+    big castlingMask;
     GameState();
+    void setDFRC(int idWhite, int idBlack);
     void fromFen(string fen);
     string toFen() const;
     int friendlyColor() const;
     int enemyColor() const;
-    template<bool back>
-    bool isEnPassantPossibility(const Move& move);
+    bool isEnPassantPossibility(const int piece, const Move& move);
     int rule50_count() const;
     bool twofold() const;
     bool threefold() const;
-    int playMove(Move move);
     void playNullMove();
-    Move getLastMove() const;
-    Move getContMove() const;
+    ExpendedMove getLastMove() const;
+    ExpendedMove getContMove() const;
     Move playPartialMove(Move move);
     int getPiece(int square) const;
     int getfullPiece(int square) const;
@@ -105,12 +115,9 @@ public :
     big getEnemyMask(int piece) const;
     void print() const;
     void initMove(Move& move);
-    big castlingMask();
 
     // Forward-only move application (no undo support needed)
-    void playMoveForward(Move move);
-    void playNullMoveForward();
-    Move playPartialMoveForward(Move move);
+    ExpendedMove playMove(Move move);
     // Optimized repetition detection: step by 2 (zobrist includes turn bit)
     bool twofoldFast();
     bool threefoldFast();
@@ -129,7 +136,7 @@ struct PositionSnapshot {
     big pawnZobrist;
     big minorZobrist;
     int lastDoublePawnPush;
-    bool castlingRights[2][2];
+    big castlingMask;
     int turnNumber;
 
     inline void save(const GameState& s) {
@@ -138,7 +145,7 @@ struct PositionSnapshot {
         pawnZobrist = s.pawnZobrist;
         minorZobrist = s.minorZobrist;
         lastDoublePawnPush = s.lastDoublePawnPush;
-        memcpy(castlingRights, s.castlingRights, sizeof(castlingRights));
+        castlingMask = s.castlingMask;
         turnNumber = s.turnNumber;
     }
 
@@ -148,7 +155,7 @@ struct PositionSnapshot {
         s.pawnZobrist = pawnZobrist;
         s.minorZobrist = minorZobrist;
         s.lastDoublePawnPush = lastDoublePawnPush;
-        memcpy(s.castlingRights, castlingRights, sizeof(castlingRights));
+        s.castlingMask = castlingMask;
         s.turnNumber = turnNumber;
     }
 };

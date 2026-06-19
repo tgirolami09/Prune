@@ -1,12 +1,194 @@
 #ifndef TUNABLE_HPP
 #define TUNABLE_HPP
+#include <cstdlib>
 #include <vector>
+#include <cassert>
 using namespace std;
+
+template<typename T>
+constexpr T cabs(T x){
+    return x < 0?-x:x;
+}
+template<typename T>
+constexpr T cmin(T a, T b){
+    return a < b?a:b;
+}
+
+struct TunableInt{
+    int value;
+    int minimum, maximum;
+    float c_end;
+    float r_end;
+    explicit constexpr TunableInt(int v):value(v),minimum(v/2), maximum(v*2), c_end(cabs(maximum-minimum)/20.0), r_end(0.002 / (cmin(0.5f, c_end) / 0.5)){
+    }
+    explicit constexpr TunableInt(int v, int mi, int ma):value(v),minimum(mi), maximum(ma), c_end(cabs(maximum-minimum)/20.0), r_end(0.002 / (cmin(0.5f, c_end) / 0.5)){
+    }
+    operator int() const{
+        return value;
+    }
+    operator float() const{
+        return value;
+    }
+    int operator-() const{
+        return -value;
+    }
+    void operator=(int a){
+        value = a;
+    }
+    template<typename T>
+    T operator*(T a) const{
+        return a*value;
+    }
+    template<typename T>
+    int operator*=(T a){
+        return value *= a;
+    }
+    template<typename T>
+    T operator+(T a) const{
+        return a+value;
+    }
+    template<typename T>
+    int operator+=(T a){
+        return value += a;
+    }
+    template<typename T>
+    T operator-(T a) const{
+        return a+value;
+    }
+    template<typename T>
+    int operator-=(T a){
+        return value -= a;
+    }
+    bool operator<(int a) const{
+        return value < a;
+    }
+    bool operator<=(int a) const{
+        return value <= a;
+    }
+    bool operator>(int a) const{
+        return value > a;
+    }
+    bool operator>=(int a) const{
+        return value >= a;
+    }
+    
+};
+
+template<typename T>
+T operator*(T a, TunableInt b){
+    return b*a;
+}
+template<typename T>
+T operator+(T a, TunableInt b){
+    return b+a;
+}
+template<typename T>
+T operator-(T a, TunableInt b){
+    return a+-b;
+}
+template<typename T>
+bool operator<(T a, TunableInt b){
+    return b>a;
+}
+template<typename T>
+bool operator<=(T a, TunableInt b){
+    return b>=a;
+}
+template<typename T>
+bool operator>(T a, TunableInt b){
+    return b<a;
+}
+template<typename T>
+bool operator>=(T a, TunableInt b){
+    return b<=a;
+}
+
+struct TunableHist{
+    TunableInt
+        order,
+        lmr,
+        mhp,
+        fp;
+    TunableInt
+        bonus,
+        malus;
+    constexpr TunableHist(int _order, int _lmr, int _mhp, int _fp, int _bonus, int _malus):
+        order(_order), lmr(_lmr), mhp(_mhp), fp(_fp), bonus(_bonus), malus(_malus){}
+    enum{ORDER, LMR, MHP, FP};
+    template<int id>
+    const TunableInt& getParam() const{
+        if constexpr(id == ORDER)return order;
+        else if constexpr(id == LMR)return lmr;
+        else if constexpr(id == MHP)return mhp;
+        else if constexpr(id == FP)return fp;
+    }
+};
+
+struct TunableFloat{
+    float value;
+    float minimum, maximum;
+    float c_end, r_end;
+    constexpr TunableFloat(float v):value(v),minimum(v/2), maximum(v*2), c_end(cabs(maximum-minimum)/20), r_end(0.002){
+        assert(v > 0);
+    }
+    constexpr TunableFloat(float v, float mi, float ma, float ce, float re):value(v), minimum(mi), maximum(ma), c_end(ce), r_end(re){}
+    operator float() const{
+        return value;
+    }
+    void operator=(float a){
+        value = a;
+    }
+};
 
 class tunables{
 public:
-    tunables();
-    int iir_min_depth,
+    constexpr tunables():
+        iir_min_depth(3),
+        iir_validity_depth(4),
+        rfp_improving(93),
+        rfp_nimproving(159),
+        nmp_red_depth_div(269),
+        nmp_red_base(3015),
+        se_validity_depth(3),
+        se_min_depth(6),
+        se_dext_margin(17),
+        se_dmul(1024),
+        lmp_base(4),
+        lmp_mul(4),
+        mhp_mul(1888),
+        mchp_mul(1615),
+        fp_base(291),
+        fp_mul(147),
+        fp_max_depth(5),
+        fp_hmul(64),
+        lmr_history(575),
+        lmr_base(801),
+        lmr_div(315),
+        capthist_mul_malus(268),
+        capthist_mul_bonus(512),
+        aw_base(21),
+        pvalue(108),
+        nvalue(287),
+        bvalue(277),
+        rvalue(525),
+        qvalue(988),
+        mats_pawn(9, 0, 400),
+        mats_knight(1067),
+        mats_bishop(1043),
+        mats_rook(2001),
+        mats_queen(3528),
+        mats_offset(38758),
+        see_mul_quiet(60),
+        see_mul_tact(80),
+        se_pv_offset(100, 0, 200),
+        mainHist(1024, 1024, 1024, 1024, 512, 268),
+        prevHist(1024, 1024, 1024, 1024, 512, 268),
+        aw_mul(1.9495),
+        nodetm_base(2.13688),
+        nodetm_mul(1.37487){}
+
+    TunableInt
+        iir_min_depth,
         iir_validity_depth,
         rfp_improving,
         rfp_nimproving,
@@ -15,35 +197,43 @@ public:
         se_validity_depth,
         se_min_depth,
         se_dext_margin,
+        se_dmul,
         lmp_base,
         lmp_mul,
         mhp_mul,
+        mchp_mul,
         fp_base,
         fp_mul,
         fp_max_depth,
+        fp_hmul,
         lmr_history,
-        mo_mul_malus,
+        lmr_base,
+        lmr_div,
+        capthist_mul_malus,
+        capthist_mul_bonus,
         aw_base,
-        see_born,
         pvalue,
         nvalue,
         bvalue,
         rvalue,
         qvalue,
-        lmr_base,
-        lmr_div,
-        mchp_mul,
         mats_pawn,
         mats_knight,
         mats_bishop,
         mats_rook,
         mats_queen,
-        mats_offset;
-    float
+        mats_offset,
+        see_mul_quiet,
+        see_mul_tact,
+        se_pv_offset;
+    TunableHist
+        mainHist,
+        prevHist;
+    TunableFloat
         aw_mul,
         nodetm_base,
         nodetm_mul;
-    vector<int*> to_tune_int();
-    vector<float*> to_tune_float();
+    vector<TunableInt*> to_tune_int();
+    vector<TunableFloat*> to_tune_float();
 };
 #endif

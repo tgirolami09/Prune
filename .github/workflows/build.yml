@@ -34,19 +34,19 @@ jobs:
       - name: Build project
         working-directory: ./core
         run: |
-          make ARCH=haswell
+          make -j ARCH=haswell
 
       - name: Build HCE version
         working-directory: ./core
         run: |
-          make HCE ARCH=haswell
+          make -B -j HCE=true ARCH=haswell
 
       - name: Test bench (Linux/macOS)
         if: runner.os != 'Windows'
         working-directory: ./core
         run: |
           # Find the prune executable (excludes HCE and .o files)
-          PRUNE_EXE=$(find . -maxdepth 1 -name 'prune-*' ! -name '*HCE*' -type f | head -n 1)
+          PRUNE_EXE=$(find . -maxdepth 1 -name 'prune-*' ! -name '*HCE*' ! -name '*.d' -type f | head -n 1)
           if [ -z "$PRUNE_EXE" ]; then
             echo "ERROR: prune executable not found!"
             exit 1
@@ -82,7 +82,7 @@ jobs:
         shell: pwsh
         run: |
           # Find the prune executable
-          $PRUNE_EXE = Get-ChildItem -Path . -Filter "prune-*.exe" -File | Where-Object { $_.Name -notlike "*HCE*" } | Select-Object -First 1
+          $PRUNE_EXE = Get-ChildItem -Path . -Filter "prune-*.exe" -File | Where-Object { $_.Name -notlike "*HCE*" } | Where-Object { $_.Name -notlike "*.d" } | Select-Object -First 1
           if (-not $PRUNE_EXE) {
             Write-Error "ERROR: prune executable not found!"
             exit 1

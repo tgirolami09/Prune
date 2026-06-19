@@ -7,22 +7,17 @@ using namespace std;
 
 class  __attribute__((packed)) constTable{
 public:
-    big magic;
-    int decR;
     int bits;
+    big magic;
 };
 
 big parseInt(int& pointer);
-static constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
 extern big KnightMoves[64]; //Knight moves for each position of the board
 extern big pieceCastlingMasks[2][2];
 extern big attackCastlingMasks[2][2];
 extern big normalKingMoves[64];
 extern big attackPawns[128];
-extern big directions[64][64];
-extern big fullDir[64][64];
 void PrecomputeKnightMoveData();
-void precomputeDirections();
 void load_table();
 void clear_table();
 void precomputeCastlingMasks();
@@ -47,8 +42,7 @@ private:
     big pseudoLegalKnightMoves(int knightPosition);
     template<bool IsWhite, bool canCapture, bool canQuiet>
     big pseudoLegalPawnMoves(int pawnPosition, big allPieces, int friendKingPos, big moveMask = -1, big captureMask = -1, big enemyPieces = -1, int enPassant = -1, big enemyRooks = 0);
-    template<bool IsWhite>
-    big pseudoLegalKingMoves(int kingPosition, big Pieces, bool kingCastling, bool queenCastling);
+    big pseudoLegalKingMoves(int kingPosition);
     template<bool IsWhite>
     int dealWithEnemyPawns(big enemyPawnPositions, int friendKingPos);
     int dealWithEnemyKnights(big enemyKnightPositions, int friendKingPos);

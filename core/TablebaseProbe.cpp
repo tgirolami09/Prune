@@ -70,8 +70,7 @@ bool TablebaseProbe::canProbe(const GameState& state, int nbMan) const {
     if (nbMan > (int)tbLargest || nbMan > probeLimit) return false;
 
     // Cannot probe with castling rights
-    if (state.castlingRights[WHITE][0] || state.castlingRights[WHITE][1] ||
-        state.castlingRights[BLACK][0] || state.castlingRights[BLACK][1]) {
+    if (state.castlingMask) {
         return false;
     }
 
@@ -125,8 +124,7 @@ int TablebaseProbe::probeWDL(const GameState& state) const {
     if (!initialized) return TB_RESULT_INVALID;
 
     // Cannot probe with castling rights
-    if (state.castlingRights[WHITE][0] || state.castlingRights[WHITE][1] ||
-        state.castlingRights[BLACK][0] || state.castlingRights[BLACK][1]) {
+    if (state.castlingMask) {
         return TB_RESULT_INVALID;
     }
 
@@ -169,19 +167,8 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     int to = fathomTo ^ 7;
 
     // Determine piece type from engine position
-    int piece = type(state.board.mailbox[from]);
-    int capture = -2;  // No capture by default
-
-    // Check if there's a capture (using engine squares)
-    int oppColor = 1 - state.friendlyColor();
-    if(state.board.colors[oppColor]&(1ULL << to)){
-        capture = type(state.board.mailbox[to]);
-    }
 
     // Handle en passant
-    if (TB_GET_EP(result)) {
-        capture = -1;  // Engine's EP indicator
-    }
 
     // Convert promotion piece type
     // Fathom: QUEEN=1, ROOK=2, BISHOP=3, KNIGHT=4
@@ -193,14 +180,14 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     }
 
     // Construct the move
-    bestMove.piece = piece;
-    bestMove.capture = capture;
-    bestMove.moveInfo = -4096;  // Clear first
+    bestMove.moveInfo = 0;  // Clear first
     bestMove.moveInfo |= (int16_t)(to);
     bestMove.moveInfo |= (int16_t)(from << 6);
     if (promotion != -1) {
-        bestMove.moveInfo &= ~(-4096);
-        bestMove.moveInfo |= (int16_t)(promotion << 12);
+        bestMove.updatePromotion(promotion);
+    }
+    if (TB_GET_EP(result)) {
+        bestMove.setFlag(Move::fep);
     }
 
     return TB_GET_WDL(result);
@@ -241,7 +228,7 @@ int TablebaseProbe::rootFiltering(const GameState& state, Move* moves, int& nbMo
     else                       wdl = TB_RESULT_LOSS, lowerbound = -1000;
 
     // Promotion mapping: Fathom (NONE=0,Q=1,R=2,B=3,N=4) -> engine piece type
-    const int promoMap[] = {-1, QUEEN, ROOK, BISHOP, KNIGHT};
+    const int promoMap[] = {0, QUEEN, ROOK, BISHOP, KNIGHT};
 
     // Filter moves[] in-place: keep only moves matching a best-rank TbRootMove
     int newNb = 0;
