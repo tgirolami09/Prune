@@ -196,10 +196,15 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         if (wdl != TB_RESULT_INVALID) {
             ss.tbHits++;
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
-            if(wdl == TB_RESULT_WIN)tbScore += rootDist;
-            if(wdl == TB_RESULT_LOSS)tbScore -= rootDist;
-            if(wdl != TB_RESULT_LOSS && tbScore >= beta)return tbScore;
-            if(wdl != TB_RESULT_WIN  && tbScore <= alpha)return tbScore;
+            int flag;
+            if(wdl == TB_RESULT_WIN)flag=LOWERBOUND;
+            else if(wdl == TB_RESULT_LOSS)flag=UPPERBOUND;
+            else flag=EXACT;
+            if(flag == EXACT ||
+                (flag == UPPERBOUND && tbScore <= alpha) ||
+                (flag == LOWERBOUND && tbScore >= beta)){
+                return tbScore;
+            }
         }
     }
     int& staticEval = ss.stack[rootDist].static_score;
@@ -327,8 +332,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.tbHits++;
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
             int flag;
-            if(wdl == TB_RESULT_WIN)tbScore -= rootDist, flag=UPPERBOUND;
-            else if(wdl == TB_RESULT_LOSS)tbScore += rootDist, flag=LOWERBOUND;
+            if(wdl == TB_RESULT_WIN)flag=LOWERBOUND;
+            else if(wdl == TB_RESULT_LOSS)flag=UPPERBOUND;
             else flag=EXACT;
             if(flag == EXACT ||
                 (flag == UPPERBOUND && tbScore <= alpha) ||

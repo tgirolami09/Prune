@@ -57,7 +57,7 @@ struct TunableInt{
     }
     template<typename T>
     int operator-=(T a){
-        return value += a;
+        return value -= a;
     }
     bool operator<(int a) const{
         return value < a;
