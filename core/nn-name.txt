@@ -1,2 +1,2 @@
-nn-512L1_dfrc-dev-3df2b6e
-algae
+nn-salix-dev-efa3096
+salix

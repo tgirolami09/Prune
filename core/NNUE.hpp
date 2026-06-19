@@ -48,7 +48,7 @@ const int L1 = 512;
 const int L2=16;
 const int L3=32;
 
-const int SCALE = 400;
+const int SCALE = 364;
 const int inputBuckets[32] = {
     0, 0, 1, 1,
     2, 2, 2, 2,
