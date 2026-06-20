@@ -22,6 +22,7 @@ int nbThreads=1;
 #include <vector>
 #include <cassert>
 #include <sstream>
+#include "viriformatUtil.hpp"
 using namespace std;
 using namespace std::chrono;
 
@@ -265,11 +266,14 @@ void play_games(int id){
     LegalMoveGenerator generator;
     bool inCheck;
     big dngpos;
+    string name = "data"+to_string(id)+".vf";
     while(1){
         ss.wait_notification();
         if(ss.fen == "-")return;
         int result = 1;
         ss.state.fromFen(ss.fen);
+        GamePlayed viriGame;
+        viriGame.startPos.fromFen(ss.fen);
         int phase = countbit(
             ss.state.board.pieces[PAWN] |
             ss.state.board.pieces[ROOK] |
@@ -284,6 +288,10 @@ void play_games(int id){
             int player = ss.state.friendlyColor() == BLACK;
             auto res=ss.getEval(player, TM(baseTime, baseTime));
             Move bm=get<0>(res);
+            viriGame.game.push_back(MoveInfo(
+                bm,
+                get<2>(res)
+            ));
             if(bm.moveInfo == nullMove.moveInfo){
                 int score = get<2>(res);
                 if(score == 0)break;
@@ -320,6 +328,8 @@ void play_games(int id){
                 break;
             }
         }
+        FILE* file=fopen(name.c_str(), "ab");
+        viriGame.dump(file);
         ss.set_result(result);
     }
 }
