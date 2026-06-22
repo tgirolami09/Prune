@@ -7,8 +7,8 @@ using namespace std;
 
 namespace WDLmodel{
     extern bool enabled;
-    static constexpr double as[] = {-167.91466546, 512.73835575, -470.06377011, 391.48951340};
-    static constexpr double bs[] = {-9.46772054, 89.88269475, -48.64658159, 56.69635829};
+    constexpr double as[] = {-78.45598559, 311.88123874, -372.23086593, 450.44860362};
+    constexpr double bs[] = {27.82745092, -14.91027822, 25.13548380, 65.34779274};
     pair<double, double> wdlParams(int material); 
     pair<int, int> wdl(int score, int material);
     int normalize(int score, int material);
