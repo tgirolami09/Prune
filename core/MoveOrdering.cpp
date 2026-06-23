@@ -42,7 +42,7 @@ void HelpOrdering::init(const tunables& Parameters){
     memset(captHist, 0, sizeof(captHist));
 }
 void HelpOrdering::updateHistory(int bonus, int& hist){
-    bonus = min(max(bonus, -maxHistory), maxHistory);
+    bonus = min(max(bonus/fracDepth, -maxHistory), maxHistory);
     hist += bonus - hist*abs(bonus)/maxHistory;
 }
 

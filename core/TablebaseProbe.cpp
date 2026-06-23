@@ -1,4 +1,5 @@
 #include "TablebaseProbe.hpp"
+#include "Const.hpp"
 #include "Functions.hpp"
 #include "../Fathom/src/tbprobe.h"
 
@@ -33,7 +34,7 @@ bool TablebaseProbe::init(const std::string& path) {
 }
 
 void TablebaseProbe::setProbeDepth(int depth) {
-    probeDepth = depth;
+    probeDepth = depth*fracDepth;
 }
 
 void TablebaseProbe::setProbeLimit(int limit) {
