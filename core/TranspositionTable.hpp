@@ -12,20 +12,21 @@ public:
             raw_eval;
     ubyte flag;
     int16_t bestMoveInfo;
-    ubyte depth;
+    uint16_t depth;
     residualHash hash;
     int typeNode() const;
     int age() const;
     void setFlag(int typeNode, int age, bool pv);
     bool tt_pv() const;
 };
-static_assert(sizeof(infoScore) == 10, "size of infoScore should be 10");
-const int clusterByte=32;
+static_assert(sizeof(infoScore) == 11, "size of infoScore should be 10");
+const int clusterByte=64;
 const int clusterSize=clusterByte/sizeof(infoScore);
+const int paddingSize = clusterByte-clusterSize*sizeof(infoScore);
 class Cluster{
 public:
     infoScore entries[clusterSize];
-    ubyte padding[clusterByte-clusterSize*sizeof(infoScore)];
+    ubyte padding[paddingSize];
     infoScore& probe(residualHash hash, bool& ttHit);
     void push(infoScore& entry, int curAge);
 };
@@ -46,7 +47,7 @@ public:
 
     int16_t getMove(const infoScore& entry) const;
 
-    void push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth, int16_t raw_eval, bool is_pv);
+    void push(GameState& state, int score, ubyte typeNode, Move move, uint16_t depth, int16_t raw_eval, bool is_pv);
     void clearRange(big start, big end);
     void prefetch(const GameState& state);
     void clear();
