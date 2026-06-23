@@ -1,5 +1,6 @@
 #ifndef TUNABLE_HPP
 #define TUNABLE_HPP
+#include "Const.hpp"
 #include <cstdlib>
 #include <vector>
 #include <cassert>
@@ -143,24 +144,24 @@ struct TunableFloat{
 class tunables{
 public:
     constexpr tunables():
-        iir_min_depth(3),
-        iir_validity_depth(4),
+        iir_min_depth(fdepth<3>),
+        iir_validity_depth(fdepth<4>),
         rfp_improving(93),
         rfp_nimproving(159),
         nmp_red_depth_div(269),
-        nmp_red_base(3015),
-        se_validity_depth(3),
-        se_min_depth(6),
+        nmp_red_base(fdepth<3015>),
+        se_validity_depth(fdepth<3>),
+        se_min_depth(fdepth<6>),
         se_dext_margin(17),
         se_dmul(1024),
         lmp_base(4),
         lmp_mul(4),
         mhp_mul(1888),
         mchp_mul(1615),
-        fp_base(291),
+        fp_base(fdepth<291>),
         fp_mul(147),
-        fp_max_depth(5),
-        fp_hmul(64),
+        fp_max_depth(fdepth<5>),
+        fp_hmul(fdepth<64>),
         lmr_history(575),
         lmr_base(801),
         lmr_div(315),

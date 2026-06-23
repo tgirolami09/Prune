@@ -59,12 +59,7 @@ infoScore& Cluster::probe(residualHash hash, bool& ttHit){
 }
 
 int absEntryScore(const infoScore& entry, int curAge){
-    return entry.depth-((curAge-entry.age())&maxAge)*4;
-}
-
-int advancedScore(const infoScore& entry, int curAge){
-    int distAge = (curAge-entry.age())&maxAge;
-    return entry.depth-entry.typeNode()-distAge;
+    return entry.depth-((curAge-entry.age())&maxAge)*4*fracDepth;
 }
 
 int preference(const infoScore& newentry, const infoScore& oldentry, int curAge){
@@ -87,7 +82,7 @@ void Cluster::push(infoScore& entry, int curAge){
         }
     }
     if(entries[bestID].hash != entry.hash ||
-        entry.depth+2*entry.tt_pv() >= entries[bestID].depth+entries[bestID].tt_pv() ||
+        entry.depth+fracDepth*2*entry.tt_pv() >= entries[bestID].depth+fracDepth*entries[bestID].tt_pv() ||
         entries[bestID].typeNode() == UPPERBOUND ||
         entries[bestID].age() != entry.age()
     )
@@ -121,7 +116,7 @@ infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit){
     return table[index].probe(hash, ttHit);
 }
 
-void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move, ubyte depth, int16_t raw_eval, bool is_pv){
+void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move, uint16_t depth, int16_t raw_eval, bool is_pv){
     //if(score == 0)return; //because of the repetition
     infoScore info;
     auto [index, hash] = getIndex(state, modulo);

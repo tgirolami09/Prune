@@ -69,6 +69,10 @@ constexpr int kingposCastle[2] = {1, 5};
 constexpr int rookposCastle[2] = {2, 4};
 constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
 
+constexpr int fracDepth = 128;
+template<int d>
+constexpr int fdepth=d*fracDepth;
+
 extern big directions[64][64];
 extern big fullDir[64][64];
 
