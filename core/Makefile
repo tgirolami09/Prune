@@ -1,7 +1,7 @@
 ADDOPTION?=
 DEBUGOPT?=
 NETNAME?=
-myCPPFLAGS=-Werror -Wshadow -Wall -Wextra -MMD -std=gnu++17 -I../Fathom/src $(ADDOPTION)
+myCPPFLAGS=-Wshadow -Wall -Wextra -MMD -std=gnu++17 -I../Fathom/src $(ADDOPTION)
 OPT?=-O3 -flto -funroll-loops
 
 TUNE?=false
