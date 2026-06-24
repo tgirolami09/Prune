@@ -704,9 +704,11 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             }else{
                 limit = "";
                 finalBestMove = bestMove;
-                PV = ss.PVprint(ss.PVlines[0]);
-                if(ss.PVlines[0].cmove > 1)ponderMove.moveInfo = ss.PVlines[0].argMoves[1];
-                else ponderMove = nullMove;
+                if(ss.searchedMoves == ss.stack[1].order.nbMoves){
+                    PV = ss.PVprint(ss.PVlines[0]);
+                    if(ss.PVlines[0].cmove > 1)ponderMove.moveInfo = ss.PVlines[0].argMoves[1];
+                    else ponderMove = nullMove;
+                }
                 break;
             }
             if(ss.mainThread && verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
