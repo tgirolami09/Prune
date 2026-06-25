@@ -59,7 +59,7 @@ int absoluteScore(int score, int rootDist){
 
 }
 
-string scoreToStr(int score, int material){
+string scoreToStr(int score, string precision, int material){
     string res;
     if(score > MAXIMUM-maxDepth)
         res = ((string)"mate ")+to_string((MAXIMUM-score+1)/2);
@@ -71,6 +71,7 @@ string scoreToStr(int score, int material){
             normscore = WDLmodel::normalize(score, material);
         res = "cp "+to_string(normscore);
     }
+    res += precision;
     if(WDLmodel::enabled){
         const auto [w, l] = WDLmodel::wdl(score, material);
         int d = 1000-w-l;
@@ -703,16 +704,18 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             }else{
                 limit = "";
                 finalBestMove = bestMove;
-                PV = ss.PVprint(ss.PVlines[0]);
-                if(ss.PVlines[0].cmove > 1)ponderMove.moveInfo = ss.PVlines[0].argMoves[1];
-                else ponderMove = nullMove;
+                if(ss.searchedMoves == ss.stack[1].order.nbMoves){
+                    PV = ss.PVprint(ss.PVlines[0]);
+                    if(ss.PVlines[0].cmove > 1)ponderMove.moveInfo = ss.PVlines[0].argMoves[1];
+                    else ponderMove = nullMove;
+                }
                 break;
             }
             if(ss.mainThread && verbose && bestScore != -INF && getElapsedTime() >= chrono::milliseconds{10000}){
                 updatemainSS(ss, rec);
                 sbig totNodes = ss.nodes;
                 double tcpu = getElapsedTime().count()/1'000'000'000.0;
-                printf("info depth %d seldepth %d score %s%s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore, material).c_str(), limit.c_str(), totNodes, (int)(totNodes/tcpu), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, finalBestMove.to_str().c_str());
+                printf("info depth %d seldepth %d score %s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s\n", depth, ss.seldepth-startRelDepth, scoreToStr(bestScore, limit, material).c_str(), totNodes, (int)(totNodes/tcpu), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, finalBestMove.to_str().c_str());
                 fflush(stdout);
             }
         }while(running && !smp_abort);
@@ -732,8 +735,8 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             double speed=0;
             if(tcpu != 0)speed = totNodes/tcpu;
             if(verbose){
-                char line[1000] = "info depth %d seldepth %d score %s%s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s\n";
-                snprintf(lastline, 1000, line, depth, ss.seldepth-startRelDepth, scoreToStr(lastScore, material).c_str(), limit.c_str(), totNodes, (int)(speed), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, PV.c_str());
+                char line[1000] = "info depth %d seldepth %d score %s nodes %" PRId64 " nps %d hashfull %d time %d tbhits %" PRId64 " pv %s\n";
+                snprintf(lastline, 1000, line, depth, ss.seldepth-startRelDepth, scoreToStr(lastScore, limit, material).c_str(), totNodes, (int)(speed), transposition.hashfull(), (int)(tcpu*1000), ss.tbHits, PV.c_str());
                 if(!minimal){
                     printf("%s", lastline);
                     fflush(stdout);
@@ -771,7 +774,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         if(inCheck)score = MINIMUM;
         else score = 0;
         if(verbose)
-            printf("info depth 1 seldepth 0 score %s nodes 0\n", scoreToStr(score, 0).c_str());
+            printf("info depth 1 seldepth 0 score %s nodes 0\n", scoreToStr(score, "", 0).c_str());
         return make_tuple(nullMove, nullMove, score, vector<depthInfo>());
     }
     running = true;
@@ -779,7 +782,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if(order.nbMoves == 1 && limitWay == 0){
         running = false;
         if(verbose)
-            printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor()), material).c_str());
+            printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor()), "", material).c_str());
         return make_tuple(order.moves[0], nullMove, INF, vector<depthInfo>(0));
     }
     if (tbProbe.canProbe(state, localSS.eval.getNbMan())) {
@@ -821,7 +824,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             localSS.eval.undoMove(order.moves[idMove], !state.friendlyColor(), localSS.stack[0].snap.board, state.board);
             localSS.stack[0].snap.restore(state);
         }
-        printf("info depth 0 seldepth 0 score %s nodes 1 nps 0 time 0 pv %s\n", scoreToStr(bestScore, material).c_str(), bestMove.to_str().c_str());
+        printf("info depth 0 seldepth 0 score %s nodes 1 nps 0 time 0 pv %s\n", scoreToStr(bestScore, "", material).c_str(), bestMove.to_str().c_str());
         return make_tuple(bestMove, nullMove, bestScore, vector<depthInfo>());
     }
     for(int i=0; i<nbThreads-1; i++){
@@ -857,7 +860,7 @@ int BestMoveFinder::testQuiescenceSearch(GameState& state){
     clock_t end = clock();
     double tcpu = double(end-start)/CLOCKS_PER_SEC;
     const int material = state.material();
-    printf("speed: %d; Qnodes:%" PRId64 " score %s\n\n", (int)(localSS.nodes/tcpu), localSS.nodes.load(), scoreToStr(score, material).c_str());
+    printf("speed: %d; Qnodes:%" PRId64 " score %s\n\n", (int)(localSS.nodes/tcpu), localSS.nodes.load(), scoreToStr(score, "", material).c_str());
     return 0;
 }
 
