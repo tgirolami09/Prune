@@ -494,8 +494,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         bool isKiller = ss.history.isKiller(curMove, rootDist);
         const int lmr_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::LMR>(curMove, state.friendlyColor(), state);
         if(bestScore >= MINIMUM+maxDepth && !isRoot){
+            int depth2 = (depth*depth)/(fracDepth*fracDepth);
             if(!state.board.isTactical(curMove)){
-                if(triedMove > depth*depth*parameters.lmp_mul/(fracDepth*fracDepth)+parameters.lmp_base)continue;
+                if(triedMove > depth2*parameters.lmp_mul+parameters.lmp_base)continue;
                 const int mhp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::MHP>(curMove, state.friendlyColor(), state);
                 if(mhp_hist < -parameters.mhp_mul*depth/fracDepth && triedMove >= 1)
                     continue;
@@ -506,10 +507,10 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 }
             }else{
                 int moveHistory = isKiller?maxHistory:ss.history.getCaptScore(curMove, state.friendlyColor(), state);
-                if(!isPV && moveHistory < -parameters.mchp_mul*depth*depth/(fracDepth*fracDepth) && depth <= fdepth<4>)
+                if(!isPV && moveHistory < -parameters.mchp_mul*depth2 && depth <= fdepth<4>)
                     continue;
             }
-            int see_born = !state.board.isTactical(curMove) ? -parameters.see_mul_tact*depth/fracDepth: -parameters.see_mul_quiet*depth*depth/(fracDepth*fracDepth);
+            int see_born = !state.board.isTactical(curMove) ? -parameters.see_mul_tact*depth/fracDepth: -parameters.see_mul_quiet*depth2;
             if constexpr(isPV)see_born -= (int)parameters.se_pv_offset;
             if(!see_ge(see_born, curMove, state, value_pieces))
                 continue;
