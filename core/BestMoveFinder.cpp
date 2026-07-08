@@ -420,12 +420,14 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             firstMoveExtension += fracDepth;
             if(!isPV && score <= goal-parameters.se_dext_margin)
                 firstMoveExtension += fracDepth;
+            if(!isPV && score <= goal-parameters.se_triplext_margin)
+                firstMoveExtension += fracDepth;
         }else if(goal >= beta){
             return goal;
         }else if(cutnode){
-            firstMoveExtension -= fracDepth;
+            firstMoveExtension -= (int)parameters.se_cutnode_negext;
         }else if(ttEntry.score >= beta){
-            firstMoveExtension -= fracDepth;
+            firstMoveExtension -= (int)parameters.se_negext;
         }
         ss.generator.initDangers(state);
     }
@@ -507,7 +509,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 }
             }else{
                 int moveHistory = isKiller?maxHistory:ss.history.getCaptScore(curMove, state.friendlyColor(), state);
-                if(!isPV && moveHistory < -parameters.mchp_mul*depth2 && depth <= fdepth<4>)
+                if(!isPV && moveHistory < -parameters.mchp_mul*depth2 && depth <= parameters.mhcp_max_depth)
                     continue;
             }
             int see_born = !state.board.isTactical(curMove) ? -parameters.see_mul_tact*depth/fracDepth: -parameters.see_mul_quiet*depth2;
@@ -543,11 +545,14 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
             if(rankMove > 0){
                 int addRedDepth = 0;
-                if(rankMove > 3 && depth > fdepth<2>){
+                if(rankMove > 3 && depth > parameters.lmr_min_depth){
                     addRedDepth = static_cast<int>(parameters.lmr_base + (log(depth)-log(fracDepth)) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= lmr_hist*parameters.lmr_history/maxHistory;
+                    addRedDepth = max(
+                        addRedDepth,
+                        -(isPV?parameters.lmr_min_reduction_pv : parameters.lmr_min_reduction_npv)
+                    );
                     addRedDepth /= 8;
-                    addRedDepth = max(addRedDepth, 0);
                 }
                 score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha && (score < beta || isPV || addRedDepth)){
