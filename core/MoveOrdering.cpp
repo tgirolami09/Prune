@@ -166,6 +166,8 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
     #if defined(__AVX2__)
     __m256i vIntMin = _mm256_set1_epi32(INT_MIN);
     _mm256_storeu_si256((__m256i*)&scores[nbMoves], vIntMin);
+    #elif defined(__ARM_NEON__)
+    vst1q_s32(&scores[nbMoves], vdupq_n_s32(INT_MIN));
     #endif
 }
 
@@ -231,6 +233,26 @@ Move Order::pop_max(int& flag){
         
         maxScore = _mm256_extract_epi32(vMaxScore, 0);
         bPointer = _mm256_extract_epi32(vMaxIdx, 0);
+#elif defined(__ARM_NEON__)
+        // NEON accelerated max finding
+        int bPointer = pointer;
+        int32x4_t vMaxScore = vdupq_n_s32(scores[pointer]);
+        int32x4_t vMaxIdx   = vdupq_n_s32(bPointer);
+        const int32x4_t iota = {0, 1, 2, 3};
+
+        for(int i = pointer + 1; i < nbMoves; i += 4){
+            int32x4_t vScores  = vld1q_s32(&scores[i]);
+            int32x4_t vIndices = vaddq_s32(vdupq_n_s32(i), iota);
+            uint32x4_t mask = vcgtq_s32(vScores, vMaxScore);
+            vMaxScore = vbslq_s32(mask, vScores, vMaxScore);
+            vMaxIdx   = vbslq_s32(mask, vIndices, vMaxIdx);
+        }
+
+        // Horizontal reduction (i think this also get the lowest index for the max)
+        const int maxv = vmaxvq_s32(vMaxScore);
+        uint32x4_t eq = vceqq_s32(vMaxScore, vdupq_n_s32(maxv));
+        int32x4_t cand = vbslq_s32(eq, vMaxIdx, vdupq_n_s32(INT_MAX));
+        bPointer = vminvq_s32(cand);
 #else
         int bPointer=pointer;
         for(int i=pointer+1; i<nbMoves; i++){
