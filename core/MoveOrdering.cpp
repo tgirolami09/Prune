@@ -186,6 +186,21 @@ inline bool Order::compareMove(int idMove1, int idMove2){
     return scores[idMove2] > scores[idMove1];
 }
 
+#if defined(__AVX2__)
+static inline __m256i hmax_epi32(__m256i v){
+    v = _mm256_max_epi32(v, _mm256_permute2x128_si256(v, v, 1));
+    v = _mm256_max_epi32(v, _mm256_shuffle_epi32(v, _MM_SHUFFLE(1, 0, 3, 2)));
+    v = _mm256_max_epi32(v, _mm256_shuffle_epi32(v, _MM_SHUFFLE(2, 3, 0, 1)));
+    return v;
+}
+static inline __m256i hmin_epi32(__m256i v){
+    v = _mm256_min_epi32(v, _mm256_permute2x128_si256(v, v, 1));
+    v = _mm256_min_epi32(v, _mm256_shuffle_epi32(v, _MM_SHUFFLE(1, 0, 3, 2)));
+    v = _mm256_min_epi32(v, _mm256_shuffle_epi32(v, _MM_SHUFFLE(2, 3, 0, 1)));
+    return v;
+}
+#endif
+
 Move Order::pop_max(int& flag){
     if(pointer < nbPriority){
         pointer++;
@@ -212,27 +227,11 @@ Move Order::pop_max(int& flag){
             vMaxIdx = _mm256_blendv_epi8(vMaxIdx, vIndices, mask);
         }
         
-        // Horizontal reduction magic
-        __m256i permScore = _mm256_permute2x128_si256(vMaxScore, vMaxScore, 1);
-        __m256i permIdx = _mm256_permute2x128_si256(vMaxIdx, vMaxIdx, 1);
-        __m256i mask1 = _mm256_cmpgt_epi32(permScore, vMaxScore);
-        vMaxScore = _mm256_blendv_epi8(vMaxScore, permScore, mask1);
-        vMaxIdx = _mm256_blendv_epi8(vMaxIdx, permIdx, mask1);
-        
-        permScore = _mm256_shuffle_epi32(vMaxScore, _MM_SHUFFLE(1, 0, 3, 2));
-        permIdx = _mm256_shuffle_epi32(vMaxIdx, _MM_SHUFFLE(1, 0, 3, 2));
-        __m256i mask2 = _mm256_cmpgt_epi32(permScore, vMaxScore);
-        vMaxScore = _mm256_blendv_epi8(vMaxScore, permScore, mask2);
-        vMaxIdx = _mm256_blendv_epi8(vMaxIdx, permIdx, mask2);
-        
-        permScore = _mm256_shuffle_epi32(vMaxScore, _MM_SHUFFLE(2, 3, 0, 1));
-        permIdx = _mm256_shuffle_epi32(vMaxIdx, _MM_SHUFFLE(2, 3, 0, 1));
-        __m256i mask3 = _mm256_cmpgt_epi32(permScore, vMaxScore);
-        vMaxScore = _mm256_blendv_epi8(vMaxScore, permScore, mask3);
-        vMaxIdx = _mm256_blendv_epi8(vMaxIdx, permIdx, mask3);
-        
-        maxScore = _mm256_extract_epi32(vMaxScore, 0);
-        bPointer = _mm256_extract_epi32(vMaxIdx, 0);
+        // The horizontal reduction  should also minimise the index for the max
+        maxScore = _mm256_extract_epi32(hmax_epi32(vMaxScore), 0);
+        __m256i eqMax = _mm256_cmpeq_epi32(vMaxScore, _mm256_set1_epi32(maxScore));
+        __m256i cand  = _mm256_blendv_epi8(_mm256_set1_epi32(INT_MAX), vMaxIdx, eqMax);
+        bPointer = _mm256_extract_epi32(hmin_epi32(cand), 0);        
 #elif defined(__ARM_NEON__)
         // NEON accelerated max finding
         int bPointer = pointer;
