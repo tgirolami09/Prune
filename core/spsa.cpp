@@ -156,7 +156,7 @@ public:
     }
     bool check_finished(){
         lock_guard<mutex> lock(mtx);
-        return !running || zombie;
+        return !running && !zombie;
     }
     void bezombie(){
         zombie = true;
@@ -338,10 +338,10 @@ void play_games(int id){
 
 int main(int argc, char** argv){
     if(argc == 1){
-        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:)( <memory> <baseTime>) (another optional)<logFile>\n", argv[0]);
+        printf("usage: %s <book> <nbPairs per Iter> <nbGames> <nbThreads> (optional:)( <memory> <baseTime>) (another optional)<logFile>\n", argv[0]);
         printf("book: a file name that contains a list of fens\n");
-        printf("nbGames Per Iter: number of games per SPSA iters\n");
-        printf("nbIter: number of SPSA iters\n");
+        printf("nbPairs Per Iter: number of pairs per SPSA iters\n");
+        printf("nbGames: number of games in the tune\n");
         printf("nbThreads: number of threads (each thread will run one game at the time)\n");
         printf("memory: memory per player in MB\n");
         printf("baseTime: base time in nodes\n");
@@ -359,8 +359,8 @@ int main(int argc, char** argv){
     string curFen;
     while(getline(file, curFen))
         fens.push_back(curFen);
-    nbGamesPerIter = atoi(argv[2]);
-    nbIters = atoi(argv[3]);
+    nbGamesPerIter = atoi(argv[2])*2;
+    nbIters = atoi(argv[3])/nbGamesPerIter;
     nbThreadsSPSA = atoi(argv[4]);
     memory = 16;
     baseTime = 1000;
@@ -450,8 +450,10 @@ int main(int argc, char** argv){
                 fflush(stdout);
                 if(islast || Qiters.back().nbLaunched >= nbGamesPerIter){
                     if(idSPSA >= nbIters){
-                        threadUp--;
-                        threads[i].bezombie();
+                        if(!islast){
+                            threadUp--;
+                            threads[i].bezombie();
+                        }
                         continue;
                     }
                     stateIter nS;
