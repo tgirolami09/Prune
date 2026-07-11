@@ -420,8 +420,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             firstMoveExtension += fracDepth;
             if(!isPV && score <= goal-parameters.se_dext_margin)
                 firstMoveExtension += fracDepth;
-            if(!isPV && score <= goal-parameters.se_triplext_margin)
-                firstMoveExtension += fracDepth;
         }else if(goal >= beta){
             return goal;
         }else if(cutnode){
@@ -550,7 +548,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     addRedDepth -= lmr_hist*parameters.lmr_history/maxHistory;
                     addRedDepth = max(
                         addRedDepth,
-                        -(isPV?parameters.lmr_min_reduction_pv : parameters.lmr_min_reduction_npv)
+                        0
                     );
                     addRedDepth /= 8;
                 }
