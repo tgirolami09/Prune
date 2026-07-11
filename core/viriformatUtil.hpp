@@ -9,7 +9,7 @@ public:
     Move move;
     int score;
     MoveInfo();
-    MoveInfo(Move _move, int _score):score(_score), move(_move){}
+    MoveInfo(Move _move, int _score):move(_move), score(_score){}
     void dump(FILE* datafile);
     static const int size = 4;
 };
