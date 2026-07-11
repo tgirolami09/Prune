@@ -267,9 +267,10 @@ void play_games(int id){
     bool inCheck;
     big dngpos;
     string name = "data"+to_string(id)+".vf";
+    FILE* file=fopen(name.c_str(), "wb");
     while(1){
         ss.wait_notification();
-        if(ss.fen == "-")return;
+        if(ss.fen == "-")break;
         int result = 1;
         ss.state.fromFen(ss.fen);
         GamePlayed viriGame;
@@ -328,11 +329,11 @@ void play_games(int id){
                 break;
             }
         }
-        FILE* file=fopen(name.c_str(), "ab");
+        viriGame.result = result;
         viriGame.dump(file);
         ss.set_result(result);
-        fclose(file);
     }
+    fclose(file);
 }
 
 int main(int argc, char** argv){
