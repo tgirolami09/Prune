@@ -28,8 +28,6 @@ vector<TunableInt*> tunables::to_tune_int(){
         &lmr_base,
         &lmr_div,
         &lmr_min_depth,
-        &lmr_min_reduction_pv,
-        &lmr_min_reduction_npv,
         &capthist_mul_malus,
         &capthist_mul_bonus,
         &aw_base,
