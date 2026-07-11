@@ -11,7 +11,6 @@ vector<TunableInt*> tunables::to_tune_int(){
         &se_validity_depth,
         &se_min_depth,
         &se_dext_margin,
-        &se_triplext_margin,
         &se_cutnode_negext,
         &se_negext,
         //&se_dmul,
