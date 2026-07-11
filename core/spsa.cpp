@@ -331,12 +331,13 @@ void play_games(int id){
         FILE* file=fopen(name.c_str(), "ab");
         viriGame.dump(file);
         ss.set_result(result);
+        fclose(file);
     }
 }
 
 int main(int argc, char** argv){
     if(argc == 1){
-        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:)( <memory> <baseTime> <increment>) (another optional)<logFile>\n", argv[0]);
+        printf("usage: %s <book> <nbGames per Iter> <nbIter> <nbThreads> (optional:)( <memory> <baseTime>) (another optional)<logFile>\n", argv[0]);
         printf("book: a file name that contains a list of fens\n");
         printf("nbGames Per Iter: number of games per SPSA iters\n");
         printf("nbIter: number of SPSA iters\n");
@@ -405,7 +406,7 @@ int main(int argc, char** argv){
     Qiters.push_back(S);
     vector<int> games(nbThreadsSPSA, -1);
     threads = new HelperThread[nbThreadsSPSA];
-    printf("start tuning with %ld parameters %d threads tc=%.5f+%.5f memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000.0, increment/1000.0, memory, nbIters, nbGamesPerIter);
+    printf("start tuning with %ld parameters %d threads tc=%d knodes memory=%dB %d iters %d games per iter\n", state.state.size(), nbThreadsSPSA, baseTime/1000, memory, nbIters, nbGamesPerIter);
     for(int i=0; i<nbThreadsSPSA; i++){
         threads[i].t = thread(play_games, i);
         bool islast = false;
