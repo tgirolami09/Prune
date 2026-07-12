@@ -39,14 +39,20 @@ def getScore(penta):
     devMax = score + phiInv(maxConfidenceP) * stdDeviation
     difference = CalculateEloDifference(devMax) - CalculateEloDifference(devMin)
     return elo, difference / 2
-Xs = []
-Ys = []
-Yerr = []
+fig, ax = plt.subplots()
+Xs = [[]]
+Ys = [[]]
+Yerr = [[]]
 for line in sys.stdin:
-    Xs.append(int(line.split()[0]))
+    idS = int(line.split()[0])
+    if(Xs[-1] and idS < Xs[-1][-1]):
+        Xs.append([])
+        Ys.append([])
+        Yerr.append([])
+    Xs[-1].append(idS)
     elo, error = getScore(line.split(': ')[1])
-    Ys.append(elo)
-    Yerr.append(error)
-plt.errorbar(Xs, Ys, Yerr, marker='s')
+    Ys[-1].append(elo)
+    Yerr[-1].append(error)
+for X, Y, Ye in zip(Xs, Ys, Yerr):
+    ax.errorbar([i/X[-1] for i in X], Y, Ye, marker='s')
 plt.show(block=True)
-while 1:pass
