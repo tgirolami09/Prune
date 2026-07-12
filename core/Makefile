@@ -25,6 +25,7 @@ SOURCES := $(filter-out netScale.cpp,$(SOURCES))
 SOURCES := $(filter-out spsa.cpp,$(SOURCES))
 SOURCES := $(filter-out datasetStats.cpp,$(SOURCES))
 SOURCES := $(filter-out testTI.cpp,$(SOURCES))
+SOURCES := $(filter-out testTunes.cpp,$(SOURCES))
 SOURCES := $(filter-out quantise.cpp,$(SOURCES))
 SOURCES := $(filter-out permute.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
@@ -53,8 +54,10 @@ ifeq ($(HCE), true)
 endif
 ifeq ($(TUNE), true)
 	NOTMAIN := $(NOTMAIN) -DTUNE
-	BASENAME := spsa
-	MAIN=spsa.cpp
+	ifeq ($(MAIN), engine.cpp)
+		MAIN=spsa.cpp
+		BASENAME := spsa
+	endif
 	ADDSUFFIX=false
 endif
 
