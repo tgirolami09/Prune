@@ -1,6 +1,7 @@
 from math import *
 import matplotlib.pyplot as plt
 import sys
+plt.style.use('dark_background')
 plt.ion()
 
 
@@ -53,6 +54,7 @@ for line in sys.stdin:
     elo, error = getScore(line.split(': ')[1])
     Ys[-1].append(elo)
     Yerr[-1].append(error)
-for X, Y, Ye in zip(Xs, Ys, Yerr):
-    ax.errorbar([i/X[-1] for i in X], Y, Ye, marker='s')
+for i, X, Y, Ye in zip(range(len(Xs)), Xs, Ys, Yerr):
+    ax.errorbar([i/X[-1] for i in X], Y, Ye, marker='s', label=str(2**i)+'ppp')
+ax.legend()
 plt.show(block=True)
