@@ -19,26 +19,28 @@ def CalculateInverseErrorFunction(x):
 def phiInv(p):
     return sqrt(2) * CalculateInverseErrorFunction(2 * p - 1);
 
-def CalculateEloDifference(p):
-    return 400*log(p/(1-p), 10)
+def CalculateEloDifference(p, variance):
+    return (p-0.5)/sqrt(2*variance)*(800/log(10))
 
 def getScore(penta):
     penta = tuple(map(int, penta[1:-2].split(', ')))
     nbGames = sum(penta)
     score = (penta[1]*0.25+penta[2]*0.5+penta[3]*0.75+penta[4])/nbGames
-    elo = CalculateEloDifference(score)
 
     pentaP = tuple(i/nbGames for i in penta)
-    stdDeviation = sqrt(sum(
-        pentaP[i]*(i/5-score)**2
+    variance = sum(
+        pentaP[i]*(i/4-score)**2
         for i in range(5)
-    ))/sqrt(nbGames)
+    )
+    elo = CalculateEloDifference(score, variance)
+    stdDeviation = sqrt(variance/nbGames)
     confidenceP = 0.95
     minConfidenceP = (1 - confidenceP) / 2
     maxConfidenceP = 1 - minConfidenceP
     devMin = score + phiInv(minConfidenceP) * stdDeviation
     devMax = score + phiInv(maxConfidenceP) * stdDeviation
-    difference = CalculateEloDifference(devMax) - CalculateEloDifference(devMin)
+    difference = CalculateEloDifference(devMax, variance) - CalculateEloDifference(devMin, variance)
+    print(penta, elo, difference/2)
     return elo, difference / 2
 fig, ax = plt.subplots()
 Xs = [[]]
