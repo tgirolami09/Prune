@@ -55,6 +55,6 @@ for line in sys.stdin:
     Ys[-1].append(elo)
     Yerr[-1].append(error)
 for i, X, Y, Ye in zip(range(len(Xs)), Xs, Ys, Yerr):
-    ax.errorbar([i/X[-1] for i in X], Y, Ye, marker='s', label=str(2**i)+'ppp')
+    ax.errorbar([i/X[-1] for i in X], Y, Ye, marker='s', label=str(2**i)+'ppp', capsize=5)
 ax.legend()
 plt.show(block=True)
