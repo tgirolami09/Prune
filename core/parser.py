@@ -20,13 +20,13 @@ def phiInv(p):
     return sqrt(2) * CalculateInverseErrorFunction(2 * p - 1);
 
 def CalculateEloDifference(p):
-    return 400*log(p/(1-p))
+    return 400*log(p/(1-p), 10)
 
 def getScore(penta):
     penta = tuple(map(int, penta[1:-2].split(', ')))
     nbGames = sum(penta)
     score = (penta[1]*0.25+penta[2]*0.5+penta[3]*0.75+penta[4])/nbGames
-    elo = 400*log(score/(1-score))
+    elo = CalculateEloDifference(score)
 
     pentaP = tuple(i/nbGames for i in penta)
     stdDeviation = sqrt(sum(
