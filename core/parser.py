@@ -40,7 +40,6 @@ def getScore(penta):
     devMin = score + phiInv(minConfidenceP) * stdDeviation
     devMax = score + phiInv(maxConfidenceP) * stdDeviation
     difference = CalculateEloDifference(devMax, variance) - CalculateEloDifference(devMin, variance)
-    print(penta, elo, difference/2)
     return elo, difference / 2
 fig, ax = plt.subplots()
 Xs = [[]]
