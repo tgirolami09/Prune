@@ -2,10 +2,11 @@
 ## unreleased
 <table>
 <tr>
-<td> change </td> <td> Result </td>
+<td> change </td> <td> fixed nodes </td> <td> STC </td> <td> LTC </td> <td> more </td>
 </tr>
 <tr>
 <td> fractional depth </td>
+<td> not need to be tested </td> <td> not tested</td>
 <td>
 
 ```
@@ -18,9 +19,23 @@ LLR: 2.95 (100.2%) (-2.94, 2.94) [0.00, 5.00]
 ```
 
 </td>
+<td> no need to be tested </td>
 </tr>
 <tr>
 <td>640 L1 net</td>
+<td>
+
+```
+Results of prunephalaina vs prunedev (20000 nodes, 1t, 16MB, UHO_Lichess_4852_v1.epd):
+Elo: 18.59 +/- 8.67, nElo: 26.92 +/- 12.52
+LOS: 100.00 %, DrawRatio: 39.78 %, PairsRatio: 1.31
+Games: 2956, Wins: 966, Losses: 808, Draws: 1182, Points: 1557.0 (52.67 %)
+Ptnml(0-2): [69, 317, 588, 395, 109], WL/DD Ratio: 1.50
+LLR: 2.97 (100.9%) (-2.94, 2.94) [0.00, 5.00]
+```
+
+</td>
+<td> not tested </td> <td> not tested </td>
 <td>
 
 ```
