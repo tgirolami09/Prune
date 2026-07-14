@@ -19,4 +19,19 @@ LLR: 2.95 (100.2%) (-2.94, 2.94) [0.00, 5.00]
 
 </td>
 </tr>
+<tr>
+<td>640 L1 net</td>
+<td>
+
+```
+Results of prunephalaina vs prunedev (20+0.2, 8t, 1024MB, UHO_Lichess_4852_v1.epd):
+Elo: 15.43 +/- 6.84, nElo: 30.10 +/- 13.32
+LOS: 100.00 %, DrawRatio: 51.80 %, PairsRatio: 1.42
+Games: 2614, Wins: 653, Losses: 537, Draws: 1424, Points: 1365.0 (52.22 %)
+Ptnml(0-2): [8, 252, 677, 356, 14], WL/DD Ratio: 0.66
+LLR: 2.96 (100.6%) (-2.94, 2.94) [0.00, 5.00]
+```
+
+</td>
+</tr>
 </table>
