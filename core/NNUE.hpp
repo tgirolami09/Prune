@@ -44,11 +44,11 @@ constexpr int L1shift = _abs(16+QC_bits-FT_LSHIFT-QA_bits*2-QB_bits);
 const int BUCKET = 8;
 const int nbInputBuckets = 4;
 
-const int L1 = 512;
+const int L1 = 640;
 const int L2=16;
 const int L3=32;
 
-const int SCALE = 280;
+const int SCALE = 283;
 const int inputBuckets[32] = {
     0, 0, 1, 1,
     2, 2, 2, 2,
