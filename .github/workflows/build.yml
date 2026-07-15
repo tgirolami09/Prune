@@ -115,5 +115,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }}-binaries
+          name: ${{ runner.os }}-${{ runner.arch }}-binaries
           path: core/prune*
