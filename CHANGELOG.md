@@ -13,7 +13,7 @@ nElo bounds
 ## unreleased
 <table>
 <tr>
-<td> change </td> <td> fixed nodes </td> <td> STC </td> <td> LTC </td> <td> more </td>
+<td> change </td> <td> fixed nodes </td> <td> STC </td> <td> LTC </td> <td> others </td>
 </tr>
 <tr>
 <td> fractional depth </td>
@@ -113,5 +113,18 @@ nElo bounds
 ```
 
 </td> <td> no need to be tested </td>
+</tr>
+<tr>
+<td> merged king planes (same bench, reduce binary size) </td> <td> no need to be tested </td> <td> no need to be tested </td> <td> no need to be tested </td>
+<td>
+
+```
+(4+0.04, 1t, 16MB):
+-0.57 +/- 1.85
+-0.98 +/- 3.15
+[643, 5516, 11092, 5421, 652]
+[-5.00, 0.00]
+```
+</td>
 </tr>
 </table>
