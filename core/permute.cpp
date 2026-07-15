@@ -4,6 +4,8 @@
 #include "simd_definitions.hpp"
 
 static constexpr bool isPW = true;
+static constexpr bool isMergedKingPlanes=true;
+constexpr int RawInputSize = INPUT_SIZE+isMergedKingPlanes*64;
 constexpr int simdSize = nb<16>;
 constexpr int mask = simdSize*2-1;
 alignas(64) const auto first = []{
@@ -50,8 +52,9 @@ struct layer{
     alignas(64) int32_t bias[output];
 };
 
+template<bool isPermuted>
 struct inputlayer{
-    alignas(64) int16_t psqweights[nbInputBuckets][INPUT_SIZE][L1];
+    alignas(64) int16_t psqweights[nbInputBuckets][isPermuted?INPUT_SIZE:RawInputSize][L1];
     alignas(64) int8_t threatweights[THREAT_SIZE][L1];
     alignas(64) int16_t biases[L1];
 };
@@ -62,26 +65,39 @@ struct lastLayers{
     layer<L3, 1, int32_t> l3;
 };
 
+template<bool isPermuted>
 struct nn{
-    inputlayer FT;
+    inputlayer<isPermuted> FT;
     lastLayers laterLayers[BUCKET];
 };
 
+int col(const int& square){
+    return square&7;
+}
+
+int row(const int& square){
+    return square >> 3;
+}
+
 int main(int argc, char** argv){
     assert(argc > 2);
-    unique_ptr<nn> nn_in  = make_unique<nn>();
-    unique_ptr<nn> nn_out = make_unique<nn>();
+    unique_ptr<nn<false>> nn_in  = make_unique<nn<false>>();
+    unique_ptr<nn<true>> nn_out = make_unique<nn<true>>();
     FILE* fin = fopen(argv[1], "rb");
     FILE* fout = fopen(argv[2], "wb");
     fread(&nn_in->FT, sizeof(nn_in->FT), 1, fin);
-    memcpy(&nn_out->FT, &nn_in->FT, sizeof(nn_in->FT));
     for(int ob=0; ob<BUCKET; ob++){
         fread(&nn_in->laterLayers[ob], sizeof(nn_in->laterLayers[ob]), 1, fin);
         memcpy(&nn_out->laterLayers[ob], &nn_in->laterLayers[ob], sizeof(nn_in->laterLayers[ob]));
     }
 
-    for(int ib=0; ib<nbInputBuckets; ib++)for(int i=0; i<INPUT_SIZE; i++)for(int k=0; k<L1; k++){
-        nn_out->FT.psqweights[ib][i][k] = nn_in->FT.psqweights[ib][i][permute(k)];
+    for(int ib=0; ib<nbInputBuckets; ib++)for(int i=0; i<RawInputSize; i++)for(int k=0; k<L1; k++){
+        const int pieceType = i/64%6;
+        const int color = i/64/6;
+        const int pos = i%64;
+        if(pieceType != KING || (col(pos) > 3 && color) || (col(pos) <= 3 && (inputBuckets[col(pos) | (row(pos) << 2)] != ib) == color)){
+            nn_out->FT.psqweights[ib][i-6*64*(pieceType == KING && color)][k] = nn_in->FT.psqweights[ib][i][permute(k)];
+        }
     }
     for(int i=0; i<THREAT_SIZE; i++)for(int k=0; k<L1; k++){
         nn_out->FT.threatweights[i][k] = nn_in->FT.threatweights[i][permute(k)];
