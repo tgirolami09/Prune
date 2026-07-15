@@ -17,7 +17,18 @@ nElo bounds
 </tr>
 <tr>
 <td> fractional depth </td>
-<td> not need to be tested </td> <td> not tested</td>
+<td> not need to be tested </td>
+<td>
+
+```
+(10+0.1, 1t, 16MB):
+2.74 +/- 2.20
+4.87 +/- 3.92
+[236, 3616, 7237, 3668, 329]
+[0.00, 5.00]
+```
+
+</td>
 <td>
 
 ```
@@ -44,7 +55,16 @@ nElo bounds
 ```
 
 </td>
-<td> not tested </td> <td> not tested </td>
+<td> 
+
+```
+(10+0.1, 1t, 16MB):
+-4.49 +/- 4.73
+-7.75 +/- 8.16
+[90, 877, 1615, 831, 68]
+[0.00, 5.00]
+```
+</td> <td> not tested </td>
 <td>
 
 ```
