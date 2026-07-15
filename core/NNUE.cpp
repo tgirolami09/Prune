@@ -111,6 +111,7 @@ Index Index::changepov(bool needs) const{
 }
 Index::operator int(){
     int index = ((6*color+piece)<<6)|(square^7);
+    index -= (piece == KING)*6*64*color;
     return index;
 }
 bool Index::operator==(const Index a) const{

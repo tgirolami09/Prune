@@ -27,7 +27,7 @@ constexpr inline int _abs(int x){
 
 const int maxThreatUpdates=80;
 
-const int INPUT_SIZE = 12*64;
+const int INPUT_SIZE = 11*64; //merged king planes
 const int THREAT_SIZE = 60144;
 
 constexpr int QA = 255;
