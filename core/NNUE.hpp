@@ -42,7 +42,7 @@ constexpr int QC_bits = ilog2c(QC);
 constexpr int L1shift = _abs(16+QC_bits-FT_LSHIFT-QA_bits*2-QB_bits);
 
 const int BUCKET = 8;
-const int nbInputBuckets = 4;
+const int nbInputBuckets = 16;
 
 const int L1 = 640;
 const int L2=16;
@@ -50,14 +50,15 @@ const int L3=32;
 
 const int SCALE = 283;
 const int inputBuckets[32] = {
-    0, 0, 1, 1,
-    2, 2, 2, 2,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
-    3, 3, 3, 3,
+    0 , 1 , 2 , 3 ,
+    4 , 5 , 6 , 7 ,
+    8 , 8 , 9 , 9 ,
+    10, 10, 11, 11,
+    12, 12, 13, 13,
+    12, 12, 13, 13,
+    14, 14, 15, 15,
+    14, 14, 15, 15,
+
 };
 const int DIVISOR=(31+BUCKET)/BUCKET;
 
