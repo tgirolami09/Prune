@@ -45,6 +45,9 @@ public:
     // +8 pour avoir la place de rajouter 8 valeurs de padding de simd
     // 32-byte aligned memory
     alignas(32) int scores[maxMoves + 8];
+    #elif defined(__ARM_NEON__)
+    // NEON reads 4 int32 per vector, so leave 4 padding lanes for the tail over-read.
+    alignas(16) int scores[maxMoves + 4];
     #else
     int scores[maxMoves];
     #endif

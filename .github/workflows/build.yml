@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false  # Don't cancel other jobs if one fails
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-15-intel]
+        os: [windows-latest, ubuntu-latest, macos-15-intel, macos-latest]
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
@@ -34,12 +34,12 @@ jobs:
       - name: Build project
         working-directory: ./core
         run: |
-          make -j ARCH=haswell
+          make -j
 
       - name: Build HCE version
         working-directory: ./core
         run: |
-          make -B -j HCE=true ARCH=haswell
+          make -B -j HCE=true
 
       - name: Test bench (Linux/macOS)
         if: runner.os != 'Windows'
@@ -115,5 +115,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }}-binaries
+          name: ${{ runner.os }}-${{ runner.arch }}-binaries
           path: core/prune*

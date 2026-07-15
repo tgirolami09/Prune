@@ -21,8 +21,16 @@ alignas(64) const auto second = []{
     return res;
 }();
 
+// There should be no lane crosses with NEON, but add a mirror of the x86 case just in case
+#ifdef __ARM_NEON__
+// Mirror of simd8_packus for the constant-folded table below
+const simd<8> _packed = vreinterpretq_s8_u8(vqmovun_high_s16(
+    vqmovun_s16(*(const simd<16>*)&first), *(const simd<16>*)&second));
+const int8_t* packed = (int8_t*)&_packed;
+#else
 const _simd _packed = ADDMM(packus_epi16)(*(_simd*)&first, *(_simd*)&second);
 const int8_t* packed = (int8_t*)&_packed;
+#endif
 
 const auto unpacked = []{
     array<int8_t, simdSize*2> res{};

@@ -716,12 +716,12 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     for(int i=0; i<half; i += 2){
         simd<16> neurons1 = pairwise(x1[i  ], x3[i  ],   x1[i  +half], x3[i  +half]);
         simd<16> neurons2 = pairwise(x1[i+1], x3[i+1],   x1[i+1+half], x3[i+1+half]);
-        HL1_simd[i/2] = ADDMM(packus_epi16)(neurons1, neurons2);
+        HL1_simd[i/2] = simd8_packus(neurons1, neurons2);
     }
     for(int i=0; i<half; i += 2){
         simd<16> neurons1 = pairwise(x2[i  ], x4[i  ],   x2[i  +half], x4[i  +half]);
         simd<16> neurons2 = pairwise(x2[i+1], x4[i+1],   x2[i+1+half], x4[i+1+half]);
-        HL1_simd[i/2+L1/nb<8>/2] = ADDMM(packus_epi16)(neurons1, neurons2);
+        HL1_simd[i/2+L1/nb<8>/2] = simd8_packus(neurons1, neurons2);
     }
     int finRes;
     const auto& subnet=laterLayers[idB];
@@ -733,21 +733,21 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
 }
 
 inline simd<32> matrix_mul(simd<32> output, simd<8> inputs, simd<8> weights){
-#ifdef VNNI
-    return ADDMM(dpbusd_epi32)(output, inputs, weights);
+#if defined(VNNI) || defined(__ARM_NEON__)
+    return simdint_dpbusd(output, inputs, weights);
 #else
-    return ADDMM(add_epi32)(output, ADDMM(madd_epi16)(ADDMM(maddubs_epi16)(inputs, weights), simd16_set1(1)));
+    // u8 x s8 -> int16 (sat) -> widen-add to int32 -> accumulate.
+    return simdint_add(output, mull_add(simd16_maddubs(inputs, weights), simd16_set1(1)));
 #endif
 }
 
 inline simd<32> matrix_mul2(simd<32> output, simd<8> inputs1, simd<8> inputs2, simd<8> weights1, simd<8> weights2){
-#ifdef VNNI
-    return ADDMM(dpbusd_epi32)(ADDMM(dpbusd_epi32)(output, inputs1, weights1), inputs2, weights2);
+#if defined(VNNI) || defined(__ARM_NEON__)
+    return simdint_dpbusd(simdint_dpbusd(output, inputs1, weights1), inputs2, weights2);
 #else
-    auto partial_sums1 = ADDMM(maddubs_epi16)(inputs1, weights1);
-    auto partial_sums2 = ADDMM(maddubs_epi16)(inputs2, weights2);
-
-    return ADDMM(add_epi32)(output, ADDMM(madd_epi16)(simd16_add(partial_sums1, partial_sums2), simd16_set1(1)));
+    simd<16> partial_sums1 = simd16_maddubs(inputs1, weights1);
+    simd<16> partial_sums2 = simd16_maddubs(inputs2, weights2);
+    return simdint_add(output, mull_add(simd16_add(partial_sums1, partial_sums2), simd16_set1(1)));
 #endif
 }
 
@@ -757,8 +757,8 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
         y[o] = biases[o];
     }
     for(int i=0; i<input/I8inI32; i += 2){
-        const simd<8> inp1 = ADDMM(set1_epi32)(x[i  ]);
-        const simd<8> inp2 = ADDMM(set1_epi32)(x[i+1]);
+        const simd<8> inp1 = simd8_broadcast32(x[i  ]);
+        const simd<8> inp2 = simd8_broadcast32(x[i+1]);
         const int offset1 =  i   *I8inI32*output/nb<8>;
         const int offset2 = (i+1)*I8inI32*output/nb<8>;
         for(int o=0; o<output/nb<32>; o++){
