@@ -93,6 +93,9 @@ ifeq ($(ARCH), native)
 else
 	ARCHNAME=-$(ARCH)
 endif
+ifeq ($(CXX), clang++)
+	myCPPFLAGS := $(myCPPFLAGS) -Wno-c23-extensions
+endif
 EXTENSION=
 VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
 ifeq ($(EXE), )
