@@ -139,7 +139,7 @@ download:
 	@if [ ! -f model.bin ]; then \
 		echo "File missing, downloading..."; \
 		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell head -1 nn-name.txt)/$(NETNAME).bin"; \
-	elif [ "$$(sha256sum $(NETNAME).bin | cut -c1-7)" != "$$(head -1 nn-name.txt | grep -P ".{7}$$" -o)" ]; then \
+	elif [ "$$(sha256sum $(NETNAME).bin | cut -c1-7)" != "$$(head -1 nn-name.txt | grep -E ".{7}$$" -o)" ]; then \
 		echo "SHA mismatch, re-downloading..."; \
 		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell head -1 nn-name.txt)/$(NETNAME).bin"; \
 	fi
