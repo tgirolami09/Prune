@@ -56,6 +56,7 @@ class BestMoveFinder{
         atomic<sbig> nodes;
         atomic<sbig> bestMoveNodes;
         atomic<int> seldepth;
+        bool let_run;
         sbig tbHits;
         Move rootBest;
         bool mainThread;
@@ -71,6 +72,9 @@ class BestMoveFinder{
         void beginLine(int relDepth);
         void beginLineMove(int relDepth, Move move);
         void resetLines();
+        inline bool stop(bool stop_flags){
+            return !let_run && stop_flags;
+        }
     };
 
     struct Record{
@@ -95,7 +99,7 @@ class BestMoveFinder{
     //Returns the best move given a position and time to use
     transpositionTable transposition;
 public:
-    std::atomic<bool> running;
+    std::atomic<int> stop_flag;
     bool minimal = false;
     BestMoveFinder(int memory);
     BestMoveFinder();
@@ -103,7 +107,6 @@ public:
     timeMesure::time_point startSearch;
     chrono::milliseconds hardBoundTime;
     ~BestMoveFinder();
-    void stop();
     #ifdef TUNE
     tunables parameters;
     #else
@@ -132,7 +135,7 @@ public:
     bestMoveResponse iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth);
     template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true);
-    template <int limitWay=0>
+    template <int limitWay=0, bool set=false>
     bestMoveResponse goState(GameState& state, TM tm, bool verbose, int actDepth);
     int testQuiescenceSearch(GameState& state);
     void clear();

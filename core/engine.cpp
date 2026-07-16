@@ -105,15 +105,16 @@ void manageInput(){
         if(!getline(cin, com))
             com = "quit";
         if(com == "stop"){
-            bestMoveFinder.running = false;
+            fflush(stdout);
+            bestMoveFinder.stop_flag = 2;
         }else if(com == "isready"){
             {
                 unique_lock<mutex> lock(mtx_command);
-                cv_command.wait(lock, [&]{return !exec_command || bestMoveFinder.running;});
+                cv_command.wait(lock, [&]{return !exec_command || !bestMoveFinder.stop_flag;});
             }
             printf("readyok\n");
         }else if(com == "quit"){
-            bestMoveFinder.running = false;
+            bestMoveFinder.stop_flag = 2;
             stop_all = true;
             unique_lock<mutex> lock(mtx_new_command);
             endQ++;
