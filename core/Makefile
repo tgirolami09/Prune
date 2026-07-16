@@ -93,7 +93,9 @@ ifeq ($(ARCH), native)
 else
 	ARCHNAME=-$(ARCH)
 endif
-ifeq ($(CXX), clang++)
+
+CXX_ISCLANG=$(shell $(CXX) --version | grep -q clang && echo yes || echo no)
+ifeq ($(CXX_ISCLANG), yes)
 	myCPPFLAGS := $(myCPPFLAGS) -Wno-c23-extensions
 endif
 EXTENSION=
