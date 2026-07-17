@@ -8,36 +8,12 @@ static constexpr bool isMergedKingPlanes=true;
 constexpr int RawInputSize = INPUT_SIZE+isMergedKingPlanes*64;
 constexpr int simdSize = nb<16>;
 constexpr int mask = simdSize*2-1;
-alignas(64) const auto first = []{
-    array<int16_t, simdSize> res{};
-    for(int i=0; i<simdSize; i++){
-        res[i] = i;
-    }
-    return res;
-}();
-alignas(64) const auto second = []{
-    array<int16_t, simdSize> res{};
-    for(int i=0; i<simdSize; i++){
-        res[i] = i+simdSize;
-    }
-    return res;
-}();
-
-// There should be no lane crosses with NEON, but add a mirror of the x86 case just in case
-#ifdef __ARM_NEON__
-// Mirror of simd8_packus for the constant-folded table below
-const simd<8> _packed = vreinterpretq_s8_u8(vqmovun_high_s16(
-    vqmovun_s16(*(const simd<16>*)&first), *(const simd<16>*)&second));
-const int8_t* packed = (int8_t*)&_packed;
-#else
-const _simd _packed = ADDMM(packus_epi16)(*(_simd*)&first, *(_simd*)&second);
-const int8_t* packed = (int8_t*)&_packed;
-#endif
-
+constexpr int LaneSize = 128/16;
+constexpr int nbLane = simdSize*2/LaneSize;
 const auto unpacked = []{
     array<int8_t, simdSize*2> res{};
     for(int i=0; i<simdSize*2; i++){
-        res[packed[i]] = i;
+        res[i] = i%simdSize/LaneSize*2*LaneSize+i%LaneSize+(i/simdSize)*LaneSize;
     }
     return res;
 }();
@@ -81,6 +57,7 @@ int row(const int& square){
 
 int main(int argc, char** argv){
     assert(argc > 2);
+    for(int i:unpacked)printf("%d ", i);printf("\n");
     unique_ptr<nn<false>> nn_in  = make_unique<nn<false>>();
     unique_ptr<nn<true>> nn_out = make_unique<nn<true>>();
     FILE* fin = fopen(argv[1], "rb");
