@@ -6,7 +6,11 @@
 static constexpr bool isPW = true;
 static constexpr bool isMergedKingPlanes=true;
 constexpr int RawInputSize = INPUT_SIZE+isMergedKingPlanes*64;
+#ifdef ARCHSIZE
+constexpr int simdSize = ARCHSIZE/16;
+#else
 constexpr int simdSize = nb<16>;
+#endif
 constexpr int mask = simdSize*2-1;
 constexpr int LaneSize = 128/16;
 constexpr int nbLane = simdSize*2/LaneSize;
@@ -57,7 +61,6 @@ int row(const int& square){
 
 int main(int argc, char** argv){
     assert(argc > 2);
-    for(int i:unpacked)printf("%d ", i);printf("\n");
     unique_ptr<nn<false>> nn_in  = make_unique<nn<false>>();
     unique_ptr<nn<true>> nn_out = make_unique<nn<true>>();
     FILE* fin = fopen(argv[1], "rb");

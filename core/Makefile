@@ -79,6 +79,21 @@ endif
 ifneq ($(CPUSET), unknow)
 	ARCHCOM := $(ARCHCOM) -m$(CPUSET)
 endif
+ARCHSIZE=
+ifneq ($(ARCH), native)
+	ifeq ($(CPUSET), avx2)
+		ARCHSIZE=256
+	else ifeq ($(CPUSET), avx512f)
+		ARCHSIZE=512
+	else ifeq ($(CPUSET), avx512bw)
+		ARCHSIZE=512
+	else
+		ARCHSIZE=128
+	endif
+	ARCHSIZE := -DARCHSIZE=$(ARCHSIZE)
+else
+	ARCHSIZE=-march=$(ARCH)
+endif
 TAG=$(shell git tag --contains=HEAD)
 ifeq ($(TAG), )
 	REC=$(strip $(shell git rev-parse --short HEAD) )
@@ -145,7 +160,7 @@ download:
 	fi
 
 permute: permute.cpp
-	$(CXX) -m64 $(OPT) $(ARCHCOM) -D_CRT_SECURE_NO_WARNINGS -std=gnu++17 -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
+	$(CXX) -m64 $(OPT) $(ARCHSIZE) -D_CRT_SECURE_NO_WARNINGS -std=gnu++17 -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
 
 $(NETNAME): $(NEEDINGFILE)
 
