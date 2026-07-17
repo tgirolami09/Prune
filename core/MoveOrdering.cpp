@@ -110,7 +110,11 @@ int HelpOrdering::getQuietScore(Move move, bool c, const GameState& state) const
     score += history[c][move.from()][move.to()]*parameters.mainHist.getParam<id>();
     score += conthist[0][c][lastmove.piece][lastmove.move.to()][state.getPiece(move.from())][move.to()]*parameters.prevHist.getParam<id>();
     score += conthist[1][c][contmove.piece][contmove.move.to()][state.getPiece(move.from())][move.to()]*parameters.contHist.getParam<id>();
-    return score/1024;
+    if constexpr(id == TunableHist::ORDER){
+        return score*2/3;
+    }else {
+        return score;
+    }
 }
 
 template<int id>
