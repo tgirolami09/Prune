@@ -149,7 +149,7 @@ public:
         rfp_improving(93),
         rfp_nimproving(155),
         nmp_red_depth_div(289),
-        nmp_red_base(655360),
+        nmp_red_base(393216),
         nmp_min_depth(433),
         se_validity_depth(325),
         se_min_depth(811),
