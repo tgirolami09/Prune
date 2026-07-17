@@ -108,6 +108,8 @@ public :
     void playNullMove();
     ExpendedMove getLastMove() const;
     ExpendedMove getContMove() const;
+    template<int k>
+    ExpendedMove getKthLastMove() const;
     Move playPartialMove(Move move);
     int getPiece(int square) const;
     int getfullPiece(int square) const;

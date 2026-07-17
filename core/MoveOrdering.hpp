@@ -15,7 +15,7 @@ extern StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
 class HelpOrdering{
     Move killers[maxDepth][2];
     int history[2][64][64];
-    int conthist[2][6][64][2][6][64];
+    int conthist[2][2][6][64][6][64];
     int captHist[2][nbPieces+4][nbPieces][64];
     int& getTactIndex(const GameState& state, Move move, bool c);
     bool fastEq(Move a, Move b) const;

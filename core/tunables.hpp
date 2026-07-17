@@ -188,6 +188,7 @@ public:
         se_pv_offset(100),
         mainHist(1022, 1049, 1100, 1032, 510, 272),
         prevHist(996, 924, 1131, 1042, 481, 267),
+        contHist(996, 1, 1, 1, 481, 267),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -237,7 +238,8 @@ public:
         se_pv_offset;
     TunableHist
         mainHist,
-        prevHist;
+        prevHist,
+        contHist;
     TunableFloat
         aw_mul,
         nodetm_base,

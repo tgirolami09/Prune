@@ -52,7 +52,9 @@ void HelpOrdering::bonusMove(int depth, Move move, bool c, const GameState& stat
     }else{
         updateHistory(depth*parameters.mainHist.bonus, history[c][move.from()][move.to()]);
         ExpendedMove lastmove = state.getLastMove();
-        updateHistory(depth*parameters.prevHist.bonus, conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]);
+        ExpendedMove contmove = state.getContMove();
+        updateHistory(depth*parameters.prevHist.bonus, conthist[0][c][lastmove.piece][lastmove.move.to()][state.getPiece(move.from())][move.to()]);
+        updateHistory(depth*parameters.contHist.bonus, conthist[1][c][contmove.piece][contmove.move.to()][state.getPiece(move.from())][move.to()]);
     }
 }
 
@@ -62,7 +64,9 @@ void HelpOrdering::malusMove(int depth, Move move, bool c, const GameState& stat
     }else{
         updateHistory(-depth*parameters.mainHist.malus, history[c][move.from()][move.to()]);
         ExpendedMove lastmove = state.getLastMove();
-        updateHistory(-depth*parameters.prevHist.malus, conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]);
+        ExpendedMove contmove = state.getContMove();
+        updateHistory(-depth*parameters.prevHist.malus, conthist[0][c][lastmove.piece][lastmove.move.to()][state.getPiece(move.from())][move.to()]);
+        updateHistory(-depth*parameters.contHist.malus, conthist[1][c][contmove.piece][contmove.move.to()][state.getPiece(move.from())][move.to()]);
     }
 }
 
@@ -102,8 +106,10 @@ template<int id>
 int HelpOrdering::getQuietScore(Move move, bool c, const GameState& state) const{
     int score = 0;
     ExpendedMove lastmove = state.getLastMove();
+    ExpendedMove contmove = state.getContMove();
     score += history[c][move.from()][move.to()]*parameters.mainHist.getParam<id>();
-    score += conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]*parameters.prevHist.getParam<id>();
+    score += conthist[0][c][lastmove.piece][lastmove.move.to()][state.getPiece(move.from())][move.to()]*parameters.prevHist.getParam<id>();
+    score += conthist[1][c][contmove.piece][contmove.move.to()][state.getPiece(move.from())][move.to()]*parameters.contHist.getParam<id>();
     return score/1024;
 }
 

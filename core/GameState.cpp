@@ -317,6 +317,13 @@ ExpendedMove GameState::getContMove() const{
     return EnullMove;
 }
 
+template<int k>
+ExpendedMove GameState::getKthLastMove() const{
+    if(turnNumber > k-1 && (movesSinceBeginning[0].move.moveInfo != nullMove.moveInfo || turnNumber > k))
+        return movesSinceBeginning[turnNumber-k];
+    return EnullMove;
+}
+
 
 Move GameState::playPartialMove(Move move){
     initMove(move);
