@@ -1,6 +1,6 @@
 #include "embeder.hpp"
 #ifndef HCE
-const unsigned char baseModel[] = {
+alignas(64) const unsigned char baseModel[] = {
 #embed "model.bin"
 };
 #endif
