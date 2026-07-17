@@ -1,3 +1,6 @@
+CXX=clang++
+CC=clang
+
 ADDOPTION?=
 DEBUGOPT?=
 NETNAME?=
