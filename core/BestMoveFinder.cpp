@@ -669,7 +669,8 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         depthMax = tm.hardBound;
     }
     Record rec{};
-    int lastScore = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters);
+    int staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters);
+    int lastScore = staticEval;
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
     char lastline[1000];
@@ -749,7 +750,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             }
             if(!stop_flag)
                 allInfos.push_back({ss.nodes, (int)(tcpu*1000), (int)(speed), depth, ss.seldepth-startRelDepth, bestScore});
-            softBoundTime = chrono::milliseconds{tm.updateSoft(ss.bestMoveNodes, lastUsedNodes, bestMove.moveInfo, parameters, verbose)};
+            softBoundTime = chrono::milliseconds{tm.updateSoft(depth, ss.bestMoveNodes, lastUsedNodes, abs(bestScore-staticEval), bestMove.moveInfo, parameters, verbose)};
             this->hardBound = tm.hardBound;
             hardBoundTime = chrono::milliseconds{tm.hardBound};
             if(limitWay == 1 && ss.nodes > tm.softBound)break;
