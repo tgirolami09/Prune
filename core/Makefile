@@ -18,7 +18,6 @@ FATHOM_DIR = ../Fathom/src
 FATHOM_OBJ = tbprobe.o
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
-CPUSET?=unknow
 EXE?=
 SOURCES := $(wildcard *.cpp)
 SOURCES := $(filter-out collectData.cpp,$(SOURCES))
@@ -79,23 +78,13 @@ ifneq ($(ARCH), unknow)
 else
 	ARCHCOM=
 endif
-ifneq ($(CPUSET), unknow)
-	ARCHCOM := $(ARCHCOM) -m$(CPUSET)
-endif
-ARCHSIZE=
-ifneq ($(ARCH), native)
-	ifeq ($(CPUSET), avx2)
-		ARCHSIZE=256
-	else ifeq ($(CPUSET), avx512f)
-		ARCHSIZE=512
-	else ifeq ($(CPUSET), avx512bw)
-		ARCHSIZE=512
-	else
-		ARCHSIZE=128
-	endif
-	ARCHSIZE := -DARCHSIZE=$(ARCHSIZE)
-else
-	ARCHSIZE=-march=$(ARCH)
+ARCHSIZE=-march=native
+ifeq ($(ARCH), x86-64-v2)
+	ARCHSIZE = -DARCHSIZE=128
+else ifeq ($(ARCH), x86-64-v3)
+	ARCHSIZE = -DARCHSIZE=256
+else ifeq ($(ARCH), x86-64-v4)
+	ARCHSIZE = -DARCHSIZE=512
 endif
 TAG=$(shell git tag --contains=HEAD)
 ifeq ($(TAG), )
