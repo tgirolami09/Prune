@@ -4,6 +4,6 @@ const unsigned char baseModel[] = {
 #embed "model.bin"
 };
 #endif
-const unsigned char magicsData[] = {
+alignas(64) const unsigned char magicsData[] = {
 #embed "magics.out"
 };
