@@ -374,7 +374,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(expected_score >= beta+margin)
                 return expected_score;
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
-            if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
+            if(rootDist >= ss.min_nmp_ply && depth >= fdepth<4> && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 ss.stack[rootDist].snap.save(state);
                 state.playNullMove();
                 ss.generator.initDangers(state);
