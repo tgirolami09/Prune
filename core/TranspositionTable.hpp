@@ -11,7 +11,7 @@ public:
     int16_t score,
             raw_eval;
     ubyte flag;
-    int16_t bestMoveInfo;
+    uint16_t bestMoveInfo;
     uint16_t depth;
     residualHash hash;
     int typeNode() const;
