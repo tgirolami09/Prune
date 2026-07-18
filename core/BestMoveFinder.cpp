@@ -415,7 +415,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         int score = negamax<false, limitWay>(ss, (depth-fracDepth)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMoveInfo);
         if(score < goal){
             firstMoveExtension += fracDepth;
-            if(!isPV && score <= goal-parameters.se_dext_margin)
+            int dext_margin = parameters.se_dext_margin+10*state.board.isTactical(Move{ttEntry.bestMoveInfo});
+            if(!isPV && score <= goal-dext_margin)
                 firstMoveExtension += fracDepth;
         }else if(goal >= beta){
             return goal;
