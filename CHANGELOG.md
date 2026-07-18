@@ -13,7 +13,7 @@ nElo bounds
 ## unreleased
 <table>
 <tr>
-<td> change </td> <td> fixed nodes </td> <td> STC </td> <td> LTC </td> <td> others </td>
+<td> change </td> <td> faster </td> <td> STC </td> <td> LTC </td> <td> slower </td>
 </tr>
 <tr>
 <td> fractional depth </td>
@@ -115,7 +115,7 @@ nElo bounds
 </td> <td> no need to be tested </td>
 </tr>
 <tr>
-<td> merged king planes (same bench, reduce binary size) </td> <td> no need to be tested </td> <td> no need to be tested </td> <td> no need to be tested </td>
+<td> merged king planes (same bench, reduce binary size) </td>
 <td>
 
 ```
@@ -124,6 +124,31 @@ nElo bounds
 -0.98 +/- 3.15
 [643, 5516, 11092, 5421, 652]
 [-5.00, 0.00]
+```
+</td>
+<td> no need to be tested </td> <td> no need to be tested </td> <td> no need to be tested </td>
+</tr>
+<tr>
+<td>complexity tm</td>
+<td>no need to be tested</td>
+<td>
+
+```
+(10+0.1, 1t, 16MB):
+3.87 +/- 2.97
+7.18 +/- 5.51
+[100, 1694, 3911, 1790, 137]
+[0.00, 5.00] (passed)
+```
+</td>
+<td>
+
+```
+(60+0.6, 1t, 128MB):
+3.44 +/- 2.65
+7.09 +/- 5.45
+[19, 1685, 4265, 1822, 28]
+[0.00, 5.00] (passed)
 ```
 </td>
 </tr>
