@@ -150,6 +150,29 @@ nElo bounds
 [19, 1685, 4265, 1822, 28]
 [0.00, 5.00] (passed)
 ```
+</td><td> no need to be tested </td>
+</tr>
+<tr>
+<td>index mainhist by threat</td> <td> no need to be tested </td>
+<td>
+
+```
+(10+0.1, 1t, 16MB):
+14.47 +/- 6.76
+26.99 +/- 12.58
+[16, 290, 742, 390, 27]
+[0.00, 5.00] (pass)
+```
 </td>
+<td>
+
+```
+(60+0.6, 1t, 128MB):
+15.76 +/- 6.80
+32.11 +/- 13.83
+[1, 233, 640, 333, 6]
+[0.00, 5.00] (pass)
+```
+</td><td> no need to be tested </td>
 </tr>
 </table>
