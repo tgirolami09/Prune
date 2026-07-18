@@ -14,27 +14,27 @@ extern StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
 
 class HelpOrdering{
     Move killers[maxDepth][2];
-    int history[2][64][64];
+    int history[2][64][64][2][2];
     int conthist[2][6][64][2][6][64];
     int captHist[2][nbPieces+4][nbPieces][64];
     int& getTactIndex(const GameState& state, Move move, bool c);
     bool fastEq(Move a, Move b) const;
-    void bonusMove(int depth, Move move, bool c, const GameState& state);
-    void malusMove(int depth, Move move, bool c, const GameState& state);
+    void bonusMove(int depth, Move move, bool c, const GameState& state, big attacked);
+    void malusMove(int depth, Move move, bool c, const GameState& state, big attacked);
 public:
     tunables parameters;
     void init(const tunables& parameters);
-    void addKiller(Move move, int depth, int relDepth, bool c, const GameState& state);
+    void addKiller(Move move, int depth, int relDepth, bool c, const GameState& state, big attacked);
     bool isKiller(Move move, int relDepth) const;
     int getCaptScore(Move move, bool c, const GameState& state) const;
     template<int id>
-    int getQuietScore(Move move, bool c, const GameState& state) const;
+    int getQuietScore(Move move, bool c, const GameState& state, big attacked) const;
     template<int id>
-    int getHistoryScore(Move move, bool c, const GameState& state) const;
+    int getHistoryScore(Move move, bool c, const GameState& state, big attacked) const;
     void updateHistory(int bonus, int& hist);
-    void negUpdate(Move[maxMoves], int upto, bool c, int depth, const GameState& state);
+    void negUpdate(Move[maxMoves], int upto, bool c, int depth, const GameState& state, big attacked);
 
-    int getMoveScore(Move move, bool c, int relDepth, const GameState& state) const;
+    int getMoveScore(Move move, bool c, int relDepth, const GameState& state, big attacked) const;
 };
 
 class Order{

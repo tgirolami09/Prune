@@ -489,15 +489,15 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             fflush(stdout);
         }
         bool isKiller = ss.history.isKiller(curMove, rootDist);
-        const int lmr_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::LMR>(curMove, state.friendlyColor(), state);
+        const int lmr_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::LMR>(curMove, state.friendlyColor(), state, order.dangerPositions);
         if(bestScore >= MINIMUM+maxDepth && !isRoot){
             int depth2 = (depth*depth)/(fracDepth*fracDepth);
             if(!state.board.isTactical(curMove)){
                 if(triedMove > depth2*parameters.lmp_mul+parameters.lmp_base)continue;
-                const int mhp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::MHP>(curMove, state.friendlyColor(), state);
+                const int mhp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::MHP>(curMove, state.friendlyColor(), state, order.dangerPositions);
                 if(mhp_hist < -parameters.mhp_mul*depth/fracDepth && triedMove >= 1)
                     continue;
-                const int fp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::FP>(curMove, state.friendlyColor(), state);
+                const int fp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::FP>(curMove, state.friendlyColor(), state, order.dangerPositions);
                 int futilityValue = static_eval+(parameters.fp_base+parameters.fp_mul*depth+fp_hist*parameters.fp_hmul/4096)/fracDepth;
                 if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
@@ -564,8 +564,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval, isPV);
             if(isRoot)ss.rootBest=curMove;
-            ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state);
-            ss.history.negUpdate(ss.stack[rootDist].searchedMoves, triedMove-1, state.friendlyColor(), depth, state);
+            ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state, order.dangerPositions);
+            ss.history.negUpdate(ss.stack[rootDist].searchedMoves, triedMove-1, state.friendlyColor(), depth, state, order.dangerPositions);
             if(curEMove.capture == SPACE && curEMove.move.getFlag() != Move::fpromo){
                 if(score > static_eval && !inCheck)
                     ss.correctionHistory.update(state, score-static_eval, depth);
