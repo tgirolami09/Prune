@@ -503,7 +503,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     continue;
                 }
             }else{
-                int moveHistory = isKiller?maxHistory:ss.history.getCaptScore(curMove, state.friendlyColor(), state);
+                int moveHistory = ss.history.getCaptScore(curMove, state.friendlyColor(), state);
                 if(!isPV && moveHistory < -parameters.mchp_mul*depth2 && depth <= parameters.mhcp_max_depth)
                     continue;
             }
