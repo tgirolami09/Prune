@@ -16,6 +16,8 @@ const int IB=nbInputBuckets;
 
 const bool isPW=true;
 const bool isFactorised=true;
+const bool isMergedKing=true;
+const int rawInputSize=INPUT_SIZE+64*isMergedKing;
 const char zero = 0;// for padding
 const float scaler = (float)QA/(1 << L1shift);
 
@@ -92,10 +94,10 @@ void padd(FILE* file){
 
 struct inputlayer{
     float threatweights[THREAT_SIZE][L1];
-    float psqweights[IB+isFactorised][INPUT_SIZE][L1];
+    float psqweights[IB+isFactorised][rawInputSize][L1];
     float biases[L1];
     void quantise(FILE* file){
-        for(int i=0; i<IB; i++)for(int j=0; j<INPUT_SIZE; j++)for(int k=0; k<L1; k++){
+        for(int i=0; i<IB; i++)for(int j=0; j<rawInputSize; j++)for(int k=0; k<L1; k++){
             float param = psqweights[i+isFactorised][j][k];
             if constexpr(isFactorised){
                 param += psqweights[0][j][k];
