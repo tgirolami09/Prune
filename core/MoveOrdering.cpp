@@ -3,6 +3,7 @@
 #include "Evaluator.hpp"
 #include "Const.hpp"
 #include "Move.hpp"
+#include <climits>
 #include "tunables.hpp"
 
 #ifdef DEBUG_MACRO
