@@ -1,5 +1,4 @@
 #include <cstring>
-#include <climits>
 #include "MoveOrdering.hpp"
 #include "Evaluator.hpp"
 #include "Const.hpp"
@@ -19,13 +18,15 @@ int getrand(big& state){
     return z ^ (z >> 31);
 }
 
-int& HelpOrdering::getTactIndex(const GameState& state, Move move, bool c){
+int& HelpOrdering::getTactIndex(const GameState& state, Move move, bool c, big attacked){
     int piece = state.getPiece(move.from());
     int capture = state.board.getCapture(move);
+    bool src_atk = attacked&(1ULL << move.from());
+    bool dst_atk = attacked&(1ULL << move.to());
     if(move.getFlag() != Move::fpromo)
-        return captHist[c][piece][capture][move.to()];
+        return captHist[src_atk][dst_atk][c][piece][capture][move.to()];
     else
-        return captHist[c][move.promotion()-KNIGHT+nbPieces][capture-1][move.to()];
+        return captHist[src_atk][dst_atk][c][move.promotion()-KNIGHT+nbPieces][capture-1][move.to()];
 
 }
 bool HelpOrdering::fastEq(Move a, Move b) const{
@@ -48,7 +49,7 @@ void HelpOrdering::updateHistory(int bonus, int& hist){
 
 void HelpOrdering::bonusMove(int depth, Move move, bool c, const GameState& state, big attacked){
     if(state.board.isTactical(move)){
-        updateHistory(depth*parameters.capthist_mul_bonus, getTactIndex(state, move, c));
+        updateHistory(depth*parameters.capthist_mul_bonus, getTactIndex(state, move, c, attacked));
     }else{
         bool src_atk = attacked&(1ULL << move.from());
         bool dst_atk = attacked&(1ULL << move.to());
@@ -60,7 +61,7 @@ void HelpOrdering::bonusMove(int depth, Move move, bool c, const GameState& stat
 
 void HelpOrdering::malusMove(int depth, Move move, bool c, const GameState& state, big attacked){
     if(state.board.isTactical(move)){
-        updateHistory(-depth*parameters.capthist_mul_malus, getTactIndex(state, move, c));
+        updateHistory(-depth*parameters.capthist_mul_malus, getTactIndex(state, move, c, attacked));
     }else{
         bool src_atk = attacked&(1ULL << move.from());
         bool dst_atk = attacked&(1ULL << move.to());
@@ -93,13 +94,15 @@ bool HelpOrdering::isKiller(Move move, int relDepth) const{
 }
 
 
-int HelpOrdering::getCaptScore(Move move, bool c, const GameState& state) const{
+int HelpOrdering::getCaptScore(Move move, bool c, const GameState& state, big attacked) const{
     int capture = state.board.getCapture(move);
     int piece = state.getPiece(move.from());
+    bool src_atk = attacked&(1ULL << move.from());
+    bool dst_atk = attacked&(1ULL << move.to());
     if(move.getFlag() != Move::fpromo)
-        return captHist[c][piece][capture][move.to()];
+        return captHist[src_atk][dst_atk][c][piece][capture][move.to()];
     else
-        return captHist[c][move.promotion()-KNIGHT+nbPieces][capture-1][move.to()];
+        return captHist[src_atk][dst_atk][c][move.promotion()-KNIGHT+nbPieces][capture-1][move.to()];
 }
 
 template<int id>
@@ -118,7 +121,7 @@ int HelpOrdering::getHistoryScore(Move move, bool c, const GameState& state, big
     if(!state.board.isTactical(move)){
         return getQuietScore<id>(move, c, state, attacked);
     }else{
-        return getCaptScore(move, c, state);
+        return getCaptScore(move, c, state, attacked);
     }
 }
 
