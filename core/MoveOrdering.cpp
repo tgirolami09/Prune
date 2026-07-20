@@ -157,7 +157,7 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
             nbPriority++;
         }else{
 #ifdef DEBUG_MACRO
-            int moveHistory = history.getHistoryScore<TunableHist::ORDER>(moves[i], state.friendlyColor(), state);
+            int moveHistory = history.getHistoryScore<TunableHist::ORDER>(moves[i], state.friendlyColor(), state, dangerPositions);
             if(moveHistory != maxHistory){
                 if(state.board.isTactical(moves[i])){
                     capthistPreStat.update(moveHistory);

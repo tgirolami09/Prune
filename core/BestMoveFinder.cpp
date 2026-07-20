@@ -514,7 +514,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
 #ifdef DEBUG_MACRO
         {
-            int moveHistory = ss.history.getHistoryScore<TunableHist::ORDER>(curMove, state.friendlyColor(), state);
+            int moveHistory = ss.history.getHistoryScore<TunableHist::ORDER>(curMove, state.friendlyColor(), state, order.dangerPositions);
             if(state.board.isTactical(curMove)){
                 capthistPostStat.update(moveHistory);
             }else{
