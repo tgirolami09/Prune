@@ -169,7 +169,7 @@ public:
         lmr_base(723),
         lmr_div(274),
         lmr_min_depth(277),
-        capthist_mul_malus(236),
+        capthist_mul_malus(140),
         capthist_mul_bonus(509),
         aw_base(19),
         pvalue(106),
