@@ -507,7 +507,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if(!isPV && moveHistory < -parameters.mchp_mul*depth2 && depth <= parameters.mhcp_max_depth)
                     continue;
             }
-            int see_born = !state.board.isTactical(curMove) ? -parameters.see_mul_tact*depth/fracDepth: -parameters.see_mul_quiet*depth2;
+            int see_born = !state.board.isTactical(curMove) ? -parameters.see_mul_tact*depth: -parameters.see_mul_quiet*(depth*depth/fracDepth);
+            const int see_history = state.board.isTactical(curMove) ?
+                ss.history.getCaptScore(curMove, state.friendlyColor(), state) :
+                (isKiller ? maxHistory : ss.history.getQuietScore<TunableHist::SEE>(curMove, state.friendlyColor(), state, order.dangerPositions)/2);
+            see_born -= see_history*2048/maxHistory;
+            see_born /= fracDepth;
             if constexpr(isPV)see_born -= (int)parameters.se_pv_offset;
             if(!see_ge(see_born, curMove, state, value_pieces))
                 continue;

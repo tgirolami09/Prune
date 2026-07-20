@@ -126,6 +126,7 @@ template int HelpOrdering::getQuietScore<TunableHist::ORDER>(Move, bool, const G
 template int HelpOrdering::getQuietScore<TunableHist::LMR>(Move, bool, const GameState&, big attacked) const;
 template int HelpOrdering::getQuietScore<TunableHist::MHP>(Move, bool, const GameState&, big attacked) const;
 template int HelpOrdering::getQuietScore<TunableHist::FP>(Move, bool, const GameState&, big attacked) const;
+template int HelpOrdering::getQuietScore<TunableHist::SEE>(Move, bool, const GameState&, big attacked) const;
 template int HelpOrdering::getHistoryScore<TunableHist::ORDER>(Move, bool, const GameState&, big attacked) const;
 template int HelpOrdering::getHistoryScore<TunableHist::LMR>(Move, bool, const GameState&, big attacked) const;
 template int HelpOrdering::getHistoryScore<TunableHist::MHP>(Move, bool, const GameState&, big attacked) const;

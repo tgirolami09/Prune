@@ -109,19 +109,21 @@ struct TunableHist{
         order,
         lmr,
         mhp,
-        fp;
+        fp,
+        see;
     TunableInt
         bonus,
         malus;
-    constexpr TunableHist(int _order, int _lmr, int _mhp, int _fp, int _bonus, int _malus):
-        order(_order), lmr(_lmr), mhp(_mhp), fp(_fp), bonus(_bonus), malus(_malus){}
-    enum{ORDER, LMR, MHP, FP};
+    constexpr TunableHist(int _order, int _lmr, int _mhp, int _fp, int _see, int _bonus, int _malus):
+        order(_order), lmr(_lmr), mhp(_mhp), fp(_fp), see(_see), bonus(_bonus), malus(_malus){}
+    enum{ORDER, LMR, MHP, FP, SEE};
     template<int id>
     const TunableInt& getParam() const{
         if constexpr(id == ORDER)return order;
         else if constexpr(id == LMR)return lmr;
         else if constexpr(id == MHP)return mhp;
-        else if constexpr(id == FP)return fp;
+        else if constexpr(id == FP )return fp;
+        else if constexpr(id == SEE)return see;
     }
 };
 
@@ -186,8 +188,8 @@ public:
         see_mul_quiet(64),
         see_mul_tact(80),
         se_pv_offset(100),
-        mainHist(1022, 1049, 1100, 1032, 510, 272),
-        prevHist(996, 924, 1131, 1042, 481, 267),
+        mainHist(1022, 1049, 1100, 1032, 1024, 510, 272),
+        prevHist(996, 924, 1131, 1042, 1024, 481, 267),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
