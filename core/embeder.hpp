@@ -1,6 +1,6 @@
 #define BINARY_INCLUDE(buffername) \
 extern "C"{\
-    extern const unsigned char buffername[]; \
+    alignas(64) extern const unsigned char buffername[]; \
 }
 
 BINARY_INCLUDE(magicsData);
