@@ -366,13 +366,20 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         improving = !inCheck && ss.stack[rootDist-2].static_score != INF && ss.stack[rootDist-2].static_score < static_eval && excludedMove == nullMove.moveInfo;
     if constexpr(!isPV){
         if(!inCheck && excludedMove == nullMove.moveInfo && beta > MINIMUM+maxDepth){
-            int margin;
+            int rfp_margin;
             if(improving)
-                margin = parameters.rfp_improving*depth/fracDepth;
+                rfp_margin = parameters.rfp_improving*depth/fracDepth;
             else
-                margin = parameters.rfp_nimproving*depth/fracDepth;
-            if(expected_score >= beta+margin)
+                rfp_margin = parameters.rfp_nimproving*depth/fracDepth;
+            if(expected_score >= beta+rfp_margin)
                 return expected_score;
+            int razoring_margin = 350*depth/fracDepth;
+            if(static_eval+razoring_margin <= alpha){
+                const int score = Evaluate<false, limitWay>(ss, state, alpha, alpha+1, relDepth);
+                if(score <= alpha)
+                    return score;
+                ss.generator.initDangers(state);
+            }
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 ss.stack[rootDist].snap.save(state);
