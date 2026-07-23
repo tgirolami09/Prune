@@ -175,4 +175,30 @@ nElo bounds
 ```
 </td><td> no need to be tested </td>
 </tr>
+<tr>
+<td>razoring</td> <td> no need to be tested</td>
+<td>
+
+```
+Results of razoring vs dev (10+0.1, 1t, 16MB, UHO_Lichess_4852_v1.epd):
+Elo: 9.98 +/- 5.53, nElo: 18.35 +/- 10.16
+LOS: 99.98 %, DrawRatio: 50.31 %, PairsRatio: 1.22
+Games: 4492, Wins: 1101, Losses: 972, Draws: 2419, Points: 2310.5 (51.44 %)
+Ptnml(0-2): [27, 476, 1130, 567, 46], WL/DD Ratio: 0.64
+LLR: 2.95 (100.0%) (-2.94, 2.94) [0.00, 5.00]
+```
+</td>
+<td>
+
+```
+Results of razoring vs dev (60+0.6, 1t, 128MB, UHO_Lichess_4852_v1.epd):
+Elo: 6.62 +/- 4.15, nElo: 13.46 +/- 8.44
+LOS: 99.91 %, DrawRatio: 53.38 %, PairsRatio: 1.17
+Games: 6512, Wins: 1505, Losses: 1381, Draws: 3626, Points: 3318.0 (50.95 %)
+Ptnml(0-2): [8, 691, 1738, 807, 12], WL/DD Ratio: 0.63
+LLR: 2.95 (100.3%) (-2.94, 2.94) [0.00, 5.00]
+```
+</td>
+<td> no need to be tested</td>
+</tr>
 </table>
