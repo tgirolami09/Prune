@@ -374,7 +374,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(expected_score >= beta+rfp_margin)
                 return expected_score;
             int razoring_margin = 350*depth/fracDepth;
-            if(static_eval+razoring_margin <= alpha){
+            if(abs(alpha) < MAXIMUM-maxDepth && static_eval+razoring_margin <= alpha){
                 const int score = Evaluate<false, limitWay>(ss, state, alpha, alpha+1, relDepth);
                 if(score <= alpha)
                     return score;
@@ -716,7 +716,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             }else{
                 limit = "";
                 finalBestMove = bestMove;
-                if(ss.searchedMoves == ss.stack[1].order.nbMoves){
+                if(ss.searchedMoves){
                     PV = ss.PVprint(ss.PVlines[0]);
                     if(ss.PVlines[0].cmove > 1)ponderMove.moveInfo = ss.PVlines[0].argMoves[1];
                     else ponderMove = nullMove;
