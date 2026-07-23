@@ -138,7 +138,7 @@ public:
 
 
 static const inline simd<16> zero_16 = simd16_zero();
-static const inline simd<32> zero_32 = simd16_zero();
+static const inline simd<32> zero_32 = simdint_zero();
 static const inline simd<16> A_16 = simd16_set1(QA);
 
 template<int input, int output, int _clamp>

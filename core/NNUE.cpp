@@ -754,21 +754,37 @@ inline simd<32> matrix_mul2(simd<32> output, simd<8> inputs1, simd<8> inputs2, s
 
 template<int input, int output>
 void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
+    simd<32> y_pre[output/nb<32>][4];
     for(int o=0; o<output/nb<32>; o++){
-        y[o] = biases[o];
+        y_pre[o][0] = zero_32;
+        y_pre[o][1] = zero_32;
+        y_pre[o][2] = zero_32;
+        y_pre[o][3] = zero_32;
     }
-    for(int i=0; i<input/I8inI32; i += 2){
+    for(int i=0; i<input/I8inI32; i += 4){
         const simd<8> inp1 = simd8_broadcast32(x[i  ]);
         const simd<8> inp2 = simd8_broadcast32(x[i+1]);
+        const simd<8> inp3 = simd8_broadcast32(x[i+2]);
+        const simd<8> inp4 = simd8_broadcast32(x[i+3]);
         const int offset1 =  i   *I8inI32*output/nb<8>;
         const int offset2 = (i+1)*I8inI32*output/nb<8>;
+        const int offset3 = (i+2)*I8inI32*output/nb<8>;
+        const int offset4 = (i+3)*I8inI32*output/nb<8>;
         for(int o=0; o<output/nb<32>; o++){
-            y[o] = matrix_mul2(y[o], 
-                inp1, inp2,
-                weights[offset1+o*nb<32>*I8inI32/nb<8>], weights[offset2+o*nb<32>*I8inI32/nb<8>]);
+            const simd<8> weights1 =  weights[offset1+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights2 =  weights[offset2+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights3 =  weights[offset3+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights4 =  weights[offset4+o*nb<32>*I8inI32/nb<8>];
+            y_pre[o][0] = matrix_mul(y_pre[o][0], inp1, weights1);
+            y_pre[o][1] = matrix_mul(y_pre[o][1], inp2, weights2);
+            y_pre[o][2] = matrix_mul(y_pre[o][2], inp3, weights3);
+            y_pre[o][3] = matrix_mul(y_pre[o][3], inp4, weights4);
         }
     }
     for(int o=0; o<output/nb<32>; o++){
+        simd<32> pre1 = simdint_add(y_pre[o][0], y_pre[o][1]);
+        simd<32> pre2 = simdint_add(y_pre[o][2], y_pre[o][3]);
+        y[o] = simdint_add(simdint_add(pre1, pre2), biases[o]);
         y[o] = simdint_clamp(y[o], zero_32, simdint_set1(QC << L1shift));
         y[o] = simdint_mullo(y[o], y[o]);
         y[o] = simdint_shr(y[o], L1shift*2);
