@@ -756,7 +756,7 @@ template<int input, int output>
 void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
     simd<32> y_pre[output/nb<32>][4];
     for(int o=0; o<output/nb<32>; o++){
-        y_pre[o][0] = zero_32;
+        y_pre[o][0] = biases[o];
         y_pre[o][1] = zero_32;
         y_pre[o][2] = zero_32;
         y_pre[o][3] = zero_32;
@@ -784,7 +784,7 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const{
     for(int o=0; o<output/nb<32>; o++){
         simd<32> pre1 = simdint_add(y_pre[o][0], y_pre[o][1]);
         simd<32> pre2 = simdint_add(y_pre[o][2], y_pre[o][3]);
-        y[o] = simdint_add(simdint_add(pre1, pre2), biases[o]);
+        y[o] = simdint_add(pre1, pre2);
         y[o] = simdint_clamp(y[o], zero_32, simdint_set1(QC << L1shift));
         y[o] = simdint_mullo(y[o], y[o]);
         y[o] = simdint_shr(y[o], L1shift*2);
