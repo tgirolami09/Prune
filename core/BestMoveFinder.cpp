@@ -179,6 +179,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     //dbyte hint;
     const int rootDist = relDepth-startRelDepth;
     if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor()), ss.correctionHistory, state, parameters);
+    __builtin_prefetch(&ss.stack[rootDist+1]);
     LegalMoveGenerator& generator = ss.stack[rootDist].generator;
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
@@ -287,6 +288,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     bool allnode = !cutnode && !isPV;
     const int rootDist = relDepth-startRelDepth;
+    __builtin_prefetch(&ss.stack[rootDist+2]);
     LegalMoveGenerator& generator = ss.stack[rootDist].generator;
     LegalMoveGenerator& nextgenerator = ss.stack[rootDist+1].generator;
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters);
