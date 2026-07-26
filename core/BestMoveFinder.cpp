@@ -545,24 +545,28 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(inCheckPos && firstMoveExtension == 0){
                 reductionDepth -= fdepth<1>;
             }
-            if(rankMove > 0){
-                int addRedDepth = 0;
-                if(rankMove > 3 && depth > parameters.lmr_min_depth){
-                    addRedDepth = static_cast<int>(parameters.lmr_base + (log(depth)-log(fracDepth)) * log(rankMove) * parameters.lmr_div);
+            const int newDepth = depth - reductionDepth + firstMoveExtension*(rankMove == 0);
+            if(rankMove > 3 && depth > parameters.lmr_min_depth){
+                const int reduction = [&](){
+                    int addRedDepth = static_cast<int>(parameters.lmr_base + (log(depth)-log(fracDepth)) * log(rankMove) * parameters.lmr_div);
                     addRedDepth -= lmr_hist*parameters.lmr_history/maxHistory;
-                    addRedDepth = max(
-                        addRedDepth,
-                        0
-                    );
                     addRedDepth /= 8;
-                }
-                score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
-                if(score > alpha && (score < beta || isPV || addRedDepth)){
+                    return addRedDepth;
+                }();
+                const int reducedDepth = min(newDepth-reduction, newDepth);
+                score = -negamax<false, limitWay>(ss, reducedDepth, state, -alpha-1, -alpha, relDepth+1, true);
+                if(score > alpha && reducedDepth < newDepth){
                     ss.generator.initDangers(state);
-                    score = -negamax<isPV, limitWay>(ss, depth-reductionDepth, state, -beta, -alpha, relDepth+1, !cutnode);
+                    score = -negamax<false, limitWay>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 }
-            }else
-                score = -negamax<isPV, limitWay>(ss, depth-reductionDepth+firstMoveExtension, state, -beta, -alpha, relDepth+1, !cutnode);
+            }else if(!isPV || rankMove >= 1){
+                score = -negamax<false, limitWay>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, true);
+            }
+            if(isPV && (rankMove == 0 || score > alpha)){
+                if(rankMove)
+                    ss.generator.initDangers(state);
+                score = -negamax<isPV, limitWay>(ss, newDepth, state, -beta, -alpha, relDepth+1, !cutnode);
+            }
             ss.eval.undoMove(curMove, !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
         }
         ss.stack[rootDist].snap.restore(state);
