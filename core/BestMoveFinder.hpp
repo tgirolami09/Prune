@@ -42,12 +42,12 @@ class BestMoveFinder{
             int16_t argMoves[maxDepth];
         };
         struct StackCase{
+            LegalMoveGenerator generator;
             Order order;
             Move searchedMoves[maxMoves];
             int static_score;
             int raw_eval;
             PositionSnapshot snap;
-            LegalMoveGenerator generator;
         };
     public:
         StackCase stack[maxDepth+1];

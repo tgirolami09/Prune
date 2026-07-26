@@ -25,10 +25,10 @@ void precomputeNormlaKingMoves();
 void precomputePawnsAttack();
 big moves_table(int index, big mask_pieces, big mask);
 
+static constexpr int doubleCheckFromSameType = -100;
 class LegalMoveGenerator{
 private:
 
-    const int doubleCheckFromSameType = -100;
 
     //Pin ray bitboards: union of all pin rays of each type
     big pinHV;   // horizontal/vertical pin rays (includes pinner + ray + pinned piece)
