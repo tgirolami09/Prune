@@ -50,7 +50,7 @@ int corrhists::probe(const GameState& state) const{
         cont.probe(contmoveid^((uint32_t)lastmoveid*0xa28fU&((1U << 16)-1)), state.friendlyColor()) +
         prevMove.probe(lastmoveid, state.friendlyColor()) +
         minor.probe(state.minorZobrist, state.friendlyColor())
-    )/corrhistGrain;
+    )/8;
 #ifdef DEBUG_MACRO
     diffsStat.update(diff);
 #endif
