@@ -34,13 +34,12 @@ void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int depth){
 }
 
 void corrhists::update(const GameState& state, int diff, int depth){
-    int bonus = diff*corrhistGrain;
     int lastmoveid = state.getLastMove().move.moveInfo;
     int contmoveid = state.getContMove().move.moveInfo;
-    pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, depth);
-    prevMove.update(lastmoveid, state.friendlyColor(), bonus, depth);
-    cont.update(contmoveid^((uint32_t)lastmoveid*0xa28fU&((1U << 16)-1)), state.friendlyColor(), bonus, depth);
-    minor.update(state.minorZobrist, state.friendlyColor(), bonus, depth);
+    pawns.update(state.pawnZobrist, state.friendlyColor(), diff, depth);
+    prevMove.update(lastmoveid, state.friendlyColor(), diff, depth);
+    cont.update(contmoveid^((uint32_t)lastmoveid*0xa28fU&((1U << 16)-1)), state.friendlyColor(), diff, depth);
+    minor.update(state.minorZobrist, state.friendlyColor(), diff, depth);
 }
 
 int corrhists::probe(const GameState& state) const{
