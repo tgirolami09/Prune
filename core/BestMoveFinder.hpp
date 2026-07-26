@@ -47,10 +47,10 @@ class BestMoveFinder{
             int static_score;
             int raw_eval;
             PositionSnapshot snap;
+            LegalMoveGenerator generator;
         };
     public:
-        LegalMoveGenerator generator;
-        StackCase stack[maxDepth];
+        StackCase stack[maxDepth+1];
         LINE PVlines[maxDepth];
         IncrementalEvaluator eval;
         atomic<sbig> nodes;
