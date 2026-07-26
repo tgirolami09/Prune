@@ -60,7 +60,7 @@ const int inputBuckets[32] = {
     14, 14, 15, 15,
 
 };
-const int DIVISOR=(31+BUCKET)/BUCKET;
+const int DIVISOR=32/BUCKET;
 
 static_assert(L1%nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
 
