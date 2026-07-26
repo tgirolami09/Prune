@@ -7,7 +7,7 @@ format :
 elo
 nElo
 pentanomial
-nElo bounds
+nElo bounds (passed or failed)
 ```
 
 ## unreleased
@@ -25,7 +25,7 @@ nElo bounds
 2.74 +/- 2.20
 4.87 +/- 3.92
 [236, 3616, 7237, 3668, 329]
-[0.00, 5.00]
+[0.00, 5.00] (passed)
 ```
 
 </td>
@@ -36,7 +36,7 @@ nElo bounds
 4.98 +/- 3.49
 9.89 +/- 6.94
 [17, 1065, 2534, 1163, 37]
-[0.00, 5.00]
+[0.00, 5.00] (passed)
 ```
 
 </td>
@@ -51,7 +51,7 @@ nElo bounds
 18.59 +/- 8.67
 26.92 +/- 12.52
 [69, 317, 588, 395, 109]
-[0.00, 5.00]
+[0.00, 5.00] (passed)
 ```
 
 </td>
@@ -62,7 +62,7 @@ nElo bounds
 -4.49 +/- 4.73
 -7.75 +/- 8.16
 [90, 877, 1615, 831, 68]
-[0.00, 5.00]
+[0.00, 5.00] (failed)
 ```
 </td> <td> not tested </td>
 <td>
@@ -72,7 +72,7 @@ nElo bounds
 15.43 +/- 6.84
 30.10 +/- 13.32
 [8, 252, 677, 356, 14]
-[0.00, 5.00]
+[0.00, 5.00] (passed)
 ```
 
 </td>
@@ -86,7 +86,7 @@ nElo bounds
 10.96 +/- 6.43
 15.91 +/- 9.33
 [133, 606, 1065, 680, 180]
-[0.00, 5.00]
+[0.00, 5.00] (passed)
 ```
 
 </td>
@@ -98,7 +98,7 @@ nElo bounds
 7.80 +/- 4.92
 13.16 +/- 8.30
 [75, 778, 1537, 867, 106]
-[0.00, 5.00]
+[0.00, 5.00] (passed)
 ```
 
 </td>
@@ -109,7 +109,7 @@ nElo bounds
 15.21 +/- 6.88
 29.02 +/- 13.11
 [6, 279, 674, 371, 19]
-[0.00, 5.00]
+[0.00, 5.00] (passed)
 ```
 
 </td> <td> no need to be tested </td>
@@ -123,7 +123,7 @@ nElo bounds
 -0.57 +/- 1.85
 -0.98 +/- 3.15
 [643, 5516, 11092, 5421, 652]
-[-5.00, 0.00]
+[-5.00, 0.00] (passed)
 ```
 </td>
 <td> no need to be tested </td> <td> no need to be tested </td> <td> no need to be tested </td>
@@ -161,7 +161,7 @@ nElo bounds
 14.47 +/- 6.76
 26.99 +/- 12.58
 [16, 290, 742, 390, 27]
-[0.00, 5.00] (pass)
+[0.00, 5.00] (passed)
 ```
 </td>
 <td>
@@ -171,7 +171,7 @@ nElo bounds
 15.76 +/- 6.80
 32.11 +/- 13.83
 [1, 233, 640, 333, 6]
-[0.00, 5.00] (pass)
+[0.00, 5.00] (passed)
 ```
 </td><td> no need to be tested </td>
 </tr>
@@ -180,25 +180,37 @@ nElo bounds
 <td>
 
 ```
-Results of razoring vs dev (10+0.1, 1t, 16MB, UHO_Lichess_4852_v1.epd):
-Elo: 9.98 +/- 5.53, nElo: 18.35 +/- 10.16
-LOS: 99.98 %, DrawRatio: 50.31 %, PairsRatio: 1.22
-Games: 4492, Wins: 1101, Losses: 972, Draws: 2419, Points: 2310.5 (51.44 %)
-Ptnml(0-2): [27, 476, 1130, 567, 46], WL/DD Ratio: 0.64
-LLR: 2.95 (100.0%) (-2.94, 2.94) [0.00, 5.00]
+(10+0.1, 1t, 16MB):
+9.98 +/- 5.53
+18.35 +/- 10.16
+[27, 476, 1130, 567, 46]
+[0.00, 5.00] (passed)
 ```
 </td>
 <td>
 
 ```
-Results of razoring vs dev (60+0.6, 1t, 128MB, UHO_Lichess_4852_v1.epd):
-Elo: 6.62 +/- 4.15, nElo: 13.46 +/- 8.44
-LOS: 99.91 %, DrawRatio: 53.38 %, PairsRatio: 1.17
-Games: 6512, Wins: 1505, Losses: 1381, Draws: 3626, Points: 3318.0 (50.95 %)
-Ptnml(0-2): [8, 691, 1738, 807, 12], WL/DD Ratio: 0.63
-LLR: 2.95 (100.3%) (-2.94, 2.94) [0.00, 5.00]
+(60+0.6, 1t, 128MB):
+6.62 +/- 4.15
+13.46 +/- 8.44
+[8, 691, 1738, 807, 12]
+[0.00, 5.00] (passed)
 ```
 </td>
 <td> no need to be tested</td>
 </tr>
+<tr>
+<td>be consistent with bullet for output bucket id </td>
+<td>no need to be tetsed </td>
+<td>
+
+```
+(10+0.1, 1t, 16MB):
+6.99 +/- 4.45
+nElo: 12.91 +/- 8.22
+[42, 768, 1674, 900, 45]
+[0.00, 5.00] (passed)
+```
+</td>
+<td>no need to be tetsed </td><td>no need to be tetsed </td>
 </table>
