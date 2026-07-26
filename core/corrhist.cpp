@@ -29,7 +29,7 @@ corrhist<size, maxCorrHist>::corrhist(){
 template<int size, int maxCorrHist>
 void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int depth){
     int& cur = table[c][key%size];
-    int update = clamp(diff*(depth/8)/fracDepth, -maxCorrHist, maxCorrHist);
+    int update = clamp(diff*(depth/2)/fracDepth, -maxCorrHist, maxCorrHist);
     cur += update - cur*abs(update)/maxCorrHist;
 }
 
@@ -50,7 +50,7 @@ int corrhists::probe(const GameState& state) const{
         cont.probe(contmoveid^((uint32_t)lastmoveid*0xa28fU&((1U << 16)-1)), state.friendlyColor()) +
         prevMove.probe(lastmoveid, state.friendlyColor()) +
         minor.probe(state.minorZobrist, state.friendlyColor())
-    )/8;
+    )/16;
 #ifdef DEBUG_MACRO
     diffsStat.update(diff);
 #endif
