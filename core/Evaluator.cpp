@@ -286,7 +286,7 @@ bool IncrementalEvaluator::isOnlyPawns() const{
 int IncrementalEvaluator::getRaw(bool c){
 #ifndef HCE
     globnnue.updateStack(stackAcc, stackIndex, finny);
-    return globnnue.eval(stackAcc[stackIndex], c, (nbMan-1)/DIVISOR);
+    return globnnue.eval(stackAcc[stackIndex], c, (nbMan-2)/DIVISOR);
 #else
     int clampPhase = min(mgPhase, 24);
     int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
