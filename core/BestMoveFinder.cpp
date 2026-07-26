@@ -371,7 +371,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 rfp_margin = parameters.rfp_improving*depth/fracDepth;
             else
                 rfp_margin = parameters.rfp_nimproving*depth/fracDepth;
-            if(expected_score >= beta+rfp_margin)
+            if(expected_score >= beta+rfp_margin && depth < fdepth<9>)
                 return expected_score;
             int razoring_margin = 350*depth/fracDepth;
             if(abs(alpha) < MAXIMUM-maxDepth && static_eval+razoring_margin <= alpha){
