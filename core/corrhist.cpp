@@ -1,4 +1,5 @@
 #include "corrhist.hpp"
+#include "Const.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -26,21 +27,20 @@ corrhist<size, maxCorrHist>::corrhist(){
 }
 
 template<int size, int maxCorrHist>
-void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int weight){
+void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int depth){
     int& cur = table[c][key%size];
-    cur = ((256-weight)*cur+diff*weight)/256;
-    cur = clamp(cur, -maxCorrHist, maxCorrHist);
+    int update = clamp(diff*(depth/8)/fracDepth, -maxCorrHist, maxCorrHist);
+    cur += update - cur*abs(update)/maxCorrHist;
 }
 
 void corrhists::update(const GameState& state, int diff, int depth){
     int bonus = diff*corrhistGrain;
-    int weight = max(depth+fdepth<1>, fdepth<16>)/fracDepth;
     int lastmoveid = state.getLastMove().move.moveInfo;
     int contmoveid = state.getContMove().move.moveInfo;
-    pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, weight);
-    prevMove.update(lastmoveid, state.friendlyColor(), bonus, weight);
-    cont.update(contmoveid^((uint32_t)lastmoveid*0xa28fU&((1U << 16)-1)), state.friendlyColor(), bonus, weight);
-    minor.update(state.minorZobrist, state.friendlyColor(), bonus, weight);
+    pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, depth);
+    prevMove.update(lastmoveid, state.friendlyColor(), bonus, depth);
+    cont.update(contmoveid^((uint32_t)lastmoveid*0xa28fU&((1U << 16)-1)), state.friendlyColor(), bonus, depth);
+    minor.update(state.minorZobrist, state.friendlyColor(), bonus, depth);
 }
 
 int corrhists::probe(const GameState& state) const{
