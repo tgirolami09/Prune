@@ -65,6 +65,7 @@ const int DIVISOR=32/BUCKET;
 static_assert(L1%nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
 
 int getInputBucket(int Kpos, bool side, bool mirror);
+class NNUE;
 
 class Index{
 public:
@@ -119,7 +120,7 @@ public:
 class FinnyTables{
 public:
     FinnytableNormal normals[nbInputBuckets*4];
-    void init();
+    void init(const NNUE& nnue);
 };
 
 class updateBuffer{
@@ -176,7 +177,7 @@ class Accumulator{
     template<bool enPassant=false, bool tworemove=false>
     void updateXrays(const int8_t mailbox[64], int square, bool remove, int removepos, int removepos2=-1);
     void getThreatUpdates(const PositionState& state1, const PositionState& state2, const Move& move);
-    void applythreatsUpdates(Accumulator& accIn, bool side);
+    void applythreatsUpdates(Accumulator& accIn, bool side, const NNUE& nnue);
 public:
     simd<16> accs[4][L1/nb<16>];
     bool Kside[2];
@@ -195,7 +196,7 @@ public:
     simd<16>* operator[](int idx){
         return accs[idx];
     }
-    void updateSelf(Accumulator& accIn, FinnyTables& finny);
+    void updateSelf(Accumulator& accIn, FinnyTables& finny, const NNUE& nnue);
 };
 
 class NNUE{

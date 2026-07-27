@@ -1,8 +1,10 @@
+//numa code from https://github.com/Ciekce/Stormphrax
 #include "numa.hpp"
 #include <pthread.h>
 #include <cstdio>
 
 namespace prune_numa{
+    vector<NNUE> nnues;
     bool init() {
         if (numa_available() < 0) {
             return false;
@@ -10,7 +12,12 @@ namespace prune_numa{
 
         threadMapping();
 
-        printf("%d NUMA nodes\n", nodeCount());
+        const int numNodes = nodeCount();
+        printf("%d NUMA nodes\n", numNodes);
+        nnues.reserve(numNodes);
+        for(int i=0; i<numNodes; i++){
+            memcpy(&nnues[i], baseModel, sizeof(NNUE));
+        }
 
         return true;
     }

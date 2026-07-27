@@ -182,23 +182,23 @@ class IncrementalEvaluator{
 public:
     int stackIndex;
     template<int f, bool updateNNUE>
-    void changePiece(int pos, int piece, bool c, bool updateNNUE2=true);
+    void changePiece(const NNUE& nnue, int pos, int piece, bool c, bool updateNNUE2=true);
     template<int f, bool updateNNUE>
-    void changePiece2(int pos, int piece, bool c);
+    void changePiece2(const NNUE& nnue, int pos, int piece, bool c);
     void backStack();
     void print();
     IncrementalEvaluator();
-    void init(const GameState& state);
+    void init(const GameState& state, const NNUE& nnue);
     bool isInsufficientMaterial() const;
     bool isOnlyPawns() const;
-    int getScore(bool c, const corrhists& ch, const GameState& state, const tunables& parameters);
-    int getRaw(bool c);
+    int getScore(bool c, const corrhists& ch, const GameState& state, const tunables& parameters, const NNUE& nnue);
+    int getRaw(bool c, const NNUE& nnue);
     int correctEval(int eval, const corrhists& ch, const GameState& state, const tunables& parameters) const;
     int getNbMan() const { return nbMan; }
     template<int f=1>
-    void playMove(Move move, bool c, const PositionState& state1, const PositionState& state2);
-    void playNoBack(const GameState& state, Move move, bool c);
-    void undoMove(Move move, bool c, const PositionState& state1, const PositionState& state2);
+    void playMove(const NNUE& nnue, Move move, bool c, const PositionState& state1, const PositionState& state2);
+    void playNoBack(const GameState& state, Move move, bool c, const NNUE& nnue);
+    void undoMove(const NNUE& nnue, Move move, bool c, const PositionState& state1, const PositionState& state2);
 #ifndef HCE
     const Accumulator& operator[](int idx) const;
 #endif

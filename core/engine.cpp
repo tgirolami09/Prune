@@ -274,20 +274,20 @@ void manageSearch(){
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
-                ieval->init(state->root);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor());
+                ieval->init(state->root, globnnue);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor(), globnnue);
                 for(int r=7; r >= 0; r--){
                     pair<char, int> evals[8];
                     for(int c=0; c < 8; c++){
                         int square = (r << 3) | c;
                         int piece = state->root.getfullPiece(square);
                         if(type(piece) != SPACE){
-                            ieval->changePiece2<-1, true>(square, type(piece), color(piece));
+                            ieval->changePiece2<-1, true>(globnnue, square, type(piece), color(piece));
                             char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor());
+                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor(), globnnue);
                             if(color(piece) == WHITE)repr = toupper(repr);
                             evals[7-c] = {repr, derived};
-                            ieval->changePiece2<1, false>(square, type(piece), color(piece));
+                            ieval->changePiece2<1, false>(globnnue, square, type(piece), color(piece));
                         }else evals[7-c] = {' ', 0};
                     }
                     for(int i=0; i<8; i++)
@@ -319,8 +319,8 @@ void manageSearch(){
                 snap.save(state->root);
                 for(Move move:state->movesFromRoot)
                     state->root.playPartialMove(move);
-                ieval->init(state->root);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor());
+                ieval->init(state->root, globnnue);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor(), globnnue);
                 snap.restore(state->root);
                 printf("%d cp\n", overall_eval);
             }else if(command == "ucinewgame"){
