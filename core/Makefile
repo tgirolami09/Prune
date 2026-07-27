@@ -9,6 +9,7 @@ OPT?=-O3 -flto -funroll-loops
 
 TUNE?=false
 HCE?=false
+NUMA?=false
 DATAGEN?=false
 UNITTEST?=false
 
@@ -57,6 +58,9 @@ ifeq ($(TUNE), true)
 	BASENAME := spsa
 	MAIN=spsa.cpp
 	ADDSUFFIX=false
+endif
+ifeq ($(NUMA), true)
+	myCPPFLAGS := $(myCPPFLAGS) -DNUMA -lnuma -Wno-unused-command-line-argument
 endif
 
 myLDFLAGS=
