@@ -17,6 +17,9 @@
 #include <set>
 #include <iostream>
 #include <cmath>
+#ifdef NUMA
+#include "numa.hpp"
+#endif
 int nbThreads = 1;
 bool DEBUG = false;
 bool isdfrc = false;
@@ -624,6 +627,9 @@ void manageSearch(){
 }
 
 int main(int argc, char** argv){
+#ifdef NUMA
+    prune_numa::init();
+#endif
     string UCI_instruction = "programStart";
     thread t;
     bool seeInput = true;

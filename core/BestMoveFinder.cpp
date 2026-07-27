@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <cassert>
+#include "numa.hpp"
 #include "tunables.hpp"
 #include "wdlModel.hpp"
 
@@ -613,6 +614,9 @@ void BestMoveFinder::launchSMP(int idThread){
     ss.local.reinit(ss.localState);
     ss.local.mainThread = false;
     negamax<PVNode, limitWay, int, true>(ss.local, depth, ss.localState, alpha, beta, relDepth);*/
+#ifdef NUMA
+    prune_numa::bindThread(idThread);
+#endif
     HelperThread& ss = helperThreads[idThread];
     ss.running = false;
     while(!smp_end){
