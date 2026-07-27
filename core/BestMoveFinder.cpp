@@ -177,6 +177,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(isPV && relDepth > ss.seldepth)ss.seldepth = relDepth;
     //dbyte hint;
     const int rootDist = relDepth-startRelDepth;
+    __builtin_prefetch(&ss.stack[rootDist+1]);
     if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor()), ss.correctionHistory, state, parameters);
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
@@ -288,6 +289,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters);
     if(isPV)ss.seldepth = max(ss.seldepth.load(), relDepth);
     transposition.prefetch(state);
+    __builtin_prefetch(&ss.stack[rootDist+1]);
     if(MAXIMUM-rootDist <= alpha)return MAXIMUM-rootDist;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
     if constexpr(limitWay == 0)if((ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)stop_flag = 1;
