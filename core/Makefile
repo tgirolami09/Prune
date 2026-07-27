@@ -29,6 +29,9 @@ SOURCES := $(filter-out spsa.cpp,$(SOURCES))
 SOURCES := $(filter-out datasetStats.cpp,$(SOURCES))
 SOURCES := $(filter-out quantise.cpp,$(SOURCES))
 SOURCES := $(filter-out permute.cpp,$(SOURCES))
+ifeq ($(NUMA), false)
+	SOURCES := $(filter-out numa.cpp,$(SOURCES))
+endif
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
 DEPENDS := $(OBJECTS:%.o=%.d)
 

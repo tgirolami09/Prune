@@ -1,3 +1,4 @@
+//numa code from https://github.com/Ciekce/Stormphrax
 #ifndef NUMA_HPP
 #define NUMA_HPP
 
@@ -6,10 +7,12 @@
 #include <cstdint>
 #include <sched.h>
 #include <vector>
+#include "NNUE.hpp"
 
 using namespace std;
 
 namespace prune_numa{
+    extern vector<NNUE> nnues;
     bool init();
     void bindThread(uint32_t numaId);
     int nodeCount();

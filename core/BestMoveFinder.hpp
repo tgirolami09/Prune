@@ -60,15 +60,16 @@ class BestMoveFinder{
         atomic<int> seldepth;
         bool let_run;
         sbig tbHits;
+        int idThread;
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
         corrhists correctionHistory;
         int searchedMoves = 0;
         int min_nmp_ply=0;
-        usefull(const GameState& state, const tunables& parameters);
+        usefull(const GameState& state, const tunables& parameters, const NNUE& nnue);
         usefull();
-        void reinit(const GameState& state);
+        void reinit(const GameState& state, const NNUE& nnue);
         string PVprint(LINE pvLine);
         void transfer(int relDepth, Move move);
         void beginLine(int relDepth);
@@ -86,7 +87,7 @@ class BestMoveFinder{
 
     class HelperThread{
     public:
-        usefull local;
+        unique_ptr<usefull> local;
         GameState localState;
         thread t;
         bool running;

@@ -365,7 +365,7 @@ void Accumulator::reinit(const Move& move, const PositionState& state1, const Po
     }
 }
 
-void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov){
+void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov, const NNUE& nnue){
     if(update.nbThreats[0]+update.nbThreats[1] == 0){
         memcpy(accs[pov+2], accIn.accs[pov+2], sizeof(accs[pov+2]));
         return;
@@ -374,62 +374,62 @@ void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov){
     for(int j=0; j<2; j++)
         for(int i=0; i<update.nbThreats[j]; i++){
             updates[j][i] = update.threatUpdates[j][i].changepov(pov).mirror(Kside[pov]).swapSemiExcluded();
-            __builtin_prefetch(&globnnue.threatWeights[updates[j][i]]);
+            __builtin_prefetch(&nnue.threatWeights[updates[j][i]]);
         }
     int maxi = update.nbThreats[0] < update.nbThreats[1];
     Accumulator* inAcc = &accIn;
     int applied = 0;
     while(update.nbThreats[maxi^1] >= 4+applied){
-        globnnue.Threataddsub<4>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+        nnue.Threataddsub<4>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
         inAcc = this;
         applied += 4;
     }
     if(update.nbThreats[maxi^1] >= 2+applied){
-        globnnue.Threataddsub<2>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+        nnue.Threataddsub<2>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
         inAcc = this;
         applied += 2;
     }
     if(update.nbThreats[maxi^1] >= 1+applied){
-        globnnue.Threataddsub<1>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
+        nnue.Threataddsub<1>(*inAcc, *this, pov, updates[0]+applied, updates[1]+applied);
         inAcc = this;
         applied += 1;
     }
     if(maxi){
         while(update.nbThreats[1] >= 4+applied){
-            globnnue.addThreat<-1, 4>(*inAcc, *this, pov, updates[1]+applied);
+            nnue.addThreat<-1, 4>(*inAcc, *this, pov, updates[1]+applied);
             applied += 4;
             inAcc = this;
         }
         if(update.nbThreats[1] >= 2+applied){
-            globnnue.addThreat<-1, 2>(*inAcc, *this, pov, updates[1]+applied);
+            nnue.addThreat<-1, 2>(*inAcc, *this, pov, updates[1]+applied);
             applied += 2;
             inAcc = this;
         }
         if(update.nbThreats[1] >= 1+applied){
-            globnnue.addThreat<-1, 1>(*inAcc, *this, pov, updates[1]+applied);
+            nnue.addThreat<-1, 1>(*inAcc, *this, pov, updates[1]+applied);
             applied += 1;
             inAcc = this;
         }
     }else{
         while(update.nbThreats[0] >= 4+applied){
-            globnnue.addThreat< 1, 4>(*inAcc, *this, pov, updates[0]+applied);
+            nnue.addThreat< 1, 4>(*inAcc, *this, pov, updates[0]+applied);
             applied += 4;
             inAcc = this;
         }
         if(update.nbThreats[0] >= 2+applied){
-            globnnue.addThreat< 1, 2>(*inAcc, *this, pov, updates[0]+applied);
+            nnue.addThreat< 1, 2>(*inAcc, *this, pov, updates[0]+applied);
             applied += 2;
             inAcc = this;
         }
         if(update.nbThreats[0] >= 1+applied){
-            globnnue.addThreat< 1, 1>(*inAcc, *this, pov, updates[0]+applied);
+            nnue.addThreat< 1, 1>(*inAcc, *this, pov, updates[0]+applied);
             applied += 1;
             inAcc = this;
         }
     }
 }
 
-void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny){
+void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny, const NNUE& nnue){
 #ifdef DEBUG_MACRO
     TIupdateAddStat.update(update.nbThreats[0]);
     TIupdateRemStat.update(update.nbThreats[1]);
@@ -437,11 +437,11 @@ void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny){
     TIupdateDiffStat.update(update.nbThreats[0]-update.nbThreats[1]);
 #endif
     if(threatrefresh){
-        globnnue.calcThreats(*this, side, board);
-        applythreatsUpdates(accIn, !side);
+        nnue.calcThreats(*this, side, board);
+        applythreatsUpdates(accIn, !side, nnue);
     }else{
-        applythreatsUpdates(accIn, WHITE);
-        applythreatsUpdates(accIn, BLACK);
+        applythreatsUpdates(accIn, WHITE, nnue);
+        applythreatsUpdates(accIn, BLACK, nnue);
     }
     if(pstrefresh){
         int index = (idInputBucket[side]*2+Kside[side])*2+side;
@@ -455,18 +455,18 @@ void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny){
                 while(maskadd && maskrem){
                     const int posrem = __builtin_ctzll(maskrem);
                     const int posadd = __builtin_ctzll(maskadd);
-                    globnnue.move2In(curAcc, Index(posrem, piece, c).mirror(Kside[side]).changepov(side), Index(posadd, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
+                    nnue.move2In(curAcc, Index(posrem, piece, c).mirror(Kside[side]).changepov(side), Index(posadd, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
                     maskrem &= maskrem-1;
                     maskadd &= maskadd-1;
                 }
                 while(maskrem){
                     const int posrem = __builtin_ctzll(maskrem);
-                    globnnue.change1acc<-1>(curAcc, Index(posrem, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
+                    nnue.change1acc<-1>(curAcc, Index(posrem, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
                     maskrem &= maskrem-1;
                 }
                 while(maskadd){
                     const int posadd = __builtin_ctzll(maskadd);
-                    globnnue.change1acc<1>(curAcc, Index(posadd, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
+                    nnue.change1acc<1>(curAcc, Index(posadd, piece, c).mirror(Kside[side]).changepov(side), idInputBucket[side]);
                     maskadd &= maskadd-1;
                 }
             }
@@ -474,31 +474,31 @@ void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny){
         memcpy(finny.normals[index].bitboards, board.pieces, sizeof(board.pieces));
         memcpy(finny.normals[index].bitboards+6, board.colors, sizeof(board.colors));
         if(update.type == 0)
-            globnnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), idInputBucket[!side]);
+            nnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), idInputBucket[!side]);
         else if(update.type == 1)
-            globnnue.move3(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]), idInputBucket[!side]);
+            nnue.move3(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]), idInputBucket[!side]);
         else if(update.type == 2)
-            globnnue.move4(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]), update.add2[!side].mirror(Kside[!side]), idInputBucket[!side]);
+            nnue.move4(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]), update.add1[!side].mirror(Kside[!side]), update.sub2[!side].mirror(Kside[!side]), update.add2[!side].mirror(Kside[!side]), idInputBucket[!side]);
         update.dirty = false;
         return;
     }
     if(update.type == 0){
-        globnnue.move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
-        globnnue.move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
+        nnue.move2(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
+        nnue.move2(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
     }else if(update.type == 1){
-        globnnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
-        globnnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
+        nnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
+        nnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
     }else{
-        globnnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
-        globnnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
+        nnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]), update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]), update.add2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
+        nnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]), update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]), update.add2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
     }
     update.dirty = false;
 }
 
-void FinnyTables::init(){
+void FinnyTables::init(const NNUE& nnue){
     for(int i=0; i<nbInputBuckets*4; i++){
         memset(normals[i].bitboards, 0, sizeof(normals[i].bitboards));
-        globnnue.init1Acc(normals[i].accs);
+        nnue.init1Acc(normals[i].accs);
     }
 }
 
@@ -877,7 +877,7 @@ void NNUE::updateStack(Accumulator* stack, int stackIndex, FinnyTables& tables) 
     for(startUpdate=stackIndex; startUpdate >= 1 && stack[startUpdate].update.dirty; startUpdate--);
     startUpdate++;
     for(int i=startUpdate; i<=stackIndex; i++){
-        stack[i].updateSelf(stack[i-1], tables);
+        stack[i].updateSelf(stack[i-1], tables, *this);
     }
 }
 

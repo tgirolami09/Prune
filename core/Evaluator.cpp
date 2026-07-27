@@ -240,13 +240,13 @@ IncrementalEvaluator::IncrementalEvaluator(){
     memset(presentPieces, 0, sizeof(presentPieces));
 }
 
-void IncrementalEvaluator::init(const GameState& state){//should be only call at the start of the search
+void IncrementalEvaluator::init(const GameState& state, const NNUE& nnue){//should be only call at the start of the search
     mgPhase = 0;
     nbMan = 0;
     stackIndex = 0;
 #ifndef HCE
-    globnnue.initAcc(stackAcc[stackIndex]);
-    finny.init();
+    nnue.initAcc(stackAcc[stackIndex]);
+    finny.init(nnue);
     stackAcc[stackIndex].update.nbThreats[0] = 0;
     stackAcc[stackIndex].update.nbThreats[1] = 0;
     stackAcc[stackIndex].update.dirty = false;
@@ -255,8 +255,8 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     stackAcc[stackIndex].idInputBucket[WHITE] = getInputBucket(__builtin_ctzll(state.board.getMask(KING, WHITE)), WHITE, stackAcc[stackIndex].Kside[WHITE]);
     stackAcc[stackIndex].idInputBucket[BLACK] = getInputBucket(__builtin_ctzll(state.board.getMask(KING, BLACK)), BLACK, stackAcc[stackIndex].Kside[BLACK]);
     memcpy(&stackAcc[stackIndex].board, &state.board, sizeof(stackAcc[stackIndex].board));
-    globnnue.calcThreats(stackAcc[stackIndex], WHITE, state.board);
-    globnnue.calcThreats(stackAcc[stackIndex], BLACK, state.board);
+    nnue.calcThreats(stackAcc[stackIndex], WHITE, state.board);
+    nnue.calcThreats(stackAcc[stackIndex], BLACK, state.board);
     //printf("%d %d\n", stackAcc[stackIndex].idInputBucket[WHITE], stackAcc[stackIndex].idInputBucket[BLACK]);
 #else
     egScore = 0;
@@ -266,7 +266,7 @@ void IncrementalEvaluator::init(const GameState& state){//should be only call at
     for(int square=0; square<64; square++){
         int piece=state.getfullPiece(square);
         if(type(piece) != SPACE){
-            changePiece<1, true>(square, type(piece), color(piece));
+            changePiece<1, true>(nnue, square, type(piece), color(piece));
             //printf("intermediate eval : %d\n", getScore(state.friendlyColor()));
         }
     }
@@ -283,10 +283,10 @@ bool IncrementalEvaluator::isOnlyPawns() const{
     return !mgPhase;
 }
 
-int IncrementalEvaluator::getRaw(bool c){
+int IncrementalEvaluator::getRaw(bool c, __attribute__((unused)) const NNUE& nnue){
 #ifndef HCE
-    globnnue.updateStack(stackAcc, stackIndex, finny);
-    return globnnue.eval(stackAcc[stackIndex], c, (nbMan-2)/DIVISOR);
+    nnue.updateStack(stackAcc, stackIndex, finny);
+    return nnue.eval(stackAcc[stackIndex], c, (nbMan-2)/DIVISOR);
 #else
     int clampPhase = min(mgPhase, 24);
     int score = (clampPhase*mgScore+(24-clampPhase)*egScore)/24;
@@ -295,8 +295,8 @@ int IncrementalEvaluator::getRaw(bool c){
 #endif
 }
 
-int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state, const tunables& parameters){
-    int raw_eval = getRaw(c);
+int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state, const tunables& parameters, const NNUE& nnue){
+    int raw_eval = getRaw(c, nnue);
     return correctEval(raw_eval, ch, state, parameters);
 }
 int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const GameState &state, __attribute__((unused)) const tunables& parameters) const{
@@ -317,18 +317,18 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const G
     return clamp(raw_eval, -TB_WIN_SCORE+100, TB_WIN_SCORE-100);
 #endif
 }
-void IncrementalEvaluator::undoMove(Move move, bool c, const PositionState& state1, const PositionState& state2){
-    playMove<-1>(move, c, state1, state2);
+void IncrementalEvaluator::undoMove(const NNUE& nnue, Move move, bool c, const PositionState& state1, const PositionState& state2){
+    playMove<-1>(nnue, move, c, state1, state2);
 }
 
 template<int f, bool updateNNUE>
-void IncrementalEvaluator::changePiece(int pos, int piece, bool c, __attribute__((unused)) bool updateNNUE2){
+void IncrementalEvaluator::changePiece(__attribute__((unused)) const NNUE& nnue, int pos, int piece, bool c, __attribute__((unused)) bool updateNNUE2){
 #ifndef HCE
     if(updateNNUE)
         if(updateNNUE2){
             Index index(pos, piece, c);
-            globnnue.change1<f>(stackAcc[stackIndex], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]), stackAcc[stackIndex].idInputBucket[WHITE]);
-            globnnue.change1<f>(stackAcc[stackIndex], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(), stackAcc[stackIndex].idInputBucket[BLACK]);
+            nnue.change1<f>(stackAcc[stackIndex], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]), stackAcc[stackIndex].idInputBucket[WHITE]);
+            nnue.change1<f>(stackAcc[stackIndex], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(), stackAcc[stackIndex].idInputBucket[BLACK]);
         }
 #else
     mgScore += f*mg_table[c][piece][pos];
@@ -341,12 +341,12 @@ void IncrementalEvaluator::changePiece(int pos, int piece, bool c, __attribute__
 
 
 template<int f, bool updateNNUE>
-void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
+void IncrementalEvaluator::changePiece2(__attribute__((unused)) const NNUE& nnue, int pos, int piece, bool c){
 #ifndef HCE
     if(updateNNUE){
         Index index(pos, piece, c);
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]), stackAcc[stackIndex].idInputBucket[WHITE]);
-        globnnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(), stackAcc[stackIndex].idInputBucket[BLACK]);
+        nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], WHITE, index.mirror(stackAcc[stackIndex].Kside[WHITE]), stackAcc[stackIndex].idInputBucket[WHITE]);
+        nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex+1], BLACK, index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(), stackAcc[stackIndex].idInputBucket[BLACK]);
         stackIndex++;
     }else{
         stackIndex--;
@@ -362,15 +362,15 @@ void IncrementalEvaluator::changePiece2(int pos, int piece, bool c){
 
 
 template<int f>
-void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) const PositionState& state1, __attribute__((unused)) const PositionState& state2){
+void IncrementalEvaluator::playMove(const NNUE& nnue, Move move, bool c, __attribute__((unused)) const PositionState& state1, __attribute__((unused)) const PositionState& state2){
     static_assert(f == -1 || f == 1, "f has to be either -1 or 1");
     const int piece = type(state1.mailbox[move.from()]);
     const int toPiece = piece|move.promotion();
     const int capture = state1.getCapture(move);
     const int toSquare = move.toMover();
     if(move.getFlag() == Move::fpromo){
-        changePiece<-f, false>(move.from(), piece, c);
-        changePiece<f, false>(move.to(), toPiece, c);
+        changePiece<-f, false>(nnue, move.from(), piece, c);
+        changePiece<f, false>(nnue, move.to(), toPiece, c);
     }
 #ifdef HCE
     else{
@@ -392,7 +392,7 @@ void IncrementalEvaluator::playMove(Move move, bool c, __attribute__((unused)) c
             else posCapture += 8;
             pieceCapture = PAWN;
         }
-        changePiece<-f, false>(posCapture, pieceCapture, !c);
+        changePiece<-f, false>(nnue, posCapture, pieceCapture, !c);
 #ifndef HCE
         if(f == 1)
             sub2 = Index(posCapture, pieceCapture, !c);
@@ -428,7 +428,7 @@ void IncrementalEvaluator::backStack(){
     stackIndex--;
 }
 
-void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& state, Move move, bool c){
+void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& state, Move move, bool c, __attribute__((unused)) const NNUE& nnue){
     int piece = state.getPiece(move.from());
     int toPiece = piece | move.promotion(); //for promotion
     int capture = state.board.getCapture(move);
@@ -436,8 +436,8 @@ void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& s
     bool mirror = false;
     if(piece == KING && (col(move.from()) > 3) != (col(toSquare) > 3))
         mirror = true;
-    changePiece<-1, true>(move.from(), piece, c, !mirror);
-    changePiece<1, true>(toSquare, toPiece, c, !mirror);
+    changePiece<-1, true>(nnue, move.from(), piece, c, !mirror);
+    changePiece<1, true>(nnue, toSquare, toPiece, c, !mirror);
     if(capture != SPACE){
         int posCapture = move.to();
         int pieceCapture = capture;
@@ -446,19 +446,19 @@ void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& s
             else posCapture += 8;
             pieceCapture = PAWN;
         }
-        changePiece<-1, true>(posCapture, pieceCapture, !c, !mirror);
+        changePiece<-1, true>(nnue, posCapture, pieceCapture, !c, !mirror);
     }
     if(move.getFlag() == Move::fcastle){ //castling
         int rookStart = move.to();
         int rookEnd = toSquare+2*(move.from() > move.to())-1;
-        changePiece<-1, true>(rookStart, ROOK, c, !mirror);
-        changePiece<1, true>(rookEnd, ROOK, c, !mirror);
+        changePiece<-1, true>(nnue, rookStart, ROOK, c, !mirror);
+        changePiece<1, true>(nnue, rookEnd, ROOK, c, !mirror);
     }
 
 #ifndef HCE
     if(mirror){
         stackAcc[stackIndex].Kside[state.enemyColor()] ^= 1;
-        init(state);
+        init(state, nnue);
     }
 #endif
 }
@@ -468,9 +468,9 @@ const Accumulator& IncrementalEvaluator::operator[](int idx) const{
 }
 #endif
 
-template void IncrementalEvaluator::playMove<-1>(Move, bool, const PositionState&, const PositionState&);
-template void IncrementalEvaluator::playMove< 1>(Move, bool, const PositionState&, const PositionState&);
-template void IncrementalEvaluator::changePiece2<-1, true>(int, int, bool);
-template void IncrementalEvaluator::changePiece2< 1, true>(int, int, bool);
-template void IncrementalEvaluator::changePiece2<-1, false>(int, int, bool);
-template void IncrementalEvaluator::changePiece2< 1, false>(int, int, bool);
+template void IncrementalEvaluator::playMove<-1>(const NNUE&, Move, bool, const PositionState&, const PositionState&);
+template void IncrementalEvaluator::playMove< 1>(const NNUE&, Move, bool, const PositionState&, const PositionState&);
+template void IncrementalEvaluator::changePiece2<-1, true>(const NNUE&, int, int, bool);
+template void IncrementalEvaluator::changePiece2< 1, true>(const NNUE&, int, int, bool);
+template void IncrementalEvaluator::changePiece2<-1, false>(const NNUE&, int, int, bool);
+template void IncrementalEvaluator::changePiece2< 1, false>(const NNUE&, int, int, bool);
