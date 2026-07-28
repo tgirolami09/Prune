@@ -17,9 +17,7 @@
 #include <string>
 #include <vector>
 #include <thread>
-#ifdef NUMA
 #include "numa.hpp"
-#endif
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
 #ifdef DEBUG_MACRO

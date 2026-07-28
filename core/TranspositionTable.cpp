@@ -8,7 +8,7 @@
 #ifndef _WIN32
 #include <sys/mman.h>
 #endif
-__attribute__((unused)) constexpr size_t HugePage2MB = 2*1024*1024;
+_unused constexpr size_t HugePage2MB = 2*1024*1024;
 constexpr size_t DefaultAlign = 4096;
 
 transpositionTable::transpositionTable(size_t count):table(NULL){

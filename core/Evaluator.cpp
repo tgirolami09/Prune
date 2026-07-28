@@ -283,7 +283,7 @@ bool IncrementalEvaluator::isOnlyPawns() const{
     return !mgPhase;
 }
 
-int IncrementalEvaluator::getRaw(bool c, __attribute__((unused)) const NNUE& nnue){
+int IncrementalEvaluator::getRaw(bool c, _unused const NNUE& nnue){
 #ifndef HCE
     nnue.updateStack(stackAcc, stackIndex, finny);
     return nnue.eval(stackAcc[stackIndex], c, (nbMan-2)/DIVISOR);
@@ -299,7 +299,7 @@ int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState&
     int raw_eval = getRaw(c, nnue);
     return correctEval(raw_eval, ch, state, parameters);
 }
-int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const GameState &state, __attribute__((unused)) const tunables& parameters) const{
+int IncrementalEvaluator::correctEval(int raw_eval, const corrhists &ch, const GameState &state, _unused const tunables& parameters) const{
     raw_eval += ch.probe(state);
 #if !defined(DATAGEN) && !defined(HCE)
     int nbQ = presentPieces[WHITE][QUEEN]+presentPieces[BLACK][QUEEN];
@@ -322,7 +322,7 @@ void IncrementalEvaluator::undoMove(const NNUE& nnue, Move move, bool c, const P
 }
 
 template<int f, bool updateNNUE>
-void IncrementalEvaluator::changePiece(__attribute__((unused)) const NNUE& nnue, int pos, int piece, bool c, __attribute__((unused)) bool updateNNUE2){
+void IncrementalEvaluator::changePiece(_unused const NNUE& nnue, int pos, int piece, bool c, _unused bool updateNNUE2){
 #ifndef HCE
     if(updateNNUE)
         if(updateNNUE2){
@@ -341,7 +341,7 @@ void IncrementalEvaluator::changePiece(__attribute__((unused)) const NNUE& nnue,
 
 
 template<int f, bool updateNNUE>
-void IncrementalEvaluator::changePiece2(__attribute__((unused)) const NNUE& nnue, int pos, int piece, bool c){
+void IncrementalEvaluator::changePiece2(_unused const NNUE& nnue, int pos, int piece, bool c){
 #ifndef HCE
     if(updateNNUE){
         Index index(pos, piece, c);
@@ -362,7 +362,7 @@ void IncrementalEvaluator::changePiece2(__attribute__((unused)) const NNUE& nnue
 
 
 template<int f>
-void IncrementalEvaluator::playMove(const NNUE& nnue, Move move, bool c, __attribute__((unused)) const PositionState& state1, __attribute__((unused)) const PositionState& state2){
+void IncrementalEvaluator::playMove(const NNUE& nnue, Move move, bool c, _unused const PositionState& state1, _unused const PositionState& state2){
     static_assert(f == -1 || f == 1, "f has to be either -1 or 1");
     const int piece = type(state1.mailbox[move.from()]);
     const int toPiece = piece|move.promotion();
@@ -428,7 +428,7 @@ void IncrementalEvaluator::backStack(){
     stackIndex--;
 }
 
-void IncrementalEvaluator::playNoBack(__attribute__((unused)) const GameState& state, Move move, bool c, __attribute__((unused)) const NNUE& nnue){
+void IncrementalEvaluator::playNoBack(_unused const GameState& state, Move move, bool c, _unused const NNUE& nnue){
     int piece = state.getPiece(move.from());
     int toPiece = piece | move.promotion(); //for promotion
     int capture = state.board.getCapture(move);

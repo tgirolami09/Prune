@@ -12,7 +12,7 @@ double sigmoid(double x){
 }
 
 
-int main(__attribute__((unused)) int argc, char** argv){
+int main(_unused int argc, char** argv){
     ifstream file(argv[1]);
     IncrementalEvaluator eval;
     GameState state;
@@ -42,8 +42,8 @@ int main(__attribute__((unused)) int argc, char** argv){
             assert(false);
         }
         state.fromFen(fen);
-        eval.init(state);
-        int staticeval = eval.getRaw(state.friendlyColor());
+        eval.init(state, globnnue);
+        int staticeval = eval.getRaw(state.friendlyColor(), globnnue);
         if(state.friendlyColor() == BLACK)
             staticeval = -staticeval;
         sum_eval += abs(staticeval);

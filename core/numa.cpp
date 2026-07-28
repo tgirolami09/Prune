@@ -1,7 +1,10 @@
 //numa code from https://github.com/Ciekce/Stormphrax
+#ifdef NUMA
 #include "numa.hpp"
 #include <pthread.h>
 #include <cstdio>
+#include <numa.h>
+#include <sched.h>
 
 namespace prune_numa{
     vector<NNUE> nnues;
@@ -70,4 +73,9 @@ namespace prune_numa{
     int getNode(unsigned int numaId) {
         return numaId % nodeCount();
     }
+
+    const NNUE& getnnue(uint32_t numaId){
+        return nnues[numaId];
+    }
 }
+#endif
