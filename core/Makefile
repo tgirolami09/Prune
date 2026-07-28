@@ -142,7 +142,7 @@ else
 	NEEDINGFILE=
 endif
 
-override CPPFLAGS += $(myCPPFLAGS) $(NOTMAIN) $(OPT) $(ARCHCOM) $(ADDOPTION)
+override CPPFLAGS += $(myCPPFLAGS) $(NOTMAIN) $(OPT) $(ARCHCOM)
 override LDFLAGS += $(myLDFLAGS)
 
 all: $(MAIN) $(OBJECTS)
