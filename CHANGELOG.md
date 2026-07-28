@@ -213,4 +213,30 @@ nElo: 12.91 +/- 8.22
 ```
 </td>
 <td>no need to be tetsed </td><td>no need to be tetsed </td>
+</tr>
+<tr>
+<td>update corrhist for fail low</td>
+<td>no need to be tested</td>
+<td>
+
+```
+(10+0.1, 1t, 16MB):
+7.55 +/- 4.67
+13.81 +/- 8.54
+[45, 696, 1563, 822, 51]
+[0.00, 5.00] (passed)
+```
+</td>
+<td>
+
+```
+(60+0.6, 1t, 128MB):
+13.85 +/- 6.30
+28.66 +/- 13.02
+[2, 257, 745, 358, 6]
+[0.00, 5.00] (passed)
+```
+</td>
+<td>no need to be tested</td>
+</tr>
 </table>
