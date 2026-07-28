@@ -32,7 +32,6 @@ BestMoveFinder::usefull::usefull(const GameState& state, const tunables& histpar
     eval.init(state, nnue);
     generator.initDangers(state);
     history.init(histparameters);
-    correctionHistory.reset();
 }
 BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), tbHits(0),rootBest(nullMove), mainThread(true){}
 void BestMoveFinder::usefull::reinit(const GameState& state, const NNUE& nnue){
@@ -84,11 +83,17 @@ string scoreToStr(int score, string precision, int material){
 
 //Class to find the best in a situation
 
-BestMoveFinder::BestMoveFinder(int memory):transposition(memory), stop_flag(1), helperThreads(0){
+BestMoveFinder::BestMoveFinder(int memory):shareds(prune_numa::nodeCount()), transposition(memory), stop_flag(1), helperThreads(0){
     localSS.idThread = 0;
+    for(auto& shared:shareds){
+        shared.correctionHistory.reset();
+    }
 }
-BestMoveFinder::BestMoveFinder():transposition(hashMul), stop_flag(1), helperThreads(0){
+BestMoveFinder::BestMoveFinder():shareds(prune_numa::nodeCount()), transposition(hashMul), stop_flag(1), helperThreads(0){
     localSS.idThread = 0;
+    for(auto& shared:shareds){
+        shared.correctionHistory.reset();
+    }
 }
 
 void BestMoveFinder::clear_helpers(){
@@ -183,7 +188,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     const int rootDist = relDepth-startRelDepth;
     __builtin_prefetch(&ss.stack[rootDist+1]);
     const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
-    if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor(), localNNUE), ss.correctionHistory, state, parameters);
+    if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor(), localNNUE), shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state, parameters);
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
     if(ttHit){
@@ -222,7 +227,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
                 raw_eval = ttEntry.raw_eval;
             else
                 raw_eval = ss.eval.getRaw(state.friendlyColor(), localNNUE);
-            staticEval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state, parameters);
+            staticEval = ss.eval.correctEval(raw_eval, shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state, parameters);
         }
         if(staticEval >= beta){
             transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval, isPV);
@@ -292,7 +297,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     bool allnode = !cutnode && !isPV;
     const int rootDist = relDepth-startRelDepth;
     const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
-    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters, localNNUE);
+    if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state, parameters, localNNUE);
     if(isPV)ss.seldepth = max(ss.seldepth.load(), relDepth);
     transposition.prefetch(state);
     __builtin_prefetch(&ss.stack[rootDist+1]);
@@ -326,7 +331,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             raw_eval = ttEntry.raw_eval;
         else
             raw_eval = ss.eval.getRaw(state.friendlyColor(), localNNUE);
-        static_eval = ss.eval.correctEval(raw_eval, ss.correctionHistory, state, parameters);
+        static_eval = ss.eval.correctEval(raw_eval, shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state, parameters);
     }else{
         static_eval = INF;
         raw_eval = INF;
@@ -583,7 +588,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.history.negUpdate(ss.stack[rootDist].searchedMoves, triedMove-1, state.friendlyColor(), depth, state, order.dangerPositions);
             if(curEMove.capture == SPACE && curEMove.move.getFlag() != Move::fpromo){
                 if(score > static_eval && !inCheck)
-                    ss.correctionHistory.update(state, score-static_eval, depth);
+                    shareds[prune_numa::getNode(ss.idThread)].correctionHistory.update(state, score-static_eval, depth);
             }
             return score;
         }
@@ -609,7 +614,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     if(!inCheck && (bestMove == nullMove || !state.board.isTactical(bestMove)) &&
         (typeNode != UPPERBOUND || bestScore < static_eval)){
-        ss.correctionHistory.update(state, bestScore-static_eval, depth);
+        shareds[prune_numa::getNode(ss.idThread)].correctionHistory.update(state, bestScore-static_eval, depth);
     }
     return bestScore;
 }
@@ -689,7 +694,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
     }
     Record rec{};
     const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
-    int staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters, localNNUE);
+    int staticEval = ss.eval.getScore(state.friendlyColor(), shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state, parameters, localNNUE);
     int lastScore = staticEval;
     Move ponderMove=nullMove;
     startRelDepth = actDepth-1;
@@ -899,10 +904,11 @@ int BestMoveFinder::testQuiescenceSearch(GameState& state){
 void BestMoveFinder::clear(){
     transposition.clear();
     localSS.history.init(parameters);
-    localSS.correctionHistory.reset();
     for(int i=0; i<nbThreads-1; i++){
         helperThreads[i].local->history.init(parameters);
-        helperThreads[i].local->correctionHistory.reset();
+    }
+    for(int idNode=0; idNode < prune_numa::nodeCount(); idNode++){
+        shareds[idNode].correctionHistory.reset();
     }
 }
 
