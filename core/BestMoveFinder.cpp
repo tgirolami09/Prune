@@ -15,9 +15,7 @@
 #include <string>
 #include <thread>
 #include <cassert>
-#ifdef NUMA
 #include "numa.hpp"
-#endif
 #include "tunables.hpp"
 #include "wdlModel.hpp"
 
@@ -184,11 +182,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     //dbyte hint;
     const int rootDist = relDepth-startRelDepth;
     __builtin_prefetch(&ss.stack[rootDist+1]);
-#ifdef NUMA
-    static const NNUE& localNNUE = prune_numa::nnues[prune_numa::getNode(ss.idThread)];
-#else
-    static const NNUE& localNNUE = globnnue;
-#endif
+    const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
     if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor(), localNNUE), ss.correctionHistory, state, parameters);
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
@@ -297,11 +291,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     bool allnode = !cutnode && !isPV;
     const int rootDist = relDepth-startRelDepth;
-#ifdef NUMA
-    static const NNUE& localNNUE = prune_numa::nnues[prune_numa::getNode(ss.idThread)];
-#else
-    static const NNUE& localNNUE = globnnue;
-#endif
+    const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters, localNNUE);
     if(isPV)ss.seldepth = max(ss.seldepth.load(), relDepth);
     transposition.prefetch(state);
@@ -629,16 +619,10 @@ void BestMoveFinder::launchSMP(int idThread){
     ss.local.reinit(ss.localState);
     ss.local.mainThread = false;
     negamax<PVNode, limitWay, int, true>(ss.local, depth, ss.localState, alpha, beta, relDepth);*/
-#ifdef NUMA
     prune_numa::bindThread(idThread);
-#endif
     HelperThread& ss = helperThreads[idThread-1];
     ss.local = make_unique<usefull>();
-#ifdef NUMA
-    const NNUE& localNNUE = prune_numa::nnues[prune_numa::getNode(idThread)];
-#else
-    const NNUE& localNNUE = globnnue;
-#endif
+    const NNUE& localNNUE = prune_numa::getnnue(idThread);
     ss.local->idThread = 0;
     ss.running = false;
     while(!smp_end){
@@ -704,11 +688,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         depthMax = tm.hardBound;
     }
     Record rec{};
-#ifdef NUMA
-    static const NNUE& localNNUE = prune_numa::nnues[prune_numa::getNode(ss.idThread)];
-#else
-    static const NNUE& localNNUE = globnnue;
-#endif
+    const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
     int staticEval = ss.eval.getScore(state.friendlyColor(), ss.correctionHistory, state, parameters, localNNUE);
     int lastScore = staticEval;
     Move ponderMove=nullMove;
@@ -804,12 +784,8 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
 
 template<int limitWay, bool set>
 bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth){
-#ifdef NUMA
     prune_numa::bindThread(0);
-    const NNUE& localNNUE = prune_numa::nnues[prune_numa::getNode(0)];
-#else
-    const NNUE& localNNUE = globnnue;
-#endif
+    const NNUE& localNNUE = prune_numa::getnnue(0);
     if constexpr(!set)
         stop_flag = 0;
     verbose = _verbose;

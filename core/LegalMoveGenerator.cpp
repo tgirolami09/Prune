@@ -204,8 +204,8 @@ static big get_mask(bool is_rook, big id, big square){
 }
 
 void load_table(){
-    __attribute__((unused)) big magic=0;
-    __attribute__((unused)) int minimum=0, size=0;
+    _unused big magic=0;
+    _unused int minimum=0, size=0;
     int total = 0;
     int step = 0;
     for(int i=0; i<128; i++){

@@ -10,6 +10,7 @@
 #define sbig int64_t
 using namespace std;
 #define forceinline __attribute__((always_inline))
+#define _unused __attribute__((unused))
 extern int nbThreads;
 extern bool DEBUG;
 extern bool isdfrc;
