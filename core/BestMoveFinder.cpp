@@ -617,7 +617,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if((!isRoot || typeNode != UPPERBOUND) && excludedMove == nullMove.moveInfo){
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth, raw_eval, isPV);
     }
-    if(!inCheck && (!state.board.isTactical(bestMove)) && abs(bestScore) < MAXIMUM-maxDepth &&
+    if(!inCheck && (bestMove == nullMove || !state.board.isTactical(bestMove)) && abs(bestScore) < MAXIMUM-maxDepth &&
         (typeNode != UPPERBOUND || bestScore < static_eval)){
         ss.correctionHistory.update(state, bestScore-static_eval, depth);
     }
