@@ -517,8 +517,9 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         const int lmr_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::LMR>(curMove, state.friendlyColor(), state, order.dangerPositions);
         if(bestScore >= MINIMUM+maxDepth && !isRoot){
             int depth2 = (depth*depth)/(fracDepth*fracDepth);
+            const int lmrDepth = depth - static_cast<int>(parameters.lmr_base + (log(depth)-log(fracDepth)) * log(rankMove) * parameters.lmr_div)/8;
             if(!state.board.isTactical(curMove)){
-                if(triedMove > depth2*parameters.lmp_mul+parameters.lmp_base)continue;
+                if(triedMove > lmrDepth*lmrDepth/fracDepth*parameters.lmp_mul/fracDepth+parameters.lmp_base)continue;
                 const int mhp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::MHP>(curMove, state.friendlyColor(), state, order.dangerPositions);
                 if(mhp_hist < -parameters.mhp_mul*depth/fracDepth && triedMove >= 1)
                     continue;
