@@ -62,7 +62,6 @@ class BestMoveFinder{
         Move rootBest;
         bool mainThread;
         HelpOrdering history;
-        corrhists correctionHistory;
         int searchedMoves = 0;
         int min_nmp_ply=0;
         usefull(const GameState& state, const tunables& parameters, const NNUE& nnue);
@@ -97,6 +96,10 @@ class BestMoveFinder{
         void wait_thread();
     };
 
+    struct Shared{
+        corrhists correctionHistory;
+    };
+    vector<Shared> shareds;
     //Returns the best move given a position and time to use
     transpositionTable transposition;
 public:
