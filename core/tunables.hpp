@@ -165,7 +165,7 @@ public:
         fp_mul(133),
         fp_max_depth(729),
         fp_hmul(8118),
-        lmr_history(776),
+        lmr_history(128),
         lmr_base(723),
         lmr_div(274),
         lmr_min_depth(277),

@@ -561,7 +561,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 int addRedDepth = 0;
                 if(rankMove > 3 && depth > parameters.lmr_min_depth){
                     addRedDepth = static_cast<int>(parameters.lmr_base + (log(depth)-log(fracDepth)) * log(rankMove) * parameters.lmr_div);
-                    addRedDepth -= lmr_hist*parameters.lmr_history/maxHistory;
+                    addRedDepth -= lmr_hist*parameters.lmr_history*depth/(maxHistory*fracDepth);
                     addRedDepth = max(
                         addRedDepth,
                         0
