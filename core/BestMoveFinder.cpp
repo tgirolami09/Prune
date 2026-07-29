@@ -559,7 +559,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             }
             if(rankMove == 0)
                 reductionDepth -= firstMoveExtension;
-            const int newDepth = depth-reductionDepth;
+            int newDepth = depth-reductionDepth;
             if(rankMove > 3 && depth > parameters.lmr_min_depth){
                 const int reduction = [&]{
                     int addRedDepth = static_cast<int>(parameters.lmr_base + (log(depth)-log(fracDepth)) * log(rankMove) * parameters.lmr_div);
@@ -569,8 +569,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 }();
                 const int reducedDepth = min(max(newDepth-reduction, 0), newDepth);
                 score = -negamax<false, limitWay>(ss, reducedDepth, state, -alpha-1, -alpha, relDepth+1, true);
-                if(score > alpha && reducedDepth < newDepth){
-                    score = -negamax<false, limitWay>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, !cutnode);
+                if(score > alpha){
+                    const bool doDeeperSearch = score > bestScore + 50 + 5 * newDepth / fracDepth;
+                    const bool doShallowerSearch = score < bestScore + newDepth / fracDepth;
+                    newDepth += doDeeperSearch - doShallowerSearch;
+                    if(reducedDepth < newDepth)
+                        score = -negamax<false, limitWay>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, !cutnode);
                 }
             }else if(!isPV || rankMove > 0)
                 score = -negamax<false, limitWay>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, !cutnode);
