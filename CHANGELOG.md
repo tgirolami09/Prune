@@ -239,4 +239,18 @@ nElo: 12.91 +/- 8.22
 </td>
 <td>no need to be tested</td>
 </tr>
+<tr>
+<td>shared corrhist</td>
+<td>no need to be tested</td>
+<td>no need to be tested</td>
+<td>no need to be tested</td>
+<td>
+
+```
+(10+0.1, 8t, 128MB):
+11.86 +/- 5.80
+24.32 +/- 11.89
+[4, 321, 880, 431, 5]
+[0.00, 5.00] (passed)
+```
 </table>
