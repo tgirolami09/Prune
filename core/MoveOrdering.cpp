@@ -48,25 +48,25 @@ void HelpOrdering::updateHistory(int bonus, int& hist){
 
 void HelpOrdering::bonusMove(int depth, Move move, bool c, const GameState& state, big attacked){
     if(state.board.isTactical(move)){
-        updateHistory(depth*parameters.capthist_mul_bonus, getTactIndex(state, move, c));
+        updateHistory(max(depth*parameters.capthist_mul_bonus, (int)parameters.capthist_max_bonus), getTactIndex(state, move, c));
     }else{
         bool src_atk = attacked&(1ULL << move.from());
         bool dst_atk = attacked&(1ULL << move.to());
-        updateHistory(depth*parameters.mainHist.bonus, history[c][move.from()][move.to()][src_atk][dst_atk]);
+        updateHistory(max(depth*parameters.mainHist.bonus, (int)parameters.mainHist.max_bonus), history[c][move.from()][move.to()][src_atk][dst_atk]);
         ExpendedMove lastmove = state.getLastMove();
-        updateHistory(depth*parameters.prevHist.bonus, conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]);
+        updateHistory(max(depth*parameters.prevHist.bonus, (int)parameters.prevHist.max_bonus), conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]);
     }
 }
 
 void HelpOrdering::malusMove(int depth, Move move, bool c, const GameState& state, big attacked){
     if(state.board.isTactical(move)){
-        updateHistory(-depth*parameters.capthist_mul_malus, getTactIndex(state, move, c));
+        updateHistory(-max(depth*parameters.capthist_mul_malus, (int)parameters.capthist_max_malus), getTactIndex(state, move, c));
     }else{
         bool src_atk = attacked&(1ULL << move.from());
         bool dst_atk = attacked&(1ULL << move.to());
-        updateHistory(-depth*parameters.mainHist.malus, history[c][move.from()][move.to()][src_atk][dst_atk]);
+        updateHistory(-max(depth*parameters.mainHist.malus, (int)parameters.mainHist.max_malus), history[c][move.from()][move.to()][src_atk][dst_atk]);
         ExpendedMove lastmove = state.getLastMove();
-        updateHistory(-depth*parameters.prevHist.malus, conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]);
+        updateHistory(-max(depth*parameters.prevHist.malus, (int)parameters.prevHist.max_malus), conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]);
     }
 }
 

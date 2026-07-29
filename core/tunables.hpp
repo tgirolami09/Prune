@@ -112,9 +112,11 @@ struct TunableHist{
         fp;
     TunableInt
         bonus,
-        malus;
-    constexpr TunableHist(int _order, int _lmr, int _mhp, int _fp, int _bonus, int _malus):
-        order(_order), lmr(_lmr), mhp(_mhp), fp(_fp), bonus(_bonus), malus(_malus){}
+        malus,
+        max_bonus,
+        max_malus;
+    constexpr TunableHist(int _order, int _lmr, int _mhp, int _fp, int _bonus, int _malus, int _max_bonus, int _max_malus):
+        order(_order), lmr(_lmr), mhp(_mhp), fp(_fp), bonus(_bonus), malus(_malus), max_bonus(_max_bonus), max_malus(_max_malus){}
     enum{ORDER, LMR, MHP, FP};
     template<int id>
     const TunableInt& getParam() const{
@@ -172,6 +174,8 @@ public:
         lmr_min_depth(277),
         capthist_mul_malus(236),
         capthist_mul_bonus(509),
+        capthist_max_bonus(5000),
+        capthist_max_malus(5000),
         aw_base(19),
         pvalue(106),
         nvalue(263),
@@ -187,8 +191,8 @@ public:
         see_mul_quiet(64),
         see_mul_tact(80),
         se_pv_offset(100),
-        mainHist(1022, 1049, 1100, 1032, 510, 272),
-        prevHist(996, 924, 1131, 1042, 481, 267),
+        mainHist(1022, 1049, 1100, 1032, 510, 272, 5000, 1500),
+        prevHist(996, 924, 1131, 1042, 481, 267, 5000, 1500),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -222,6 +226,8 @@ public:
         lmr_min_depth,
         capthist_mul_malus,
         capthist_mul_bonus,
+        capthist_max_bonus,
+        capthist_max_malus,
         aw_base,
         pvalue,
         nvalue,
