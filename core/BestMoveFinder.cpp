@@ -515,11 +515,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(!state.board.isTactical(curMove)){
                 if(triedMove > depth2*parameters.lmp_mul+parameters.lmp_base)continue;
                 const int mhp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::MHP>(curMove, state.friendlyColor(), state, order.dangerPositions);
-                if(mhp_hist < -parameters.mhp_mul*depth/fracDepth && triedMove >= 1)
+                if(mhp_hist < -parameters.mhp_mul*depth/fracDepth)
                     continue;
                 const int fp_hist = isKiller ? maxHistory : ss.history.getHistoryScore<TunableHist::FP>(curMove, state.friendlyColor(), state, order.dangerPositions);
                 int futilityValue = static_eval+(parameters.fp_base+parameters.fp_mul*depth+fp_hist*parameters.fp_hmul/4096)/fracDepth;
-                if(!isPV && triedMove >= 1 && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
+                if(!isPV && depth <= parameters.fp_max_depth && !inCheck && futilityValue <= alpha){
                     continue;
                 }
             }else{
