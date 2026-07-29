@@ -30,7 +30,7 @@ StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 
 BestMoveFinder::usefull::usefull(const GameState& state, const tunables& histparameters, const NNUE& nnue):nodes(0), bestMoveNodes(0), seldepth(0), tbHits(0),rootBest(nullMove), mainThread(true){
     eval.init(state, nnue);
-    generator.initDangers(state);
+    stack[1].generator.initDangers(state);
     history.init(histparameters);
 }
 BestMoveFinder::usefull::usefull():nodes(0), bestMoveNodes(0), seldepth(0), tbHits(0),rootBest(nullMove), mainThread(true){}
@@ -42,7 +42,7 @@ void BestMoveFinder::usefull::reinit(const GameState& state, const NNUE& nnue){
     rootBest = nullMove;
     mainThread = true;
     eval.init(state, nnue);
-    generator.initDangers(state);
+    stack[1].generator.initDangers(state);
 }
 
 int compScoreMove(const void* a, const void*b){
@@ -219,7 +219,8 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
     int typeNode = UPPERBOUND;
-    bool testCheck = ss.generator.initDangers(state);
+    auto& generator = ss.stack[rootDist].generator;
+    bool testCheck = generator.initDangers(state);
     int bestEval = MINIMUM;
     if(!testCheck){
         if(!isCalc){
@@ -243,7 +244,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     }
     Order& order = ss.stack[rootDist].order;
     bool inCheck;
-    order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, !testCheck);
+    order.nbMoves = generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions, !testCheck);
     if(order.nbMoves == 0 && testCheck){
         return MINIMUM+rootDist;
     }
@@ -306,13 +307,15 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if constexpr(limitWay == 0)if((ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)stop_flag = 1;
     if constexpr(limitWay == 1)if(ss.nodes >= hardBound)stop_flag = 1;
     if(ss.stop(stop_flag || smp_abort))return 0;
+    auto& curgenerator = ss.stack[rootDist].generator;
+    auto& nextgenerator = ss.stack[rootDist+1].generator;
     if(state.rule50_count() >= 100 || ss.eval.isInsufficientMaterial()){
         if constexpr (isPV)ss.beginLine(rootDist);
         if(state.rule50_count() == 100){
-            if(ss.generator.isCheck()){
+            if(curgenerator.isCheck()){
                 bool inCheck;
                 Order& order = ss.stack[rootDist].order;
-                order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+                order.nbMoves = curgenerator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
                 if(order.nbMoves == 0){
                     return MINIMUM+rootDist;
                 }
@@ -325,7 +328,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     int& raw_eval = ss.stack[rootDist].raw_eval;
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
-    bool inCheck=ss.generator.isCheck();
+    bool inCheck=curgenerator.isCheck();
     if(!inCheck){
         if(ttHit)
             raw_eval = ttEntry.raw_eval;
@@ -391,13 +394,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 const int score = Evaluate<false, limitWay>(ss, state, alpha, alpha+1, relDepth);
                 if(score <= alpha)
                     return score;
-                ss.generator.initDangers(state);
             }
             int r = (depth*parameters.nmp_red_depth_div+parameters.nmp_red_base)/1024;
             if(rootDist >= ss.min_nmp_ply && depth >= r && !ss.eval.isOnlyPawns() && static_eval >= beta){
                 ss.stack[rootDist].snap.save(state);
                 state.playNullMove();
-                ss.generator.initDangers(state);
+                nextgenerator.initDangers(state);
                 int v = -negamax<false, limitWay>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
                 ss.stack[rootDist].snap.restore(state);
                 if(v >= beta){
@@ -412,7 +414,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                         nmpVerifAllNode++;
 #endif
                     ss.min_nmp_ply = rootDist+r/fracDepth;
-                    ss.generator.initDangers(state);
                     v = negamax<false, limitWay>(ss, depth-r, state, beta-1, beta, relDepth, cutnode);
                     ss.min_nmp_ply = 0;
                     if(v >= beta){
@@ -425,7 +426,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                         return v;
                     };
                 };
-                ss.generator.initDangers(state);
             }
         }
     }
@@ -444,9 +444,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }else if(ttEntry.score >= beta){
             firstMoveExtension -= (int)parameters.se_negext;
         }
-        ss.generator.initDangers(state);
     }
-    order.nbMoves = ss.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+    order.nbMoves = curgenerator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
     if constexpr(isRoot) {
         if (wdlFilterNb > 0) {
             int newNb = 0;
@@ -484,7 +483,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             return MIDDLE;
         }
         ss.eval.playMove(localNNUE, order.moves[0], !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
-        ss.generator.initDangers(state);
+        nextgenerator.initDangers(state);
         int sc = -negamax<isPV, limitWay>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
         ss.eval.undoMove(localNNUE, order.moves[0], !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
         ss.stack[rootDist].snap.restore(state);
@@ -553,7 +552,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             isDraw = true;
         }else{
             ss.eval.playMove(localNNUE, curMove, !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
-            bool inCheckPos = ss.generator.initDangers(state);
+            bool inCheckPos = nextgenerator.initDangers(state);
             int reductionDepth = fdepth<1>;
             if(inCheckPos && firstMoveExtension == 0){
                 reductionDepth -= fdepth<1>;
@@ -571,7 +570,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 }
                 score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha && (score < beta || isPV || addRedDepth)){
-                    ss.generator.initDangers(state);
                     score = -negamax<isPV, limitWay>(ss, depth-reductionDepth, state, -beta, -alpha, relDepth+1, !cutnode);
                 }
             }else
@@ -715,7 +713,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         do{
             int alpha = lastScore-deltaDown;
             int beta = lastScore+deltaUp;
-            ss.generator.initDangers(state);
+            ss.stack[1].generator.initDangers(state);
             lastUsedNodes = ss.nodes;
             smp_abort = false;
             int newScore = negamax<true, limitWay, true>(ss, depth*fracDepth, state, alpha, beta, actDepth, false);
@@ -803,7 +801,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     bool inCheck;
     Order order;
     localSS.reinit(state, localNNUE);
-    order.nbMoves = localSS.generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
+    order.nbMoves = localSS.stack[1].generator.generateLegalMoves(state, inCheck, order.moves, order.dangerPositions);
     if(order.nbMoves == 0){
         stop_flag = 1;
         int score;

@@ -43,14 +43,14 @@ class BestMoveFinder{
         };
         struct StackCase{
             Order order;
+            LegalMoveGenerator generator;
             Move searchedMoves[maxMoves];
             int static_score;
             int raw_eval;
             PositionSnapshot snap;
         };
     public:
-        LegalMoveGenerator generator;
-        StackCase stack[maxDepth];
+        StackCase stack[maxDepth+1];
         LINE PVlines[maxDepth];
         IncrementalEvaluator eval;
         atomic<sbig> nodes;
