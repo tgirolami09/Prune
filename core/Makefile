@@ -59,7 +59,6 @@ ifeq ($(TUNE), true)
 	MAIN=spsa.cpp
 	ADDSUFFIX=false
 endif
-$(info $(NUMA))
 ifeq ($(NUMA), true)
 	myCPPFLAGS := $(myCPPFLAGS) -DNUMA -lnuma -Wno-unused-command-line-argument
 endif
