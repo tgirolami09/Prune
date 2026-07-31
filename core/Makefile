@@ -59,6 +59,7 @@ ifeq ($(TUNE), true)
 	MAIN=spsa.cpp
 	ADDSUFFIX=false
 endif
+$(info $(NUMA))
 ifeq ($(NUMA), true)
 	myCPPFLAGS := $(myCPPFLAGS) -DNUMA -lnuma -Wno-unused-command-line-argument
 endif
@@ -146,7 +147,7 @@ all: $(MAIN) $(OBJECTS)
 	$(CXX) -m64 $(myCPPFLAGS) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS) $(MAINFLAGS)
 
 download:
-	@if [ ! -f model.bin ]; then \
+	@if [ ! -f $(NETNAME).bin ]; then \
 		echo "File missing, downloading..."; \
 		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell head -1 nn-name.txt)/$(NETNAME).bin"; \
 	elif [ "$$(sha256sum $(NETNAME).bin | cut -c1-7)" != "$$(head -1 nn-name.txt | grep -E ".{7}$$" -o)" ]; then \
