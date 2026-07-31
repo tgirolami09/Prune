@@ -25,7 +25,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y g++ make
+          sudo apt-get install -y clang lld llvm make
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
