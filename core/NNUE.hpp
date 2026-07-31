@@ -130,6 +130,7 @@ public:
     int nbThreats[2];
     ThreatIndex threatUpdates[2][32];
     bool dirty;
+    Move deferredMove;
     int type;
     updateBuffer();
     void reset(Index sub1, Index add1, Index sub2, Index add2);
@@ -171,11 +172,11 @@ struct Layers{
 
 class Accumulator{
     void defstaterelated(const PositionState& state);
-    void updatePieceOutComing(const int8_t mailbox[64], int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
-    void updatePieceIncoming(const int8_t mailbox[64], int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
-    void updatePiece(const int8_t mailbox[64], int piece, bool colorpiece, int square, bool remove, int removepos);
+    void updatePieceOutComing(const PositionState& state, int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    void updatePieceIncoming(const PositionState& state, int piece, bool colorpiece, int square, bool remove, int removepos, const big sliders[3]);
+    void updatePiece(const PositionState& state, int piece, bool colorpiece, int square, bool remove, int removepos);
     template<bool enPassant=false, bool tworemove=false>
-    void updateXrays(const int8_t mailbox[64], int square, bool remove, int removepos, int removepos2=-1);
+    void updateXrays(const PositionState& state, int square, bool remove, int removepos, int removepos2=-1);
     void getThreatUpdates(const PositionState& state1, const PositionState& state2, const Move& move);
     void applythreatsUpdates(Accumulator& accIn, bool side, const NNUE& nnue);
 public:
