@@ -191,13 +191,14 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(rootDist >= maxDepth)return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor(), localNNUE), shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state, parameters);
     bool ttHit=false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
+    Move lastBest = nullMove;
     if(ttHit){
         if(!isPV){
             int lastEval=transposition.storedScore(alpha, beta, ttEntry, rootDist);
             if(lastEval != INVALID)
                 return lastEval;
         }
-        //hint = transposition.getMove(ttEntry);
+        lastBest = transposition.getMove(ttEntry);
     }
     // Tablebase probe in quiescence
     if (tbProbe.canProbe(state, ss.eval.getNbMan())) {
@@ -248,7 +249,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     if(order.nbMoves == 0 && testCheck){
         return MINIMUM+rootDist;
     }
-    order.init(state.friendlyColor(), nullMove, ss.history, rootDist, state);
+    order.init(state.friendlyColor(), lastBest, ss.history, rootDist, state);
     Move bestCapture;
     for(int i=0; i<order.nbMoves; i++){
         int flag;
