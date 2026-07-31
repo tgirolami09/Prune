@@ -8,7 +8,6 @@ myCPPFLAGS=-Werror -Wshadow -Wall -Wextra -MMD -std=gnu++17 -I../Fathom/src $(AD
 OPT?=-O3 -flto -funroll-loops
 
 TUNE?=false
-HCE?=false
 NUMA?=false
 DATAGEN?=false
 UNITTEST?=false
@@ -46,12 +45,6 @@ ifeq ($(MAIN), collectData.cpp)
 	BASENAME=coreGen
 	MAINFLAGS := -fopenmp
 	ADDSUFFIX=false
-endif
-ifeq ($(HCE), true)
-	OBJECTS := $(filter-out NNUE.o,$(OBJECTS))
-	myCPPFLAGS := $(myCPPFLAGS) -DHCE
-	THENET :=
-	BASENAME := pruneHCE
 endif
 ifeq ($(TUNE), true)
 	NOTMAIN := $(NOTMAIN) -DTUNE

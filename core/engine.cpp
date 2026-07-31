@@ -152,9 +152,6 @@ const Option Options[] = {
     Option("Hash", "spin", "64", 1, 2147483647),
     Option("Move Overhead", "spin", "10", 0, 5000),
     Option("Clear Hash", "button"),
-#ifndef HCE
-    Option("nnueFile", "string", "embed"),
-#endif
     Option("Threads", "spin", "1", 1, 512),
     Option("SyzygyPath", "string", "<empty>"),
     Option("SyzygyProbeDepth", "spin", "1", 1, 100),
@@ -490,11 +487,7 @@ void manageSearch(){
 #endif
                 if(v[0] == 'v')
                     v = v.substr(1, v.size()-1);
-#ifdef HCE
-                printf("id name Prune HCE %s\nid author tgirolami09 & jbienvenue\n", v.c_str());
-#else
                 printf("id name Prune %s\nid author tgirolami09 & jbienvenue\n", v.c_str());
-#endif
                 for(Option opt:Options)
                     opt.print();
                 printf("uciok\n");

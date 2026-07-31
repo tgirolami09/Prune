@@ -4,6 +4,4 @@ extern "C"{\
 }
 
 BINARY_INCLUDE(magicsData);
-#ifndef HCE
 BINARY_INCLUDE(baseModel);
-#endif
