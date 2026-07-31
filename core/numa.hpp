@@ -5,6 +5,9 @@
 #include <cstdint>
 #include <vector>
 #include "NNUE.hpp"
+#if defined(__APPLE__) || defined(_WIN32)
+using cpu_set_t=int;
+#endif
 
 using namespace std;
 
