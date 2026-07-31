@@ -8,7 +8,7 @@ const uint16_t clearTo = 0x3f;
 const uint16_t clearFrom = 0x3f<<6;
 const uint16_t clearPromot = 0x3 << 14; // 0xf << 12
 //Represents a move
-class Move{
+class __attribute__((packed)) Move{
 public :
     enum{fnormal=0, fcastle=1, fpromo=2, fep=3};
     //Stores promotion|flag|from|to
@@ -36,6 +36,9 @@ public :
     string to_str() const;
     bool operator==(Move o) const;
     int getMovePart() const;
+    explicit operator bool() const{
+        return moveInfo;
+    }
 };
 
 class ExpendedMove{

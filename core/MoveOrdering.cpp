@@ -145,12 +145,12 @@ void Order::swap(int idMove1, int idMove2){
     std::swap(scores[idMove1], scores[idMove2]);
 }
 
-void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state){
+void Order::init(bool c, Move movePriority, const HelpOrdering& history, ubyte relDepth, const GameState& state){
     nbPriority = 0;
     pointer = 0;
     const int value_pieces[7] = {history.parameters.pvalue, history.parameters.nvalue, history.parameters.bvalue, history.parameters.rvalue, history.parameters.qvalue, 100000, 0};
     for(int i=0; i<nbMoves; i++){
-        if(moveInfoPriority == moves[i].moveInfo){
+        if(movePriority == moves[i]){
             this->swap(i, 0);
             if(nbPriority)
                 this->swap(i, 1);
@@ -177,17 +177,6 @@ void Order::init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, 
     #endif
 }
 
-void Order::reinit(int16_t priorityMove){
-    nbPriority = 0;
-    for(int i=0; i<nbMoves; i++){
-        if(moves[i].moveInfo == priorityMove){
-            this->swap(i, 0);
-            nbPriority = 1;
-            break;
-        }
-    }
-    pointer = 0;
-}
 inline bool Order::compareMove(int idMove1, int idMove2){
     return scores[idMove2] > scores[idMove1];
 }

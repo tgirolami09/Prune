@@ -57,8 +57,7 @@ public:
     bool sorted = false;
     Order();
     void swap(int idMove1, int idMove2);
-    void init(bool c, int16_t moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state);
-    void reinit(int16_t priorityMove);
+    void init(bool c, Move moveInfoPriority, const HelpOrdering& history, ubyte relDepth, const GameState& state);
     bool compareMove(int idMove1, int idMove2);
     Move pop_max(int& flag);
 };

@@ -107,8 +107,8 @@ int transpositionTable::storedScore(int alpha, int beta, const infoScore& entry,
     return INVALID;
 }
 
-int16_t transpositionTable::getMove(const infoScore& entry) const{
-    return entry.bestMoveInfo; //probably a good move
+Move transpositionTable::getMove(const infoScore& entry) const{
+    return entry.bestMove; //probably a good move
 }
 
 infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit){
@@ -123,7 +123,7 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.raw_eval = raw_eval;
     info.score = score;
     info.hash = hash;
-    info.bestMoveInfo = move.moveInfo;
+    info.bestMove = move;
     info.depth = depth;
     info.setFlag(typeNode, age, is_pv);
     //if(table[index].hash != info.hash && table[index].depth >= info.depth)return;

@@ -11,15 +11,16 @@ public:
     int16_t score,
             raw_eval;
     ubyte flag;
-    uint16_t bestMoveInfo;
+    ubyte padding;
     uint16_t depth;
+    Move bestMove;
     residualHash hash;
     int typeNode() const;
     int age() const;
     void setFlag(int typeNode, int age, bool pv);
     bool tt_pv() const;
 };
-static_assert(sizeof(infoScore) == 11, "size of infoScore should be 10");
+static_assert(sizeof(infoScore) == 12, "size of infoScore should be 12");
 const int clusterByte=64;
 const int clusterSize=clusterByte/sizeof(infoScore);
 const int paddingSize = clusterByte-clusterSize*sizeof(infoScore);
@@ -45,7 +46,7 @@ public:
     int storedScore(int alpha, int beta, const infoScore& entry, const int rootDist) const;
     infoScore& getEntry(const GameState& state, bool& ttHit);
 
-    int16_t getMove(const infoScore& entry) const;
+    Move getMove(const infoScore& entry) const;
 
     void push(GameState& state, int score, ubyte typeNode, Move move, uint16_t depth, int16_t raw_eval, bool is_pv);
     void clearRange(big start, big end);

@@ -131,7 +131,7 @@ private:
     inline int Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
     template <bool isPV, int limitWay, bool isRoot=false>
-    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove=nullMove.moveInfo);
+    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const Move excludedMove=nullMove);
     void launchSMP(int idThread);
     void updatemainSS(usefull& ss, Record& oldss);
 public:
