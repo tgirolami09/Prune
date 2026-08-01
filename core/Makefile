@@ -9,6 +9,7 @@ OPT?=-O3 -flto -funroll-loops
 
 TUNE?=false
 NUMA?=false
+LIBNUMA?=true
 DATAGEN?=false
 UNITTEST?=false
 
@@ -53,7 +54,11 @@ ifeq ($(TUNE), true)
 	ADDSUFFIX=false
 endif
 ifeq ($(NUMA), true)
-	myCPPFLAGS := $(myCPPFLAGS) -DNUMA -lnuma -Wno-unused-command-line-argument
+	ifeq ($(LIBNUMA), true)
+		myCPPFLAGS := $(myCPPFLAGS) -DNUMA -lnuma -Wno-unused-command-line-argument
+	else
+		myCPPFLAGS := $(myCPPFLAGS) -DNUMA_NOLIB
+	endif
 endif
 
 myLDFLAGS=

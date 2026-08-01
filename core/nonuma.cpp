@@ -1,4 +1,4 @@
-#ifndef NUMA
+#if !defined(NUMA) && !defined(NUMA_NOLIB)
 #include "numa.hpp"
 
 namespace prune_numa{

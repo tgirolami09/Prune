@@ -1,5 +1,4 @@
 //alternative for no libnuma and linux system
-#define NUMA_NOLIB
 #ifdef NUMA_NOLIB
 #include "numa.hpp"
 #include <pthread.h>
@@ -53,25 +52,26 @@ namespace prune_numa{
 
             vector<cpu_set_t> masks{};
             masks.reserve(maxNode + 1);
-            int cpucount = get_nprocs();
+            const unsigned int cpucount = get_nprocs();
             for (int node = 0; node <= maxNode; ++node) {
                 cpu_set_t cpuset;
                 CPU_ZERO(&cpuset);
                 string filename = "/sys/devices/system/node/node"+to_string(node)+"/cpumap";
                 FILE* nodefile = fopen(filename.c_str(), "r");
                 unsigned int number;
-                int cpu = 0;
-                while(fscanf(nodefile, "%x", &number)){
-
+                vector<unsigned int> curmasks;
+                while(fscanf(nodefile, "%x", &number) != EOF){
+                    curmasks.push_back(number);
+                    if(fgetc(nodefile) == EOF)break;
                 }
+                const int nbMasks = curmasks.size();
                 for (unsigned int cpu = 0; cpu < cpucount; ++cpu) {
-                    if(){
+                    if(curmasks[nbMasks-1-cpu/32] & (1U << (cpu%32))){
                         CPU_SET(cpu, &cpuset);
                     }
                 }
                 masks.push_back(cpuset);
             }
-
             return masks;
         }();
 
