@@ -90,6 +90,7 @@ class BestMoveFinder{
         bool running;
         mutex mtx;
         condition_variable cv;
+        atomic<bool> isready;
         int ans;
         int relDepth, limitWay;
         void launch(int relDepth, int limitWay);

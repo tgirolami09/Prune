@@ -122,6 +122,9 @@ void BestMoveFinder::setThreads(int nT){
         for(int i=1; i<nT; i++){
             helperThreads[i-1].t = thread(&BestMoveFinder::launchSMP, this, i);
         }
+        for(int i=1; i<nT; i++){
+            helperThreads[i-1].wait_thread();
+        }
     }
 }
 
@@ -173,7 +176,7 @@ void BestMoveFinder::HelperThread::launch(int _relDepth, int _limitWay){
 
 void BestMoveFinder::HelperThread::wait_thread(){
     unique_lock<mutex> lock(mtx);
-    cv.wait(lock, [this]{return !running;});
+    cv.wait(lock, [this]{return !running && isready;});
 }
 
 template<int limitWay, bool isPV, bool isCalc>
@@ -629,7 +632,12 @@ void BestMoveFinder::launchSMP(int idThread){
     ss.local = make_unique<usefull>();
     const NNUE& localNNUE = prune_numa::getnnue(idThread);
     ss.local->idThread = idThread;
-    ss.running = false;
+    {
+        lock_guard<mutex> lock(ss.mtx);
+        ss.running = false;
+        ss.isready = true;
+        ss.cv.notify_one();
+    }
     while(!smp_end){
         {
             unique_lock<mutex> lock(ss.mtx);
