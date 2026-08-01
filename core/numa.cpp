@@ -8,7 +8,7 @@
 
 namespace prune_numa{
     vector<NNUE> nnues;
-    bool init() {
+    bool __attribute__((constructor(100))) init() {
         if (numa_available() < 0) {
             return false;
         }

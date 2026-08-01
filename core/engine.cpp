@@ -620,7 +620,6 @@ void manageSearch(){
 }
 
 int main(int argc, char** argv){
-    prune_numa::init();
     string UCI_instruction = "programStart";
     thread t;
     bool seeInput = true;

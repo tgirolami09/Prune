@@ -11,7 +11,19 @@ namespace fs = std::filesystem;
 
 namespace prune_numa{
     vector<NNUE> nnues;
-    bool init() {
+    unsigned int nbNodes;
+    bool __attribute__((constructor(100))) init() {
+
+        std::string path = "/sys/devices/system/node/";
+        unsigned int nodeCount = 0;
+        for (const auto & entry : fs::directory_iterator(path))
+            if(entry.is_directory()){
+                string filename = entry.path().filename().string();
+                if(filename.substr(0, 4) == "node"){
+                    nodeCount++;
+                }
+            }
+        nbNodes = nodeCount;
 
         threadMapping();
 
@@ -33,17 +45,7 @@ namespace prune_numa{
     }
 
     int nodeCount() {
-        
-        std::string path = "/sys/devices/system/node/";
-        unsigned int nodeCount = 0;
-        for (const auto & entry : fs::directory_iterator(path))
-            if(entry.is_directory()){
-                string filename = entry.path().filename().string();
-                if(filename.substr(0, 4) == "node"){
-                    nodeCount++;
-                }
-            }
-        return nodeCount;
+        return nbNodes;
     }
 
     vector<cpu_set_t> threadMapping() {
@@ -59,7 +61,7 @@ namespace prune_numa{
                 string filename = "/sys/devices/system/node/node"+to_string(node)+"/cpumap";
                 FILE* nodefile = fopen(filename.c_str(), "r");
                 unsigned int number;
-                vector<unsigned int> curmasks;
+                vector<unsigned int> curmasks.reserve(cpucount/32);
                 while(fscanf(nodefile, "%x", &number) != EOF){
                     curmasks.push_back(number);
                     if(fgetc(nodefile) == EOF)break;
