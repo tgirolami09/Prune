@@ -560,7 +560,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             bool inCheckPos = nextgenerator.initDangers(state);
             int reductionDepth = fdepth<1>;
             if(inCheckPos && firstMoveExtension == 0){
-                reductionDepth -= fdepth<1>;
+                reductionDepth -= fracDepth/2;
             }
             if(rankMove > 0){
                 int addRedDepth = 0;
