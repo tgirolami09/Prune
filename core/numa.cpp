@@ -17,7 +17,7 @@ namespace prune_numa{
 
         const int numNodes = nodeCount();
         printf("%d NUMA nodes\n", numNodes);
-        nnues.reserve(numNodes);
+        nnues.resize(numNodes);
         for(int i=0; i<numNodes; i++){
             memcpy(&nnues[i], baseModel, sizeof(NNUE));
         }

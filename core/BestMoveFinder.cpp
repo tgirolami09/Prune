@@ -628,7 +628,7 @@ void BestMoveFinder::launchSMP(int idThread){
     HelperThread& ss = helperThreads[idThread-1];
     ss.local = make_unique<usefull>();
     const NNUE& localNNUE = prune_numa::getnnue(idThread);
-    ss.local->idThread = 0;
+    ss.local->idThread = idThread;
     ss.running = false;
     while(!smp_end){
         {
