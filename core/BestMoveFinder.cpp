@@ -629,9 +629,8 @@ void BestMoveFinder::launchSMP(int idThread){
     negamax<PVNode, limitWay, int, true>(ss.local, depth, ss.localState, alpha, beta, relDepth);*/
     prune_numa::bindThread(idThread);
     HelperThread& ss = helperThreads[idThread-1];
-    ss.local = make_unique<usefull>();
     const NNUE& localNNUE = prune_numa::getnnue(idThread);
-    ss.local->idThread = idThread;
+    ss.local.idThread = idThread;
     {
         lock_guard<mutex> lock(ss.mtx);
         ss.running = false;
@@ -644,11 +643,11 @@ void BestMoveFinder::launchSMP(int idThread){
             ss.cv.wait(lock, [&ss]{return ss.running;});
         }
         if(smp_end)return;
-        ss.local->reinit(ss.localState, localNNUE);
-        ss.local->mainThread = false;
-        if(ss.limitWay == 0)iterativeDeepening<0>(*ss.local, ss.localState, TM(0, 0), ss.relDepth);
-        if(ss.limitWay == 1)iterativeDeepening<1>(*ss.local, ss.localState, TM(0, 0), ss.relDepth);
-        if(ss.limitWay == 2)iterativeDeepening<2>(*ss.local, ss.localState, TM(0, 0), ss.relDepth);
+        ss.local.reinit(ss.localState, localNNUE);
+        ss.local.mainThread = false;
+        if(ss.limitWay == 0)iterativeDeepening<0>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
+        if(ss.limitWay == 1)iterativeDeepening<1>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
+        if(ss.limitWay == 2)iterativeDeepening<2>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
         {
             lock_guard<mutex> lock(ss.mtx);
             ss.running = false;
@@ -662,9 +661,9 @@ void BestMoveFinder::updatemainSS(usefull& ss, Record& oldss){
     ss.tbHits -= oldss.tbHits;
     oldss.nodes = oldss.tbHits = 0;
     for(int i=0; i<nbThreads-1; i++){
-        oldss.nodes += helperThreads[i].local->nodes;
-        oldss.tbHits += helperThreads[i].local->tbHits;
-        ss.seldepth = max(ss.seldepth.load(), helperThreads[i].local->seldepth.load());
+        oldss.nodes += helperThreads[i].local.nodes;
+        oldss.tbHits += helperThreads[i].local.tbHits;
+        ss.seldepth = max(ss.seldepth.load(), helperThreads[i].local.seldepth.load());
     }
     ss.nodes += oldss.nodes;
     ss.tbHits += oldss.tbHits;
@@ -913,7 +912,7 @@ void BestMoveFinder::clear(){
     transposition.clear();
     localSS.history.init(parameters);
     for(int i=0; i<nbThreads-1; i++){
-        helperThreads[i].local->history.init(parameters);
+        helperThreads[i].local.history.init(parameters);
     }
     for(int idNode=0; idNode < prune_numa::nodeCount(); idNode++){
         shareds[idNode].correctionHistory.reset();

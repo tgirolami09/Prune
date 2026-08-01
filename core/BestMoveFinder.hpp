@@ -84,7 +84,7 @@ class BestMoveFinder{
 
     class HelperThread{
     public:
-        unique_ptr<usefull> local;
+        usefull local;
         GameState localState;
         thread t;
         bool running;
