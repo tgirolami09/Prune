@@ -878,6 +878,9 @@ void NNUE::updateStack(Accumulator* stack, int stackIndex, FinnyTables& tables) 
         stack[i].updateSelf(stack[i-1], tables, *this);
     }
 }
+NNUE::NNUE(){
+    
+}
 
 template void NNUE::change1<-1>(Accumulator&, bool, int, int) const;
 template void NNUE::change1<1>(Accumulator&, bool, int, int) const;

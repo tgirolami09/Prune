@@ -12,7 +12,6 @@ using cpu_set_t=int;
 using namespace std;
 
 namespace prune_numa{
-    extern vector<NNUE> nnues;
     bool init();
     void bindThread(uint32_t numaId);
     const NNUE& getnnue(uint32_t numaId);

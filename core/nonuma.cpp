@@ -1,8 +1,8 @@
 #if !defined(NUMA) && !defined(NUMA_NOLIB)
+#pragma message("not using numa")
 #include "numa.hpp"
 
 namespace prune_numa{
-    vector<NNUE> nnues;
     bool init() {
         return true;
     }

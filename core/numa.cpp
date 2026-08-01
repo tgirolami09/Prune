@@ -1,5 +1,6 @@
 //numa code from https://github.com/Ciekce/Stormphrax
 #ifdef NUMA
+#pragma message("using libnuma")
 #include "numa.hpp"
 #include <pthread.h>
 #include <cstdio>
@@ -17,7 +18,7 @@ namespace prune_numa{
 
         const int numNodes = nodeCount();
         printf("%d NUMA nodes\n", numNodes);
-        nnues.reserve(numNodes);
+        nnues.resize(numNodes);
         for(int i=0; i<numNodes; i++){
             memcpy(&nnues[i], baseModel, sizeof(NNUE));
         }

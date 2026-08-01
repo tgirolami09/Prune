@@ -1,5 +1,6 @@
 //alternative for no libnuma and linux system
 #ifdef NUMA_NOLIB
+#pragma message("using numa")
 #include "numa.hpp"
 #include <pthread.h>
 #include <cstdio>
@@ -10,8 +11,8 @@
 namespace fs = std::filesystem;
 
 namespace prune_numa{
+    unsigned int nbNodes=0;
     vector<NNUE> nnues;
-    unsigned int nbNodes;
     bool __attribute__((constructor(100))) init() {
 
         std::string path = "/sys/devices/system/node/";
@@ -24,20 +25,22 @@ namespace prune_numa{
                 }
             }
         nbNodes = _nbNodes;
-
-        threadMapping();
+        nnues.resize(nbNodes);
 
         const int numNodes = nodeCount();
         printf("%d NUMA nodes\n", numNodes);
-        nnues.reserve(numNodes);
+        printf("nnues.size() = %lu/%d (line %d)\n", nnues.size(), nbNodes, __LINE__);
         for(int i=0; i<numNodes; i++){
             memcpy(&nnues[i], baseModel, sizeof(NNUE));
         }
+
+        threadMapping();
 
         return true;
     }
 
     void bindThread(uint32_t numaId) {
+        printf("nnues.size() = %lu/%d (line %d)\n", nnues.size(), nbNodes, __LINE__);
         const auto node = getNode(numaId);
         const auto handle = pthread_self();
         const auto cpuSet = threadMapping()[node];
@@ -45,10 +48,12 @@ namespace prune_numa{
     }
 
     int nodeCount() {
+        printf("nnues.size() = %lu/%d (line %d)\n", nnues.size(), nbNodes, __LINE__);
         return nbNodes;
     }
 
     vector<cpu_set_t> threadMapping() {
+        printf("nnues.size() = %lu/%d (line %d)\n", nnues.size(), nbNodes, __LINE__);
         static const auto s_mapping = [] {
             const auto maxNode = nodeCount()-1;
 
@@ -86,6 +91,7 @@ namespace prune_numa{
     }
 
     const NNUE& getnnue(uint32_t numaId){
+        printf("nnues.size() = %lu/%d (line %d)\n", nnues.size(), nbNodes, __LINE__);
         return nnues[getNode(numaId)];
     }
 }
