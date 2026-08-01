@@ -4,7 +4,7 @@ CC=clang
 ADDOPTION?=
 DEBUGOPT?=
 NETNAME?=
-myCPPFLAGS=-Werror -Wshadow -Wall -Wextra -MMD -std=gnu++17 -I../Fathom/src $(ADDOPTION)
+myCPPFLAGS=-Werror -Wshadow -Wall -Wextra -MMD -std=c++20 -I../Fathom/src $(ADDOPTION)
 OPT?=-O3 -flto -funroll-loops
 
 TUNE?=false

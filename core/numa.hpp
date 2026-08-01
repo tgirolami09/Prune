@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <span>
 #include "NNUE.hpp"
 #if defined(__APPLE__) || defined(_WIN32)
 using cpu_set_t=int;
@@ -17,7 +18,7 @@ namespace prune_numa{
     void bindThread(uint32_t numaId);
     const NNUE& getnnue(uint32_t numaId);
     int nodeCount();
-    vector<cpu_set_t> threadMapping();
+    std::span<const cpu_set_t> threadMapping();
 
     int32_t getNode(uint32_t numaId);
 };

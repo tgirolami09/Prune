@@ -36,7 +36,7 @@ namespace prune_numa{
         return static_cast<int>(threadMapping().size());
     }
 
-    vector<cpu_set_t> threadMapping() {
+    std::span<const cpu_set_t> threadMapping() {
         static const auto s_mapping = [] {
             const auto maxNode = numa_max_node();
 
