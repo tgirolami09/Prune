@@ -62,7 +62,7 @@ namespace prune_numa{
                 FILE* nodefile = fopen(filename.c_str(), "r");
                 unsigned int number;
                 vector<unsigned int> curmasks;
-                cpumasks.reserve(cpucount/32);
+                curmasks.reserve(cpucount/32);
                 while(fscanf(nodefile, "%x", &number) != EOF){
                     curmasks.push_back(number);
                     if(fgetc(nodefile) == EOF)break;
