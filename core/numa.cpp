@@ -75,7 +75,7 @@ namespace prune_numa{
     }
 
     const NNUE& getnnue(uint32_t numaId){
-        return nnues[numaId];
+        return nnues[getNode(numaId)];
     }
 }
 #endif
