@@ -259,6 +259,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         }
         ss.stack[rootDist].snap.save(state);
         state.playMove(capture);//don't care about repetition
+        transposition.prefetch(state);
         ss.eval.playMove(localNNUE, capture, !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
         int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(localNNUE, capture, !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
@@ -300,7 +301,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
     if(rootDist >= maxDepth)return ss.eval.getScore(state.friendlyColor(), shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state, parameters, localNNUE);
     if(isPV)ss.seldepth = max(ss.seldepth.load(), relDepth);
-    transposition.prefetch(state);
     __builtin_prefetch(&ss.stack[rootDist+1]);
     if(MAXIMUM-rootDist <= alpha)return MAXIMUM-rootDist;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
@@ -474,6 +474,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.rootBest = order.moves[0];
         ss.stack[rootDist].snap.save(state);
         state.playMove(order.moves[0]);
+        transposition.prefetch(state);
         if(state.twofoldFast()){
             ss.stack[rootDist].snap.restore(state);
             if constexpr(isPV)ss.beginLineMove(rootDist, order.moves[0]);
@@ -544,6 +545,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         int score;
         ss.stack[rootDist].snap.save(state);
         ExpendedMove curEMove = state.playMove(curMove);
+        transposition.prefetch(state);
         bool isDraw = false;
         ss.stack[rootDist].searchedMoves[triedMove] = curMove;
         triedMove++;
