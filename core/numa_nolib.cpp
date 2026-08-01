@@ -15,15 +15,15 @@ namespace prune_numa{
     bool __attribute__((constructor(100))) init() {
 
         std::string path = "/sys/devices/system/node/";
-        unsigned int nodeCount = 0;
+        unsigned int _nbNodes = 0;
         for (const auto & entry : fs::directory_iterator(path))
             if(entry.is_directory()){
                 string filename = entry.path().filename().string();
                 if(filename.substr(0, 4) == "node"){
-                    nodeCount++;
+                    _nbNodes++;
                 }
             }
-        nbNodes = nodeCount;
+        nbNodes = _nbNodes;
 
         threadMapping();
 
@@ -61,7 +61,8 @@ namespace prune_numa{
                 string filename = "/sys/devices/system/node/node"+to_string(node)+"/cpumap";
                 FILE* nodefile = fopen(filename.c_str(), "r");
                 unsigned int number;
-                vector<unsigned int> curmasks.reserve(cpucount/32);
+                vector<unsigned int> curmasks;
+                cpumasks.reserve(cpucount/32);
                 while(fscanf(nodefile, "%x", &number) != EOF){
                     curmasks.push_back(number);
                     if(fgetc(nodefile) == EOF)break;
