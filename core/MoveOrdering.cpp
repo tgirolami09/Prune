@@ -40,6 +40,7 @@ void HelpOrdering::init(const tunables& Parameters){
     memset(history, 0, sizeof(history));
     memset(conthist, 0, sizeof(conthist));
     memset(captHist, 0, sizeof(captHist));
+    memset(pawnHist, 0, sizeof(pawnHist));
 }
 void HelpOrdering::updateHistory(int bonus, int& hist){
     bonus = min(max(bonus/fracDepth, -maxHistory), maxHistory);
@@ -55,6 +56,7 @@ void HelpOrdering::bonusMove(int depth, Move move, bool c, const GameState& stat
         updateHistory(depth*parameters.mainHist.bonus, history[c][move.from()][move.to()][src_atk][dst_atk]);
         ExpendedMove lastmove = state.getLastMove();
         updateHistory(depth*parameters.prevHist.bonus, conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]);
+        updateHistory(depth*parameters.pawnHist.bonus, pawnHist[c][state.pawnZobrist%pawnHistSize][state.getPiece(move.from())][move.to()]);
     }
 }
 
@@ -67,6 +69,7 @@ void HelpOrdering::malusMove(int depth, Move move, bool c, const GameState& stat
         updateHistory(-depth*parameters.mainHist.malus, history[c][move.from()][move.to()][src_atk][dst_atk]);
         ExpendedMove lastmove = state.getLastMove();
         updateHistory(-depth*parameters.prevHist.malus, conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]);
+        updateHistory(-depth*parameters.pawnHist.malus, pawnHist[c][state.pawnZobrist%pawnHistSize][state.getPiece(move.from())][move.to()]);
     }
 }
 
@@ -110,6 +113,7 @@ int HelpOrdering::getQuietScore(Move move, bool c, const GameState& state, big a
     bool dst_atk = attacked&(1ULL << move.to());
     score += history[c][move.from()][move.to()][src_atk][dst_atk]*parameters.mainHist.getParam<id>();
     score += conthist[!c][lastmove.piece][lastmove.move.to()][c][state.getPiece(move.from())][move.to()]*parameters.prevHist.getParam<id>();
+    score += pawnHist[c][state.pawnZobrist%pawnHistSize][state.getPiece(move.from())][move.to()] * parameters.pawnHist.getParam<id>();
     return score/1024;
 }
 

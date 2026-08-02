@@ -20,7 +20,7 @@ struct TunableInt{
     int minimum, maximum;
     float c_end;
     float r_end;
-    explicit constexpr TunableInt(int v):value(v),minimum(v/2), maximum(v*2), c_end(cabs(maximum-minimum)/20.0), r_end(0.002 / (cmin(0.5f, c_end) / 0.5)){
+    explicit constexpr TunableInt(int v):value(v),minimum(v/2), maximum(v*2), c_end(max(cabs(maximum-minimum), 1)/20.0), r_end(0.002 / (cmin(0.5f, c_end) / 0.5)){
     }
     explicit constexpr TunableInt(int v, int mi, int ma):value(v),minimum(mi), maximum(ma), c_end(cabs(maximum-minimum)/20.0), r_end(0.002 / (cmin(0.5f, c_end) / 0.5)){
     }
@@ -189,6 +189,7 @@ public:
         se_pv_offset(100),
         mainHist(1022, 1049, 1100, 1032, 510, 272),
         prevHist(996, 924, 1131, 1042, 481, 267),
+        pawnHist(1000, 0, 0, 0, 0, 267),
         aw_mul(1.9495),
         nodetm_base(2.13688),
         nodetm_mul(1.37487){}
@@ -239,7 +240,8 @@ public:
         se_pv_offset;
     TunableHist
         mainHist,
-        prevHist;
+        prevHist,
+        pawnHist;
     TunableFloat
         aw_mul,
         nodetm_base,
