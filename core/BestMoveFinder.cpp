@@ -83,8 +83,9 @@ string scoreToStr(int score, string precision, int material){
 
 //Class to find the best in a situation
 
-BestMoveFinder::BestMoveFinder(int memory):shareds(prune_numa::nodeCount()), transposition(memory), stop_flag(1), helperThreads(0){
-    localSS.idThread = 0;
+BestMoveFinder::BestMoveFinder(int memory, int baseThread):shareds(prune_numa::nodeCount()), transposition(memory), stop_flag(1), helperThreads(0){
+    thread0 = baseThread;
+    localSS.idThread = thread0 == -1?0:baseThread;
     for(auto& shared:shareds){
         shared.correctionHistory.reset();
     }
@@ -627,10 +628,14 @@ void BestMoveFinder::launchSMP(int idThread){
     ss.local.reinit(ss.localState);
     ss.local.mainThread = false;
     negamax<PVNode, limitWay, int, true>(ss.local, depth, ss.localState, alpha, beta, relDepth);*/
-    prune_numa::bindThread(idThread);
+    int placeThread = idThread;
+    if(thread0 != -1){
+        placeThread = thread0;
+    }
+    prune_numa::bindThread(placeThread);
     HelperThread& ss = helperThreads[idThread-1];
-    const NNUE& localNNUE = prune_numa::getnnue(idThread);
-    ss.local.idThread = idThread;
+    const NNUE& localNNUE = prune_numa::getnnue(placeThread);
+    ss.local.idThread = placeThread;
     {
         lock_guard<mutex> lock(ss.mtx);
         ss.running = false;
@@ -796,8 +801,8 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
 
 template<int limitWay, bool set>
 bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth){
-    prune_numa::bindThread(0);
-    const NNUE& localNNUE = prune_numa::getnnue(0);
+    prune_numa::bindThread(localSS.idThread);
+    const NNUE& localNNUE = prune_numa::getnnue(localSS.idThread);
     if constexpr(!set)
         stop_flag = 0;
     verbose = _verbose;

@@ -16,6 +16,7 @@ bool isdfrc = true;
 #include <cassert>
 #include <omp.h>
 #include "viriformatUtil.hpp"
+#include "numa.hpp"
 //#define DEBUG
 using namespace std;
 const int alloted_space = 2*1000*1000;
@@ -45,27 +46,36 @@ class threadHelper{
 public:
     BestMoveFinder player0;
     BestMoveFinder player1;
-    IncrementalEvaluator eval;
     LegalMoveGenerator generator;
     GameState state;
     GamePlayed game;
     Move legalMoves[maxMoves];
-    threadHelper():player0(alloted_space), player1(alloted_space){}
+    int idThread;
+    int phase;
+    threadHelper(int _idThread):player0(alloted_space, _idThread), player1(alloted_space, _idThread), idThread(_idThread){}
     void init(string fen){
         player0.clear();
         player1.clear();
         game.startPos.fromFen(fen);
         state.fromFen(fen);
-        eval.init(state);
+        phase = countbit(
+            state.board.pieces[PAWN] |
+            state.board.pieces[ROOK] |
+            state.board.pieces[QUEEN]
+        )*2;
+        phase += countbit(
+            state.board.pieces[BISHOP] |
+            state.board.pieces[KNIGHT]
+        );
         game.clear();
     }
     void playMove(Move move){
-        MoveInfo curProc;
-        curProc.move = move;
-        curProc.score = 0;
-        eval.playNoBack(state, move, state.friendlyColor());
-        state.playMove(move);
-        game.game.push_back(curProc);
+        ExpendedMove emove = state.playMove(move);
+        if(emove.capture != SPACE){
+            phase -= (emove.capture != BISHOP && emove.capture != KNIGHT)+1;
+        }
+        if(move.promotion() == KNIGHT || move.promotion() == BISHOP)
+            phase -= 1;
     }
     BestMoveFinder& getPlayer(){
         if(state.friendlyColor() == WHITE)
@@ -77,7 +87,15 @@ public:
     }
     void reset(string fen){
         state.fromFen(fen);
-        eval.init(state);
+        phase = countbit(
+            state.board.pieces[PAWN] |
+            state.board.pieces[ROOK] |
+            state.board.pieces[QUEEN]
+        )*2;
+        phase += countbit(
+            state.board.pieces[BISHOP] |
+            state.board.pieces[KNIGHT]
+        );
         game.game.clear();
     }
 };
@@ -100,6 +118,10 @@ bool moveRandom(threadHelper* state, int id){
         if(nbMoves == 0)return true;
         int idMove = nbMoves*(__uint128_t)genRandom64(s) >> 64;
         state->playMove(state->legalMoves[idMove]);
+        MoveInfo curProc;
+        curProc.move = state->legalMoves[idMove];
+        curProc.score = 0;
+        state->game.game.push_back(curProc);
     }
     return false;
 }
@@ -166,7 +188,7 @@ int main(int argc, char** argv){
             lastGamesMade += nbGames;
         }
         int endReg = sizeGame*(idThread+1)/realThread;
-        threadHelper* state = new threadHelper;
+        unique_ptr<threadHelper> state = make_unique<threadHelper>(idThread);
         FILE* fptr;
         fptr = fopen(nameDataFile.c_str(), "ab");
         for(int i=startReg; i<endReg; i++){
@@ -175,7 +197,7 @@ int main(int argc, char** argv){
             int nbTry = 0;
             state->init(fens[i%fens.size()]);
             idFenTried++;
-            while(moveRandom(state, (idFenTried+idThread+(nbTry++))^globseed) || 
+            while(moveRandom(&*state, (idFenTried+idThread+(nbTry++))^globseed) || 
                 abs(get<2>(state->getEval(tm))) > 500
             ){
                 state->reset(fens[i%fens.size()]);
@@ -209,8 +231,7 @@ int main(int argc, char** argv){
                 MoveInfo curProc;
                 curProc.move = curMove;
                 curProc.score = state->state.friendlyColor() == BLACK ? -score : score;
-                state->eval.playNoBack(state->state, curMove, state->state.friendlyColor());
-                state->state.playMove(curMove);
+                state->playMove(curMove);
                 if(state->state.threefold()){
                     result = 1;
                     break;
@@ -227,7 +248,7 @@ int main(int argc, char** argv){
                         result = 1;
                     break;
                 }
-                if(state->eval.isInsufficientMaterial())break;
+                if(state->phase <= 1)break;
             }while(state->state.rule50_count() < 100);
             state->game.result = result;
             state->game.dump(fptr);
@@ -283,7 +304,6 @@ int main(int argc, char** argv){
             }
         }
         fclose(fptr);
-        delete state;
     }
     printf("\n");
     clear_table();
