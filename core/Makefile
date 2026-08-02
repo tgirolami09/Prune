@@ -37,6 +37,9 @@ THENET=model.bin
 BASENAME=prune
 ADDSUFFIX=true
 NOTMAIN=
+ifeq ($(DATAGEN), true)
+	MAIN=collectData.cpp
+endif
 ifneq ($(MAIN), engine.cpp)
 	BASENAME=$(MAIN:%.cpp=%)
 	ADDSUFFIX=false

@@ -127,6 +127,7 @@ bool moveRandom(threadHelper* state, int id){
 }
 
 int main(int argc, char** argv){
+    prune_numa::init();
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;
