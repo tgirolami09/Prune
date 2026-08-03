@@ -147,7 +147,7 @@ int main(int argc, char** argv){
     auto start=chrono::high_resolution_clock::now();
     int lastGamesMade=0;
     int realThread;
-#ifndef DEBUG
+#ifndef NOTHREAD
     #pragma omp parallel
     #pragma omp single
 #endif
@@ -155,7 +155,7 @@ int main(int argc, char** argv){
     if(argc > 5)realThread = atoi(argv[5]);
     //globnnue = NNUE(argv[2]);
     big nodesSearched = 0;
-#ifndef DEBUG
+#ifndef NOTHREAD
     #pragma omp parallel for shared(gamesMade, lastGamesMade, nodesSearched)
 #endif
     for(int idThread=0; idThread<realThread; idThread++){
@@ -183,7 +183,7 @@ int main(int argc, char** argv){
             printf("file %d finding %d games (%d moves in total) delta %d\n", idThread, nbGames, totalMoves, pointer-fileSize);
             startReg += nbGames;
             idFenTried += nbGames;
-#ifndef DEBUG
+#ifndef NOTHREAD
             #pragma omp atomic update
 #endif
             lastGamesMade += nbGames;
@@ -254,11 +254,11 @@ int main(int argc, char** argv){
             state->game.result = result;
             state->game.dump(fptr);
             fflush(fptr);
-#ifndef DEBUG
+#ifndef NOTHREAD
             #pragma omp atomic update
 #endif
             gamesMade++;
-#ifndef DEBUG
+#ifndef NOTHREAD
             #pragma omp atomic update
 #endif
             nodesSearched += localNodes;
@@ -296,7 +296,7 @@ int main(int argc, char** argv){
                 printed += string((w.ws_col-printed.size()-1), ' ');
             }
             printed += "]";
-#ifndef DEBUG
+#ifndef NOTHREAD
             #pragma omp critical
 #endif
             {
