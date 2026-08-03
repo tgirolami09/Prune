@@ -86,7 +86,7 @@ else ifeq ($(ARCH), x86-64-v3)
 else ifeq ($(ARCH), x86-64-v4)
 	ARCHSIZE = -DARCHSIZE=512
 endif
-TAG=$(shell git tag --contains=HEAD)
+TAG=$(shell git tag --points-at=HEAD)
 ifeq ($(TAG), )
 	REC=$(strip $(shell git rev-parse --short HEAD) )
 else
