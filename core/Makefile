@@ -46,6 +46,7 @@ ifneq ($(MAIN), engine.cpp)
 endif
 ifeq ($(MAIN), collectData.cpp)
 	BASENAME=coreGen
+	NOTMAIN := $(NOTMAIN) -DDATAGEN
 	MAINFLAGS := -fopenmp
 	ADDSUFFIX=false
 endif
