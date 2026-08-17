@@ -437,6 +437,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if(!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= depth && ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && !excludedMove && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - depth*parameters.se_dmul/(1024*fracDepth);
         int score = negamax<false, limitWay>(ss, (depth-fracDepth)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMove);
+        if(ss.stop(stop_flag || smp_abort))return 0;
         if(score < goal){
             firstMoveExtension += fracDepth;
             if(!isPV && score <= goal-parameters.se_dext_margin)
