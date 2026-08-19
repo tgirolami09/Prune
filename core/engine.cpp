@@ -195,19 +195,19 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
         TM tm(moveOverhead, state.root.friendlyColor()^(state.movesFromRoot.size()&1));
         for(pair<string, string> arg:args){
             if(arg.first == "btime")
-                tm.btime = stoi(arg.second);
+                tm.btime = min(tm.btime, stoi(arg.second));
             else if(arg.first == "wtime")
-                tm.wtime = stoi(arg.second);
+                tm.wtime = min(tm.wtime, stoi(arg.second));
             else if(arg.first == "binc")
-                tm.binc = stoi(arg.second);
+                tm.binc = min(tm.binc, stoi(arg.second));
             else if(arg.first == "winc")
-                tm.winc = stoi(arg.second);
+                tm.winc = min(tm.winc, stoi(arg.second));
             else if(arg.first == "movetime")
-                tm.movetime = stoi(arg.second);
+                tm.movetime = min(tm.movetime, stoi(arg.second));
             else if(arg.first == "nodes")
-                tm.hardnodes = stoull(arg.second);
+                tm.hardnodes = min(tm.hardnodes, stoul(arg.second));
             else if(arg.first == "depth")
-                tm.maxdepth = stoi(arg.second);
+                tm.maxdepth = min(tm.maxdepth, stoi(arg.second));
             else
                 printf("info string unknown limit : %s\n", arg.first.c_str());
         }
