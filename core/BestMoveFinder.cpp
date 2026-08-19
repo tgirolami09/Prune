@@ -815,7 +815,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         return make_tuple(nullMove, nullMove, score, vector<depthInfo>());
     }
     this->hardBound = INT64_MAX;
-    if(order.nbMoves == 1){
+    if(order.nbMoves == 1 && tm.enabledtm){
         stop_flag = 1;
         if(verbose)
             printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor(), localNNUE), "", material).c_str());
