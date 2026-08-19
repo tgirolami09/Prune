@@ -356,6 +356,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if constexpr(isPV)ss.beginLine(rootDist);
                 return tbScore;
             }
+            if(flag == LOWERBOUND)alpha = max(alpha, tbScore);
         }
     }
     if(depth < fracDepth || (!isRoot && depth < fdepth<2> && (!inCheck && (static_eval+100 < alpha || static_eval > beta+100)))){
