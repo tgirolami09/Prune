@@ -101,7 +101,7 @@ void BestMoveFinder::clear_helpers(){
     if(helperThreads.size() == 0)return;
     smp_end = true;
     for(int i=0; i<nbThreads-1; i++){
-        helperThreads[i].launch(-1, -1);
+        helperThreads[i].launch(-1);
         helperThreads[i].t.join();
     }
 }
@@ -164,9 +164,8 @@ void BestMoveFinder::usefull::resetLines(){
     }
 }
 
-void BestMoveFinder::HelperThread::launch(int _relDepth, int _limitWay){
+void BestMoveFinder::HelperThread::launch(int _relDepth){
     relDepth = _relDepth;
-    limitWay = _limitWay;
     ans = 0;
     {
         lock_guard<mutex> lock(mtx);
@@ -180,10 +179,9 @@ void BestMoveFinder::HelperThread::wait_thread(){
     cv.wait(lock, [this]{return !running && isready;});
 }
 
-template<int limitWay, bool isPV, bool isCalc>
+template<bool isPV, bool isCalc>
 int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth){
-    if(limitWay == 0 && (ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)stop_flag=1;
-    if constexpr(limitWay == 1)if(ss.nodes >= hardBound)stop_flag=1;
+    if(globtm.shouldstop_hard(ss.nodes, startSearch))stop_flag = 1;
     if(ss.stop(stop_flag || smp_abort))return 0;
     if(ss.eval.isInsufficientMaterial() || state.rule50_count() > 100)return 0;
     ss.nodes++;
@@ -265,7 +263,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         state.playMove(capture);//don't care about repetition
         transposition.prefetch(state);
         ss.eval.playMove(localNNUE, capture, !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
-        int score = -quiescenceSearch<limitWay, isPV, false>(ss, state, -beta, -alpha, relDepth+1);
+        int score = -quiescenceSearch<isPV, false>(ss, state, -beta, -alpha, relDepth+1);
         ss.eval.undoMove(localNNUE, capture, !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
         ss.stack[rootDist].snap.restore(state);
         if(ss.stop(stop_flag || smp_abort))return 0;
@@ -286,13 +284,13 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     return bestEval;
 }
 
-template<bool isPV, int limitWay>
+template<bool isPV>
 inline int BestMoveFinder::Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth){
-    int score = quiescenceSearch<limitWay, isPV, true>(ss, state, alpha, beta, relDepth);
+    int score = quiescenceSearch<isPV, true>(ss, state, alpha, beta, relDepth);
     return score;
 }
 
-template <bool isPV, int limitWay, bool isRoot>
+template <bool isPV, bool isRoot>
 int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const Move excludedMove){
     if(isPV)
         cutnode = false;
@@ -308,8 +306,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     __builtin_prefetch(&ss.stack[rootDist+1]);
     if(MAXIMUM-rootDist <= alpha)return MAXIMUM-rootDist;
     if(MINIMUM+rootDist >= beta)return MINIMUM+rootDist;
-    if constexpr(limitWay == 0)if((ss.nodes & 1023) == 0 && getElapsedTime() >= hardBoundTime)stop_flag = 1;
-    if constexpr(limitWay == 1)if(ss.nodes >= hardBound)stop_flag = 1;
+    if(globtm.shouldstop_hard(ss.nodes, startSearch))stop_flag = 1;
     if(ss.stop(stop_flag || smp_abort))return 0;
     auto& curgenerator = ss.stack[rootDist].generator;
     auto& nextgenerator = ss.stack[rootDist+1].generator;
@@ -359,11 +356,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if constexpr(isPV)ss.beginLine(rootDist);
                 return tbScore;
             }
+            if(flag == LOWERBOUND)alpha = max(alpha, tbScore);
         }
     }
     if(depth < fracDepth || (!isRoot && depth < fdepth<2> && (!inCheck && (static_eval+100 < alpha || static_eval > beta+100)))){
         if constexpr(isPV)ss.beginLine(rootDist);
-        return Evaluate<isPV, limitWay>(ss, state, alpha, beta, relDepth);
+        return Evaluate<isPV>(ss, state, alpha, beta, relDepth);
     }
     ss.nodes++;
     Move lastBest = nullMove;
@@ -395,7 +393,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 return expected_score;
             int razoring_margin = 350*depth/fracDepth;
             if(abs(alpha) < MAXIMUM-maxDepth && static_eval+razoring_margin <= alpha){
-                const int score = Evaluate<false, limitWay>(ss, state, alpha, alpha+1, relDepth);
+                const int score = Evaluate<false>(ss, state, alpha, alpha+1, relDepth);
                 if(score <= alpha)
                     return score;
             }
@@ -404,7 +402,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 ss.stack[rootDist].snap.save(state);
                 state.playNullMove();
                 nextgenerator.initDangers(state);
-                int v = -negamax<false, limitWay>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
+                int v = -negamax<false>(ss, depth-r, state, -beta, -beta+1, relDepth+1, !cutnode);
                 ss.stack[rootDist].snap.restore(state);
                 if(v >= beta){
                     if(depth <= fdepth<10> || ss.min_nmp_ply != 0){
@@ -418,7 +416,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                         nmpVerifAllNode++;
 #endif
                     ss.min_nmp_ply = rootDist+r/fracDepth;
-                    v = negamax<false, limitWay>(ss, depth-r, state, beta-1, beta, relDepth, cutnode);
+                    v = negamax<false>(ss, depth-r, state, beta-1, beta, relDepth, cutnode);
                     ss.min_nmp_ply = 0;
                     if(v >= beta){
 #ifdef DEBUG_MACRO
@@ -436,7 +434,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     int firstMoveExtension = 0;
     if(!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= depth && ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && !excludedMove && abs(ttEntry.score) < MAXIMUM-maxDepth){
         int goal = ttEntry.score - depth*parameters.se_dmul/(1024*fracDepth);
-        int score = negamax<false, limitWay>(ss, (depth-fracDepth)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMove);
+        int score = negamax<false>(ss, (depth-fracDepth)/2, state, goal-1, goal, relDepth, cutnode, ttEntry.bestMove);
         if(ss.stop(stop_flag || smp_abort))return 0;
         if(score < goal){
             firstMoveExtension += fracDepth;
@@ -490,7 +488,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
         ss.eval.playMove(localNNUE, order.moves[0], !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
         nextgenerator.initDangers(state);
-        int sc = -negamax<isPV, limitWay>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
+        int sc = -negamax<isPV>(ss, depth, state, -beta, -alpha, relDepth+1, !cutnode);
         ss.eval.undoMove(localNNUE, order.moves[0], !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
         ss.stack[rootDist].snap.restore(state);
         if (sc > alpha && sc < beta && isPV)ss.transfer(rootDist, order.moves[0]);
@@ -575,12 +573,12 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                     );
                     addRedDepth /= 8;
                 }
-                score = -negamax<false, limitWay>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
+                score = -negamax<false>(ss, depth-reductionDepth-addRedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha && (score < beta || isPV || addRedDepth)){
-                    score = -negamax<isPV, limitWay>(ss, depth-reductionDepth, state, -beta, -alpha, relDepth+1, !cutnode);
+                    score = -negamax<isPV>(ss, depth-reductionDepth, state, -beta, -alpha, relDepth+1, !cutnode);
                 }
             }else
-                score = -negamax<isPV, limitWay>(ss, depth-reductionDepth+firstMoveExtension, state, -beta, -alpha, relDepth+1, !cutnode);
+                score = -negamax<isPV>(ss, depth-reductionDepth+firstMoveExtension, state, -beta, -alpha, relDepth+1, !cutnode);
             ss.eval.undoMove(localNNUE, curMove, !state.friendlyColor(), ss.stack[rootDist].snap.board, state.board);
         }
         ss.stack[rootDist].snap.restore(state);
@@ -651,9 +649,7 @@ void BestMoveFinder::launchSMP(int idThread){
         if(smp_end)return;
         ss.local.reinit(ss.localState, localNNUE);
         ss.local.mainThread = false;
-        if(ss.limitWay == 0)iterativeDeepening<0>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
-        if(ss.limitWay == 1)iterativeDeepening<1>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
-        if(ss.limitWay == 2)iterativeDeepening<2>(ss.local, ss.localState, TM(0, 0), ss.relDepth);
+        iterativeDeepening(ss.local, ss.localState, TM(0, 0), ss.relDepth);
         {
             lock_guard<mutex> lock(ss.mtx);
             ss.running = false;
@@ -675,9 +671,9 @@ void BestMoveFinder::updatemainSS(usefull& ss, Record& oldss){
     ss.tbHits += oldss.tbHits;
 }
 
-template <int limitWay>
 bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool _verbose){
     stop_flag--;
+    globtm = tm;
     this->verbose = _verbose;
     startSearch = timeMesure::now();
     int actDepth=0;
@@ -690,20 +686,18 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
         for(int i=0; i<nbThreads-1; i++)helperThreads[i].localState.playPartialMove(move);
         actDepth++;
     }
-    bestMoveResponse res=goState<limitWay, true>(state, tm, verbose, actDepth);
+    bestMoveResponse res=goState<true>(state, tm, verbose, actDepth);
     snap.restore(state);
     return res;
 }
 
-template<int limitWay>
 bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth){
     vector<depthInfo> allInfos;
-    chrono::milliseconds softBoundTime{tm.softBound};
     const int material = state.material();
     Move bestMove=nullMove;
     int depthMax = maxDepth;
-    if(ss.mainThread && limitWay == 2){
-        depthMax = tm.hardBound;
+    if(ss.mainThread){
+        depthMax = tm.maxdepth;
     }
     Record rec{};
     const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
@@ -731,7 +725,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             ss.stack[1].generator.initDangers(state);
             lastUsedNodes = ss.nodes;
             smp_abort = false;
-            int newScore = negamax<true, limitWay, true>(ss, depth*fracDepth, state, alpha, beta, actDepth, false);
+            int newScore = negamax<true, true>(ss, depth*fracDepth, state, alpha, beta, actDepth, false);
             bestScore = ss.searchedMoves?newScore:bestScore;
             lastUsedNodes = ss.nodes-lastUsedNodes;
             bestMove = (bestScore != -INF && ss.rootBest.moveInfo != nullMove.moveInfo) ? ss.rootBest : finalBestMove;
@@ -788,11 +782,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             }
             if(!stop_flag)
                 allInfos.push_back({ss.nodes, (int)(tcpu*1000), (int)(speed), depth, ss.seldepth-startRelDepth, bestScore});
-            softBoundTime = chrono::milliseconds{tm.updateSoft(depth, ss.bestMoveNodes, lastUsedNodes, abs(bestScore-staticEval), bestMove.moveInfo, parameters, verbose)};
-            this->hardBound = tm.hardBound;
-            hardBoundTime = chrono::milliseconds{tm.hardBound};
-            if(limitWay == 1 && ss.nodes > tm.softBound)break;
-            if(limitWay == 0 && getElapsedTime() > softBoundTime)break;
+            if(tm.shouldstop_soft(totNodes, startSearch, depth, ss.bestMoveNodes, lastUsedNodes, abs(bestScore-staticEval), bestMove, parameters, verbose))break;
         }
     }
     if(minimal && verbose)
@@ -800,8 +790,9 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
     return make_tuple(bestMove, ponderMove, lastScore, allInfos);
 }
 
-template<int limitWay, bool set>
+template<bool set>
 bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth){
+    globtm = tm;
     prune_numa::bindThread(localSS.idThread);
     const NNUE& localNNUE = prune_numa::getnnue(localSS.idThread);
     if constexpr(!set)
@@ -809,9 +800,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     verbose = _verbose;
     wdlFilterNb = 0;
     const int material = state.material();
-    hardBoundTime = chrono::milliseconds{tm.hardBound*1000};
     startSearch = timeMesure::now();
-    chrono::milliseconds softBoundTime{tm.softBound};
     vector<depthInfo> allInfos;
     bool inCheck;
     Order order;
@@ -827,7 +816,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         return make_tuple(nullMove, nullMove, score, vector<depthInfo>());
     }
     this->hardBound = INT64_MAX;
-    if(order.nbMoves == 1 && limitWay == 0){
+    if(order.nbMoves == 1 && tm.enabledtm){
         stop_flag = 1;
         if(verbose)
             printf("info depth 1 seldepth 0 score %s nodes 0 nps 0 time 0\n", scoreToStr(localSS.eval.getRaw(state.friendlyColor(), localNNUE), "", material).c_str());
@@ -857,7 +846,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if(verbose){
         printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64 "B by cluster)\n", transposition.modulo, (big)transposition.modulo*sizeof(Cluster)/hashMul, (big)sizeof(Cluster));
     }
-    if(limitWay == 1 && tm.hardBound == 1){
+    if(tm.hardnodes == 1){
         localSS.stack[0].snap.save(state);
         Move bestMove=nullMove;
         int bestScore = -INF;
@@ -877,9 +866,9 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         return make_tuple(bestMove, nullMove, bestScore, vector<depthInfo>());
     }
     for(int i=0; i<nbThreads-1; i++){
-        helperThreads[i].launch(actDepth, limitWay);
+        helperThreads[i].launch(actDepth);
     }
-    auto res=iterativeDeepening<limitWay>(localSS, state, tm, actDepth);
+    auto res=iterativeDeepening(localSS, state, tm, actDepth);
     smp_abort = true;
     for(int i=0; i<nbThreads-1; i++){
         helperThreads[i].wait_thread();
@@ -897,16 +886,10 @@ void BestMoveFinder::aging(){
     transposition.aging();
 }
 
-template bestMoveResponse BestMoveFinder::bestMove<0>(GameState&, TM, vector<Move>, bool);
-template bestMoveResponse BestMoveFinder::bestMove<1>(GameState&, TM, vector<Move>, bool);
-template bestMoveResponse BestMoveFinder::bestMove<2>(GameState&, TM, vector<Move>, bool);
-template bestMoveResponse BestMoveFinder::goState<0>(GameState&, TM, bool, int);
-template bestMoveResponse BestMoveFinder::goState<1>(GameState&, TM, bool, int);
-template bestMoveResponse BestMoveFinder::goState<2>(GameState&, TM, bool, int);
 int BestMoveFinder::testQuiescenceSearch(GameState& state){
     localSS.reinit(state, globnnue);
     clock_t start=clock();
-    int score = quiescenceSearch<false, true, false>(localSS, state, -INF, INF, 0);
+    int score = quiescenceSearch<true, false>(localSS, state, -INF, INF, 0);
     clock_t end = clock();
     double tcpu = double(end-start)/CLOCKS_PER_SEC;
     const int material = state.material();

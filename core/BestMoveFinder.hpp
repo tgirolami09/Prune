@@ -31,7 +31,7 @@ extern StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
 extern StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
-using timeMesure=chrono::high_resolution_clock;
+
 //Class to find the best in a situation
 class BestMoveFinder{
     class usefull{
@@ -92,8 +92,8 @@ class BestMoveFinder{
         condition_variable cv;
         atomic<bool> isready;
         int ans;
-        int relDepth, limitWay;
-        void launch(int relDepth, int limitWay);
+        int relDepth;
+        void launch(int relDepth);
         void wait_thread();
     };
 
@@ -110,8 +110,6 @@ public:
     BestMoveFinder(int memory, int baseThread=-1);
     BestMoveFinder();
     sbig hardBound;
-    timeMesure::time_point startSearch;
-    chrono::milliseconds hardBoundTime;
     ~BestMoveFinder();
     #ifdef TUNE
     tunables parameters;
@@ -123,25 +121,25 @@ private:
     vector<HelperThread> helperThreads;
     atomic<bool> smp_abort, smp_end;
     void clear_helpers();
+    timeMesure::time_point startSearch;
+    TM globtm;
     chrono::nanoseconds getElapsedTime();
     int16_t wdlFilterMoveInfos[maxMoves];
     int wdlFilterNb;
-    template<int limitWay, bool isPV, bool isCalc>
+    template<bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    template<bool isPV, int limitWay>
+    template<bool isPV>
     inline int Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
-    template <bool isPV, int limitWay, bool isRoot=false>
+    template <bool isPV, bool isRoot=false>
     int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const Move excludedMove=nullMove);
     void launchSMP(int idThread);
     void updatemainSS(usefull& ss, Record& oldss);
 public:
-    template<int limitWay>
     bestMoveResponse iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth);
-    template <int limitWay=0>
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true);
-    template <int limitWay=0, bool set=false>
+    template <bool set=false>
     bestMoveResponse goState(GameState& state, TM tm, bool verbose, int actDepth);
     int testQuiescenceSearch(GameState& state);
     void clear();

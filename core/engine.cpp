@@ -176,49 +176,44 @@ pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool
 }
 
 bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool verbose, bool& printmove){
-    if(!args.empty()){
-        if(args[0].first == "perft"){
-            printmove = false;
-            big result;
-            PositionSnapshot snap;
-            snap.save(state.root);
-            for(Move move:state.movesFromRoot)
-                state.root.playPartialMove(move);
-            state.root.print();
-            if(args.size() > 1 && args[1].first == "nonbulk")
-                result = doPerft.perft<false>(state.root, stoi(args[0].second));
+    if(!args.empty() && args[0].first == "perft"){
+        printmove = false;
+        big result;
+        PositionSnapshot snap;
+        snap.save(state.root);
+        for(Move move:state.movesFromRoot)
+            state.root.playPartialMove(move);
+        state.root.print();
+        if(args.size() > 1 && args[1].first == "nonbulk")
+            result = doPerft.perft<false>(state.root, stoi(args[0].second));
+        else
+            result = doPerft.perft<true>(state.root, stoi(args[0].second));
+        snap.restore(state.root);
+        printf("Nodes searched: %" PRId64 "\n", result);
+        return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
+    }else{
+        TM tm(moveOverhead, state.root.friendlyColor()^(state.movesFromRoot.size()&1));
+        for(pair<string, string> arg:args){
+            if(arg.first == "btime")
+                tm.btime = min(tm.btime, stoi(arg.second));
+            else if(arg.first == "wtime")
+                tm.wtime = min(tm.wtime, stoi(arg.second));
+            else if(arg.first == "binc")
+                tm.binc = min(tm.binc, stoi(arg.second));
+            else if(arg.first == "winc")
+                tm.winc = min(tm.winc, stoi(arg.second));
+            else if(arg.first == "movetime")
+                tm.movetime = min(tm.movetime, stoi(arg.second));
+            else if(arg.first == "nodes")
+                tm.hardnodes = min(tm.hardnodes, stoul(arg.second));
+            else if(arg.first == "depth")
+                tm.maxdepth = min(tm.maxdepth, stoi(arg.second));
             else
-                result = doPerft.perft<true>(state.root, stoi(args[0].second));
-            snap.restore(state.root);
-            printf("Nodes searched: %" PRId64 "\n", result);
-            return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
-        }else if((args[0].first == "btime" || args[0].first == "wtime")){
-            int btime=0, wtime=0, winc=0, binc=0;
-            for(pair<string, string> arg:args){
-                if(arg.first == "btime")
-                    btime = stoi(arg.second);
-                else if(arg.first == "wtime")
-                    wtime = stoi(arg.second);
-                else if(arg.first == "binc")
-                    binc = stoi(arg.second);
-                else if(arg.first == "winc")
-                    winc = stoi(arg.second);
-            }
-            bool color = state.root.friendlyColor()^(state.movesFromRoot.size()&1);
-            TM tm(moveOverhead, wtime, btime, binc, winc, color);
-            return bestMoveFinder.bestMove<0>(state.root, tm, state.movesFromRoot);
-        }else if(args[0].first == "movetime"){
-            int movetime = stoi(args[0].second);
-            return bestMoveFinder.bestMove<0>(state.root, TM(movetime, movetime), state.movesFromRoot, verbose);
-        }else if(args[0].first == "nodes"){
-            int nodes = stoi(args[0].second);
-            return bestMoveFinder.bestMove<1>(state.root, TM(nodes, nodes), state.movesFromRoot, verbose);
-        }else if(args[0].first == "depth"){
-            int depth = stoi(args[0].second);
-            return bestMoveFinder.bestMove<2>(state.root, TM(depth, depth), state.movesFromRoot, verbose);
+                printf("info string unknown limit : %s\n", arg.first.c_str());
         }
+        tm.init();
+        return bestMoveFinder.bestMove(state.root, tm, state.movesFromRoot, verbose);
     }
-    return bestMoveFinder.bestMove<2>(state.root, TM(200, 200), state.movesFromRoot, verbose);
 }
 
 void manageSearch(){
