@@ -208,9 +208,11 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
                 tm.hardnodes = stoull(arg.second);
             else if(arg.first == "depth")
                 tm.maxdepth = stoi(arg.second);
+            else
+                printf("info string unknown limit : %s\n", arg.first.c_str());
         }
         tm.init();
-        return bestMoveFinder.bestMove(state.root, tm, state.movesFromRoot);
+        return bestMoveFinder.bestMove(state.root, tm, state.movesFromRoot, verbose);
     }
 }
 

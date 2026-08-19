@@ -129,6 +129,10 @@ void BestMoveFinder::setThreads(int nT){
     }
 }
 
+chrono::nanoseconds BestMoveFinder::getElapsedTime(){
+    return timeMesure::now()-startSearch;
+}
+
 string BestMoveFinder::usefull::PVprint(LINE pvLine){
     string resLine = "";
     for(int i=0; i<pvLine.cmove; i++){
