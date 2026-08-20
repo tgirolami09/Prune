@@ -788,10 +788,10 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y, const Sparse
         const int offset3 = idx3*I8inI32*output/nb<8>;
         const int offset4 = idx4*I8inI32*output/nb<8>;
         for(int o=0; o<output/nb<32>; o++){
-            const simd<8> weights1 =  weights[offset1+o*nb<32>*I8inI32/nb<8>];
-            const simd<8> weights2 =  weights[offset2+o*nb<32>*I8inI32/nb<8>];
-            const simd<8> weights3 =  weights[offset3+o*nb<32>*I8inI32/nb<8>];
-            const simd<8> weights4 =  weights[offset4+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights1 = weights[offset1+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights2 = weights[offset2+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights3 = weights[offset3+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights4 = weights[offset4+o*nb<32>*I8inI32/nb<8>];
             y_pre[o][0] = matrix_mul(y_pre[o][0], inp1, weights1);
             y_pre[o][1] = matrix_mul(y_pre[o][1], inp2, weights2);
             y_pre[o][2] = matrix_mul(y_pre[o][2], inp3, weights3);
