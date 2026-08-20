@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <fstream>
 #include <array>
+#include <bit>
 #include "Move.hpp"
 #include "embeder.hpp"
 #include "GameState.hpp"
