@@ -341,6 +341,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         raw_eval = INF;
     }
     // Tablebase probe in search
+    int syzygy_max = INF;
+    int syzygy_min = -INF;
     if (!isRoot && tbProbe.canProbe(state, ss.eval.getNbMan(), depth)) {
         int wdl = tbProbe.probeWDL(state);
         if (wdl != TB_RESULT_INVALID) {
@@ -356,7 +358,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 if constexpr(isPV)ss.beginLine(rootDist);
                 return tbScore;
             }
-            if(flag == LOWERBOUND)alpha = max(alpha, tbScore);
+            if(isPV){
+                if(flag == UPPERBOUND)syzygy_max = tbScore;
+                if(flag == LOWERBOUND){
+                    syzygy_min = tbScore;
+                    alpha = max(alpha, tbScore);
+                }
+            }
         }
     }
     if(depth < fracDepth || (!isRoot && depth < fdepth<2> && (!inCheck && (static_eval+100 < alpha || static_eval > beta+100)))){
@@ -585,6 +593,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if(ss.stop(stop_flag || smp_abort))return bestScore;
         ss.searchedMoves += isRoot;
         if(score >= beta){ //no need to copy the pv, because it will fail low on the parent
+            score = clamp(score, syzygy_min, syzygy_max);
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth, raw_eval, isPV);
             if(isRoot)ss.rootBest=curMove;
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state, order.dangerPositions);
@@ -610,6 +619,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
         if(score > bestScore)bestScore = score;
     }
+    bestScore = clamp(bestScore, syzygy_min, syzygy_max);
     if(cutnode && bestScore == alpha)
         return bestScore;
     if((!isRoot || typeNode != UPPERBOUND) && !excludedMove){
