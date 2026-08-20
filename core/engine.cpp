@@ -205,7 +205,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
             else if(arg.first == "movetime")
                 tm.movetime = min(tm.movetime, stoi(arg.second));
             else if(arg.first == "nodes")
-                tm.hardnodes = min(tm.hardnodes, stoul(arg.second));
+                tm.hardnodes = min<big>(tm.hardnodes, stoul(arg.second));
             else if(arg.first == "depth")
                 tm.maxdepth = min(tm.maxdepth, stoi(arg.second));
             else
