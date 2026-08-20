@@ -187,6 +187,7 @@ public:
         see_mul_quiet(64),
         see_mul_tact(80),
         se_pv_offset(100),
+        razoring_margin(350),
         mainHist(1022, 1049, 1100, 1032, 510, 272),
         prevHist(996, 924, 1131, 1042, 481, 267),
         aw_mul(1.9495),
@@ -236,7 +237,8 @@ public:
         mats_offset,
         see_mul_quiet,
         see_mul_tact,
-        se_pv_offset;
+        se_pv_offset,
+        razoring_margin;
     TunableHist
         mainHist,
         prevHist;
