@@ -583,8 +583,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 score = -negamax<false>(ss, reducedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha){
                     if(!isRoot){
-                        newDepth += (score > bestScore+100)*fracDepth;
-                        newDepth -= (score < bestScore+10)*fracDepth;
+                        newDepth += (score > bestScore+50+5*newDepth)*fracDepth;
+                        newDepth -= (score < bestScore+newDepth)*fracDepth;
                     }
                     if(reducedDepth < newDepth)
                         score = -negamax<isPV>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, !cutnode);
