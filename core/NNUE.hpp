@@ -115,7 +115,7 @@ struct SparseIterator{
         for (int32_t i = 0; i < 256; i++) {
             int32_t nnz = 0;
             for (uint8_t mask = i; mask != 0; mask &= mask - 1)
-                idx[i*8+(nnz++)] = __countr_zero(mask);
+                idx[i*8+(nnz++)] = __builtin_ctz(mask);
         }
 
         return idx;
@@ -145,7 +145,7 @@ public:
 
             storesimd(&indices[count_], idxs);
             offset = simdsmoladd(offset, simdset(8));
-            count_ += __popcount(mask);
+            count_ += __builtin_popcount(mask);
         }
     }
 };
