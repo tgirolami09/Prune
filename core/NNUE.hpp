@@ -7,6 +7,12 @@
 #include "Move.hpp"
 #include "embeder.hpp"
 #include "simd_definitions.hpp"
+#include <cstdint>
+#include <fstream>
+#include <array>
+#include "Move.hpp"
+#include "embeder.hpp"
+#include "GameState.hpp"
 
 using namespace std;
 #ifdef DEBUG_MACRO
@@ -60,6 +66,52 @@ static_assert(L1 % nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
 
 int getInputBucket(int Kpos, bool side, bool mirror);
 class NNUE;
+// code from https://rmeguro.com/blogs/sparse-nnue.html
+struct SparseIterator{
+    uint16_t indices[L1/4] = {0};
+    int count_ = 0;
+    __m128i offset = _mm_setzero_si128();
+    alignas(16) static constexpr array<uint16_t, 256*8> nonzero_idx = [] {
+        array<uint16_t, 256*8> idx{};
+
+        for (int32_t i = 0; i < 256; i++) {
+            int32_t nnz = 0;
+            for (uint8_t mask = i; mask != 0; mask &= mask - 1)
+                idx[i*8+(nnz++)] = __countr_zero(mask);
+        }
+
+        return idx;
+    }();
+public:
+    int count() const{
+        return count_;
+    };
+    int index(int nnzidx) const{
+        return indices[nnzidx];
+    }
+    void add_nonzero(simd<8> ft_out0, simd<8> ft_out1) {
+        // VecU8 = __m256i on AVX2, __m512i on AVX512
+        // ALIGNMENT = 32 on AVX2 or 64 on AVX512
+        constexpr int32_t regw32 = SIZE / 8 / sizeof(int32_t);
+        constexpr int32_t n_mask_bytes = 2 * regw32 / 8;
+
+        uint32_t full_mask = (nonzero_mask(ft_out1) << regw32) | nonzero_mask(ft_out0);
+        for (int32_t i = 0; i < n_mask_bytes; i++) {
+            // get offset of up to 8 nonzero blocks
+            const uint8_t mask = full_mask & 0xFF;
+            full_mask >>= 8;
+
+            const auto idxs = _mm_add_epi16(
+                offset,
+                _mm_load_si128(reinterpret_cast<const __m128i*>(&nonzero_idx[mask*8]))
+            );
+
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(&indices[count_]), idxs);
+            offset = _mm_add_epi16(offset, _mm_set1_epi16(8));
+            count_ += __popcount(mask);
+        }
+    }
+};
 
 class Index {
    public:
@@ -152,11 +204,11 @@ struct lastLayer {
     void forward(const simd<32> x[input / nb<32>], int y[output]) const;
 };
 
-template <int input, int output>
-struct Layer1 {
-    alignas(64) simd<8> weights[input * output / nb<8>];
-    alignas(64) simd<32> biases[output / nb<32>];
-    void forward(const uint32_t x[input / I8inI32], simd<32> y[output / nb<32>]) const;
+template<int input, int output>
+struct Layer1{
+    alignas(64) simd<8> weights[input*output/nb<8>];
+    alignas(64) simd<32> biases[output/nb<32>];
+    void forward(const uint32_t x[input/I8inI32], simd<32> y[output/nb<32>], const SparseIterator& si) const;
 };
 
 struct Layers {
