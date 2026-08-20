@@ -82,29 +82,33 @@ constexpr int I8inI32 = nbTypes<int32_t, int8_t>;
 
 // SIMD utility functions
 #ifdef __ARM_NEON__
-inline simd<16> simd16_zero() {
+inline simd<16> simd16_zero(){
     return vdupq_n_s16(0);
 }
-inline simd<32> simdint_zero() {
+inline simd<32> simdint_zero(){
     return vdupq_n_s32(0);
 }
-inline simd<16> simd16_set1(dbyte value) {
+inline simd<16> simd16_set1(dbyte value){
     return vdupq_n_s16(value);
 }
-inline simd<32> simdint_set1(int value) {
+inline simd<32> simdint_set1(int value){
     return vdupq_n_s32(value);
 }
+inline uint32_t nonzero_mask(simd<8> reg){
+    static constexpr uint32_t MASK[4] = {1, 2, 4, 8};
+    vaddvq_u32(vandq_u32(vtstq_u32(reg, reg), vld1q_u32(&MASK))) as u16
+}
 #else
-inline simd<16> simd16_zero() {
+inline simd<16> simd16_zero(){
     return ADDSIZE(ADDMM(setzero_si))();
 }
-inline simd<32> simdint_zero() {
+inline simd<32> simdint_zero(){
     return ADDSIZE(ADDMM(setzero_si))();
 }
-inline simd<16> simd16_set1(dbyte value) {
+inline simd<16> simd16_set1(dbyte value){
     return ADDMM(set1_epi16)(value);
 }
-inline simd<32> simdint_set1(int value) {
+inline simd<32> simdint_set1(int value){
     return ADDMM(set1_epi32)(value);
 }
 #endif
