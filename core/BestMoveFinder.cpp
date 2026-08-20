@@ -570,7 +570,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if(inCheckPos && firstMoveExtension == 0){
                 reductionDepth -= fdepth<1>;
             }
-            reductionDepth += firstMoveExtension*(rankMove == 0);
+            reductionDepth -= firstMoveExtension*(rankMove == 0);
             int newDepth = depth-reductionDepth;
             if(rankMove > 3 && depth > parameters.lmr_min_depth){
                 const int reduction = [&]{
@@ -583,8 +583,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 score = -negamax<false>(ss, reducedDepth, state, -alpha-1, -alpha, relDepth+1, true);
                 if(score > alpha){
                     if(!isRoot){
-                        newDepth += (score > bestScore+100);
-                        newDepth -= (score < bestScore+10);
+                        newDepth += (score > bestScore+100)*fracDepth;
+                        newDepth -= (score < bestScore+10)*fracDepth;
                     }
                     if(reducedDepth < newDepth)
                         score = -negamax<isPV>(ss, newDepth, state, -alpha-1, -alpha, relDepth+1, !cutnode);
