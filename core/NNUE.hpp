@@ -90,7 +90,7 @@ static inline void storesimd(uint16_t* pointer, simdsmol vec){
 }
 static inline simdsmol simdsmoladd(simdsmol a, simdsmol b){
 #ifdef __ARM_NEON__
-    return vpaddlq_u16(pointer);
+    return vpaddlq_u16(a, b);
 #else
     return _mm_add_epi16(a, b);
 #endif
@@ -108,7 +108,7 @@ static inline simdsmol simdset(uint16_t x){
 struct SparseIterator{
     alignas(16) uint16_t indices[L1/4] = {0};
     int count_ = 0;
-    __m128i offset = _mm_setzero_si128();
+    simdsmol offset = simdset(0);
     alignas(16) static constexpr array<uint16_t, 256*8> nonzero_idx = [] {
         array<uint16_t, 256*8> idx{};
 
