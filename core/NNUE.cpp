@@ -751,21 +751,30 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const {
     const auto x1 = accs.accs[side];
     const auto x3 = accs.accs[side + 2];
     const auto x2 = accs.accs[!side];
-    const auto x4 = accs.accs[!side + 2];
-    const int half = L1 / nb<16> / 2;
-    for (int i = 0; i < half; i += 2) {
-        simd<16> neurons1 = pairwise(x1[i], x3[i], x1[i + half], x3[i + half]);
-        simd<16> neurons2 = pairwise(x1[i + 1], x3[i + 1], x1[i + 1 + half], x3[i + 1 + half]);
-        HL1_simd[i / 2] = simd8_packus(neurons1, neurons2);
+    const auto x4 = accs.accs[!side+2];
+    const int half = L1/nb<16>/2;
+    SparseIterator si;
+    for(int i=0; i<half; i += 4){
+        simd<16> neurons1 = pairwise(x1[i  ], x3[i  ],   x1[i  +half], x3[i  +half]);
+        simd<16> neurons2 = pairwise(x1[i+1], x3[i+1],   x1[i+1+half], x3[i+1+half]);
+        simd<16> neurons3 = pairwise(x1[i+2], x3[i+2],   x1[i+2+half], x3[i+2+half]);
+        simd<16> neurons4 = pairwise(x1[i+3], x3[i+3],   x1[i+3+half], x3[i+3+half]);
+        HL1_simd[i/2  ] = simd8_packus(neurons1, neurons2);
+        HL1_simd[i/2+1] = simd8_packus(neurons3, neurons4);
+        si.add_nonzero(HL1_simd[i/2], HL1_simd[i/2+1]);
     }
-    for (int i = 0; i < half; i += 2) {
-        simd<16> neurons1 = pairwise(x2[i], x4[i], x2[i + half], x4[i + half]);
-        simd<16> neurons2 = pairwise(x2[i + 1], x4[i + 1], x2[i + 1 + half], x4[i + 1 + half]);
-        HL1_simd[i / 2 + L1 / nb<8> / 2] = simd8_packus(neurons1, neurons2);
+    for(int i=0; i<half; i += 4){
+        simd<16> neurons1 = pairwise(x2[i  ], x4[i  ],   x2[i  +half], x4[i  +half]);
+        simd<16> neurons2 = pairwise(x2[i+1], x4[i+1],   x2[i+1+half], x4[i+1+half]);
+        simd<16> neurons3 = pairwise(x2[i+2], x4[i+2],   x2[i+2+half], x4[i+2+half]);
+        simd<16> neurons4 = pairwise(x2[i+3], x4[i+3],   x2[i+3+half], x4[i+3+half]);
+        HL1_simd[i/2+L1/nb<8>/2  ] = simd8_packus(neurons1, neurons2);
+        HL1_simd[i/2+L1/nb<8>/2+1] = simd8_packus(neurons3, neurons4);
+        si.add_nonzero(HL1_simd[i/2+L1/nb<8>/2], HL1_simd[i/2+L1/nb<8>/2+1]);
     }
     int finRes;
-    const auto& subnet = laterLayers[idB];
-    subnet.l1.forward(HL1, reinterpret_cast<simd<32>*>(HL2));
+    const auto &subnet = laterLayers[idB];
+    subnet.l1.forward(HL1, reinterpret_cast<simd<32> *>(HL2), si);
     subnet.l2.forward(HL2, HL3);
     subnet.l3.forward(HL3, &finRes);
     finRes = finRes / (QC * QC) * SCALE / (QC * QC);
@@ -792,36 +801,50 @@ inline simd<32> matrix_mul2(simd<32> output, simd<8> inputs1, simd<8> inputs2, s
 #endif
 }
 
-template <int input, int output>
-void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const {
-    simd<32> y_pre[output / nb<32>][4];
-    for (int o = 0; o < output / nb<32>; o++) {
+template<int input, int output>
+void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y, const SparseIterator& si) const{
+    simd<32> y_pre[output/nb<32>][4];
+    for(int o=0; o<output/nb<32>; o++){
         y_pre[o][0] = biases[o];
         y_pre[o][1] = zero_32;
         y_pre[o][2] = zero_32;
         y_pre[o][3] = zero_32;
     }
-    for (int i = 0; i < input / I8inI32; i += 4) {
-        const simd<8> inp1 = simd8_broadcast32(x[i]);
-        const simd<8> inp2 = simd8_broadcast32(x[i + 1]);
-        const simd<8> inp3 = simd8_broadcast32(x[i + 2]);
-        const simd<8> inp4 = simd8_broadcast32(x[i + 3]);
-        const int offset1 = i * I8inI32 * output / nb<8>;
-        const int offset2 = (i + 1) * I8inI32 * output / nb<8>;
-        const int offset3 = (i + 2) * I8inI32 * output / nb<8>;
-        const int offset4 = (i + 3) * I8inI32 * output / nb<8>;
-        for (int o = 0; o < output / nb<32>; o++) {
-            const simd<8> weights1 = weights[offset1 + o * nb<32> * I8inI32 / nb<8>];
-            const simd<8> weights2 = weights[offset2 + o * nb<32> * I8inI32 / nb<8>];
-            const simd<8> weights3 = weights[offset3 + o * nb<32> * I8inI32 / nb<8>];
-            const simd<8> weights4 = weights[offset4 + o * nb<32> * I8inI32 / nb<8>];
+    int nnz_idx = 0;
+    for(; nnz_idx+4 <= si.count(); nnz_idx += 4){
+        const int idx1 = si.index(nnz_idx  );
+        const int idx2 = si.index(nnz_idx+1);
+        const int idx3 = si.index(nnz_idx+2);
+        const int idx4 = si.index(nnz_idx+3);
+        const simd<8> inp1 = simd8_broadcast32(x[idx1]);
+        const simd<8> inp2 = simd8_broadcast32(x[idx2]);
+        const simd<8> inp3 = simd8_broadcast32(x[idx3]);
+        const simd<8> inp4 = simd8_broadcast32(x[idx4]);
+        const int offset1 = idx1*I8inI32*output/nb<8>;
+        const int offset2 = idx2*I8inI32*output/nb<8>;
+        const int offset3 = idx3*I8inI32*output/nb<8>;
+        const int offset4 = idx4*I8inI32*output/nb<8>;
+        for(int o=0; o<output/nb<32>; o++){
+            const simd<8> weights1 =  weights[offset1+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights2 =  weights[offset2+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights3 =  weights[offset3+o*nb<32>*I8inI32/nb<8>];
+            const simd<8> weights4 =  weights[offset4+o*nb<32>*I8inI32/nb<8>];
             y_pre[o][0] = matrix_mul(y_pre[o][0], inp1, weights1);
             y_pre[o][1] = matrix_mul(y_pre[o][1], inp2, weights2);
             y_pre[o][2] = matrix_mul(y_pre[o][2], inp3, weights3);
             y_pre[o][3] = matrix_mul(y_pre[o][3], inp4, weights4);
         }
     }
-    for (int o = 0; o < output / nb<32>; o++) {
+    for(; nnz_idx<si.count(); nnz_idx++){
+        const int idx = si.index(nnz_idx);
+        const simd<8> inp = simd8_broadcast32(x[idx]);
+        const int offset = idx*I8inI32*output/nb<8>;
+        for(int o=0; o<output/nb<32>; o++){
+            const simd<8> curweights =  weights[offset+o*nb<32>*I8inI32/nb<8>];
+            y_pre[o][0] = matrix_mul(y_pre[o][0], inp, curweights);
+        }
+    }
+    for(int o=0; o<output/nb<32>; o++){
         simd<32> pre1 = simdint_add(y_pre[o][0], y_pre[o][1]);
         simd<32> pre2 = simdint_add(y_pre[o][2], y_pre[o][3]);
         y[o] = simdint_add(pre1, pre2);
