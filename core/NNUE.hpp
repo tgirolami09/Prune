@@ -60,15 +60,17 @@ const int inputBuckets[32] = {
     12, 12, 13, 13, 12, 12, 13, 13, 14, 14, 15, 15, 14, 14, 15, 15,
 
 };
-const int DIVISOR = 32 / BUCKET;
-
-static_assert(L1 % nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
+const int DIVISOR=32/BUCKET;
+#ifdef DEBUG_MACRO
+extern StatVar<sbig, L1/4, 0> nnzCount;
+#endif
+static_assert(L1%nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
 
 int getInputBucket(int Kpos, bool side, bool mirror);
 class NNUE;
 // code from https://rmeguro.com/blogs/sparse-nnue.html
 struct SparseIterator{
-    uint16_t indices[L1/4] = {0};
+    alignas(16) uint16_t indices[L1/4] = {0};
     int count_ = 0;
     __m128i offset = _mm_setzero_si128();
     alignas(16) static constexpr array<uint16_t, 256*8> nonzero_idx = [] {
