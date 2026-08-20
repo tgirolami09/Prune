@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <memory>
+#include <algorithm>
 #include <mutex>
 #include <string>
 #include <thread>
