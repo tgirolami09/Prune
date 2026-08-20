@@ -68,6 +68,41 @@ static_assert(L1%nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
 
 int getInputBucket(int Kpos, bool side, bool mirror);
 class NNUE;
+#ifdef __ARM_NEON__
+using simdsmol=uint16x8_t;
+#else
+using simdsmol=__m128i;
+#endif
+static inline simdsmol loadsimd(const uint16_t* pointer){
+#ifdef __ARM_NEON__
+    return vld1q_u16(pointer);
+#else
+    return _mm_load_si128(reinterpret_cast<const __m128i*>(pointer));
+#endif
+}
+static inline void storesimd(uint16_t* pointer, simdsmol vec){
+#ifdef __ARM_NEON__
+    vst1q_u16(pointer, vec);
+#else
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(pointer), vec);
+#endif
+}
+static inline simdsmol simdsmoladd(simdsmol a, simdsmol b){
+#ifdef __ARM_NEON__
+    return vpaddlq_u16(pointer);
+#else
+    return _mm_add_epi16(a, b);
+#endif
+}
+
+static inline simdsmol simdset(uint16_t x){
+#ifdef __ARM_NEON__
+    return vdupq_n_u16(x);
+#else
+    return _mm_set1_epi16(x);
+#endif
+}
+
 // code from https://rmeguro.com/blogs/sparse-nnue.html
 struct SparseIterator{
     alignas(16) uint16_t indices[L1/4] = {0};
@@ -102,14 +137,13 @@ public:
             // get offset of up to 8 nonzero blocks
             const uint8_t mask = full_mask & 0xFF;
             full_mask >>= 8;
-
-            const auto idxs = _mm_add_epi16(
+            const auto idxs = simdsmoladd(
                 offset,
-                _mm_load_si128(reinterpret_cast<const __m128i*>(&nonzero_idx[mask*8]))
+                loadsimd(&nonzero_idx[mask*8])
             );
 
-            _mm_storeu_si128(reinterpret_cast<__m128i*>(&indices[count_]), idxs);
-            offset = _mm_add_epi16(offset, _mm_set1_epi16(8));
+            storesimd(&indices[count_], idxs);
+            offset = simdsmoladd(offset, simdset(8));
             count_ += __popcount(mask);
         }
     }
