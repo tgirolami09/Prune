@@ -18,6 +18,7 @@ StatVar<sbig, 64, 0> TIupdateRemStat;
 StatVar<sbig, 64, 0> TIupdateAddStat;
 StatVar<sbig, 64, 0> TIupdateTotStat;
 StatVar<sbig, 128, -128> TIupdateDiffStat;
+StatVar<sbig, L1/4, 0> nnzCount;
 #endif
 int threatIndex[(nbPieces-1)*2][64][64];
 int threatoffset[(nbPieces-1)*2];
@@ -761,6 +762,9 @@ inline simd<32> matrix_mul2(simd<32> output, simd<8> inputs1, simd<8> inputs2, s
 
 template<int input, int output>
 void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y, const SparseIterator& si) const{
+#ifdef DEBUG_MACRO
+    nnzCount.update(si.count());
+#endif
     simd<32> y_pre[output/nb<32>][4];
     for(int o=0; o<output/nb<32>; o++){
         y_pre[o][0] = biases[o];
@@ -768,8 +772,9 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y, const Sparse
         y_pre[o][2] = zero_32;
         y_pre[o][3] = zero_32;
     }
-    int nnz_idx = 0;
-    for(; nnz_idx+4 <= si.count(); nnz_idx += 4){
+    const int nnz = si.count();
+    const int nnz_4 = (si.count()/4)*4;
+    for(int nnz_idx = 0; nnz_idx < nnz_4; nnz_idx += 4){
         const int idx1 = si.index(nnz_idx  );
         const int idx2 = si.index(nnz_idx+1);
         const int idx3 = si.index(nnz_idx+2);
@@ -793,7 +798,7 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y, const Sparse
             y_pre[o][3] = matrix_mul(y_pre[o][3], inp4, weights4);
         }
     }
-    for(; nnz_idx<si.count(); nnz_idx++){
+    for(int nnz_idx = nnz_4; nnz_idx<nnz; nnz_idx++){
         const int idx = si.index(nnz_idx);
         const simd<8> inp = simd8_broadcast32(x[idx]);
         const int offset = idx*I8inI32*output/nb<8>;
