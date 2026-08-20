@@ -89,7 +89,7 @@ static inline void storesimd(uint16_t* pointer, simdsmol vec){
 }
 static inline simdsmol simdsmoladd(simdsmol a, simdsmol b){
 #ifdef __ARM_NEON__
-    return vadd_u16(a, b);
+    return vaddq_u16(a, b);
 #else
     return _mm_add_epi16(a, b);
 #endif
