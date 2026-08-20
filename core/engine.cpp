@@ -442,6 +442,7 @@ void manageSearch(bool seeInput) {
                 TIupdateTotStat.print("TIupdateTot");
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
+                nnzCount.print("nnzCount");
 #endif
             } else if (command == "arch") {
 #ifdef __AVX512F__
@@ -628,6 +629,7 @@ void manageSearch(bool seeInput) {
                 TIupdateTotStat.print("TIupdateTot");
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
+                nnzCount.print("nnzCount");
 #endif
             } else if (command == "fen") {
                 PositionSnapshot snap;
