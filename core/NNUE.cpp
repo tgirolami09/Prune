@@ -783,6 +783,7 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y, const Sparse
         __builtin_prefetch(&weights[si.index(nnz_idx+5)]);
         __builtin_prefetch(&weights[si.index(nnz_idx+6)]);
         __builtin_prefetch(&weights[si.index(nnz_idx+7)]);
+        __builtin_prefetch(&x[si.index(nnz_idx+4)]);
         const simd<8> inp1 = simd8_broadcast32(x[idx1]);
         const simd<8> inp2 = simd8_broadcast32(x[idx2]);
         const simd<8> inp3 = simd8_broadcast32(x[idx3]);
