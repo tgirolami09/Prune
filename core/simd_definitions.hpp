@@ -85,7 +85,7 @@ inline simd<32> simdint_set1(int value){
 }
 inline uint32_t nonzero_mask(simd<8> reg){
     static constexpr uint32_t MASK[4] = {1, 2, 4, 8};
-    return vaddvq_u32(vandq_u32(vtstq_u32(reg, reg), vld1q_u32(&MASK[0])));
+    return vaddvq_u32(vandq_u32(vtstq_u32(reg, reg), vld1q_u32(MASK)));
 }
 #else
 inline simd<16> simd16_zero(){
