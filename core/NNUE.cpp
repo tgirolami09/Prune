@@ -714,23 +714,18 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const{
     const auto x4 = accs.accs[!side+2];
     const int half = L1/nb<16>/2;
     SparseIterator si;
-    for(int i=0; i<half; i += 4){
+    for(int i=0; i<half; i += 2){
         simd<16> neurons1 = pairwise(x1[i  ], x3[i  ],   x1[i  +half], x3[i  +half]);
         simd<16> neurons2 = pairwise(x1[i+1], x3[i+1],   x1[i+1+half], x3[i+1+half]);
-        simd<16> neurons3 = pairwise(x1[i+2], x3[i+2],   x1[i+2+half], x3[i+2+half]);
-        simd<16> neurons4 = pairwise(x1[i+3], x3[i+3],   x1[i+3+half], x3[i+3+half]);
-        HL1_simd[i/2  ] = simd8_packus(neurons1, neurons2);
-        HL1_simd[i/2+1] = simd8_packus(neurons3, neurons4);
-        si.add_nonzero(HL1_simd[i/2], HL1_simd[i/2+1]);
+        HL1_simd[i/2] = simd8_packus(neurons1, neurons2);
     }
-    for(int i=0; i<half; i += 4){
+    for(int i=0; i<half; i += 2){
         simd<16> neurons1 = pairwise(x2[i  ], x4[i  ],   x2[i  +half], x4[i  +half]);
         simd<16> neurons2 = pairwise(x2[i+1], x4[i+1],   x2[i+1+half], x4[i+1+half]);
-        simd<16> neurons3 = pairwise(x2[i+2], x4[i+2],   x2[i+2+half], x4[i+2+half]);
-        simd<16> neurons4 = pairwise(x2[i+3], x4[i+3],   x2[i+3+half], x4[i+3+half]);
-        HL1_simd[i/2+L1/nb<8>/2  ] = simd8_packus(neurons1, neurons2);
-        HL1_simd[i/2+L1/nb<8>/2+1] = simd8_packus(neurons3, neurons4);
-        si.add_nonzero(HL1_simd[i/2+L1/nb<8>/2], HL1_simd[i/2+L1/nb<8>/2+1]);
+        HL1_simd[i/2+half/2] = simd8_packus(neurons1, neurons2);
+    }
+    for(int i=0; i<L1/nb<16>; i += 2){
+        si.add_nonzero(HL1_simd[i], HL1_simd[i+1]);
     }
     int finRes;
     const auto& subnet=laterLayers[idB];
