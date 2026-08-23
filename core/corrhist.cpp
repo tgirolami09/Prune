@@ -10,7 +10,8 @@ StatVar<sbig, 64 * 4, -64 * 4> diffsStat;
 
 // used 256 / max(depth+1, 16) from https://github.com/mcthouacbb/Sirius
 
-template <int size, int maxCorrHist> void corrhist<size, maxCorrHist>::reset() {
+template <int size, int maxCorrHist>
+void corrhist<size, maxCorrHist>::reset() {
     memset(table, 0, sizeof(table));
 }
 
@@ -19,37 +20,35 @@ int corrhist<size, maxCorrHist>::probe(big key, bool c) const {
     return table[c][key % size];
 }
 
-template <int size, int maxCorrHist> corrhist<size, maxCorrHist>::corrhist() {
+template <int size, int maxCorrHist>
+corrhist<size, maxCorrHist>::corrhist() {
     reset();
 }
 
 template <int size, int maxCorrHist>
-void corrhist<size, maxCorrHist>::update(big key, bool c, int diff,
-                                         int weight) {
-    int &cur = table[c][key % size];
+void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int weight) {
+    int& cur = table[c][key % size];
     cur = ((256 - weight) * cur + diff * weight) / 256;
     cur = clamp(cur, -maxCorrHist, maxCorrHist);
 }
 
-void corrhists::update(const GameState &state, int diff, int depth) {
+void corrhists::update(const GameState& state, int diff, int depth) {
     int bonus = diff * corrhistGrain;
     int weight = max(depth + fdepth<1>, fdepth<16>) / fracDepth;
     int lastmoveid = state.getLastMove().move.moveInfo;
     int contmoveid = state.getContMove().move.moveInfo;
     pawns.update(state.pawnZobrist, state.friendlyColor(), bonus, weight);
     prevMove.update(lastmoveid, state.friendlyColor(), bonus, weight);
-    cont.update(contmoveid ^
-                    ((uint32_t)lastmoveid * 0xa28fU & ((1U << 16) - 1)),
+    cont.update(contmoveid ^ ((uint32_t)lastmoveid * 0xa28fU & ((1U << 16) - 1)),
                 state.friendlyColor(), bonus, weight);
     minor.update(state.minorZobrist, state.friendlyColor(), bonus, weight);
 }
 
-int corrhists::probe(const GameState &state) const {
+int corrhists::probe(const GameState& state) const {
     int lastmoveid = state.getLastMove().move.moveInfo;
     int contmoveid = state.getContMove().move.moveInfo;
     int diff = (pawns.probe(state.pawnZobrist, state.friendlyColor()) +
-                cont.probe(contmoveid ^ ((uint32_t)lastmoveid * 0xa28fU &
-                                         ((1U << 16) - 1)),
+                cont.probe(contmoveid ^ ((uint32_t)lastmoveid * 0xa28fU & ((1U << 16) - 1)),
                            state.friendlyColor()) +
                 prevMove.probe(lastmoveid, state.friendlyColor()) +
                 minor.probe(state.minorZobrist, state.friendlyColor())) /
@@ -60,7 +59,9 @@ int corrhists::probe(const GameState &state) const {
     return diff;
 }
 
-corrhists::corrhists() { reset(); }
+corrhists::corrhists() {
+    reset();
+}
 
 void corrhists::reset() {
     pawns.reset();

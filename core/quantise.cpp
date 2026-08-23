@@ -1,12 +1,12 @@
-#include "NNUE.hpp"
-#include "simd_definitions.hpp"
+#include <immintrin.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <immintrin.h>
 #include <memory>
+#include "NNUE.hpp"
+#include "simd_definitions.hpp"
 using namespace std;
 
 const float ftClip = 1.98F;
@@ -18,17 +18,17 @@ const bool isPW = true;
 const bool isFactorised = true;
 const bool isMergedKing = true;
 const int rawInputSize = INPUT_SIZE + 64 * isMergedKing;
-const char zero = 0; // for padding
+const char zero = 0;  // for padding
 const float scaler = (float)QA / (1 << L1shift);
 
-template <typename T, int Q> T _quantise(float w) {
+template <typename T, int Q>
+T _quantise(float w) {
     w = clamp(w, -ftClip, ftClip);
     w = round(w * static_cast<float>(Q));
     if (is_same_v<T, int32_t>) {
         return static_cast<T>(w);
     }
-    return static_cast<T>(
-        clamp<float>(w, -numeric_limits<T>::max(), numeric_limits<T>::max()));
+    return static_cast<T>(clamp<float>(w, -numeric_limits<T>::max(), numeric_limits<T>::max()));
 }
 int clamphigh = 0;
 int clamplow = 0;
@@ -47,42 +47,41 @@ int8_t _quantise_threat(float w) {
     return static_cast<int8_t>(I);
 }
 
-template <int input, int output> struct layer {
+template <int input, int output>
+struct layer {
     float weights[input][OB * output];
     float bias[OB * output];
     template <typename T1, bool isL1, bool isLast>
-    void quantise(int id, FILE *file) {
-        if constexpr (isLast) { // L3
+    void quantise(int id, FILE* file) {
+        if constexpr (isLast) {  // L3
             for (int o = 0; o < output; o++) {
                 for (int i = 0; i < input; i++) {
-                    T1 quantised =
-                        _quantise<T1, QC>(weights[i][output * id + o]);
+                    T1 quantised = _quantise<T1, QC>(weights[i][output * id + o]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
-        } else if constexpr (isL1) { // L1
+        } else if constexpr (isL1) {  // L1
             for (int i = 0; i < input / I8inI32; i++) {
                 for (int o = 0; o < output; o++) {
                     for (int k = 0; k < I8inI32; k++) {
-                        T1 quantised = _quantise<T1, QB>(
-                            weights[i * I8inI32 + k][output * id + o] /
-                            (scaler * scaler));
+                        T1 quantised = _quantise<T1, QB>(weights[i * I8inI32 + k][output * id + o] /
+                                                         (scaler * scaler));
                         fwrite(&quantised, sizeof(T1), 1, file);
                     }
                 }
             }
-        } else { // L2
+        } else {  // L2
             for (int i = 0; i < input; i++) {
                 for (int o = 0; o < output; o++) {
-                    T1 quantised =
-                        _quantise<T1, QC>(weights[i][output * id + o]);
+                    T1 quantised = _quantise<T1, QC>(weights[i][output * id + o]);
                     fwrite(&quantised, sizeof(T1), 1, file);
                 }
             }
         }
     }
 
-    template <typename T2, int Qbias> void quantise_biases(int id, FILE *file) {
+    template <typename T2, int Qbias>
+    void quantise_biases(int id, FILE* file) {
         for (int i = 0; i < output; i++) {
             T2 quantised = _quantise<T2, Qbias>(bias[output * id + i]);
             fwrite(&quantised, sizeof(T2), 1, file);
@@ -90,7 +89,7 @@ template <int input, int output> struct layer {
     }
 };
 
-void padd(FILE *file) {
+void padd(FILE* file) {
     while (ftell(file) % 64 != 0)
         fwrite(&zero, 1, 1, file);
 }
@@ -99,7 +98,7 @@ struct inputlayer {
     float threatweights[THREAT_SIZE][L1];
     float psqweights[IB + isFactorised][rawInputSize][L1];
     float biases[L1];
-    void quantise(FILE *file) {
+    void quantise(FILE* file) {
         for (int i = 0; i < IB; i++)
             for (int j = 0; j < rawInputSize; j++)
                 for (int k = 0; k < L1; k++) {
@@ -116,8 +115,7 @@ struct inputlayer {
                 int8_t quantised = _quantise_threat(threatweights[i][k]);
                 fwrite(&quantised, sizeof(int8_t), 1, file);
             }
-        printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow,
-               THREAT_SIZE * L1);
+        printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow, THREAT_SIZE * L1);
         padd(file);
         for (int k = 0; k < L1; k++) {
             int16_t quantised = _quantise<int16_t, QA>(biases[k]);
@@ -134,9 +132,9 @@ struct nn {
     layer<L3, 1> l3;
 };
 
-int main(int argc, char **argv) {
-    FILE *fin = fopen(argv[1], "r");
-    FILE *fout = fopen(argv[2], "w");
+int main(int argc, char** argv) {
+    FILE* fin = fopen(argv[1], "r");
+    FILE* fout = fopen(argv[2], "w");
     unique_ptr<nn> nnue = make_unique<nn>();
     fread(&nnue->FT, sizeof(nnue->FT), 1, fin);
     fread(&nnue->l1, sizeof(nnue->l1), 1, fin);

@@ -7,8 +7,9 @@
 extern StatVar<sbig, 64 * 4, -64 * 4> diffsStat;
 #endif
 const int corrhistGrain = 64;
-template <int size, int maxCorrHist> class corrhist {
-  public:
+template <int size, int maxCorrHist>
+class corrhist {
+   public:
     corrhist();
     int table[2][size];
     void reset();
@@ -22,10 +23,10 @@ class corrhists {
     corrhist<16384, 64 * corrhistGrain> cont;
     corrhist<16384, 64 * corrhistGrain> minor;
 
-  public:
+   public:
     corrhists();
-    void update(const GameState &, int, int);
-    int probe(const GameState &state) const;
+    void update(const GameState&, int, int);
+    int probe(const GameState& state) const;
     void reset();
 };
 #endif

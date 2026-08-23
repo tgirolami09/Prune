@@ -1,15 +1,17 @@
-#include "Evaluator.hpp"
-#include "GameState.hpp"
-#include "NNUE.hpp"
 #include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
+#include "Evaluator.hpp"
+#include "GameState.hpp"
+#include "NNUE.hpp"
 using namespace std;
 
-double sigmoid(double x) { return 1 / (1 + exp(-x)); }
+double sigmoid(double x) {
+    return 1 / (1 + exp(-x));
+}
 
-int main(_unused int argc, char **argv) {
+int main(_unused int argc, char** argv) {
     ifstream file(argv[1]);
     IncrementalEvaluator eval;
     GameState state;

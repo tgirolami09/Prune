@@ -6,8 +6,7 @@
 // Global tablebase prober instance
 TablebaseProbe tbProbe;
 
-TablebaseProbe::TablebaseProbe()
-    : initialized(false), probeDepth(1), probeLimit(7), tbLargest(0) {}
+TablebaseProbe::TablebaseProbe() : initialized(false), probeDepth(1), probeLimit(7), tbLargest(0) {}
 
 TablebaseProbe::~TablebaseProbe() {
     if (initialized) {
@@ -15,7 +14,7 @@ TablebaseProbe::~TablebaseProbe() {
     }
 }
 
-bool TablebaseProbe::init(const std::string &path) {
+bool TablebaseProbe::init(const std::string& path) {
     if (initialized) {
         tb_free();
         initialized = false;
@@ -38,28 +37,35 @@ void TablebaseProbe::setProbeDepth(int depth) {
     probeDepth = depth * fracDepth;
 }
 
-void TablebaseProbe::setProbeLimit(int limit) { probeLimit = limit; }
+void TablebaseProbe::setProbeLimit(int limit) {
+    probeLimit = limit;
+}
 
-int TablebaseProbe::getProbeDepth() const { return probeDepth; }
+int TablebaseProbe::getProbeDepth() const {
+    return probeDepth;
+}
 
-int TablebaseProbe::getProbeLimit() const { return probeLimit; }
+int TablebaseProbe::getProbeLimit() const {
+    return probeLimit;
+}
 
 bool TablebaseProbe::isAvailable() const {
     return initialized && tbLargest > 0;
 }
 
-int TablebaseProbe::maxPieces() const { return tbLargest; }
+int TablebaseProbe::maxPieces() const {
+    return tbLargest;
+}
 
-int TablebaseProbe::countPieces(const GameState &state) {
+int TablebaseProbe::countPieces(const GameState& state) {
     return countbit(state.board.colors[WHITE] | state.board.colors[BLACK]);
 }
 
-bool TablebaseProbe::canProbe(const GameState &state, int nbMan,
-                              int depth) const {
+bool TablebaseProbe::canProbe(const GameState& state, int nbMan, int depth) const {
     return depth >= probeDepth && canProbe(state, nbMan);
 }
 
-bool TablebaseProbe::canProbe(const GameState &state, int nbMan) const {
+bool TablebaseProbe::canProbe(const GameState& state, int nbMan) const {
     if (!initialized || tbLargest == 0)
         return false;
 
@@ -74,15 +80,14 @@ bool TablebaseProbe::canProbe(const GameState &state, int nbMan) const {
     return true;
 }
 
-bool TablebaseProbe::canProbe(const GameState &state) const {
+bool TablebaseProbe::canProbe(const GameState& state) const {
     return canProbe(state, countPieces(state));
 }
 
 // Helper function to convert GameState to Fathom format
-static void stateToFathom(const GameState &state, uint64_t &white,
-                          uint64_t &black, uint64_t &kings, uint64_t &queens,
-                          uint64_t &rooks, uint64_t &bishops, uint64_t &knights,
-                          uint64_t &pawns, unsigned &ep, bool &turn) {
+static void stateToFathom(const GameState& state, uint64_t& white, uint64_t& black, uint64_t& kings,
+                          uint64_t& queens, uint64_t& rooks, uint64_t& bishops, uint64_t& knights,
+                          uint64_t& pawns, unsigned& ep, bool& turn) {
     // Combine color bitboard.piecess and convert to Fathom format using
     // reverse_col
     white = reverse_col(state.board.colors[WHITE]);
@@ -109,7 +114,7 @@ static void stateToFathom(const GameState &state, uint64_t &white,
             // White just pushed, EP target is rank 3 (index 2)
             engineEpTarget = (state.lastDoublePawnPush & 7) + 2 * 8;
         }
-        ep = engineEpTarget ^ 7; // convert to Fathom square
+        ep = engineEpTarget ^ 7;  // convert to Fathom square
     } else {
         ep = 0;
     }
@@ -117,7 +122,7 @@ static void stateToFathom(const GameState &state, uint64_t &white,
     turn = (state.friendlyColor() == WHITE);
 }
 
-int TablebaseProbe::probeWDL(const GameState &state) const {
+int TablebaseProbe::probeWDL(const GameState& state) const {
     if (!initialized)
         return TB_RESULT_INVALID;
 
@@ -129,32 +134,28 @@ int TablebaseProbe::probeWDL(const GameState &state) const {
     uint64_t white, black, kings, queens, rooks, bishops, knights, pawns;
     unsigned ep;
     bool turn;
-    stateToFathom(state, white, black, kings, queens, rooks, bishops, knights,
-                  pawns, ep, turn);
+    stateToFathom(state, white, black, kings, queens, rooks, bishops, knights, pawns, ep, turn);
 
-    unsigned result =
-        tb_probe_wdl(white, black, kings, queens, rooks, bishops, knights,
-                     pawns, state.rule50_count(), 0, ep, turn);
+    unsigned result = tb_probe_wdl(white, black, kings, queens, rooks, bishops, knights, pawns,
+                                   state.rule50_count(), 0, ep, turn);
 
     if (result == TB_RESULT_FAILED)
         return TB_RESULT_INVALID;
     return static_cast<int>(result);
 }
 
-int TablebaseProbe::probeRoot(const GameState &state, Move &bestMove) const {
+int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     if (!initialized)
         return TB_RESULT_INVALID;
 
     uint64_t white, black, kings, queens, rooks, bishops, knights, pawns;
     unsigned ep;
     bool turn;
-    stateToFathom(state, white, black, kings, queens, rooks, bishops, knights,
-                  pawns, ep, turn);
+    stateToFathom(state, white, black, kings, queens, rooks, bishops, knights, pawns, ep, turn);
 
     unsigned results[TB_MAX_MOVES];
-    unsigned result =
-        tb_probe_root(white, black, kings, queens, rooks, bishops, knights,
-                      pawns, state.rule50_count(), 0, ep, turn, results);
+    unsigned result = tb_probe_root(white, black, kings, queens, rooks, bishops, knights, pawns,
+                                    state.rule50_count(), 0, ep, turn, results);
 
     if (result == TB_RESULT_FAILED)
         return TB_RESULT_INVALID;
@@ -186,7 +187,7 @@ int TablebaseProbe::probeRoot(const GameState &state, Move &bestMove) const {
     }
 
     // Construct the move
-    bestMove.moveInfo = 0; // Clear first
+    bestMove.moveInfo = 0;  // Clear first
     bestMove.moveInfo |= (int16_t)(to);
     bestMove.moveInfo |= (int16_t)(from << 6);
     if (promotion != -1) {
@@ -199,25 +200,21 @@ int TablebaseProbe::probeRoot(const GameState &state, Move &bestMove) const {
     return TB_GET_WDL(result);
 }
 
-int TablebaseProbe::rootFiltering(const GameState &state, Move *moves,
-                                  int &nbMoves) const {
+int TablebaseProbe::rootFiltering(const GameState& state, Move* moves, int& nbMoves) const {
     if (!initialized)
         return TB_RESULT_INVALID;
 
     uint64_t white, black, kings, queens, rooks, bishops, knights, pawns;
     unsigned ep;
     bool turn;
-    stateToFathom(state, white, black, kings, queens, rooks, bishops, knights,
-                  pawns, ep, turn);
+    stateToFathom(state, white, black, kings, queens, rooks, bishops, knights, pawns, ep, turn);
 
     TbRootMoves results;
-    int ok = tb_probe_root_dtz(white, black, kings, queens, rooks, bishops,
-                               knights, pawns, state.rule50_count(), 0, ep,
-                               turn, true, true, &results);
+    int ok = tb_probe_root_dtz(white, black, kings, queens, rooks, bishops, knights, pawns,
+                               state.rule50_count(), 0, ep, turn, true, true, &results);
     if (!ok || results.size == 0) {
-        ok = tb_probe_root_wdl(white, black, kings, queens, rooks, bishops,
-                               knights, pawns, state.rule50_count(), 0, ep,
-                               turn, true, &results);
+        ok = tb_probe_root_wdl(white, black, kings, queens, rooks, bishops, knights, pawns,
+                               state.rule50_count(), 0, ep, turn, true, &results);
         if (!ok || results.size == 0)
             return TB_RESULT_INVALID;
     }
@@ -286,17 +283,17 @@ int TablebaseProbe::rootFiltering(const GameState &state, Move *moves,
 
 int TablebaseProbe::wdlToScore(int wdl, int ply) {
     switch (wdl) {
-    case TB_RESULT_WIN:
-        return TB_WIN_SCORE - ply; // Prefer faster wins
-    case TB_RESULT_CURSED_WIN:
-        return TB_CURSED_WIN_SCORE;
-    case TB_RESULT_DRAW:
-        return 0;
-    case TB_RESULT_BLESSED_LOSS:
-        return TB_BLESSED_LOSS_SCORE;
-    case TB_RESULT_LOSS:
-        return -TB_WIN_SCORE + ply; // Prefer slower losses
-    default:
-        return 0;
+        case TB_RESULT_WIN:
+            return TB_WIN_SCORE - ply;  // Prefer faster wins
+        case TB_RESULT_CURSED_WIN:
+            return TB_CURSED_WIN_SCORE;
+        case TB_RESULT_DRAW:
+            return 0;
+        case TB_RESULT_BLESSED_LOSS:
+            return TB_BLESSED_LOSS_SCORE;
+        case TB_RESULT_LOSS:
+            return -TB_WIN_SCORE + ply;  // Prefer slower losses
+        default:
+            return 0;
     }
 }

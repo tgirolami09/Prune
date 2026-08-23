@@ -1,10 +1,10 @@
 #include "TranspositionTable.hpp"
-#include "Const.hpp"
-#include "GameState.hpp"
-#include "Move.hpp"
 #include <cmath>
 #include <cstring>
 #include <thread>
+#include "Const.hpp"
+#include "GameState.hpp"
+#include "Move.hpp"
 #ifndef _WIN32
 #include <sys/mman.h>
 #endif
@@ -31,17 +31,23 @@ int fromTT(int score, int rootDist) {
     return score;
 }
 
-int infoScore::typeNode() const { return 3 - (flag & 0b11); }
+int infoScore::typeNode() const {
+    return 3 - (flag & 0b11);
+}
 
-int infoScore::age() const { return (flag >> 2) & maxAge; }
+int infoScore::age() const {
+    return (flag >> 2) & maxAge;
+}
 
 void infoScore::setFlag(int typeNode, int age, bool pv) {
     flag = (3 - typeNode) | (age << 2) | (pv << 7);
 }
 
-bool infoScore::tt_pv() const { return flag >> 7; }
+bool infoScore::tt_pv() const {
+    return flag >> 7;
+}
 
-infoScore &Cluster::probe(residualHash hash, bool &ttHit) {
+infoScore& Cluster::probe(residualHash hash, bool& ttHit) {
     for (int i = 0; i < clusterSize; i++) {
         if (entries[i].typeNode() != 3 && entries[i].hash == hash) {
             ttHit = true;
@@ -52,16 +58,15 @@ infoScore &Cluster::probe(residualHash hash, bool &ttHit) {
     return entries[0];
 }
 
-int absEntryScore(const infoScore &entry, int curAge) {
+int absEntryScore(const infoScore& entry, int curAge) {
     return entry.depth - ((curAge - entry.age()) & maxAge) * 4 * fracDepth;
 }
 
-int preference(const infoScore &newentry, const infoScore &oldentry,
-               int curAge) {
+int preference(const infoScore& newentry, const infoScore& oldentry, int curAge) {
     return absEntryScore(newentry, curAge) - absEntryScore(oldentry, curAge);
 }
 
-void Cluster::push(infoScore &entry, int curAge) {
+void Cluster::push(infoScore& entry, int curAge) {
     int bestID = 0;
     int bestScore = -INT_MAX;
     for (int i = 0; i < clusterSize; i++) {
@@ -81,19 +86,18 @@ void Cluster::push(infoScore &entry, int curAge) {
     if (entries[bestID].hash != entry.hash ||
         entry.depth + fracDepth * 2 * entry.tt_pv() >=
             entries[bestID].depth + fracDepth * entries[bestID].tt_pv() ||
-        entries[bestID].typeNode() == UPPERBOUND ||
-        entries[bestID].age() != entry.age())
+        entries[bestID].typeNode() == UPPERBOUND || entries[bestID].age() != entry.age())
         entries[bestID] = entry;
 }
 
-pair<big, residualHash> getIndex(const GameState &state, big modulo) {
+pair<big, residualHash> getIndex(const GameState& state, big modulo) {
     __uint128_t tHash = ((__uint128_t)state.zobristHash) * modulo;
     static const int dec = 8 * sizeof(residualHash);
     tHash >>= 64 - dec;
     return {tHash >> dec, tHash & ((1ULL << dec) - 1)};
 }
 
-int transpositionTable::storedScore(int alpha, int beta, const infoScore &entry,
+int transpositionTable::storedScore(int alpha, int beta, const infoScore& entry,
                                     int rootDist) const {
     const int score = fromTT(entry.score, rootDist);
     if (entry.typeNode() == EXACT)
@@ -105,18 +109,17 @@ int transpositionTable::storedScore(int alpha, int beta, const infoScore &entry,
     return INVALID;
 }
 
-Move transpositionTable::getMove(const infoScore &entry) const {
-    return entry.bestMove; // probably a good move
+Move transpositionTable::getMove(const infoScore& entry) const {
+    return entry.bestMove;  // probably a good move
 }
 
-infoScore &transpositionTable::getEntry(const GameState &state, bool &ttHit) {
+infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit) {
     auto [index, hash] = getIndex(state, modulo);
     return table[index].probe(hash, ttHit);
 }
 
-void transpositionTable::push(GameState &state, int score, ubyte typeNode,
-                              Move move, uint16_t depth, int16_t raw_eval,
-                              bool is_pv) {
+void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move,
+                              uint16_t depth, int16_t raw_eval, bool is_pv) {
     // if(score == 0)return; //because of the repetition
     infoScore info;
     auto [index, hash] = getIndex(state, modulo);
@@ -131,7 +134,7 @@ void transpositionTable::push(GameState &state, int score, ubyte typeNode,
     table[index].push(info, age);
 }
 
-void transpositionTable::prefetch(const GameState &state) {
+void transpositionTable::prefetch(const GameState& state) {
     __builtin_prefetch(&table[getIndex(state, modulo).first]);
 }
 
@@ -144,12 +147,11 @@ void transpositionTable::clear() {
     if (nbThreads == 1) {
         clearRange(0, modulo);
     } else {
-        thread *threads = (thread *)calloc(nbThreads, sizeof(Cluster));
+        thread* threads = (thread*)calloc(nbThreads, sizeof(Cluster));
         for (int i = 0; i < nbThreads; i++) {
             big start = modulo * i / nbThreads;
             big end = modulo * (i + 1) / nbThreads;
-            threads[i] =
-                thread(&transpositionTable::clearRange, this, start, end);
+            threads[i] = thread(&transpositionTable::clearRange, this, start, end);
         }
         for (int i = 0; i < nbThreads; i++) {
             if (threads[i].joinable())
@@ -174,9 +176,9 @@ void transpositionTable::reinit(size_t count) {
 #endif
     size = ((size - 1) / alignment + 1) * alignment;
 #ifdef _WIN32
-    table = (Cluster *)(_aligned_malloc(size, alignment));
+    table = (Cluster*)(_aligned_malloc(size, alignment));
 #else
-    table = (Cluster *)std::aligned_alloc(alignment, size);
+    table = (Cluster*)std::aligned_alloc(alignment, size);
 #endif
 #ifdef MADV_HUGEPAGE
     madvise(table, count * sizeof(Cluster), MADV_HUGEPAGE);
@@ -197,16 +199,14 @@ int transpositionTable::hashfull() {
     int fullentries = 0;
     for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < clusterSize; j++) {
-            fullentries += table[i].entries[j].age() == age &&
-                           table[i].entries[j].typeNode() != 3;
+            fullentries += table[i].entries[j].age() == age && table[i].entries[j].typeNode() != 3;
         }
     }
     return fullentries / clusterSize;
 }
 
 TTperft::TTperft(int alloted_mem)
-    : mem(alloted_mem / sizeof(perftMem)),
-      modulo(alloted_mem / sizeof(perftMem)) {}
+    : mem(alloted_mem / sizeof(perftMem)), modulo(alloted_mem / sizeof(perftMem)) {}
 void TTperft::push(perftMem eval) {
     int index = eval.hash % modulo;
     mem[index] = eval;
@@ -217,7 +217,9 @@ int TTperft::get_eval(big hash, int depth) {
         return mem[index].leefs;
     return -1;
 }
-void TTperft::clear() { mem.clear(); }
+void TTperft::clear() {
+    mem.clear();
+}
 void TTperft::reinit(int count) {
     count /= sizeof(perftMem);
     mem.resize(count);

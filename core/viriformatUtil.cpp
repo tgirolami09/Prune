@@ -1,11 +1,11 @@
 #include "viriformatUtil.hpp"
-#include "Functions.hpp"
-#include "GameState.hpp"
-#include "Move.hpp"
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <vector>
+#include "Functions.hpp"
+#include "GameState.hpp"
+#include "Move.hpp"
 
 /* Important note:
     my squares are H1=0, A1=7 A8=63 H8=56 :
@@ -24,12 +24,14 @@
    the goo occupied-piece bitboard (comes from Functions.cpp)
  */
 
-template <typename T> void fastWrite(T data, FILE *file) {
-    fwrite(reinterpret_cast<const char *>(&data), sizeof(data), 1, file);
+template <typename T>
+void fastWrite(T data, FILE* file) {
+    fwrite(reinterpret_cast<const char*>(&data), sizeof(data), 1, file);
 }
 
-template <typename T> uint32_t fastRead(T &data, FILE *file) {
-    assert(fread(reinterpret_cast<char *>(&data), sizeof(data), 1, file));
+template <typename T>
+uint32_t fastRead(T& data, FILE* file) {
+    assert(fread(reinterpret_cast<char*>(&data), sizeof(data), 1, file));
     return data;
 }
 
@@ -37,7 +39,7 @@ MoveInfo::MoveInfo() {
     move = nullMove;
     score = 0;
 }
-void MoveInfo::dump(FILE *datafile) {
+void MoveInfo::dump(FILE* datafile) {
     static constexpr int transfo[4] = {0, 2, 3, 1};
     int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
     uint16_t mv = to << 6 | from;
@@ -47,10 +49,9 @@ void MoveInfo::dump(FILE *datafile) {
     fastWrite(mv, datafile);
     fastWrite<int16_t>(score, datafile);
 }
-void GamePlayed::dump(FILE *datafile) {
-    big occupied =
-        startPos.board.colors[WHITE] |
-        startPos.board.colors[BLACK]; // calculate the occupied bitboard
+void GamePlayed::dump(FILE* datafile) {
+    big occupied = startPos.board.colors[WHITE] |
+                   startPos.board.colors[BLACK];  // calculate the occupied bitboard
     fastWrite(reverse_col(occupied), datafile);
     uint8_t entry = 0x00;
     bool isSec = false;
@@ -59,14 +60,14 @@ void GamePlayed::dump(FILE *datafile) {
     for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
         big mask = 1ULL << index;
-        if (mask & occupied) { // if there is a piece there
+        if (mask & occupied) {  // if there is a piece there
             int8_t piece = startPos.getfullPiece(index);
             int _c = color(piece);
             piece = type(piece);
-            if (piece == ROOK && (mask & castle)) // rook that can castle
+            if (piece == ROOK && (mask & castle))  // rook that can castle
                 piece = 6;
             uint8_t full = (_c << 3) | piece;
-            if (isSec) { // if it's the second piece of the byte, we write it
+            if (isSec) {  // if it's the second piece of the byte, we write it
                 fastWrite<uint8_t>(entry | (full << 4), datafile);
             } else {
                 entry = full;
@@ -82,25 +83,26 @@ void GamePlayed::dump(FILE *datafile) {
             entry = 0;
         isSec ^= 1;
     }
-    uint8_t info =
-        startPos.lastDoublePawnPush == -1
-            ? 64
-            : startPos.lastDoublePawnPush ^ 0x07; // en passant square
+    uint8_t info = startPos.lastDoublePawnPush == -1
+                       ? 64
+                       : startPos.lastDoublePawnPush ^ 0x07;  // en passant square
     info |= startPos.friendlyColor() << 7;
     fastWrite(info, datafile);
-    fastWrite<uint8_t>(0, datafile);      // halfmove clock (for 50 move rule)
-    fastWrite<uint16_t>(0, datafile);     // full move
-    fastWrite<uint16_t>(0, datafile);     // score of the position
-    fastWrite<uint8_t>(result, datafile); // result
-    fastWrite<uint8_t>(0, datafile);      // unused extra byte
-    for (MoveInfo moves : game) {         // write all the stored moves
+    fastWrite<uint8_t>(0, datafile);       // halfmove clock (for 50 move rule)
+    fastWrite<uint16_t>(0, datafile);      // full move
+    fastWrite<uint16_t>(0, datafile);      // score of the position
+    fastWrite<uint8_t>(result, datafile);  // result
+    fastWrite<uint8_t>(0, datafile);       // unused extra byte
+    for (MoveInfo moves : game) {          // write all the stored moves
         moves.dump(datafile);
     }
-    fastWrite<uint32_t>(0, datafile); // ending 4 bytes
+    fastWrite<uint32_t>(0, datafile);  // ending 4 bytes
 }
-void GamePlayed::clear() { game.clear(); }
+void GamePlayed::clear() {
+    game.clear();
+}
 
-GamePlayed readGame(FILE *file) {
+GamePlayed readGame(FILE* file) {
     GamePlayed game;
     big occupied = 0;
     fastRead(occupied, file);
@@ -112,7 +114,7 @@ GamePlayed readGame(FILE *file) {
     for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
         big mask = 1ULL << index;
-        if (mask & occupied) { // if there sould be a piece there
+        if (mask & occupied) {  // if there sould be a piece there
             if (!isSec)
                 fastRead(entry, file);
             int8_t full = entry & 0b1111;
@@ -142,9 +144,9 @@ GamePlayed readGame(FILE *file) {
     game.startPos.turnNumber = (info >> 7) == WHITE ? 1 : 0;
     info &= 0b1111111;
     game.startPos.lastDoublePawnPush = info == 64 ? -1 : info ^ 0x07;
-    infoGame >>= 8;  // halfmove = infoGame;
-    infoGame >>= 16; // fullmove = infoGame;
-    infoGame >>= 16; // score = infoGame;
+    infoGame >>= 8;   // halfmove = infoGame;
+    infoGame >>= 16;  // fullmove = infoGame;
+    infoGame >>= 16;  // score = infoGame;
     game.result = infoGame;
     infoGame >>= 8;
     game.startPos.castlingFromMask(castle);

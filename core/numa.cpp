@@ -1,10 +1,10 @@
 // numa code from https://github.com/Ciekce/Stormphrax
 #ifdef NUMA
 #include "numa.hpp"
-#include <cstdio>
 #include <numa.h>
 #include <pthread.h>
 #include <sched.h>
+#include <cstdio>
 
 namespace prune_numa {
 vector<NNUE> nnues;
@@ -32,7 +32,9 @@ void bindThread(uint32_t numaId) {
     pthread_setaffinity_np(handle, sizeof(cpu_set_t), &cpuSet);
 }
 
-int nodeCount() { return static_cast<int>(threadMapping().size()); }
+int nodeCount() {
+    return static_cast<int>(threadMapping().size());
+}
 
 std::span<const cpu_set_t> threadMapping() {
     static const auto s_mapping = [] {
@@ -42,11 +44,10 @@ std::span<const cpu_set_t> threadMapping() {
         masks.reserve(maxNode + 1);
 
         for (int node = 0; node <= maxNode; ++node) {
-            auto *cpumask = numa_allocate_cpumask();
+            auto* cpumask = numa_allocate_cpumask();
 
             if (numa_node_to_cpus(node, cpumask) != 0) {
-                fprintf(stderr, "failed to get CPU mask for NUMA node %d\n",
-                        node);
+                fprintf(stderr, "failed to get CPU mask for NUMA node %d\n", node);
                 exit(1);
             }
 
@@ -69,8 +70,12 @@ std::span<const cpu_set_t> threadMapping() {
     return s_mapping;
 }
 
-int getNode(unsigned int numaId) { return numaId % nodeCount(); }
+int getNode(unsigned int numaId) {
+    return numaId % nodeCount();
+}
 
-const NNUE &getnnue(uint32_t numaId) { return nnues[getNode(numaId)]; }
-} // namespace prune_numa
+const NNUE& getnnue(uint32_t numaId) {
+    return nnues[getNode(numaId)];
+}
+}  // namespace prune_numa
 #endif

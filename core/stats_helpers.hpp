@@ -6,8 +6,9 @@
 #include <cstring>
 #include <string>
 using namespace std;
-template <typename T, int maxi = -1, int mini = 0> class StatVar {
-  public:
+template <typename T, int maxi = -1, int mini = 0>
+class StatVar {
+   public:
     T sum;
     T sumSquare;
     uint64_t number;
@@ -23,7 +24,7 @@ template <typename T, int maxi = -1, int mini = 0> class StatVar {
         obsmax = mini;
         memset(hist, 0, sizeof(hist));
     }
-    void update(const T &v) {
+    void update(const T& v) {
         if constexpr (maxi >= mini) {
             assert(v <= maxi && v >= mini);
             hist[v - mini]++;
@@ -47,8 +48,8 @@ template <typename T, int maxi = -1, int mini = 0> class StatVar {
             cum[i + 1] = cum[i] + hist[i];
         }
         printf("  percentiles:\n");
-        for (double percent : {0.1, 1., 5., 10., 20., 25., 30., 40., 50., 60.,
-                               70., 75., 80., 90., 95., 99., 99.9}) {
+        for (double percent :
+             {0.1, 1., 5., 10., 20., 25., 30., 40., 50., 60., 70., 75., 80., 90., 95., 99., 99.9}) {
             int search = cum[maxi - mini + 1] * percent / 100;
             int left = 0;
             int right = maxi - mini + 2;

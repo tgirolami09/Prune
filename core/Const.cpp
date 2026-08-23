@@ -53,10 +53,8 @@ __attribute__((constructor(101))) void init_lines() {
         for (int i = 0; i < 64; i++) {
             int colP = i & 7, rowP = i >> 3;
             big maskPos = ~(1ULL << i);
-            bishop_empty[i] =
-                clipped_diag[colP + rowP] ^ clipped_idiag[rowP - colP + 7];
-            bishop_full[i] =
-                mask_diag[colP + rowP] ^ mask_idiag[rowP - colP + 7];
+            bishop_empty[i] = clipped_diag[colP + rowP] ^ clipped_idiag[rowP - colP + 7];
+            bishop_full[i] = mask_diag[colP + rowP] ^ mask_idiag[rowP - colP + 7];
             rook_empty[i] = (clipped_col[colP] | clipped_row[rowP]) & maskPos;
             rook_full[i] = (mask_col[colP] | mask_row[rowP]) & maskPos;
         }
@@ -78,8 +76,7 @@ __attribute__((constructor(101))) void init_lines() {
                 while (r >= 0 && r < 8 && c >= 0 && c < 8) {
                     int sq = (r * 8 + c);
                     mask |= 1ULL << sq;
-                    directions[square][sq] =
-                        mask; // line of 1 between square and sq
+                    directions[square][sq] = mask;  // line of 1 between square and sq
                     r += dirs[idDir][0];
                     c += dirs[idDir][1];
                 }
@@ -87,8 +84,7 @@ __attribute__((constructor(101))) void init_lines() {
                 c = col + dirs[idDir][1];
                 while (r >= 0 && r < 8 && c >= 0 && c < 8) {
                     int sq = (r * 8 + c);
-                    fullDir[square][sq] =
-                        mask; // line of 1 from square in the direction of sq
+                    fullDir[square][sq] = mask;  // line of 1 from square in the direction of sq
                     r += dirs[idDir][0];
                     c += dirs[idDir][1];
                 }

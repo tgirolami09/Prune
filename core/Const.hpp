@@ -16,7 +16,7 @@ extern bool DEBUG;
 extern bool isdfrc;
 const big MAX_BIG = ~0ULL;
 const int WHITE = 0;
-const int BLACK = 1; // odd = black
+const int BLACK = 1;  // odd = black
 const int PAWN = 0;
 const int KNIGHT = 1;
 const int BISHOP = 2;
@@ -39,8 +39,8 @@ extern big clipped_diag[15];
 extern big clipped_idiag[15];
 extern big mask_row[8];
 extern big mask_col[8];
-extern big mask_diag[15];  // diag : index = column+row
-extern big mask_idiag[15]; // idiag : index = row-column+7
+extern big mask_diag[15];   // diag : index = column+row
+extern big mask_idiag[15];  // idiag : index = row-column+7
 extern big bishop_empty[64];
 extern big rook_empty[64];
 extern big bishop_full[64];
@@ -69,11 +69,11 @@ const int maxHistory = 16384;
 
 constexpr int kingposCastle[2] = {1, 5};
 constexpr int rookposCastle[2] = {2, 4};
-constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1},
-                            {0, 1},   {1, -1}, {1, 0},  {1, 1}};
+constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
 
 constexpr int fracDepth = 128;
-template <int d> constexpr int fdepth = d * fracDepth;
+template <int d>
+constexpr int fdepth = d * fracDepth;
 
 extern big directions[64][64];
 extern big fullDir[64][64];

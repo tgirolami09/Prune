@@ -1,8 +1,8 @@
 #include "GameState.hpp"
-#include "Const.hpp"
-#include "Functions.hpp"
 #include <cassert>
 #include <string>
+#include "Const.hpp"
+#include "Functions.hpp"
 using namespace std;
 
 big zobrist[nbZobrist];
@@ -61,8 +61,7 @@ void GameState::setDFRC(int idWhite, int idBlack) {
     board.colors[WHITE] = (1 << 16) - 1;
     board.colors[BLACK] = board.colors[WHITE] << (6 * 8);
     static constexpr big knightsTable[10] = {
-        0b00011, 0b00101, 0b01001, 0b10001, 0b00110,
-        0b01010, 0b10010, 0b01100, 0b10100, 0b11000,
+        0b00011, 0b00101, 0b01001, 0b10001, 0b00110, 0b01010, 0b10010, 0b01100, 0b10100, 0b11000,
     };
     for (int c = 0; c < 2; c++) {
         int id = c == WHITE ? idWhite : idBlack;
@@ -157,10 +156,8 @@ void GameState::fromFen(string fen) {
             int pos;
             if (position == 'q' || position == 'k') {
                 int upto = posCastlingRook(position == 'k', isBlack);
-                int kingpos =
-                    __builtin_ctzll(board.getMask(KING * 2 + isBlack));
-                big rmask = directions[kingpos][upto] &
-                            board.getMask(ROOK * 2 + isBlack);
+                int kingpos = __builtin_ctzll(board.getMask(KING * 2 + isBlack));
+                big rmask = directions[kingpos][upto] & board.getMask(ROOK * 2 + isBlack);
                 if (position == 'q')
                     pos = 63 ^ __builtin_clzll(rmask);
                 else
@@ -266,15 +263,15 @@ int GameState::enemyColor() const {
     return (turnNumber % 2) ? BLACK : WHITE;
 }
 
-inline bool GameState::isEnPassantPossibility(const int piece,
-                                              const Move &move) {
-    big sidePawn = ((1ULL << clipped_left(move.to())) |
-                    (1ULL << clipped_right(move.to())));
+inline bool GameState::isEnPassantPossibility(const int piece, const Move& move) {
+    big sidePawn = ((1ULL << clipped_left(move.to())) | (1ULL << clipped_right(move.to())));
     sidePawn &= getEnemyMask(PAWN);
     return piece == PAWN && abs(move.from() - move.to()) == 2 * 8 && sidePawn;
 }
 
-int GameState::rule50_count() const { return rule50[turnNumber]; }
+int GameState::rule50_count() const {
+    return rule50[turnNumber];
+}
 bool GameState::twofold() const {
     const int minposs = max(0, turnNumber - rule50_count());
     for (int i = turnNumber - 4; i >= minposs; i--) {
@@ -310,16 +307,14 @@ void GameState::playNullMove() {
 }
 ExpendedMove GameState::getLastMove() const {
     if (turnNumber > 0 &&
-        (movesSinceBeginning[0].move.moveInfo != nullMove.moveInfo ||
-         turnNumber > 1))
+        (movesSinceBeginning[0].move.moveInfo != nullMove.moveInfo || turnNumber > 1))
         return movesSinceBeginning[turnNumber - 1];
     return EnullMove;
 }
 
 ExpendedMove GameState::getContMove() const {
     if (turnNumber > 1 &&
-        (movesSinceBeginning[0].move.moveInfo != nullMove.moveInfo ||
-         turnNumber > 2))
+        (movesSinceBeginning[0].move.moveInfo != nullMove.moveInfo || turnNumber > 2))
         return movesSinceBeginning[turnNumber - 2];
     return EnullMove;
 }
@@ -334,7 +329,9 @@ int GameState::getPiece(int square) const {
     return type(board.mailbox[square]);
 }
 
-int GameState::getfullPiece(int square) const { return board.mailbox[square]; }
+int GameState::getfullPiece(int square) const {
+    return board.mailbox[square];
+}
 big GameState::getFriendlyMask(int piece) const {
     return board.getMask(piece, friendlyColor());
 }
@@ -396,7 +393,7 @@ void GameState::print() const {
     printf("\n");
 }
 
-void GameState::initMove(Move &move) {
+void GameState::initMove(Move& move) {
     int piece = getPiece(move.to());
     int mover = getPiece(move.from());
     if (mover == PAWN && col(move.from()) != col(move.to()) && piece == SPACE) {
@@ -415,8 +412,7 @@ void GameState::initMove(Move &move) {
 // Inline zobrist update for forward-only move application
 
 ExpendedMove GameState::playMove(Move move) {
-    zobristHash ^= zobrist[zobrPassant + col(lastDoublePawnPush)] *
-                   (lastDoublePawnPush != -1);
+    zobristHash ^= zobrist[zobrPassant + col(lastDoublePawnPush)] * (lastDoublePawnPush != -1);
     rule50[turnNumber + 1] = (rule50[turnNumber] + 1) * !board.isChanger(move);
     const bool curColor = friendlyColor();
     const int piece = getPiece(move.from());
@@ -443,8 +439,7 @@ ExpendedMove GameState::playMove(Move move) {
     }
     board.remPiece(move.from(), piece, curColor);
     if (isEnPassantPossibility(piece, move)) {
-        lastDoublePawnPush =
-            8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
+        lastDoublePawnPush = 8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
         zobristHash ^= zobrist[zobrPassant + col(lastDoublePawnPush)];
     } else {
         lastDoublePawnPush = -1;
@@ -457,7 +452,7 @@ ExpendedMove GameState::playMove(Move move) {
         int idx2 = __builtin_ffsll(cM);
         zobristHash ^= zobrist[zobrCastle + idx2];
         castlingMask &= ~mask_row[row(move.from())];
-        if (move.getFlag() == Move::fcastle) { // castling
+        if (move.getFlag() == Move::fcastle) {  // castling
             int startRook = move.to();
             int endRook = toSquare + 2 * (move.from() > move.to()) - 1;
             updateZobrists(ROOK, curColor, startRook);
@@ -501,10 +496,11 @@ bool GameState::threefoldFast() {
     return false;
 }
 int GameState::material() {
-    return countbit(board.pieces[PAWN]) * 1 +
-           countbit(board.pieces[KNIGHT]) * 3 +
-           countbit(board.pieces[BISHOP]) * 3 +
-           countbit(board.pieces[ROOK]) * 5 + countbit(board.pieces[QUEEN]) * 9;
+    return countbit(board.pieces[PAWN]) * 1 + countbit(board.pieces[KNIGHT]) * 3 +
+           countbit(board.pieces[BISHOP]) * 3 + countbit(board.pieces[ROOK]) * 5 +
+           countbit(board.pieces[QUEEN]) * 9;
 }
 
-void GameState::castlingFromMask(big mask) { castlingMask = mask; }
+void GameState::castlingFromMask(big mask) {
+    castlingMask = mask;
+}

@@ -1,7 +1,7 @@
 #include "tunables.hpp"
 
-vector<TunableInt *> tunables::to_tune_int() {
-    vector<TunableInt *> tuns{
+vector<TunableInt*> tunables::to_tune_int() {
+    vector<TunableInt*> tuns{
         &iir_min_depth,
         &iir_validity_depth,
         &rfp_improving,
@@ -45,7 +45,7 @@ vector<TunableInt *> tunables::to_tune_int() {
         &see_mul_tact,
         &se_pv_offset,
     };
-    for (TunableHist *tunshist : {&mainHist, &prevHist}) {
+    for (TunableHist* tunshist : {&mainHist, &prevHist}) {
         tuns.push_back(&tunshist->order);
         tuns.push_back(&tunshist->lmr);
         tuns.push_back(&tunshist->mhp);
@@ -56,7 +56,7 @@ vector<TunableInt *> tunables::to_tune_int() {
     return tuns;
 }
 
-vector<TunableFloat *> tunables::to_tune_float() {
+vector<TunableFloat*> tunables::to_tune_float() {
     return {
         //&aw_mul,
         //&nodetm_base,

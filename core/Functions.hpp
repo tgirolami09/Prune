@@ -1,19 +1,19 @@
 #ifndef FUNCTIONS_HPP
 #define FUNCTIONS_HPP
-#include "Const.hpp"
 #include <string>
+#include "Const.hpp"
 using namespace std;
-int col(const int &square);
-int row(const int &square);
-int color(const int &piece);
-int type(const int &piece);
-int countbit(const big &board);
-int flip(const int &square);
-int places(big mask, ubyte *positions);
+int col(const int& square);
+int row(const int& square);
+int color(const int& piece);
+int type(const int& piece);
+int countbit(const big& board);
+int flip(const int& square);
+int places(big mask, ubyte* positions);
 big reverse(big board);
 big reverse_col(big board);
 void print_mask(big mask);
-big addBitToMask(const big &mask, const int &pos);
+big addBitToMask(const big& mask, const int& pos);
 big removeBitFromMask(big mask, int pos);
 int from_str(string a);
 string to_uci(int pos);
@@ -27,7 +27,7 @@ big maskCol(int square);
 char transform(ubyte n);
 int sign(int n);
 class depthInfo {
-  public:
+   public:
     sbig node;
     int time, nps, depth, seldepth, score;
 };

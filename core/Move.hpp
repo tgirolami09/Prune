@@ -1,15 +1,15 @@
 #ifndef MOVE_HPP
 #define MOVE_HPP
+#include <string>
 #include "Const.hpp"
 #include "Functions.hpp"
-#include <string>
 using namespace std;
 const uint16_t clearTo = 0x3f;
 const uint16_t clearFrom = 0x3f << 6;
-const uint16_t clearPromot = 0x3 << 14; // 0xf << 12
+const uint16_t clearPromot = 0x3 << 14;  // 0xf << 12
 // Represents a move
 class __attribute__((packed)) Move {
-  public:
+   public:
     enum { fnormal = 0, fcastle = 1, fpromo = 2, fep = 3 };
     // Stores promotion|flag|from|to
     //  if flag == 1 => Castling
@@ -40,7 +40,7 @@ class __attribute__((packed)) Move {
 };
 
 class ExpendedMove {
-  public:
+   public:
     Move move;
     int piece;
     int capture;

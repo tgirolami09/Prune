@@ -1,13 +1,13 @@
 #ifndef TRANSPOSITION_TABLE_HPP
 #define TRANSPOSITION_TABLE_HPP
-#include "GameState.hpp"
 #include <climits>
 #include <cstdint>
 #include <vector>
+#include "GameState.hpp"
 const int maxAge = 0b11111;
 using residualHash = uint16_t;
 class __attribute__((packed)) infoScore {
-  public:
+   public:
     int16_t score, raw_eval;
     ubyte flag;
     ubyte padding;
@@ -24,34 +24,33 @@ const int clusterByte = 64;
 const int clusterSize = clusterByte / sizeof(infoScore);
 const int paddingSize = clusterByte - clusterSize * sizeof(infoScore);
 class Cluster {
-  public:
+   public:
     infoScore entries[clusterSize];
     ubyte padding[paddingSize];
-    infoScore &probe(residualHash hash, bool &ttHit);
-    void push(infoScore &entry, int curAge);
+    infoScore& probe(residualHash hash, bool& ttHit);
+    void push(infoScore& entry, int curAge);
 };
 static_assert(sizeof(Cluster) == clusterByte, "size of cluster should be 32");
 
 const int INVALID = INT_MAX;
 class transpositionTable {
-  public:
-    Cluster *table;
+   public:
+    Cluster* table;
     big modulo;
     int rewrite = 0;
     int place = 0;
     int age;
     transpositionTable(size_t count);
 
-    int storedScore(int alpha, int beta, const infoScore &entry,
-                    const int rootDist) const;
-    infoScore &getEntry(const GameState &state, bool &ttHit);
+    int storedScore(int alpha, int beta, const infoScore& entry, const int rootDist) const;
+    infoScore& getEntry(const GameState& state, bool& ttHit);
 
-    Move getMove(const infoScore &entry) const;
+    Move getMove(const infoScore& entry) const;
 
-    void push(GameState &state, int score, ubyte typeNode, Move move,
-              uint16_t depth, int16_t raw_eval, bool is_pv);
+    void push(GameState& state, int score, ubyte typeNode, Move move, uint16_t depth,
+              int16_t raw_eval, bool is_pv);
     void clearRange(big start, big end);
-    void prefetch(const GameState &state);
+    void prefetch(const GameState& state);
     void clear();
     void reinit(size_t count);
     void aging();
@@ -59,13 +58,13 @@ class transpositionTable {
 };
 
 class perftMem {
-  public:
+   public:
     big hash;
     big leefs;
     ubyte depth;
 };
 class TTperft {
-  public:
+   public:
     vector<perftMem> mem;
     int modulo;
     TTperft(int alloted_mem);

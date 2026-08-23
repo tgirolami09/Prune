@@ -15,23 +15,23 @@ constexpr int TB_RESULT_WIN = 4;
 constexpr int TB_RESULT_INVALID = -1;
 
 // Score values for tablebase results
-constexpr int TB_WIN_SCORE = 20000;       // Below mate but clearly winning
-constexpr int TB_CURSED_WIN_SCORE = 1;    // Winning but drawable by 50-move
-constexpr int TB_BLESSED_LOSS_SCORE = -1; // Losing but drawable by 50-move
+constexpr int TB_WIN_SCORE = 20000;        // Below mate but clearly winning
+constexpr int TB_CURSED_WIN_SCORE = 1;     // Winning but drawable by 50-move
+constexpr int TB_BLESSED_LOSS_SCORE = -1;  // Losing but drawable by 50-move
 
 class TablebaseProbe {
-  private:
+   private:
     bool initialized;
-    int probeDepth;     // Minimum depth to probe
-    int probeLimit;     // Maximum pieces to probe
-    unsigned tbLargest; // From Fathom: max pieces in loaded tables
+    int probeDepth;      // Minimum depth to probe
+    int probeLimit;      // Maximum pieces to probe
+    unsigned tbLargest;  // From Fathom: max pieces in loaded tables
 
-  public:
+   public:
     TablebaseProbe();
     ~TablebaseProbe();
 
     // Initialize with path to tablebase files
-    bool init(const std::string &path);
+    bool init(const std::string& path);
 
     // Configuration
     void setProbeDepth(int depth);
@@ -45,30 +45,30 @@ class TablebaseProbe {
 
     // Probe functions
     // Returns TB_RESULT_* or TB_RESULT_INVALID
-    int probeWDL(const GameState &state) const;
+    int probeWDL(const GameState& state) const;
 
     // Root probe - returns best move and WDL
     // Used at root for perfect play
-    int probeRoot(const GameState &state, Move &bestMove) const;
+    int probeRoot(const GameState& state, Move& bestMove) const;
 
     // WDL-only root probe fallback (for when DTZ files are missing).
     // Filters moves[] in-place to only those with the optimal WDL rank.
     // Returns best WDL (TB_RESULT_*) or TB_RESULT_INVALID on failure.
-    int rootFiltering(const GameState &state, Move *moves, int &nbMoves) const;
+    int rootFiltering(const GameState& state, Move* moves, int& nbMoves) const;
 
     // Convert WDL result to centipawn score adjusted for ply
     static int wdlToScore(int wdl, int ply);
 
     // Get piece count from state
-    static int countPieces(const GameState &state);
+    static int countPieces(const GameState& state);
 
     // Check if position can be probed (piece count, no castling)
     // Overload accepting precomputed piece count (from
     // IncrementalEvaluator::getNbMan) depth variant also checks depth >=
     // probeDepth (for in-search gating)
-    bool canProbe(const GameState &state, int nbMan, int depth) const;
-    bool canProbe(const GameState &state, int nbMan) const;
-    bool canProbe(const GameState &state) const;
+    bool canProbe(const GameState& state, int nbMan, int depth) const;
+    bool canProbe(const GameState& state, int nbMan) const;
+    bool canProbe(const GameState& state) const;
 };
 
 // Global tablebase prober

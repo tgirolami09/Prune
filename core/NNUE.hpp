@@ -1,12 +1,12 @@
 #ifndef NNUE_CPP
 #define NNUE_CPP
+#include <cstdint>
+#include <fstream>
 #include "Const.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
 #include "embeder.hpp"
 #include "simd_definitions.hpp"
-#include <cstdint>
-#include <fstream>
 
 using namespace std;
 #ifdef DEBUG_MACRO
@@ -21,11 +21,13 @@ constexpr inline int ilog2c(int n) {
     return (31 ^ __builtin_clz(n)) + !!(n & (n - 1));
 }
 
-constexpr inline int _abs(int x) { return x < 0 ? -x : x; }
+constexpr inline int _abs(int x) {
+    return x < 0 ? -x : x;
+}
 
 const int maxThreatUpdates = 80;
 
-const int INPUT_SIZE = 11 * 64; // merged king planes
+const int INPUT_SIZE = 11 * 64;  // merged king planes
 const int THREAT_SIZE = 60144;
 
 constexpr int QA = 255;
@@ -60,7 +62,7 @@ int getInputBucket(int Kpos, bool side, bool mirror);
 class NNUE;
 
 class Index {
-  public:
+   public:
     int square;
     int piece;
     bool color;
@@ -81,12 +83,12 @@ class Index {
 
 int mirrorSquare(int square, bool mirror);
 class ThreatIndex {
-  public:
+   public:
     Index from;
     Index to;
     ThreatIndex(Index _from, Index _to);
-    ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare,
-                int topiece, int tocolor);
+    ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare, int topiece,
+                int tocolor);
     ThreatIndex();
     bool isexcluded() const;
     bool issemiexcluded() const;
@@ -105,22 +107,22 @@ class ThreatIndex {
 };
 using oneAccumulator = simd<16>[L1 / nb<16>];
 class FinnytableNormal {
-  public:
+   public:
     big bitboards[8];
     oneAccumulator accs;
 };
 
 class FinnyTables {
-  public:
+   public:
     FinnytableNormal normals[nbInputBuckets * 4];
-    void init(const NNUE &nnue);
+    void init(const NNUE& nnue);
 };
 
 class updateBuffer {
-  public:
+   public:
     Index add1[2], add2[2];
     Index sub1[2],
-        sub2[2]; // each pieces provoque a change in black and white pov
+        sub2[2];  // each pieces provoque a change in black and white pov
     int nbThreats[2];
     ThreatIndex threatUpdates[2][32];
     bool dirty;
@@ -128,7 +130,7 @@ class updateBuffer {
     int type;
     updateBuffer();
     void reset(Index sub1, Index add1, Index sub2, Index add2);
-    void addThreat(const ThreatIndex &threat, const bool remove);
+    void addThreat(const ThreatIndex& threat, const bool remove);
     void print();
 };
 
@@ -136,23 +138,25 @@ static const inline simd<16> zero_16 = simd16_zero();
 static const inline simd<32> zero_32 = simdint_zero();
 static const inline simd<16> A_16 = simd16_set1(QA);
 
-template <int input, int output, int _clamp> struct midLayer {
+template <int input, int output, int _clamp>
+struct midLayer {
     simd<32> weights[input][output / nb<32>];
     simd<32> biases[output / nb<32>];
     void forward(const int x[input], simd<32> y[output / nb<32>]) const;
 };
 
-template <int input, int output> struct lastLayer {
+template <int input, int output>
+struct lastLayer {
     simd<32> weights[output][input / nb<32>];
     int biases[output];
     void forward(const simd<32> x[input / nb<32>], int y[output]) const;
 };
 
-template <int input, int output> struct Layer1 {
+template <int input, int output>
+struct Layer1 {
     alignas(64) simd<8> weights[input * output / nb<8>];
     alignas(64) simd<32> biases[output / nb<32>];
-    void forward(const uint32_t x[input / I8inI32],
-                 simd<32> y[output / nb<32>]) const;
+    void forward(const uint32_t x[input / I8inI32], simd<32> y[output / nb<32>]) const;
 };
 
 struct Layers {
@@ -162,23 +166,21 @@ struct Layers {
 };
 
 class Accumulator {
-    void defstaterelated(const PositionState &state);
-    void updatePieceOutComing(const PositionState &state, int piece,
-                              bool colorpiece, int square, bool remove,
-                              int removepos, const big sliders[3]);
-    void updatePieceIncoming(const PositionState &state, int piece,
-                             bool colorpiece, int square, bool remove,
-                             int removepos, const big sliders[3]);
-    void updatePiece(const PositionState &state, int piece, bool colorpiece,
-                     int square, bool remove, int removepos);
+    void defstaterelated(const PositionState& state);
+    void updatePieceOutComing(const PositionState& state, int piece, bool colorpiece, int square,
+                              bool remove, int removepos, const big sliders[3]);
+    void updatePieceIncoming(const PositionState& state, int piece, bool colorpiece, int square,
+                             bool remove, int removepos, const big sliders[3]);
+    void updatePiece(const PositionState& state, int piece, bool colorpiece, int square,
+                     bool remove, int removepos);
     template <bool enPassant = false, bool tworemove = false>
-    void updateXrays(const PositionState &state, int square, bool remove,
-                     int removepos, int removepos2 = -1);
-    void getThreatUpdates(const PositionState &state1,
-                          const PositionState &state2, const Move &move);
-    void applythreatsUpdates(Accumulator &accIn, bool side, const NNUE &nnue);
+    void updateXrays(const PositionState& state, int square, bool remove, int removepos,
+                     int removepos2 = -1);
+    void getThreatUpdates(const PositionState& state1, const PositionState& state2,
+                          const Move& move);
+    void applythreatsUpdates(Accumulator& accIn, bool side, const NNUE& nnue);
 
-  public:
+   public:
     simd<16> accs[4][L1 / nb<16>];
     bool Kside[2];
     bool side;
@@ -189,71 +191,62 @@ class Accumulator {
     PositionState board;
     updateBuffer update;
     Accumulator() {}
-    void reinit(const Move &move, const PositionState &state1,
-                const PositionState &state2, Accumulator &prevAcc, bool side,
-                bool mirror, Index sub1, Index add1, Index sub2 = Index(),
-                Index add2 = Index());
-    const simd<16> *operator[](int idx) const { return accs[idx]; }
-    simd<16> *operator[](int idx) { return accs[idx]; }
-    void updateSelf(Accumulator &accIn, FinnyTables &finny, const NNUE &nnue);
+    void reinit(const Move& move, const PositionState& state1, const PositionState& state2,
+                Accumulator& prevAcc, bool side, bool mirror, Index sub1, Index add1,
+                Index sub2 = Index(), Index add2 = Index());
+    const simd<16>* operator[](int idx) const { return accs[idx]; }
+    simd<16>* operator[](int idx) { return accs[idx]; }
+    void updateSelf(Accumulator& accIn, FinnyTables& finny, const NNUE& nnue);
 };
 
 class NNUE {
-  public:
+   public:
     alignas(64) simd<16> hlWeights[nbInputBuckets][INPUT_SIZE][L1 / nb<16>];
     alignas(64) simd<8> threatWeights[THREAT_SIZE][L1 / nb<8>];
     alignas(64) simd<16> hlBiases[L1 / nb<16>];
     Layers laterLayers[BUCKET];
 
-    template <typename T = char> dbyte read_bytes(ifstream &file);
+    template <typename T = char>
+    dbyte read_bytes(ifstream& file);
     // Helper to set individual elements in SIMD vectors
-    void set_simd16_element(simd<16> &vec, int index, dbyte value);
-    void set_simdint_element(simd<32> &vec, int index, int value);
+    void set_simd16_element(simd<16>& vec, int index, dbyte value);
+    void set_simdint_element(simd<32>& vec, int index, int value);
     NNUE(string name);
     NNUE();
-    void initAcc(Accumulator &accs) const;
-    void init1Acc(oneAccumulator &accs) const;
-    void initAcc(Accumulator &accs, bool color) const;
+    void initAcc(Accumulator& accs) const;
+    void init1Acc(oneAccumulator& accs) const;
+    void initAcc(Accumulator& accs, bool color) const;
     int get_index(int piece, int c, int square) const;
     template <int f>
-    void change1(Accumulator &accIn, bool pov, int index,
-                 int idInputBucket) const;
+    void change1(Accumulator& accIn, bool pov, int index, int idInputBucket) const;
     template <int f>
-    void change1acc(oneAccumulator &accIn, int index, int idInputBucket) const;
+    void change1acc(oneAccumulator& accIn, int index, int idInputBucket) const;
     template <int f>
-    void addThreat(Accumulator &accIn, bool pov, int index) const;
+    void addThreat(Accumulator& accIn, bool pov, int index) const;
     template <int f>
-    void addThreat(const Accumulator &accIn, Accumulator &accOut, bool pov,
-                   int index) const;
+    void addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const;
     template <int f, int N>
-    void addThreat(const Accumulator &accIn, Accumulator &accOut, bool pov,
-                   uint16_t *index) const;
+    void addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, uint16_t* index) const;
     template <int N>
-    void Threataddsub(const Accumulator &accIn, Accumulator &accs, bool pov,
-                      uint16_t indexadds[N], uint16_t indexrems[N]) const;
+    void Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov, uint16_t indexadds[N],
+                      uint16_t indexrems[N]) const;
     template <int f>
-    void change2(Accumulator &accIn, Accumulator &accOut, bool pov, int index,
+    void change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index,
                  int idInputBucket) const;
-    void move3(int color, const Accumulator &accIn, Accumulator &accOut,
-               int indexfrom, int indexto, int indexcap,
+    void move3(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto,
+               int indexcap, int idInputBucket) const;
+    void move2(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom, int indexto,
                int idInputBucket) const;
-    void move2(int color, const Accumulator &accIn, Accumulator &accOut,
-               int indexfrom, int indexto, int idInputBucket) const;
-    void move2In(oneAccumulator &accOut, int indexfrom, int indexto,
-                 int idInputBucket) const;
-    void move4(int color, const Accumulator &accIn, Accumulator &accOut,
-               int indexfrom1, int indexto1, int indexfrom2, int indexto2,
-               int idInputBucket) const;
-    void updateStack(Accumulator *stack, int stackIndex,
-                     FinnyTables &finny) const;
-    void calcThreats(Accumulator &accs, bool color,
-                     const PositionState &state) const;
-    dbyte eval(Accumulator &accs, bool side, int idB) const;
+    void move2In(oneAccumulator& accOut, int indexfrom, int indexto, int idInputBucket) const;
+    void move4(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom1,
+               int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
+    void updateStack(Accumulator* stack, int stackIndex, FinnyTables& finny) const;
+    void calcThreats(Accumulator& accs, bool color, const PositionState& state) const;
+    dbyte eval(Accumulator& accs, bool side, int idB) const;
 };
 
-inline const NNUE &globnnue = *reinterpret_cast<const NNUE *>(baseModel);
-inline void updateBuffer::addThreat(const ThreatIndex &threat,
-                                    const bool remove) {
+inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
+inline void updateBuffer::addThreat(const ThreatIndex& threat, const bool remove) {
     threatUpdates[remove][nbThreats[remove]++] = threat;
 }
 #endif

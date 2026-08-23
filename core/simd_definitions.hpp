@@ -47,23 +47,30 @@ using simdhalf = int8x8_t;
 #ifdef __ARM_NEON__
 // On NEON each width maps to its own register type so we have to do everything
 // explicitly
-template <int size> struct simd_register;
-template <> struct simd_register<8> {
+template <int size>
+struct simd_register;
+template <>
+struct simd_register<8> {
     using type = int8x16_t;
 };
-template <> struct simd_register<16> {
+template <>
+struct simd_register<16> {
     using type = int16x8_t;
 };
-template <> struct simd_register<32> {
+template <>
+struct simd_register<32> {
     using type = int32x4_t;
 };
-template <int size> using simd = typename simd_register<size>::type;
+template <int size>
+using simd = typename simd_register<size>::type;
 #else
 // On x86 a single register type is used for every width
-template <int size> using simd = _simd;
+template <int size>
+using simd = _simd;
 #endif
 
-template <int size> constexpr int nb = sizeof(simd<size>) * 8 / size;
+template <int size>
+constexpr int nb = sizeof(simd<size>) * 8 / size;
 
 template <typename T1, typename T2>
 constexpr int nbTypes = sizeof(T1) / sizeof(T2);
@@ -75,43 +82,55 @@ constexpr int I8inI32 = nbTypes<int32_t, int8_t>;
 
 // SIMD utility functions
 #ifdef __ARM_NEON__
-inline simd<16> simd16_zero() { return vdupq_n_s16(0); }
-inline simd<32> simdint_zero() { return vdupq_n_s32(0); }
-inline simd<16> simd16_set1(dbyte value) { return vdupq_n_s16(value); }
-inline simd<32> simdint_set1(int value) { return vdupq_n_s32(value); }
+inline simd<16> simd16_zero() {
+    return vdupq_n_s16(0);
+}
+inline simd<32> simdint_zero() {
+    return vdupq_n_s32(0);
+}
+inline simd<16> simd16_set1(dbyte value) {
+    return vdupq_n_s16(value);
+}
+inline simd<32> simdint_set1(int value) {
+    return vdupq_n_s32(value);
+}
 #else
-inline simd<16> simd16_zero() { return ADDSIZE(ADDMM(setzero_si))(); }
-inline simd<32> simdint_zero() { return ADDSIZE(ADDMM(setzero_si))(); }
-inline simd<16> simd16_set1(dbyte value) { return ADDMM(set1_epi16)(value); }
-inline simd<32> simdint_set1(int value) { return ADDMM(set1_epi32)(value); }
+inline simd<16> simd16_zero() {
+    return ADDSIZE(ADDMM(setzero_si))();
+}
+inline simd<32> simdint_zero() {
+    return ADDSIZE(ADDMM(setzero_si))();
+}
+inline simd<16> simd16_set1(dbyte value) {
+    return ADDMM(set1_epi16)(value);
+}
+inline simd<32> simdint_set1(int value) {
+    return ADDMM(set1_epi32)(value);
+}
 #endif
 
-simd<32> simdint_add(const simd<32> &a, const simd<32> &b);
-simd<16> simd16_mullo(const simd<16> &a, const simd<16> &b);
-simd<16> simd16_mulhi(const simd<16> &a, const simd<16> &b);
-simd<16> simd16_min(const simd<16> &a, const simd<16> &b);
-simd<32> simdint_min(const simd<32> &a, const simd<32> &b);
-simd<32> simdint_max(const simd<32> &a, const simd<32> &b);
-simd<16> simd16_clamp(const simd<16> &value, const simd<16> &min_val,
-                      const simd<16> &max_val);
-simd<16> simd16_uclamp(const simd<16> &value, const simd<16> &min_val,
-                       const simd<16> &max_val);
-simd<32> simdint_clamp(const simd<32> &value, const simd<32> &min_val,
-                       const simd<32> &max_val);
-simd<32> simdint_mullo(const simd<32> &a, const simd<32> &b);
-simd<32> mull_add(const simd<16> &a, const simd<16> &b);
-simd<32> simdint_shr(const simd<32> &a, int b);
-simd<16> simd16_shr(const simd<16> &a, int b);
-simd<16> simd16_sli(const simd<16> &a, int shift);
-int mysum(const simd<32> &x);
-simd<16> simd16_add(const simd<16> &a, const simd<16> &b);
-simd<16> simd16_sub(const simd<16> &a, const simd<16> &b);
-simd<8> simd8_add(const simd<8> &a, const simd<8> &b);
-simd<8> simd8_sub(const simd<8> &a, const simd<8> &b);
-simd<16> simdh8_16(const simdhalf &v);
-simd<8> simd8_packus(const simd<16> &a, const simd<16> &b);
-simd<16> simd16_maddubs(const simd<8> &a, const simd<8> &b);
+simd<32> simdint_add(const simd<32>& a, const simd<32>& b);
+simd<16> simd16_mullo(const simd<16>& a, const simd<16>& b);
+simd<16> simd16_mulhi(const simd<16>& a, const simd<16>& b);
+simd<16> simd16_min(const simd<16>& a, const simd<16>& b);
+simd<32> simdint_min(const simd<32>& a, const simd<32>& b);
+simd<32> simdint_max(const simd<32>& a, const simd<32>& b);
+simd<16> simd16_clamp(const simd<16>& value, const simd<16>& min_val, const simd<16>& max_val);
+simd<16> simd16_uclamp(const simd<16>& value, const simd<16>& min_val, const simd<16>& max_val);
+simd<32> simdint_clamp(const simd<32>& value, const simd<32>& min_val, const simd<32>& max_val);
+simd<32> simdint_mullo(const simd<32>& a, const simd<32>& b);
+simd<32> mull_add(const simd<16>& a, const simd<16>& b);
+simd<32> simdint_shr(const simd<32>& a, int b);
+simd<16> simd16_shr(const simd<16>& a, int b);
+simd<16> simd16_sli(const simd<16>& a, int shift);
+int mysum(const simd<32>& x);
+simd<16> simd16_add(const simd<16>& a, const simd<16>& b);
+simd<16> simd16_sub(const simd<16>& a, const simd<16>& b);
+simd<8> simd8_add(const simd<8>& a, const simd<8>& b);
+simd<8> simd8_sub(const simd<8>& a, const simd<8>& b);
+simd<16> simdh8_16(const simdhalf& v);
+simd<8> simd8_packus(const simd<16>& a, const simd<16>& b);
+simd<16> simd16_maddubs(const simd<8>& a, const simd<8>& b);
 simd<8> simd8_broadcast32(uint32_t v);
-simd<32> simdint_dpbusd(const simd<32> &acc, const simd<8> &u,
-                        const simd<8> &s);
+simd<32> simdint_dpbusd(const simd<32>& acc, const simd<8>& u, const simd<8>& s);
 #endif

@@ -1,22 +1,22 @@
 int nbThreads = 1;
 bool DEBUG = false;
 bool isdfrc = true;
-#define DATAGEN // disable material scaling for example
+#define DATAGEN  // disable material scaling for example
+#include <omp.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <cassert>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <vector>
 #include "BestMoveFinder.hpp"
 #include "Evaluator.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
 #include "numa.hpp"
 #include "viriformatUtil.hpp"
-#include <cassert>
-#include <chrono>
-#include <filesystem>
-#include <fstream>
-#include <omp.h>
-#include <stdio.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <vector>
 // #define DEBUG
 using namespace std;
 const int alloted_space = 2 * 1000 * 1000;
@@ -43,7 +43,7 @@ string secondsToStr(big s) {
 }
 
 class threadHelper {
-  public:
+   public:
     BestMoveFinder player0;
     BestMoveFinder player1;
     LegalMoveGenerator generator;
@@ -53,7 +53,8 @@ class threadHelper {
     int idThread;
     int phase;
     threadHelper(int _idThread)
-        : player0(alloted_space, _idThread), player1(alloted_space, _idThread),
+        : player0(alloted_space, _idThread),
+          player1(alloted_space, _idThread),
           idThread(_idThread) {}
     void init(string fen) {
         player0.clear();
@@ -63,8 +64,7 @@ class threadHelper {
         phase = countbit(state.board.pieces[PAWN] | state.board.pieces[ROOK] |
                          state.board.pieces[QUEEN]) *
                 2;
-        phase +=
-            countbit(state.board.pieces[BISHOP] | state.board.pieces[KNIGHT]);
+        phase += countbit(state.board.pieces[BISHOP] | state.board.pieces[KNIGHT]);
         game.clear();
     }
     void playMove(Move move) {
@@ -75,7 +75,7 @@ class threadHelper {
         if (move.promotion() == KNIGHT || move.promotion() == BISHOP)
             phase -= 1;
     }
-    BestMoveFinder &getPlayer() {
+    BestMoveFinder& getPlayer() {
         if (state.friendlyColor() == WHITE)
             return player0;
         else
@@ -89,28 +89,27 @@ class threadHelper {
         phase = countbit(state.board.pieces[PAWN] | state.board.pieces[ROOK] |
                          state.board.pieces[QUEEN]) *
                 2;
-        phase +=
-            countbit(state.board.pieces[BISHOP] | state.board.pieces[KNIGHT]);
+        phase += countbit(state.board.pieces[BISHOP] | state.board.pieces[KNIGHT]);
         game.game.clear();
     }
 };
 const int nbRandomMove = 8;
 
-big genRandom64(big &state) {
+big genRandom64(big& state) {
     big z = (state += 0x9E3779B97F4A7C15ULL);
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
     return z ^ (z >> 31);
 }
 
-bool moveRandom(threadHelper *state, int id) {
+bool moveRandom(threadHelper* state, int id) {
     bool inCheck;
     big dngpos;
     big s(state->state.zobristHash ^ id);
     for (int i = 0; i < nbRandomMove; i++) {
         state->generator.initDangers(state->state);
-        int nbMoves = state->generator.generateLegalMoves(
-            state->state, inCheck, state->legalMoves, dngpos, false);
+        int nbMoves = state->generator.generateLegalMoves(state->state, inCheck, state->legalMoves,
+                                                          dngpos, false);
         if (nbMoves == 0)
             return true;
         int idMove = nbMoves * (__uint128_t)genRandom64(s) >> 64;
@@ -123,7 +122,7 @@ bool moveRandom(threadHelper *state, int id) {
     return false;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     prune_numa::init();
     ifstream file(argv[1]);
     vector<string> fens;
@@ -158,8 +157,7 @@ int main(int argc, char **argv) {
 #endif
     for (int idThread = 0; idThread < realThread; idThread++) {
         int startReg = sizeGame * idThread / realThread;
-        string nameDataFile =
-            string("data") + to_string(idThread) + string(".out");
+        string nameDataFile = string("data") + to_string(idThread) + string(".out");
         ifstream infile(nameDataFile);
         int idFenTried = 0;
         if (infile.is_open()) {
@@ -174,14 +172,13 @@ int main(int argc, char **argv) {
                 uint32_t bytes = 0;
                 infile.seekg(pointer);
                 do {
-                    infile.read(reinterpret_cast<char *>(&bytes),
-                                sizeof(bytes));
+                    infile.read(reinterpret_cast<char*>(&bytes), sizeof(bytes));
                     totalMoves += bytes != 0;
                     pointer += 4;
                 } while (bytes);
             }
-            printf("file %d finding %d games (%d moves in total) delta %d\n",
-                   idThread, nbGames, totalMoves, pointer - fileSize);
+            printf("file %d finding %d games (%d moves in total) delta %d\n", idThread, nbGames,
+                   totalMoves, pointer - fileSize);
             startReg += nbGames;
             idFenTried += nbGames;
 #ifndef NOTHREAD
@@ -191,7 +188,7 @@ int main(int argc, char **argv) {
         }
         int endReg = sizeGame * (idThread + 1) / realThread;
         unique_ptr<threadHelper> state = make_unique<threadHelper>(idThread);
-        FILE *fptr;
+        FILE* fptr;
         fptr = fopen(nameDataFile.c_str(), "ab");
         for (int i = startReg; i < endReg; i++) {
             const TM tm(limitNodes, limitNodes * 1000);
@@ -199,12 +196,11 @@ int main(int argc, char **argv) {
             int nbTry = 0;
             state->init(fens[i % fens.size()]);
             idFenTried++;
-            while (moveRandom(&*state,
-                              (idFenTried + idThread + (nbTry++)) ^ globseed) ||
+            while (moveRandom(&*state, (idFenTried + idThread + (nbTry++)) ^ globseed) ||
                    abs(get<2>(state->getEval(tm))) > 500) {
                 state->reset(fens[i % fens.size()]);
             }
-            int result = 1; // 0 black win 1 draw 2 white win
+            int result = 1;  // 0 black win 1 draw 2 white win
             big dngpos;
             big localNodes = 0;
             do {
@@ -222,8 +218,7 @@ int main(int argc, char **argv) {
                         result = (state->state.enemyColor() == WHITE) * 2;
                         break;
                     }
-                    printf("score: %d fen: %s\n", get<2>(res),
-                           state->state.toFen().c_str());
+                    printf("score: %d fen: %s\n", get<2>(res), state->state.toFen().c_str());
                     assert(false);
                 }
                 if (abs(score) > MAXIMUM - maxDepth) {
@@ -234,8 +229,7 @@ int main(int argc, char **argv) {
                 }
                 MoveInfo curProc;
                 curProc.move = curMove;
-                curProc.score =
-                    state->state.friendlyColor() == BLACK ? -score : score;
+                curProc.score = state->state.friendlyColor() == BLACK ? -score : score;
                 state->playMove(curMove);
                 if (state->state.threefold()) {
                     result = 1;
@@ -244,8 +238,8 @@ int main(int argc, char **argv) {
                 state->game.game.push_back(curProc);
                 bool inCheck;
                 state->generator.initDangers(state->state);
-                int nbMoves = state->generator.generateLegalMoves(
-                    state->state, inCheck, state->legalMoves, dngpos, false);
+                int nbMoves = state->generator.generateLegalMoves(state->state, inCheck,
+                                                                  state->legalMoves, dngpos, false);
                 if (nbMoves == 0) {
                     if (inCheck) {
                         if (score == 0)
@@ -273,9 +267,7 @@ int main(int argc, char **argv) {
             struct winsize w;
             ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
             auto end = chrono::high_resolution_clock::now();
-            big duration =
-                chrono::duration_cast<chrono::milliseconds>(end - start)
-                    .count();
+            big duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
             string unit;
             int speed;
             big nps = nodesSearched * 1000 / duration / realThread;
@@ -286,15 +278,12 @@ int main(int argc, char **argv) {
                 speed = gamesMade * 1000 * 100 / duration;
                 unit = "g/s";
             }
-            string remaindTime =
-                secondsToStr(duration * (sizeGame - totGamesMade) /
-                             (gamesMade * 1000)); // in seconds
+            string remaindTime = secondsToStr(duration * (sizeGame - totGamesMade) /
+                                              (gamesMade * 1000));  // in seconds
             int percent = 1000 * totGamesMade / sizeGame;
-            string printed =
-                to_string(percent / 10) + string(".") + to_string(percent % 10);
+            string printed = to_string(percent / 10) + string(".") + to_string(percent % 10);
             printed += "% (";
-            printed += to_string(totGamesMade) + string("/") +
-                       to_string(sizeGame) + " in ";
+            printed += to_string(totGamesMade) + string("/") + to_string(sizeGame) + " in ";
             printed += to_string(duration / 1000.0) + "s) " + remaindTime + " ";
             printed += to_string(speed / 100);
             if (speed % 100 >= 10)
@@ -302,8 +291,7 @@ int main(int argc, char **argv) {
             else
                 printed += string(".0") + to_string(speed % 100);
             printed += unit + " " + to_string(nps) + "npst [";
-            int percentWind =
-                (w.ws_col - printed.size() - 1) * totGamesMade * 10 / sizeGame;
+            int percentWind = (w.ws_col - printed.size() - 1) * totGamesMade * 10 / sizeGame;
             printed += string(percentWind / 10, '#');
             if (totGamesMade != sizeGame) {
                 printed += to_string(percentWind % 10);

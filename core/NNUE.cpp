@@ -1,15 +1,15 @@
 #include "NNUE.hpp"
-#include "Const.hpp"
-#include "Functions.hpp"
-#include "GameState.hpp"
-#include "LegalMoveGenerator.hpp"
-#include "simd_definitions.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <utility>
+#include "Const.hpp"
+#include "Functions.hpp"
+#include "GameState.hpp"
+#include "LegalMoveGenerator.hpp"
+#include "simd_definitions.hpp"
 
 using namespace std;
 
@@ -26,8 +26,7 @@ const int piecesThreat[nbPieces][nbPieces] = {
     {0, 1, -1, 2, -1, -1}, {0, 1, 2, 3, 4, -1}, {0, 1, 2, 3, -1, -1},
     {0, 1, 2, 3, -1, -1},  {0, 1, 2, 3, 4, -1}, {-1, -1, -1, -1, -1, -1},
 };
-static_assert(sizeof(threatIndex) + sizeof(threatoffset) < 1024 * 1024,
-              "way too big for nothing");
+static_assert(sizeof(threatIndex) + sizeof(threatoffset) < 1024 * 1024, "way too big for nothing");
 
 __attribute__((constructor(106))) void initThreatIndices() {
     memset(threatIndex, 0xff, sizeof(threatIndex));
@@ -40,23 +39,23 @@ __attribute__((constructor(106))) void initThreatIndices() {
                 continue;
             big mask = 0;
             switch (type(atk)) {
-            case PAWN:
-                mask = attackPawns[from + color(atk) * 64];
-                break;
-            case KNIGHT:
-                mask = KnightMoves[from];
-                break;
-            case BISHOP:
-                mask = mask_full_bishop(from);
-                break;
-            case ROOK:
-                mask = mask_full_rook(from);
-                break;
-            case QUEEN:
-                mask = mask_full_rook(from) | mask_full_bishop(from);
-                break;
-            default:
-                assert(false);
+                case PAWN:
+                    mask = attackPawns[from + color(atk) * 64];
+                    break;
+                case KNIGHT:
+                    mask = KnightMoves[from];
+                    break;
+                case BISHOP:
+                    mask = mask_full_bishop(from);
+                    break;
+                case ROOK:
+                    mask = mask_full_rook(from);
+                    break;
+                case QUEEN:
+                    mask = mask_full_rook(from) | mask_full_bishop(from);
+                    break;
+                default:
+                    assert(false);
             }
             ubyte topos[64];
             int nbto = places(mask, topos);
@@ -72,10 +71,9 @@ __attribute__((constructor(106))) void initThreatIndices() {
 }
 
 int getThreatIndex(Index atk, Index def) {
-    int index =
-        threatIndex[atk.fullpiece()][atk.square][def.square] +
-        threatoffset[atk.fullpiece()] * (piecesThreat[atk.piece][def.piece] +
-                                         def.color * valid_targets[atk.piece]);
+    int index = threatIndex[atk.fullpiece()][atk.square][def.square] +
+                threatoffset[atk.fullpiece()] *
+                    (piecesThreat[atk.piece][def.piece] + def.color * valid_targets[atk.piece]);
     return index;
 }
 
@@ -87,12 +85,16 @@ int getInputBucket(int Kpos, bool side, bool mirror) {
     return inputBuckets[(col(Kpos)) | (row(Kpos) << 2)];
 }
 
-int turn(int index) { return ((index ^ 56) + 384) % 768; }
+int turn(int index) {
+    return ((index ^ 56) + 384) % 768;
+}
 
 Index::Index() : square(0), piece(6), color(false) {}
 Index::Index(int _square, int _piece, bool _color)
     : square(_square), piece(_piece), color(_color) {}
-void Index::smirror(bool needs) { square ^= 7 * needs; }
+void Index::smirror(bool needs) {
+    square ^= 7 * needs;
+}
 Index Index::mirror(bool needs) const {
     return Index(square ^ (7 * needs), piece, color);
 }
@@ -104,7 +106,9 @@ void Index::schangepov(bool needs) {
     square ^= 56 * needs;
     color ^= needs;
 }
-Index Index::changepov() const { return Index(square ^ 56, piece, !color); }
+Index Index::changepov() const {
+    return Index(square ^ 56, piece, !color);
+}
 Index Index::changepov(bool needs) const {
     return Index(square ^ (56 * needs), piece, color ^ needs);
 }
@@ -116,30 +120,33 @@ Index::operator int() {
 bool Index::operator==(const Index a) const {
     return square == a.square && piece == a.piece && color == a.color;
 }
-bool Index::isnull() { return piece == 6; }
-int Index::fullpiece() const { return piece * 2 + color; }
+bool Index::isnull() {
+    return piece == 6;
+}
+int Index::fullpiece() const {
+    return piece * 2 + color;
+}
 
-void Index::print() const { printf("%d %d %d", piece, color, square ^ 7); }
+void Index::print() const {
+    printf("%d %d %d", piece, color, square ^ 7);
+}
 ThreatIndex::ThreatIndex() {}
 ThreatIndex::ThreatIndex(Index _from, Index _to) : from(_from), to(_to) {}
-ThreatIndex::ThreatIndex(int fromsquare, int frompiece, int fromcolor,
-                         int tosquare, int topiece, int tocolor)
-    : from(Index(fromsquare, frompiece, fromcolor)),
-      to(Index(tosquare, topiece, tocolor)) {}
+ThreatIndex::ThreatIndex(int fromsquare, int frompiece, int fromcolor, int tosquare, int topiece,
+                         int tocolor)
+    : from(Index(fromsquare, frompiece, fromcolor)), to(Index(tosquare, topiece, tocolor)) {}
 
 bool ThreatIndex::isexcluded() const {
     return piecesThreat[from.piece][to.piece] == -1;
 }
 bool ThreatIndex::issemiexcluded() const {
-    return from.piece == to.piece &&
-           (from.piece != PAWN || from.color != to.color) &&
+    return from.piece == to.piece && (from.piece != PAWN || from.color != to.color) &&
            (from.square ^ 7) < (to.square ^ 7);
 }
 ThreatIndex::operator int() const {
-    int index =
-        ((int)threatIndex[from.fullpiece()][from.square][to.square]) +
-        threatoffset[from.fullpiece()] * (piecesThreat[from.piece][to.piece] +
-                                          to.color * valid_targets[from.piece]);
+    int index = ((int)threatIndex[from.fullpiece()][from.square][to.square]) +
+                threatoffset[from.fullpiece()] *
+                    (piecesThreat[from.piece][to.piece] + to.color * valid_targets[from.piece]);
     return index;
 }
 ThreatIndex ThreatIndex::changepov(bool needs) const {
@@ -148,8 +155,12 @@ ThreatIndex ThreatIndex::changepov(bool needs) const {
 ThreatIndex ThreatIndex::mirror(bool needs) const {
     return ThreatIndex(from.mirror(needs), to.mirror(needs));
 }
-void ThreatIndex::swap() { std::swap(from, to); }
-ThreatIndex ThreatIndex::rswap() const { return ThreatIndex(to, from); }
+void ThreatIndex::swap() {
+    std::swap(from, to);
+}
+ThreatIndex ThreatIndex::rswap() const {
+    return ThreatIndex(to, from);
+}
 void ThreatIndex::print() const {
     from.print();
     printf(" ");
@@ -172,8 +183,8 @@ void updateBuffer::reset(Index _add1, Index _add2, Index _sub1, Index _sub2) {
 }
 
 void updateBuffer::print() {
-    printf("%d %d %d; %d %d %d", add1[0].square, add1[0].piece, add1[0].color,
-           sub1[0].square, sub1[0].piece, sub1[0].color);
+    printf("%d %d %d; %d %d %d", add1[0].square, add1[0].piece, add1[0].color, sub1[0].square,
+           sub1[0].piece, sub1[0].color);
     if (type >= 1)
         printf("; %d %d %d", sub2[0].square, sub2[0].piece, sub2[0].color);
     if (type == 2)
@@ -197,33 +208,28 @@ inline big firstafter(int square, int square2, big occupancy, big atkmask) {
 }
 
 template <bool enPassant, bool tworemove>
-void Accumulator::updateXrays(const PositionState &state, int pos, bool remove,
-                              int removepos, int removepos2) {
+void Accumulator::updateXrays(const PositionState& state, int pos, bool remove, int removepos,
+                              int removepos2) {
     const big stateOccupied = state.occupancy();
     big masks[3] = {moves_table(pos, stateOccupied, mask_empty_bishop(pos)),
                     moves_table(pos + 64, stateOccupied, mask_empty_rook(pos))};
     if constexpr (enPassant)
         masks[1] &= ~mask_row[row(pos)];
     masks[2] = masks[0] | masks[1];
-    big maskremove = (1ULL << removepos) |
-                     firstafter(removepos, pos, stateOccupied, masks[2]);
+    big maskremove = (1ULL << removepos) | firstafter(removepos, pos, stateOccupied, masks[2]);
     if constexpr (tworemove) {
-        maskremove |= (1ULL << removepos2) |
-                      firstafter(removepos2, pos, stateOccupied, masks[2]);
+        maskremove |= (1ULL << removepos2) | firstafter(removepos2, pos, stateOccupied, masks[2]);
     }
     const big maskFkings =
         state.pieces[KING] |
         ((state.getMask(KING, WHITE) & masks[2])
-             ? fullDir[__builtin_ctzll(state.getMask(KING, WHITE))][pos] &
-                   stateOccupied & masks[2]
+             ? fullDir[__builtin_ctzll(state.getMask(KING, WHITE))][pos] & stateOccupied & masks[2]
              : 0) |
         ((state.getMask(KING, BLACK) & masks[2])
-             ? fullDir[__builtin_ctzll(state.getMask(KING, BLACK))][pos] &
-                   stateOccupied & masks[2]
+             ? fullDir[__builtin_ctzll(state.getMask(KING, BLACK))][pos] & stateOccupied & masks[2]
              : 0);
     const big filterout = ~(maskremove | maskFkings);
-    big mask = ((masks[0] & (state.pieces[BISHOP])) |
-                (masks[1] & (state.pieces[ROOK])) |
+    big mask = ((masks[0] & (state.pieces[BISHOP])) | (masks[1] & (state.pieces[ROOK])) |
                 (masks[2] & (state.pieces[QUEEN]))) &
                filterout;
     while (mask) {
@@ -235,21 +241,19 @@ void Accumulator::updateXrays(const PositionState &state, int pos, bool remove,
             const int posdef = __builtin_ctzll(maskdef);
             const bool colordef = color(state.mailbox[posdef]);
             const int piecedef = type(state.mailbox[posdef]);
-            update.addThreat(ThreatIndex(Index(posatk, pieceatk, coloratk),
-                                         Index(posdef, piecedef, colordef))
-                                 .swapExcluded(),
-                             remove);
+            update.addThreat(
+                ThreatIndex(Index(posatk, pieceatk, coloratk), Index(posdef, piecedef, colordef))
+                    .swapExcluded(),
+                remove);
             mask &= ~maskdef;
         }
         mask &= mask - 1;
     }
 }
 
-void Accumulator::updatePieceOutComing(const PositionState &state,
-                                       const int piece, const bool colorpiece,
-                                       const int pos, const bool remove,
-                                       const int removepos,
-                                       const big sliders[3]) {
+void Accumulator::updatePieceOutComing(const PositionState& state, const int piece,
+                                       const bool colorpiece, const int pos, const bool remove,
+                                       const int removepos, const big sliders[3]) {
     const Index posatk(pos, piece, colorpiece);
     big atkmask;
     if (piece == PAWN)
@@ -269,75 +273,61 @@ void Accumulator::updatePieceOutComing(const PositionState &state,
         const int _posdef = __builtin_ctzll(atkmask);
         const int piecedef = type(state.mailbox[_posdef]);
         const int colorPiece = color(state.mailbox[_posdef]);
-        update.addThreat(
-            ThreatIndex(posatk, Index(_posdef, piecedef, colorPiece)), remove);
+        update.addThreat(ThreatIndex(posatk, Index(_posdef, piecedef, colorPiece)), remove);
         atkmask &= atkmask - 1;
     }
 }
 
-void Accumulator::updatePieceIncoming(const PositionState &state,
-                                      const int piece, const bool colorpiece,
-                                      const int pos, const bool remove,
-                                      const int removepos,
-                                      const big sliders[3]) {
+void Accumulator::updatePieceIncoming(const PositionState& state, const int piece,
+                                      const bool colorpiece, const int pos, const bool remove,
+                                      const int removepos, const big sliders[3]) {
     const Index posdef(pos, piece, colorpiece);
-    const big maskremove =
-        ~((removepos == -1 ? 0 : (1ULL << removepos)) | state.pieces[KING]);
+    const big maskremove = ~((removepos == -1 ? 0 : (1ULL << removepos)) | state.pieces[KING]);
     big possMask =
         (piecesThreat[PAWN][piece] != -1) *
-            ((attackPawns[pos + 64 * !colorpiece] &
-              state.getMask(PAWN, colorpiece)) |
+            ((attackPawns[pos + 64 * !colorpiece] & state.getMask(PAWN, colorpiece)) |
              (piece != PAWN) * (attackPawns[pos + 64 * colorpiece] &
-                                state.getMask(PAWN, !colorpiece))) | // pawns
-        ((piece != KNIGHT) *
-         (KnightMoves[pos] & state.pieces[KNIGHT])) | // knights
-        ((piece != QUEEN && piece != BISHOP) *
-         (sliders[0] & state.pieces[BISHOP])) | // bishops
-        ((piece != QUEEN && piece != ROOK) *
-         (sliders[1] & state.pieces[ROOK])) |                    // queens
-        ((piece != QUEEN) * (sliders[2] & state.pieces[QUEEN])); // queens
+                                state.getMask(PAWN, !colorpiece))) |                   // pawns
+        ((piece != KNIGHT) * (KnightMoves[pos] & state.pieces[KNIGHT])) |              // knights
+        ((piece != QUEEN && piece != BISHOP) * (sliders[0] & state.pieces[BISHOP])) |  // bishops
+        ((piece != QUEEN && piece != ROOK) * (sliders[1] & state.pieces[ROOK])) |      // queens
+        ((piece != QUEEN) * (sliders[2] & state.pieces[QUEEN]));                       // queens
     possMask &= maskremove;
     for (; possMask; possMask &= possMask - 1) {
         const int atkpos = __builtin_ctzll(possMask);
         const bool atkcolor = color(state.mailbox[atkpos]);
         const int atkpiece = type(state.mailbox[atkpos]);
-        update.addThreat(ThreatIndex(Index(atkpos, atkpiece, atkcolor), posdef),
-                         remove);
+        update.addThreat(ThreatIndex(Index(atkpos, atkpiece, atkcolor), posdef), remove);
     }
 }
 
-void Accumulator::updatePiece(const PositionState &state, const int piece,
-                              const bool colorpiece, const int pos,
-                              const bool remove, const int removepos) {
+void Accumulator::updatePiece(const PositionState& state, const int piece, const bool colorpiece,
+                              const int pos, const bool remove, const int removepos) {
     const big stateOccupied = state.occupancy();
     big sliders[3] = {
         moves_table(pos, stateOccupied, mask_empty_bishop(pos)),
         moves_table(pos + 64, stateOccupied, mask_empty_rook(pos)),
     };
     sliders[2] = sliders[0] | sliders[1];
-    updatePieceIncoming(state, piece, colorpiece, pos, remove, removepos,
-                        sliders);
-    updatePieceOutComing(state, piece, colorpiece, pos, remove, removepos,
-                         sliders);
+    updatePieceIncoming(state, piece, colorpiece, pos, remove, removepos, sliders);
+    updatePieceOutComing(state, piece, colorpiece, pos, remove, removepos, sliders);
 }
 
-void Accumulator::getThreatUpdates(const PositionState &state1,
-                                   const PositionState &state2,
-                                   const Move &move) {
+void Accumulator::getThreatUpdates(const PositionState& state1, const PositionState& state2,
+                                   const Move& move) {
     const int piece = type(state1.mailbox[move.from()]);
     const int toPiece = move.promotion() | piece;
     const int capture = type(state1.mailbox[move.to()]);
     const bool isCapture = capture != SPACE;
-    if (move.getFlag() == Move::fep) { // en passant
+    if (move.getFlag() == Move::fep) {  // en passant
         const int enpassantpos = move.to() + ((side == WHITE) ? -8 : 8);
         updatePiece(state1, PAWN, side, move.from(), true, -1);
-        updateXrays<false, true>(state1, move.to(), true, move.from(),
-                                 enpassantpos);
+        updateXrays<false, true>(state1, move.to(), true, move.from(), enpassantpos);
         updatePiece(state1, PAWN, !side, enpassantpos, true, move.from());
         updatePiece(state2, PAWN, side, move.to(), false, -1);
         updateXrays(state2, move.from(), false, move.to());
         updateXrays<true>(state2, enpassantpos, false,
-                          move.to()); // remove the common rook side ray
+                          move.to());  // remove the common rook side ray
     } else if (state1.isCastling(move)) {
         updatePiece(state1, ROOK, side, update.sub2[0].square, true, -1);
         updatePiece(state2, ROOK, side, update.add2[0].square, false, -1);
@@ -347,29 +337,28 @@ void Accumulator::getThreatUpdates(const PositionState &state1,
             updatePiece(state1, piece, side, move.from(), true, -1);
         if (isCapture) {
             updatePiece(state1, capture, !side, move.to(), true,
-                        move.from()); // threat including move.from has already
-                                      // been removed
+                        move.from());  // threat including move.from has already
+                                       // been removed
         } else
             updateXrays(state1, move.to(), true,
-                        move.from()); // threat including move.from has already
-                                      // been removed
+                        move.from());  // threat including move.from has already
+                                       // been removed
         // then add the new threats
         if (piece != KING)
             updatePiece(state2, toPiece, side, move.to(), false, -1);
         updateXrays(state2, move.from(), false,
-                    move.to()); // threat including move.to() has already been
-                                // added by addPiece
+                    move.to());  // threat including move.to() has already been
+                                 // added by addPiece
     }
 }
 
-void Accumulator::defstaterelated(const PositionState &_state) {
+void Accumulator::defstaterelated(const PositionState& _state) {
     memcpy(&board, &_state, sizeof(board));
     occupied = board.colors[WHITE] | board.colors[BLACK];
 }
 
-void Accumulator::reinit(const Move &move, const PositionState &,
-                         const PositionState &state2, Accumulator &prevAcc,
-                         bool _side, bool mirror, Index sub1, Index add1,
+void Accumulator::reinit(const Move& move, const PositionState&, const PositionState& state2,
+                         Accumulator& prevAcc, bool _side, bool mirror, Index sub1, Index add1,
                          Index sub2, Index add2) {
     side = _side;
     update.reset(add1, add2, sub1, sub2);
@@ -386,17 +375,15 @@ void Accumulator::reinit(const Move &move, const PositionState &,
         pstrefresh = true;
         Kside[side] ^= 1;
     }
-    if (add1.piece == KING &&
-        getInputBucket(add1.square, side, Kside[side]) !=
-            idInputBucket[side]) { // king moves are always represented in
-                                   // sub1/add1
+    if (add1.piece == KING && getInputBucket(add1.square, side, Kside[side]) !=
+                                  idInputBucket[side]) {  // king moves are always represented in
+                                                          // sub1/add1
         idInputBucket[side] = getInputBucket(add1.square, side, Kside[side]);
         pstrefresh = true;
     }
 }
 
-void Accumulator::applythreatsUpdates(Accumulator &accIn, const bool pov,
-                                      const NNUE &nnue) {
+void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov, const NNUE& nnue) {
     if (update.nbThreats[0] + update.nbThreats[1] == 0) {
         memcpy(accs[pov + 2], accIn.accs[pov + 2], sizeof(accs[pov + 2]));
         return;
@@ -404,30 +391,25 @@ void Accumulator::applythreatsUpdates(Accumulator &accIn, const bool pov,
     uint16_t updates[2][32];
     for (int j = 0; j < 2; j++)
         for (int i = 0; i < update.nbThreats[j]; i++) {
-            updates[j][i] = update.threatUpdates[j][i]
-                                .changepov(pov)
-                                .mirror(Kside[pov])
-                                .swapSemiExcluded();
+            updates[j][i] =
+                update.threatUpdates[j][i].changepov(pov).mirror(Kside[pov]).swapSemiExcluded();
             __builtin_prefetch(&nnue.threatWeights[updates[j][i]]);
         }
     int maxi = update.nbThreats[0] < update.nbThreats[1];
-    Accumulator *inAcc = &accIn;
+    Accumulator* inAcc = &accIn;
     int applied = 0;
     while (update.nbThreats[maxi ^ 1] >= 4 + applied) {
-        nnue.Threataddsub<4>(*inAcc, *this, pov, updates[0] + applied,
-                             updates[1] + applied);
+        nnue.Threataddsub<4>(*inAcc, *this, pov, updates[0] + applied, updates[1] + applied);
         inAcc = this;
         applied += 4;
     }
     if (update.nbThreats[maxi ^ 1] >= 2 + applied) {
-        nnue.Threataddsub<2>(*inAcc, *this, pov, updates[0] + applied,
-                             updates[1] + applied);
+        nnue.Threataddsub<2>(*inAcc, *this, pov, updates[0] + applied, updates[1] + applied);
         inAcc = this;
         applied += 2;
     }
     if (update.nbThreats[maxi ^ 1] >= 1 + applied) {
-        nnue.Threataddsub<1>(*inAcc, *this, pov, updates[0] + applied,
-                             updates[1] + applied);
+        nnue.Threataddsub<1>(*inAcc, *this, pov, updates[0] + applied, updates[1] + applied);
         inAcc = this;
         applied += 1;
     }
@@ -466,8 +448,7 @@ void Accumulator::applythreatsUpdates(Accumulator &accIn, const bool pov,
     }
 }
 
-void Accumulator::updateSelf(Accumulator &accIn, FinnyTables &finny,
-                             const NNUE &nnue) {
+void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny, const NNUE& nnue) {
     update.nbThreats[0] = 0;
     update.nbThreats[1] = 0;
     getThreatUpdates(accIn.board, board, update.deferredMove);
@@ -486,11 +467,11 @@ void Accumulator::updateSelf(Accumulator &accIn, FinnyTables &finny,
     }
     if (pstrefresh) {
         int index = (idInputBucket[side] * 2 + Kside[side]) * 2 + side;
-        oneAccumulator &curAcc = finny.normals[index].accs;
+        oneAccumulator& curAcc = finny.normals[index].accs;
         for (int c = 0; c < 2; c++)
             for (int piece = 0; piece < nbPieces; piece++) {
-                big maskFinny = finny.normals[index].bitboards[piece] &
-                                finny.normals[index].bitboards[c + 6];
+                big maskFinny =
+                    finny.normals[index].bitboards[piece] & finny.normals[index].bitboards[c + 6];
                 const big common = board.getMask(piece, c) & maskFinny;
                 big maskadd = board.getMask(piece, c) & ~common;
                 big maskrem = maskFinny & ~common;
@@ -498,12 +479,8 @@ void Accumulator::updateSelf(Accumulator &accIn, FinnyTables &finny,
                     const int posrem = __builtin_ctzll(maskrem);
                     const int posadd = __builtin_ctzll(maskadd);
                     nnue.move2In(curAcc,
-                                 Index(posrem, piece, c)
-                                     .mirror(Kside[side])
-                                     .changepov(side),
-                                 Index(posadd, piece, c)
-                                     .mirror(Kside[side])
-                                     .changepov(side),
+                                 Index(posrem, piece, c).mirror(Kside[side]).changepov(side),
+                                 Index(posadd, piece, c).mirror(Kside[side]).changepov(side),
                                  idInputBucket[side]);
                     maskrem &= maskrem - 1;
                     maskadd &= maskadd - 1;
@@ -511,42 +488,33 @@ void Accumulator::updateSelf(Accumulator &accIn, FinnyTables &finny,
                 while (maskrem) {
                     const int posrem = __builtin_ctzll(maskrem);
                     nnue.change1acc<-1>(curAcc,
-                                        Index(posrem, piece, c)
-                                            .mirror(Kside[side])
-                                            .changepov(side),
+                                        Index(posrem, piece, c).mirror(Kside[side]).changepov(side),
                                         idInputBucket[side]);
                     maskrem &= maskrem - 1;
                 }
                 while (maskadd) {
                     const int posadd = __builtin_ctzll(maskadd);
                     nnue.change1acc<1>(curAcc,
-                                       Index(posadd, piece, c)
-                                           .mirror(Kside[side])
-                                           .changepov(side),
+                                       Index(posadd, piece, c).mirror(Kside[side]).changepov(side),
                                        idInputBucket[side]);
                     maskadd &= maskadd - 1;
                 }
             }
         memcpy(accs[side], curAcc, sizeof(accs[side]));
-        memcpy(finny.normals[index].bitboards, board.pieces,
-               sizeof(board.pieces));
-        memcpy(finny.normals[index].bitboards + 6, board.colors,
-               sizeof(board.colors));
+        memcpy(finny.normals[index].bitboards, board.pieces, sizeof(board.pieces));
+        memcpy(finny.normals[index].bitboards + 6, board.colors, sizeof(board.colors));
         if (update.type == 0)
-            nnue.move2(
-                !side, accIn, *this, update.sub1[!side].mirror(Kside[!side]),
-                update.add1[!side].mirror(Kside[!side]), idInputBucket[!side]);
+            nnue.move2(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]),
+                       update.add1[!side].mirror(Kside[!side]), idInputBucket[!side]);
         else if (update.type == 1)
-            nnue.move3(
-                !side, accIn, *this, update.sub1[!side].mirror(Kside[!side]),
-                update.add1[!side].mirror(Kside[!side]),
-                update.sub2[!side].mirror(Kside[!side]), idInputBucket[!side]);
+            nnue.move3(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]),
+                       update.add1[!side].mirror(Kside[!side]),
+                       update.sub2[!side].mirror(Kside[!side]), idInputBucket[!side]);
         else if (update.type == 2)
-            nnue.move4(
-                !side, accIn, *this, update.sub1[!side].mirror(Kside[!side]),
-                update.add1[!side].mirror(Kside[!side]),
-                update.sub2[!side].mirror(Kside[!side]),
-                update.add2[!side].mirror(Kside[!side]), idInputBucket[!side]);
+            nnue.move4(!side, accIn, *this, update.sub1[!side].mirror(Kside[!side]),
+                       update.add1[!side].mirror(Kside[!side]),
+                       update.sub2[!side].mirror(Kside[!side]),
+                       update.add2[!side].mirror(Kside[!side]), idInputBucket[!side]);
         update.dirty = false;
         return;
     }
@@ -557,82 +525,82 @@ void Accumulator::updateSelf(Accumulator &accIn, FinnyTables &finny,
                    update.add1[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
     } else if (update.type == 1) {
         nnue.move3(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]),
-                   update.add1[0].mirror(Kside[WHITE]),
-                   update.sub2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
+                   update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]),
+                   idInputBucket[WHITE]);
         nnue.move3(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]),
-                   update.add1[1].mirror(Kside[BLACK]),
-                   update.sub2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
+                   update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]),
+                   idInputBucket[BLACK]);
     } else {
         nnue.move4(WHITE, accIn, *this, update.sub1[0].mirror(Kside[WHITE]),
-                   update.add1[0].mirror(Kside[WHITE]),
-                   update.sub2[0].mirror(Kside[WHITE]),
+                   update.add1[0].mirror(Kside[WHITE]), update.sub2[0].mirror(Kside[WHITE]),
                    update.add2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
         nnue.move4(BLACK, accIn, *this, update.sub1[1].mirror(Kside[BLACK]),
-                   update.add1[1].mirror(Kside[BLACK]),
-                   update.sub2[1].mirror(Kside[BLACK]),
+                   update.add1[1].mirror(Kside[BLACK]), update.sub2[1].mirror(Kside[BLACK]),
                    update.add2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
     }
     update.dirty = false;
 }
 
-void FinnyTables::init(const NNUE &nnue) {
+void FinnyTables::init(const NNUE& nnue) {
     for (int i = 0; i < nbInputBuckets * 4; i++) {
         memset(normals[i].bitboards, 0, sizeof(normals[i].bitboards));
         nnue.init1Acc(normals[i].accs);
     }
 }
 
-template <typename T> dbyte NNUE::read_bytes(ifstream &file) {
+template <typename T>
+dbyte NNUE::read_bytes(ifstream& file) {
     T ret;
-    file.read(reinterpret_cast<char *>(&ret), sizeof(ret));
+    file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
     return ret;
 }
 
-dbyte read_i16(ifstream &file) {
+dbyte read_i16(ifstream& file) {
     dbyte ret;
-    file.read(reinterpret_cast<char *>(&ret), sizeof(ret));
+    file.read(reinterpret_cast<char*>(&ret), sizeof(ret));
     return ret;
 }
 
-dbyte read_i16(const unsigned char *file) {
+dbyte read_i16(const unsigned char* file) {
     dbyte ret;
     memcpy(&ret, file, sizeof(ret));
     return ret;
 }
 
 // Helper to set individual elements in SIMD vectors
-void NNUE::set_simd16_element(simd<16> &vec, int index, dbyte value) {
-    dbyte *ptr = reinterpret_cast<dbyte *>(&vec);
+void NNUE::set_simd16_element(simd<16>& vec, int index, dbyte value) {
+    dbyte* ptr = reinterpret_cast<dbyte*>(&vec);
     ptr[index] = value;
 }
 
-big genRandom(big &state) {
+big genRandom(big& state) {
     big z = (state += 0x9E3779B97F4A7C15ULL);
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
     return z ^ (z >> 31);
 }
 
-template <typename T> T get_int(const unsigned char *source, int length) {
+template <typename T>
+T get_int(const unsigned char* source, int length) {
     T res;
     memcpy(&res, source, length);
     return res;
 }
 
-void NNUE::initAcc(Accumulator &accs) const {
+void NNUE::initAcc(Accumulator& accs) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         accs[WHITE][i] = hlBiases[i];
         accs[BLACK][i] = hlBiases[i];
     }
 }
 
-void NNUE::initAcc(Accumulator &accs, bool color) const {
+void NNUE::initAcc(Accumulator& accs, bool color) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         accs[color][i] = hlBiases[i];
     }
 }
 
-void NNUE::init1Acc(oneAccumulator &accs) const {
+void NNUE::init1Acc(oneAccumulator& accs) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         accs[i] = hlBiases[i];
     }
@@ -643,9 +611,9 @@ int NNUE::get_index(int piece, int c, int square) const {
 }
 
 template <int f>
-void NNUE::addThreat(Accumulator &accs, bool pov, int index) const {
+void NNUE::addThreat(Accumulator& accs, bool pov, int index) const {
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");
-    const simdhalf *weights = (simdhalf *)&threatWeights[index];
+    const simdhalf* weights = (simdhalf*)&threatWeights[index];
     for (int i = 0; i < L1 / nb<16>; i++) {
         simd<16> low = simdh8_16(weights[i]);
         if constexpr (f == 1) {
@@ -657,28 +625,24 @@ void NNUE::addThreat(Accumulator &accs, bool pov, int index) const {
 }
 
 template <int N>
-void NNUE::Threataddsub(const Accumulator &accIn, Accumulator &accs, bool pov,
+void NNUE::Threataddsub(const Accumulator& accIn, Accumulator& accs, bool pov,
                         uint16_t indexadds[N], uint16_t indexrems[N]) const {
     static_assert(N >= 1, "at least one update lol");
     for (int i = 0; i < L1 / nb<16>; i++) {
-        simd<16> low = simd16_sub(
-            simdh8_16(((simdhalf *)&threatWeights[indexadds[0]])[i]),
-            simdh8_16(((simdhalf *)&threatWeights[indexrems[0]])[i]));
+        simd<16> low = simd16_sub(simdh8_16(((simdhalf*)&threatWeights[indexadds[0]])[i]),
+                                  simdh8_16(((simdhalf*)&threatWeights[indexrems[0]])[i]));
         for (int u = 1; u < N; u++) {
-            low = simd16_add(
-                low,
-                simd16_sub(
-                    simdh8_16(((simdhalf *)&threatWeights[indexadds[u]])[i]),
-                    simdh8_16(((simdhalf *)&threatWeights[indexrems[u]])[i])));
+            low = simd16_add(low,
+                             simd16_sub(simdh8_16(((simdhalf*)&threatWeights[indexadds[u]])[i]),
+                                        simdh8_16(((simdhalf*)&threatWeights[indexrems[u]])[i])));
         }
         accs[pov + 2][i] = simd16_add(accIn[pov + 2][i], low);
     }
 }
 template <int f>
-void NNUE::addThreat(const Accumulator &accIn, Accumulator &accOut, bool pov,
-                     int index) const {
+void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov, int index) const {
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");
-    const simdhalf *weights = (simdhalf *)&threatWeights[index];
+    const simdhalf* weights = (simdhalf*)&threatWeights[index];
     for (int i = 0; i < L1 / nb<16>; i++) {
         simd<16> low = simdh8_16(weights[i]);
         if constexpr (f == 1) {
@@ -690,14 +654,13 @@ void NNUE::addThreat(const Accumulator &accIn, Accumulator &accOut, bool pov,
 }
 
 template <int f, int N>
-void NNUE::addThreat(const Accumulator &accIn, Accumulator &accOut, bool pov,
-                     uint16_t *index) const {
+void NNUE::addThreat(const Accumulator& accIn, Accumulator& accOut, bool pov,
+                     uint16_t* index) const {
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");
     for (int i = 0; i < L1 / nb<16>; i++) {
-        simd<16> low = simdh8_16(((simdhalf *)&threatWeights[index[0]])[i]);
+        simd<16> low = simdh8_16(((simdhalf*)&threatWeights[index[0]])[i]);
         for (int u = 1; u < N; u++) {
-            low = simd16_add(
-                low, simdh8_16(((simdhalf *)&threatWeights[index[u]])[i]));
+            low = simd16_add(low, simdh8_16(((simdhalf*)&threatWeights[index[u]])[i]));
         }
         if constexpr (f == 1) {
             accOut[pov + 2][i] = simd16_add(accIn[pov + 2][i], low);
@@ -707,8 +670,7 @@ void NNUE::addThreat(const Accumulator &accIn, Accumulator &accOut, bool pov,
     }
 }
 
-void NNUE::calcThreats(Accumulator &accs, bool pov,
-                       const PositionState &state) const {
+void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         accs[pov + 2][i] = simd16_zero();
     }
@@ -740,25 +702,24 @@ void NNUE::calcThreats(Accumulator &accs, bool pov,
         posatk.smirror(mirror);
         posatk.schangepov(pov);
         switch (type(idPiece)) {
-        case PAWN:
-            atkmask = attackPawns[pos + color(idPiece) * 64];
-            break;
-        case KNIGHT:
-            atkmask = KnightMoves[pos];
-            break;
-        case BISHOP:
-            atkmask = moves_table(pos, occupied, mask_empty_bishop(pos));
-            break;
-        case ROOK:
-            atkmask = moves_table(pos + 64, occupied, mask_empty_rook(pos));
-            break;
-        case QUEEN:
-            atkmask = moves_table(pos, occupied, mask_empty_bishop(pos)) |
-                      moves_table(pos + 64, occupied, mask_empty_rook(pos));
-            break;
+            case PAWN:
+                atkmask = attackPawns[pos + color(idPiece) * 64];
+                break;
+            case KNIGHT:
+                atkmask = KnightMoves[pos];
+                break;
+            case BISHOP:
+                atkmask = moves_table(pos, occupied, mask_empty_bishop(pos));
+                break;
+            case ROOK:
+                atkmask = moves_table(pos + 64, occupied, mask_empty_rook(pos));
+                break;
+            case QUEEN:
+                atkmask = moves_table(pos, occupied, mask_empty_bishop(pos)) |
+                          moves_table(pos + 64, occupied, mask_empty_rook(pos));
+                break;
         }
-        big semiEmask =
-            (MAX_BIG >> (63 - pos)) ^ (mask_row[row(pos)] * (!mirror ^ pov));
+        big semiEmask = (MAX_BIG >> (63 - pos)) ^ (mask_row[row(pos)] * (!mirror ^ pov));
         if (pov == BLACK)
             semiEmask = ~semiEmask;
         atkmask &= authMask | (semiexcluded & semiEmask);
@@ -777,17 +738,14 @@ void NNUE::calcThreats(Accumulator &accs, bool pov,
     }
 }
 
-inline simd<16> pairwise(simd<16> apsq, simd<16> athr, simd<16> bpsq,
-                         simd<16> bthr) {
-    return simd16_mulhi(
-        simd16_min(simd16_add(apsq, athr), A_16),
-        simd16_sli(simd16_clamp(simd16_add(bpsq, bthr), zero_16, A_16),
-                   FT_LSHIFT));
+inline simd<16> pairwise(simd<16> apsq, simd<16> athr, simd<16> bpsq, simd<16> bthr) {
+    return simd16_mulhi(simd16_min(simd16_add(apsq, athr), A_16),
+                        simd16_sli(simd16_clamp(simd16_add(bpsq, bthr), zero_16, A_16), FT_LSHIFT));
 }
 
-dbyte NNUE::eval(Accumulator &accs, bool side, int idB) const {
+dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const {
     alignas(64) uint32_t HL1[L1 / I8inI32];
-    simd<8> *HL1_simd = reinterpret_cast<simd<8> *>(HL1);
+    simd<8>* HL1_simd = reinterpret_cast<simd<8>*>(HL1);
     alignas(64) int HL2[L2];
     alignas(64) simd<32> HL3[L3 / nb<32>];
     const auto x1 = accs.accs[side];
@@ -797,19 +755,17 @@ dbyte NNUE::eval(Accumulator &accs, bool side, int idB) const {
     const int half = L1 / nb<16> / 2;
     for (int i = 0; i < half; i += 2) {
         simd<16> neurons1 = pairwise(x1[i], x3[i], x1[i + half], x3[i + half]);
-        simd<16> neurons2 =
-            pairwise(x1[i + 1], x3[i + 1], x1[i + 1 + half], x3[i + 1 + half]);
+        simd<16> neurons2 = pairwise(x1[i + 1], x3[i + 1], x1[i + 1 + half], x3[i + 1 + half]);
         HL1_simd[i / 2] = simd8_packus(neurons1, neurons2);
     }
     for (int i = 0; i < half; i += 2) {
         simd<16> neurons1 = pairwise(x2[i], x4[i], x2[i + half], x4[i + half]);
-        simd<16> neurons2 =
-            pairwise(x2[i + 1], x4[i + 1], x2[i + 1 + half], x4[i + 1 + half]);
+        simd<16> neurons2 = pairwise(x2[i + 1], x4[i + 1], x2[i + 1 + half], x4[i + 1 + half]);
         HL1_simd[i / 2 + L1 / nb<8> / 2] = simd8_packus(neurons1, neurons2);
     }
     int finRes;
-    const auto &subnet = laterLayers[idB];
-    subnet.l1.forward(HL1, reinterpret_cast<simd<32> *>(HL2));
+    const auto& subnet = laterLayers[idB];
+    subnet.l1.forward(HL1, reinterpret_cast<simd<32>*>(HL2));
     subnet.l2.forward(HL2, HL3);
     subnet.l3.forward(HL3, &finRes);
     finRes = finRes / (QC * QC) * SCALE / (QC * QC);
@@ -821,27 +777,23 @@ inline simd<32> matrix_mul(simd<32> output, simd<8> inputs, simd<8> weights) {
     return simdint_dpbusd(output, inputs, weights);
 #else
     // u8 x s8 -> int16 (sat) -> widen-add to int32 -> accumulate.
-    return simdint_add(
-        output, mull_add(simd16_maddubs(inputs, weights), simd16_set1(1)));
+    return simdint_add(output, mull_add(simd16_maddubs(inputs, weights), simd16_set1(1)));
 #endif
 }
 
-inline simd<32> matrix_mul2(simd<32> output, simd<8> inputs1, simd<8> inputs2,
-                            simd<8> weights1, simd<8> weights2) {
+inline simd<32> matrix_mul2(simd<32> output, simd<8> inputs1, simd<8> inputs2, simd<8> weights1,
+                            simd<8> weights2) {
 #if defined(VNNI) || defined(__ARM_NEON__)
-    return simdint_dpbusd(simdint_dpbusd(output, inputs1, weights1), inputs2,
-                          weights2);
+    return simdint_dpbusd(simdint_dpbusd(output, inputs1, weights1), inputs2, weights2);
 #else
     simd<16> partial_sums1 = simd16_maddubs(inputs1, weights1);
     simd<16> partial_sums2 = simd16_maddubs(inputs2, weights2);
-    return simdint_add(
-        output,
-        mull_add(simd16_add(partial_sums1, partial_sums2), simd16_set1(1)));
+    return simdint_add(output, mull_add(simd16_add(partial_sums1, partial_sums2), simd16_set1(1)));
 #endif
 }
 
 template <int input, int output>
-void Layer1<input, output>::forward(const uint32_t *x, simd<32> *y) const {
+void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const {
     simd<32> y_pre[output / nb<32>][4];
     for (int o = 0; o < output / nb<32>; o++) {
         y_pre[o][0] = biases[o];
@@ -859,14 +811,10 @@ void Layer1<input, output>::forward(const uint32_t *x, simd<32> *y) const {
         const int offset3 = (i + 2) * I8inI32 * output / nb<8>;
         const int offset4 = (i + 3) * I8inI32 * output / nb<8>;
         for (int o = 0; o < output / nb<32>; o++) {
-            const simd<8> weights1 =
-                weights[offset1 + o * nb<32> * I8inI32 / nb<8>];
-            const simd<8> weights2 =
-                weights[offset2 + o * nb<32> * I8inI32 / nb<8>];
-            const simd<8> weights3 =
-                weights[offset3 + o * nb<32> * I8inI32 / nb<8>];
-            const simd<8> weights4 =
-                weights[offset4 + o * nb<32> * I8inI32 / nb<8>];
+            const simd<8> weights1 = weights[offset1 + o * nb<32> * I8inI32 / nb<8>];
+            const simd<8> weights2 = weights[offset2 + o * nb<32> * I8inI32 / nb<8>];
+            const simd<8> weights3 = weights[offset3 + o * nb<32> * I8inI32 / nb<8>];
+            const simd<8> weights4 = weights[offset4 + o * nb<32> * I8inI32 / nb<8>];
             y_pre[o][0] = matrix_mul(y_pre[o][0], inp1, weights1);
             y_pre[o][1] = matrix_mul(y_pre[o][1], inp2, weights2);
             y_pre[o][2] = matrix_mul(y_pre[o][2], inp3, weights3);
@@ -883,7 +831,7 @@ void Layer1<input, output>::forward(const uint32_t *x, simd<32> *y) const {
     }
 }
 template <int input, int output>
-void lastLayer<input, output>::forward(const simd<32> *x, int *y) const {
+void lastLayer<input, output>::forward(const simd<32>* x, int* y) const {
     for (int o = 0; o < output; o++) {
         simd<32> partial = simdint_set1(0);
         for (int i = 0; i < input / nb<32>; i++) {
@@ -894,7 +842,7 @@ void lastLayer<input, output>::forward(const simd<32> *x, int *y) const {
 }
 
 template <int input, int output, int _clamp>
-void midLayer<input, output, _clamp>::forward(const int *x, simd<32> *y) const {
+void midLayer<input, output, _clamp>::forward(const int* x, simd<32>* y) const {
     for (int o = 0; o < output / nb<32>; o++)
         y[o] = biases[o];
     for (int i = 0; i < input; i++) {
@@ -908,20 +856,17 @@ void midLayer<input, output, _clamp>::forward(const int *x, simd<32> *y) const {
 }
 
 template <int f>
-void NNUE::change1(Accumulator &accs, bool pov, int index,
-                   int idInputBucket) const {
+void NNUE::change1(Accumulator& accs, bool pov, int index, int idInputBucket) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         if constexpr (f == 1) {
-            accs[pov][i] =
-                simd16_add(accs[pov][i], hlWeights[idInputBucket][index][i]);
+            accs[pov][i] = simd16_add(accs[pov][i], hlWeights[idInputBucket][index][i]);
         } else {
-            accs[pov][i] =
-                simd16_sub(accs[pov][i], hlWeights[idInputBucket][index][i]);
+            accs[pov][i] = simd16_sub(accs[pov][i], hlWeights[idInputBucket][index][i]);
         }
     }
 }
 template <int f>
-void NNUE::change1acc(oneAccumulator &acc, int index, int idInputBucket) const {
+void NNUE::change1acc(oneAccumulator& acc, int index, int idInputBucket) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         if constexpr (f == 1) {
             acc[i] = simd16_add(acc[i], hlWeights[idInputBucket][index][i]);
@@ -931,31 +876,27 @@ void NNUE::change1acc(oneAccumulator &acc, int index, int idInputBucket) const {
     }
 }
 template <int f>
-void NNUE::change2(Accumulator &accIn, Accumulator &accOut, bool pov, int index,
+void NNUE::change2(Accumulator& accIn, Accumulator& accOut, bool pov, int index,
                    int idInputBucket) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         if constexpr (f == 1) {
-            accOut[pov][i] =
-                simd16_add(accIn[pov][i], hlWeights[idInputBucket][index][i]);
+            accOut[pov][i] = simd16_add(accIn[pov][i], hlWeights[idInputBucket][index][i]);
         } else {
-            accOut[pov][i] =
-                simd16_sub(accIn[pov][i], hlWeights[idInputBucket][index][i]);
+            accOut[pov][i] = simd16_sub(accIn[pov][i], hlWeights[idInputBucket][index][i]);
         }
     }
 }
-void NNUE::move3(int color, const Accumulator &accIn, Accumulator &accOut,
-                 int indexfrom, int indexto, int indexcap,
-                 int idInputBucket) const {
+void NNUE::move3(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom,
+                 int indexto, int indexcap, int idInputBucket) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
-        simd<16> update =
-            simd16_sub(hlWeights[idInputBucket][indexto][i],
-                       simd16_add(hlWeights[idInputBucket][indexfrom][i],
-                                  hlWeights[idInputBucket][indexcap][i]));
+        simd<16> update = simd16_sub(hlWeights[idInputBucket][indexto][i],
+                                     simd16_add(hlWeights[idInputBucket][indexfrom][i],
+                                                hlWeights[idInputBucket][indexcap][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
-void NNUE::move2(int color, const Accumulator &accIn, Accumulator &accOut,
-                 int indexfrom, int indexto, int idInputBucket) const {
+void NNUE::move2(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom,
+                 int indexto, int idInputBucket) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         simd<16> update = simd16_sub(hlWeights[idInputBucket][indexto][i],
                                      hlWeights[idInputBucket][indexfrom][i]);
@@ -963,8 +904,7 @@ void NNUE::move2(int color, const Accumulator &accIn, Accumulator &accOut,
     }
 }
 
-void NNUE::move2In(oneAccumulator &acc, int indexfrom, int indexto,
-                   int idInputBucket) const {
+void NNUE::move2In(oneAccumulator& acc, int indexfrom, int indexto, int idInputBucket) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
         simd<16> update = simd16_sub(hlWeights[idInputBucket][indexto][i],
                                      hlWeights[idInputBucket][indexfrom][i]);
@@ -972,24 +912,21 @@ void NNUE::move2In(oneAccumulator &acc, int indexfrom, int indexto,
     }
 }
 
-void NNUE::move4(int color, const Accumulator &accIn, Accumulator &accOut,
-                 int indexfrom1, int indexto1, int indexfrom2, int indexto2,
-                 int idInputBucket) const {
+void NNUE::move4(int color, const Accumulator& accIn, Accumulator& accOut, int indexfrom1,
+                 int indexto1, int indexfrom2, int indexto2, int idInputBucket) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
-        simd<16> update =
-            simd16_sub(simd16_add(hlWeights[idInputBucket][indexto1][i],
-                                  hlWeights[idInputBucket][indexto2][i]),
-                       simd16_add(hlWeights[idInputBucket][indexfrom1][i],
-                                  hlWeights[idInputBucket][indexfrom2][i]));
+        simd<16> update = simd16_sub(simd16_add(hlWeights[idInputBucket][indexto1][i],
+                                                hlWeights[idInputBucket][indexto2][i]),
+                                     simd16_add(hlWeights[idInputBucket][indexfrom1][i],
+                                                hlWeights[idInputBucket][indexfrom2][i]));
         accOut[color][i] = simd16_add(accIn[color][i], update);
     }
 }
 
-void NNUE::updateStack(Accumulator *stack, int stackIndex,
-                       FinnyTables &tables) const {
+void NNUE::updateStack(Accumulator* stack, int stackIndex, FinnyTables& tables) const {
     int startUpdate;
-    for (startUpdate = stackIndex;
-         startUpdate >= 1 && stack[startUpdate].update.dirty; startUpdate--)
+    for (startUpdate = stackIndex; startUpdate >= 1 && stack[startUpdate].update.dirty;
+         startUpdate--)
         ;
     startUpdate++;
     for (int i = startUpdate; i <= stackIndex; i++) {
@@ -997,9 +934,7 @@ void NNUE::updateStack(Accumulator *stack, int stackIndex,
     }
 }
 NNUE::NNUE() {}
-template void NNUE::change1<-1>(Accumulator &, bool, int, int) const;
-template void NNUE::change1<1>(Accumulator &, bool, int, int) const;
-template void NNUE::change2<-1>(Accumulator &, Accumulator &, bool, int,
-                                int) const;
-template void NNUE::change2<1>(Accumulator &, Accumulator &, bool, int,
-                               int) const;
+template void NNUE::change1<-1>(Accumulator&, bool, int, int) const;
+template void NNUE::change1<1>(Accumulator&, bool, int, int) const;
+template void NNUE::change2<-1>(Accumulator&, Accumulator&, bool, int, int) const;
+template void NNUE::change2<1>(Accumulator&, Accumulator&, bool, int, int) const;

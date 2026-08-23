@@ -1,13 +1,13 @@
-#include "Const.hpp"
-#include "Functions.hpp"
-#include "GameState.hpp"
-#include "LegalMoveGenerator.hpp"
-#include "viriformatUtil.hpp"
 #include <cassert>
 #include <cstdint>
 #include <random>
 #include <set>
 #include <string>
+#include "Const.hpp"
+#include "Functions.hpp"
+#include "GameState.hpp"
+#include "LegalMoveGenerator.hpp"
+#include "viriformatUtil.hpp"
 using namespace std;
 bool isdfrc = true;
 
@@ -22,7 +22,7 @@ string niceNumber(big N) {
 }
 
 class filtering {
-  public:
+   public:
     int min_ply;
     int min_pieces;
     int max_eval;
@@ -35,14 +35,21 @@ class filtering {
     std::uniform_real_distribution<double> dist;
 
     filtering()
-        : min_ply(8), min_pieces(4), max_eval(31339), filter_tactical(true),
-          filter_check(true), filter_castling(false),
-          max_eval_incorrectness(INT32_MAX), random_fen_skipping(false),
-          random_fen_skip_probability(0.0), material_min(17), material_max(78),
-          randomGen(0), dist(0, 1) {}
+        : min_ply(8),
+          min_pieces(4),
+          max_eval(31339),
+          filter_tactical(true),
+          filter_check(true),
+          filter_castling(false),
+          max_eval_incorrectness(INT32_MAX),
+          random_fen_skipping(false),
+          random_fen_skip_probability(0.0),
+          material_min(17),
+          material_max(78),
+          randomGen(0),
+          dist(0, 1) {}
 
-    bool filter(const GameState &state, MoveInfo move, bool inCheck,
-                int result) {
+    bool filter(const GameState& state, MoveInfo move, bool inCheck, int result) {
         if (state.turnNumber < min_ply)
             return true;
         if (filter_check && inCheck)
@@ -53,8 +60,7 @@ class filtering {
             return true;
         if (filter_castling && move.move.getFlag() == Move::fcastle)
             return true;
-        int nbMan =
-            countbit(state.board.colors[WHITE] | state.board.colors[BLACK]);
+        int nbMan = countbit(state.board.colors[WHITE] | state.board.colors[BLACK]);
         if (nbMan < min_pieces)
             return true;
         int value_pieces[5] = {1, 3, 3, 5, 9};
@@ -63,21 +69,20 @@ class filtering {
             material += value_pieces[j] * countbit(state.board.pieces[j]);
         if (material < material_min || material > material_max)
             return true;
-        if (random_fen_skipping &&
-            dist(randomGen) > random_fen_skip_probability)
+        if (random_fen_skipping && dist(randomGen) > random_fen_skip_probability)
             return true;
         if (result == 1 && abs(move.score) > max_eval_incorrectness)
-            return true; // draw
+            return true;  // draw
         if (result == 2 && -move.score > max_eval_incorrectness)
-            return true; // white win
+            return true;  // white win
         if (result == 0 && move.score > max_eval_incorrectness)
-            return true; // black win
+            return true;  // black win
         return false;
     }
 };
 
 class HyperLogLog {
-  public:
+   public:
     int b;
     vector<int8_t> M;
     big mask;
@@ -94,14 +99,14 @@ class HyperLogLog {
     big count() {
         const double alpha = [&] {
             switch (size) {
-            case 16:
-                return 0.673;
-            case 32:
-                return 0.697;
-            case 64:
-                return 0.709;
-            default:
-                return 0.7213 / (1 + 1.079 / size);
+                case 16:
+                    return 0.673;
+                case 32:
+                    return 0.697;
+                case 64:
+                    return 0.709;
+                default:
+                    return 0.7213 / (1 + 1.079 / size);
             }
         }();
         double sum = 0;
@@ -123,7 +128,7 @@ class HyperLogLog {
     }
 };
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     if (argc == 1) {
         printf("usage : \n%s filesToAnalyse\n", argv[0]);
         return 0;
@@ -135,7 +140,7 @@ int main(int argc, char **argv) {
     LegalMoveGenerator movegen;
     // Move legalMoves[maxMoves];
     for (int idFile = 1; idFile < argc; idFile++) {
-        FILE *file = fopen(argv[idFile], "r");
+        FILE* file = fopen(argv[idFile], "r");
         fseek(file, 0, SEEK_END);
         long file_size = ftell(file);
         fseek(file, 0, SEEK_SET);
@@ -170,19 +175,16 @@ int main(int argc, char **argv) {
                 big nbPos = countFiltered + countUnfiltered;
                 big countUnique = uniqueness.count();
                 printf("\r%s %s/%s(%s %.2f) : %.2f %.2f                   ",
-                       niceNumber(countFiltered).c_str(),
-                       niceNumber(countUnfiltered).c_str(),
-                       niceNumber(nbPos).c_str(),
-                       niceNumber(countUnique).c_str(),
-                       countUnique * 100.0 / nbPos,
-                       (double)countFiltered * 100 / nbPos,
+                       niceNumber(countFiltered).c_str(), niceNumber(countUnfiltered).c_str(),
+                       niceNumber(nbPos).c_str(), niceNumber(countUnique).c_str(),
+                       countUnique * 100.0 / nbPos, (double)countFiltered * 100 / nbPos,
                        (double)(countUnfiltered) * 100 / nbPos);
                 fflush(stdout);
             }
         }
     }
     big nbPos = countFiltered + countUnfiltered;
-    printf("\n%ld %ld/%ld (%ld): %.2f %.2f\n", countFiltered, countUnfiltered,
-           nbPos, uniqueness.count(), (double)countFiltered * 100 / nbPos,
+    printf("\n%ld %ld/%ld (%ld): %.2f %.2f\n", countFiltered, countUnfiltered, nbPos,
+           uniqueness.count(), (double)countFiltered * 100 / nbPos,
            (double)(countUnfiltered) * 100 / nbPos);
 }

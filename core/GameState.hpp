@@ -1,9 +1,9 @@
 #ifndef GAMESATE_HPP
 #define GAMESATE_HPP
-#include "Const.hpp"
-#include "Move.hpp"
 #include <cassert>
 #include <cstring>
+#include "Const.hpp"
+#include "Move.hpp"
 using namespace std;
 const int maxPly = 8848 * 2 + 2;
 const int zobrCastle = 64 * 2 * 6;
@@ -42,34 +42,25 @@ struct PositionState {
         memset(colors, 0, sizeof(colors));
         memset(mailbox, SPACE * 2, sizeof(mailbox));
     }
-    forceinline big getMask(int piece, bool color) const {
-        return pieces[piece] & colors[color];
-    }
-    forceinline big getMask(int piece) const {
-        return pieces[type(piece)] & colors[color(piece)];
-    }
+    forceinline big getMask(int piece, bool color) const { return pieces[piece] & colors[color]; }
+    forceinline big getMask(int piece) const { return pieces[type(piece)] & colors[color(piece)]; }
     forceinline big occupancy() const { return colors[WHITE] | colors[BLACK]; }
-    forceinline bool isChanger(const Move &move) const {
-        return type(mailbox[move.from()]) ==
-                   PAWN || // mover == PAWN (takes care of ep+promo)
+    forceinline bool isChanger(const Move& move) const {
+        return type(mailbox[move.from()]) == PAWN ||  // mover == PAWN (takes care of ep+promo)
                (type(mailbox[move.to()]) != SPACE &&
-                move.getFlag() != Move::fcastle); // capture and not castling
+                move.getFlag() != Move::fcastle);  // capture and not castling
     }
-    forceinline bool isCastling(const Move &move) const {
-        return move.getFlag() == Move::fcastle;
+    forceinline bool isCastling(const Move& move) const { return move.getFlag() == Move::fcastle; }
+    forceinline bool isTactical(const Move& move) const {
+        return move.getFlag() > Move::fcastle ||                        // promotion+ep
+               (!move.getFlag() && type(mailbox[move.to()]) != SPACE);  //! castling + capture
     }
-    forceinline bool isTactical(const Move &move) const {
-        return move.getFlag() > Move::fcastle || // promotion+ep
-               (!move.getFlag() &&
-                type(mailbox[move.to()]) != SPACE); //! castling + capture
-    }
-    forceinline int getCapture(const Move &move) const {
-        return type(mailbox[move.to()]) *          // normal capture
-                   (move.getFlag() != Move::fep) + // ep => x0 => capture=0=PAWN
+    forceinline int getCapture(const Move& move) const {
+        return type(mailbox[move.to()]) *           // normal capture
+                   (move.getFlag() != Move::fep) +  // ep => x0 => capture=0=PAWN
                (SPACE - ROOK) *
-                   (move.getFlag() ==
-                    Move::fcastle); // castle => previous=ROOK =>
-                                    // ROOK+SPACE-ROOK = SPACE => no capture
+                   (move.getFlag() == Move::fcastle);  // castle => previous=ROOK =>
+                                                       // ROOK+SPACE-ROOK = SPACE => no capture
     }
 };
 
@@ -79,8 +70,8 @@ struct PositionSnapshot;
 class GameState {
     // (not necessary if we create new states for exploration)
     ExpendedMove movesSinceBeginning
-        [maxPly]; // maximum number of moves
-                  // https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
+        [maxPly];  // maximum number of moves
+                   // https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
     big repHist[maxPly];
     int rule50[maxPly];
 
@@ -90,7 +81,7 @@ class GameState {
 
     friend struct PositionSnapshot;
 
-  public:
+   public:
     void updateZobrists(int piece, bool color, int square);
     // To determine whose turn it is to play
     int turnNumber;
@@ -108,7 +99,7 @@ class GameState {
     string toFen() const;
     int friendlyColor() const;
     int enemyColor() const;
-    bool isEnPassantPossibility(const int piece, const Move &move);
+    bool isEnPassantPossibility(const int piece, const Move& move);
     int rule50_count() const;
     bool twofold() const;
     bool threefold() const;
@@ -121,7 +112,7 @@ class GameState {
     big getFriendlyMask(int piece) const;
     big getEnemyMask(int piece) const;
     void print() const;
-    void initMove(Move &move);
+    void initMove(Move& move);
 
     // Forward-only move application (no undo support needed)
     ExpendedMove playMove(Move move);
@@ -132,8 +123,7 @@ class GameState {
     int material();
 };
 
-const string startpos =
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const string startpos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 // Lightweight snapshot of mutable position state (~132 bytes)
 // Used for copy/make: save before playMoveForward, restore after search
@@ -147,7 +137,7 @@ struct PositionSnapshot {
     big castlingMask;
     int turnNumber;
 
-    inline void save(const GameState &s) {
+    inline void save(const GameState& s) {
         memcpy(&board, &s.board, sizeof(board));
         zobristHash = s.zobristHash;
         pawnZobrist = s.pawnZobrist;
@@ -157,7 +147,7 @@ struct PositionSnapshot {
         turnNumber = s.turnNumber;
     }
 
-    inline void restore(GameState &s) const {
+    inline void restore(GameState& s) const {
         memcpy(&s.board, &board, sizeof(board));
         s.zobristHash = zobristHash;
         s.pawnZobrist = pawnZobrist;

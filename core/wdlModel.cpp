@@ -1,17 +1,13 @@
 #include "wdlModel.hpp"
+#include <cmath>
 #include "Const.hpp"
 #include "TablebaseProbe.hpp"
-#include <cmath>
 
 namespace WDLmodel {
 bool enabled = true;
 pair<double, double> wdlParams(int material) {
-    return {((as[0] * material / 58 + as[1]) * material / 58 + as[2]) *
-                    material / 58 +
-                as[3],
-            ((bs[0] * material / 58 + bs[1]) * material / 58 + bs[2]) *
-                    material / 58 +
-                bs[3]};
+    return {((as[0] * material / 58 + as[1]) * material / 58 + as[2]) * material / 58 + as[3],
+            ((bs[0] * material / 58 + bs[1]) * material / 58 + bs[2]) * material / 58 + bs[3]};
 }
 
 pair<int, int> wdl(int score, int material) {
@@ -26,4 +22,4 @@ int normalize(int score, int material) {
         return score;
     return score * 100 / wdlParams(material).first;
 }
-} // namespace WDLmodel
+}  // namespace WDLmodel

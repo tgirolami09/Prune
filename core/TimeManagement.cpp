@@ -1,19 +1,28 @@
 #include "TimeManagement.hpp"
-#include "Move.hpp"
 #include <algorithm>
 #include <cstdio>
+#include "Move.hpp"
 using namespace std;
 // thank to heimdall for the node tm discovering
 // I took some starting TM constants from his repo :
 // https://github.com/nocturn9x/heimdall/blob/master/src/heimdall/util/limits.nim#L84-L98
 
 const float bestMoveStabScaling[] = {2.50, 1.20, 0.90, 0.80, 0.75};
-TM::TM(int moveOverhead, bool color, int wtime, int winc, int btime, int binc,
-       int movetime, big hardnodes, big softnodes, int maxdepth)
-    : moveOverhead(moveOverhead), colorstm(color), wtime(wtime), winc(winc),
-      btime(btime), binc(binc), enabledtm(false), movetime(movetime),
-      hardnodes(hardnodes), softnodes(softnodes), enablednodes(false),
-      enabledtime(false), maxdepth(maxdepth) {}
+TM::TM(int moveOverhead, bool color, int wtime, int winc, int btime, int binc, int movetime,
+       big hardnodes, big softnodes, int maxdepth)
+    : moveOverhead(moveOverhead),
+      colorstm(color),
+      wtime(wtime),
+      winc(winc),
+      btime(btime),
+      binc(binc),
+      enabledtm(false),
+      movetime(movetime),
+      hardnodes(hardnodes),
+      softnodes(softnodes),
+      enablednodes(false),
+      enabledtime(false),
+      maxdepth(maxdepth) {}
 void TM::init() {
     softnodes = min(softnodes, hardnodes);
     if (softnodes != MAX_BIG)
@@ -28,9 +37,7 @@ void TM::init() {
         enabledtime = true;
         int time = (colorstm == WHITE) ? wtime : btime;
         int inc = (colorstm == WHITE) ? winc : binc;
-        hardtime = min<sbig>(
-            hardtime,
-            max(min(time / 4 + inc * 2 / 3, time - moveOverhead), 10));
+        hardtime = min<sbig>(hardtime, max(min(time / 4 + inc * 2 / 3, time - moveOverhead), 10));
         originsofttime = softtime = min(time / 30 + inc * 2 / 3, movetime);
     }
 }
@@ -45,24 +52,22 @@ bool TM::shouldstop_hard(big nodes, timeMesure::time_point start) {
     }
     return false;
 }
-bool TM::shouldstop_soft(big nodes, timeMesure::time_point start, int depth,
-                         big bestMoveNodes, big lastUsedNodes, int evaldiff,
-                         Move bestmove, const tunables &parameters,
+bool TM::shouldstop_soft(big nodes, timeMesure::time_point start, int depth, big bestMoveNodes,
+                         big lastUsedNodes, int evaldiff, Move bestmove, const tunables& parameters,
                          bool verbose) {
     if (enablednodes && nodes >= softnodes)
         return true;
     if (enabledtime) {
         auto timenow = timeMesure::now() - start;
-        updateSoft(depth, bestMoveNodes, lastUsedNodes, evaldiff, bestmove,
-                   parameters, verbose);
+        updateSoft(depth, bestMoveNodes, lastUsedNodes, evaldiff, bestmove, parameters, verbose);
         if (timenow >= chrono::milliseconds{softtime})
             return true;
     }
     return false;
 }
 
-sbig TM::updateSoft(int depth, big bestMoveNodes, big totalNodes, int evaldiff,
-                    Move bestmove, const tunables &parameters, bool verbose) {
+sbig TM::updateSoft(int depth, big bestMoveNodes, big totalNodes, int evaldiff, Move bestmove,
+                    const tunables& parameters, bool verbose) {
     if (!enabledtm)
         return softtime;
     if (lastbestMove == bestmove)

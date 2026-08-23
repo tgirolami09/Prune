@@ -1,20 +1,25 @@
 #include "Move.hpp"
 using namespace std;
 
-int Move::from() const { return (moveInfo >> 6) & 0x3f; }
+int Move::from() const {
+    return (moveInfo >> 6) & 0x3f;
+}
 
-int Move::to() const { return (moveInfo) & 0x3f; }
+int Move::to() const {
+    return (moveInfo) & 0x3f;
+}
 
 int Move::toMover() const {
-    return getFlag() == fcastle ? (to() & 56) | kingposCastle[from() < to()]
-                                : to();
+    return getFlag() == fcastle ? (to() & 56) | kingposCastle[from() < to()] : to();
 }
 
 int8_t Move::promotion() const {
     return (moveInfo >> 14) + (getFlag() == fpromo);
 }
 
-int Move::getFlag() const { return (moveInfo >> 12) & 0b11; }
+int Move::getFlag() const {
+    return (moveInfo >> 12) & 0b11;
+}
 
 void Move::setFlag(int flag) {
     moveInfo &= ~(0b11U << 12);
@@ -35,7 +40,9 @@ void Move::updateFrom(int from_square) {
     moveInfo |= (uint16_t)(from_square << 6);
 }
 
-void Move::updateTo(int to_square) { moveInfo |= (uint16_t)(to_square); }
+void Move::updateTo(int to_square) {
+    moveInfo |= (uint16_t)(to_square);
+}
 
 void Move::resetTo(int to_square) {
     moveInfo &= ~clearTo;
@@ -73,4 +80,6 @@ bool Move::operator==(Move o) const {
     return o.moveInfo == moveInfo;
 }
 
-int Move::getMovePart() const { return moveInfo & (clearTo | clearFrom); }
+int Move::getMovePart() const {
+    return moveInfo & (clearTo | clearFrom);
+}
