@@ -1,22 +1,22 @@
+#include <algorithm>
 #include <mutex>
 #include <sstream>
-#include <tuple>
 #include <thread>
-#include <algorithm>
+#include <tuple>
 // #include "util_magic.cpp"
+#include "BestMoveFinder.hpp"
 #include "Const.hpp"
 #include "Evaluator.hpp"
 #include "Functions.hpp"
-#include "Move.hpp"
 #include "GameState.hpp"
-#include <vector>
-#include "BestMoveFinder.hpp"
-#include "TimeManagement.hpp"
+#include "Move.hpp"
 #include "TablebaseProbe.hpp"
+#include "TimeManagement.hpp"
 #include "wdlModel.hpp"
-#include <set>
-#include <iostream>
 #include <cmath>
+#include <iostream>
+#include <set>
+#include <vector>
 #ifdef NUMA
 #include "numa.hpp"
 #endif
@@ -25,8 +25,7 @@ bool DEBUG = false;
 bool isdfrc = false;
 using namespace std;
 
-
-//Main class for the game
+// Main class for the game
 const vector<string> benches = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
@@ -73,284 +72,306 @@ const vector<string> benches = {
     "6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1",
     "r2r1n2/pp2bk2/2p1p2p/3q4/3PN1QP/2P3R1/P4PP1/5RK1 w - - 0 1",
     "8/8/8/8/8/6k1/6p1/6K1 w - - 0 1",
-    "7k/7P/6K1/8/3B4/8/8/8 b - - 0 1"
-};
+    "7k/7P/6K1/8/3B4/8/8/8 b - - 0 1"};
 
-class Chess{
-public :
+class Chess {
+  public:
     GameState root;
     vector<Move> movesFromRoot;
 
-    //Get it from i/o
+    // Get it from i/o
     int w_time;
     int b_time;
-    int binc=0;
-    int winc=0;
+    int binc = 0;
+    int winc = 0;
 };
 int moveOverhead = 100;
-const int alloted_space=64*hashMul;
+const int alloted_space = 64 * hashMul;
 Perft doPerft;
 BestMoveFinder bestMoveFinder(alloted_space);
-const int sizeQ=128;
+const int sizeQ = 128;
 string inpQueue[sizeQ];
 atomic<int> startQ = 0;
 atomic<int> endQ = 0;
-atomic<bool> stop_all=false;
+atomic<bool> stop_all = false;
 bool exec_command;
 mutex mtx_command;
 condition_variable cv_command;
 condition_variable cv_new_command;
 mutex mtx_new_command;
 
-void manageInput(){
-    while(!stop_all){
+void manageInput() {
+    while (!stop_all) {
         string com;
-        if(!getline(cin, com))
+        if (!getline(cin, com))
             com = "quit";
-        if(com == "stop"){
+        if (com == "stop") {
             fflush(stdout);
             bestMoveFinder.stop_flag = 2;
-        }else if(com == "isready"){
+        } else if (com == "isready") {
             {
                 unique_lock<mutex> lock(mtx_command);
-                cv_command.wait(lock, [&]{return !exec_command || !bestMoveFinder.stop_flag;});
+                cv_command.wait(lock, [&] {
+                    return !exec_command || !bestMoveFinder.stop_flag;
+                });
             }
             printf("readyok\n");
-        }else if(com == "quit"){
+        } else if (com == "quit") {
             bestMoveFinder.stop_flag = 2;
             stop_all = true;
             unique_lock<mutex> lock(mtx_new_command);
-            inpQueue[endQ%sizeQ] = "quit";
+            inpQueue[endQ % sizeQ] = "quit";
             endQ++;
             cv_new_command.notify_one();
-        }else{
+        } else {
             unique_lock<mutex> lock(mtx_new_command);
-            inpQueue[endQ%sizeQ] = com;
+            inpQueue[endQ % sizeQ] = com;
             endQ++;
             cv_new_command.notify_one();
         }
         fflush(stdout);
     }
 }
-const set<string> keywords = {"fen", "name", "value", "moves", "movetime", "nodes", "depth", "wtime", "btime", "winc", "binc", "startpos", "kiwipete", "perft", "nonbulk", "frc", "dfrc"};
-class Option{
-public:
+const set<string> keywords = {
+    "fen",      "name",  "value",   "moves", "movetime", "nodes",
+    "depth",    "wtime", "btime",   "winc",  "binc",     "startpos",
+    "kiwipete", "perft", "nonbulk", "frc",   "dfrc"};
+class Option {
+  public:
     string name;
     string type;
     string def;
     int maximum, minimum;
-    Option(string _name, string _type, string _def="", int _min=-1, int _max=-1):name(_name), type(_type), def(_def), maximum(_max), minimum(_min){}
-    void print(){
+    Option(string _name, string _type, string _def = "", int _min = -1,
+           int _max = -1)
+        : name(_name), type(_type), def(_def), maximum(_max), minimum(_min) {}
+    void print() {
         printf("option name %s type %s", name.c_str(), type.c_str());
-        if(def != "")printf(" default %s", def.c_str());
-        if(minimum != -1)printf(" min %d", minimum);
-        if(maximum != -1)printf(" max %d", maximum);
+        if (def != "")
+            printf(" default %s", def.c_str());
+        if (minimum != -1)
+            printf(" min %d", minimum);
+        if (maximum != -1)
+            printf(" max %d", maximum);
         printf("\n");
     }
 };
 
-const Option Options[] = {
-    Option("Hash", "spin", "64", 1, 2147483647),
-    Option("Move Overhead", "spin", "10", 0, 5000),
-    Option("Clear Hash", "button"),
-    Option("Threads", "spin", "1", 1, 512),
-    Option("SyzygyPath", "string", "<empty>"),
-    Option("SyzygyProbeDepth", "spin", "1", 1, 100),
-    Option("SyzygyProbeLimit", "spin", "7", 0, 7),
-    Option("Minimal", "check", "false"),
-    Option("UCI_ShowWDL", "check", "true"),
-    Option("UCI_Chess960", "check", "false")
-};
+const Option Options[] = {Option("Hash", "spin", "64", 1, 2147483647),
+                          Option("Move Overhead", "spin", "10", 0, 5000),
+                          Option("Clear Hash", "button"),
+                          Option("Threads", "spin", "1", 1, 512),
+                          Option("SyzygyPath", "string", "<empty>"),
+                          Option("SyzygyProbeDepth", "spin", "1", 1, 100),
+                          Option("SyzygyProbeLimit", "spin", "7", 0, 7),
+                          Option("Minimal", "check", "false"),
+                          Option("UCI_ShowWDL", "check", "true"),
+                          Option("UCI_Chess960", "check", "false")};
 
-pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color, bool worthMoreTime){
-    int time = color == WHITE?wtime:btime;
-    int inc = color == WHITE?winc:binc;
+pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc,
+                                  bool color, bool worthMoreTime) {
+    int time = color == WHITE ? wtime : btime;
+    int inc = color == WHITE ? winc : binc;
     int hardBound;
-    if(worthMoreTime)
-        hardBound = time/10+inc/2-moveOverhead;
+    if (worthMoreTime)
+        hardBound = time / 10 + inc / 2 - moveOverhead;
     else
-        hardBound = time/20+inc/2-moveOverhead;
-    hardBound = min(hardBound, time-moveOverhead);
-    int softBound = hardBound/2;
-    //maxTime = min(maxTime, time/10);
+        hardBound = time / 20 + inc / 2 - moveOverhead;
+    hardBound = min(hardBound, time - moveOverhead);
+    int softBound = hardBound / 2;
+    // maxTime = min(maxTime, time/10);
     return {softBound, hardBound};
 }
 
-bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool verbose, bool& printmove){
-    if(!args.empty() && args[0].first == "perft"){
+bestMoveResponse goCommand(vector<pair<string, string>> args, Chess &state,
+                           bool verbose, bool &printmove) {
+    if (!args.empty() && args[0].first == "perft") {
         printmove = false;
         big result;
         PositionSnapshot snap;
         snap.save(state.root);
-        for(Move move:state.movesFromRoot)
+        for (Move move : state.movesFromRoot)
             state.root.playPartialMove(move);
         state.root.print();
-        if(args.size() > 1 && args[1].first == "nonbulk")
+        if (args.size() > 1 && args[1].first == "nonbulk")
             result = doPerft.perft<false>(state.root, stoi(args[0].second));
         else
             result = doPerft.perft<true>(state.root, stoi(args[0].second));
         snap.restore(state.root);
         printf("Nodes searched: %" PRId64 "\n", result);
         return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
-    }else{
-        TM tm(moveOverhead, state.root.friendlyColor()^(state.movesFromRoot.size()&1));
-        for(pair<string, string> arg:args){
-            if(arg.first == "btime")
+    } else {
+        TM tm(moveOverhead,
+              state.root.friendlyColor() ^ (state.movesFromRoot.size() & 1));
+        for (pair<string, string> arg : args) {
+            if (arg.first == "btime")
                 tm.btime = min(tm.btime, stoi(arg.second));
-            else if(arg.first == "wtime")
+            else if (arg.first == "wtime")
                 tm.wtime = min(tm.wtime, stoi(arg.second));
-            else if(arg.first == "binc")
+            else if (arg.first == "binc")
                 tm.binc = min(tm.binc, stoi(arg.second));
-            else if(arg.first == "winc")
+            else if (arg.first == "winc")
                 tm.winc = min(tm.winc, stoi(arg.second));
-            else if(arg.first == "movetime")
+            else if (arg.first == "movetime")
                 tm.movetime = min(tm.movetime, stoi(arg.second));
-            else if(arg.first == "nodes")
+            else if (arg.first == "nodes")
                 tm.hardnodes = min(tm.hardnodes, stoul(arg.second));
-            else if(arg.first == "depth")
+            else if (arg.first == "depth")
                 tm.maxdepth = min(tm.maxdepth, stoi(arg.second));
             else
                 printf("info string unknown limit : %s\n", arg.first.c_str());
         }
         tm.init();
-        return bestMoveFinder.bestMove(state.root, tm, state.movesFromRoot, verbose);
+        return bestMoveFinder.bestMove(state.root, tm, state.movesFromRoot,
+                                       verbose);
     }
 }
 
-void manageSearch(bool seeInput){
+void manageSearch(bool seeInput) {
     auto state = make_unique<Chess>();
-    state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    state->root.fromFen(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     Move lastMove = nullMove;
     auto ieval = make_unique<IncrementalEvaluator>();
     thread t;
-    if(seeInput)
+    if (seeInput)
         t = thread(&manageInput);
-    while(!stop_all){
-        if(!stop_all && endQ == startQ){
+    while (!stop_all) {
+        if (!stop_all && endQ == startQ) {
             fflush(stdout);
             unique_lock<mutex> lock(mtx_new_command);
-            cv_new_command.wait(lock, []{return endQ != startQ || stop_all;});
+            cv_new_command.wait(lock,
+                                [] { return endQ != startQ || stop_all; });
         }
-        if(startQ != endQ){
+        if (startQ != endQ) {
             {
                 lock_guard<mutex> lock(mtx_command);
                 exec_command = true;
             }
             cv_command.notify_one();
-            string com=inpQueue[startQ%sizeQ];
+            string com = inpQueue[startQ % sizeQ];
             startQ++;
             istringstream stream(com);
             string command;
             stream >> command;
             string word;
             string keyword = "";
-            string value="";
+            string value = "";
             vector<pair<string, string>> parsed;
-            bool isarg=false;
-            while(stream >> word){
+            bool isarg = false;
+            while (stream >> word) {
                 isarg = true;
-                if(keywords.count(word)){
-                    if(value.empty()){
-                        if(!keyword.empty())
+                if (keywords.count(word)) {
+                    if (value.empty()) {
+                        if (!keyword.empty())
                             parsed.push_back({keyword, ""});
-                    }else{
+                    } else {
                         value.pop_back();
                         parsed.push_back({keyword, value});
                     }
                     value = "";
                     keyword = word;
-                }else{
-                    value += word+" ";
+                } else {
+                    value += word + " ";
                 }
             }
-            if(isarg){
-                if(!value.empty())
+            if (isarg) {
+                if (!value.empty())
                     value.pop_back();
                 parsed.push_back({keyword, value});
             }
-            if(command == "runQ"){
+            if (command == "runQ") {
                 bestMoveFinder.testQuiescenceSearch(state->root);
-            }else if(command == "eval"){
+            } else if (command == "eval") {
                 PositionSnapshot snap;
                 snap.save(state->root);
-                for(Move move:state->movesFromRoot)
+                for (Move move : state->movesFromRoot)
                     state->root.playPartialMove(move);
                 ieval->init(state->root, globnnue);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor(), globnnue);
-                for(int r=7; r >= 0; r--){
+                int overall_eval =
+                    ieval->getRaw(state->root.friendlyColor(), globnnue);
+                for (int r = 7; r >= 0; r--) {
                     pair<char, int> evals[8];
-                    for(int c=0; c < 8; c++){
+                    for (int c = 0; c < 8; c++) {
                         int square = (r << 3) | c;
                         int piece = state->root.getfullPiece(square);
-                        if(type(piece) != SPACE){
-                            ieval->changePiece2<-1, true>(globnnue, square, type(piece), color(piece));
-                            char repr=id_to_piece[type(piece)];
-                            int derived = overall_eval-ieval->getRaw(state->root.friendlyColor(), globnnue);
-                            if(color(piece) == WHITE)repr = toupper(repr);
-                            evals[7-c] = {repr, derived};
-                            ieval->changePiece2<1, false>(globnnue, square, type(piece), color(piece));
-                        }else evals[7-c] = {' ', 0};
+                        if (type(piece) != SPACE) {
+                            ieval->changePiece2<-1, true>(
+                                globnnue, square, type(piece), color(piece));
+                            char repr = id_to_piece[type(piece)];
+                            int derived =
+                                overall_eval -
+                                ieval->getRaw(state->root.friendlyColor(),
+                                              globnnue);
+                            if (color(piece) == WHITE)
+                                repr = toupper(repr);
+                            evals[7 - c] = {repr, derived};
+                            ieval->changePiece2<1, false>(
+                                globnnue, square, type(piece), color(piece));
+                        } else
+                            evals[7 - c] = {' ', 0};
                     }
-                    for(int i=0; i<8; i++)
+                    for (int i = 0; i < 8; i++)
                         printf("+-------");
                     printf("+\n");
-                    for(int i=0; i<8; i++)
+                    for (int i = 0; i < 8; i++)
                         printf("|   %c   ", evals[i].first);
                     printf("|\n");
-                    for(int i=0; i<8; i++){
-                        if(evals[i].first == ' ')
+                    for (int i = 0; i < 8; i++) {
+                        if (evals[i].first == ' ')
                             printf("|       ");
-                        else{
-                            if(abs(evals[i].second) > 10*100)
-                                printf("| %+2.1f ", evals[i].second/100.0);
+                        else {
+                            if (abs(evals[i].second) > 10 * 100)
+                                printf("| %+2.1f ", evals[i].second / 100.0);
                             else
-                                printf("| %+1.2f ", evals[i].second/100.0);
+                                printf("| %+1.2f ", evals[i].second / 100.0);
                         }
                     }
                     printf("|\n");
                 }
-                for(int i=0; i<8; i++)
+                for (int i = 0; i < 8; i++)
                     printf("+-------");
                 printf("+\n");
 
                 snap.restore(state->root);
                 printf("static evaluation: %d cp\n", overall_eval);
-            }else if(command == "raweval"){
+            } else if (command == "raweval") {
                 PositionSnapshot snap;
                 snap.save(state->root);
-                for(Move move:state->movesFromRoot)
+                for (Move move : state->movesFromRoot)
                     state->root.playPartialMove(move);
                 ieval->init(state->root, globnnue);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor(), globnnue);
+                int overall_eval =
+                    ieval->getRaw(state->root.friendlyColor(), globnnue);
                 snap.restore(state->root);
                 printf("%d cp\n", overall_eval);
-            }else if(command == "ucinewgame"){
+            } else if (command == "ucinewgame") {
                 bestMoveFinder.clear();
                 lastMove = nullMove;
-            }else if(command == "version"){
+            } else if (command == "version") {
 #ifdef COMMIT
                 printf("version: %s\n", COMMIT);
 #else
                 printf("version: test\n");
 #endif
-            }else if(command == "bench"){
-                int sumNodes[maxDepth+1];
+            } else if (command == "bench") {
+                int sumNodes[maxDepth + 1];
                 int sumNPS = 0;
                 int sumTime = 0;
-                int histDepth[maxDepth+1];
-                int sumSelDepth[maxDepth+1];
-                for(int i=0; i<=maxDepth; i++){
+                int histDepth[maxDepth + 1];
+                int sumSelDepth[maxDepth + 1];
+                for (int i = 0; i <= maxDepth; i++) {
                     sumNodes[i] = 0;
                     histDepth[i] = 0;
                     sumSelDepth[i] = 0;
                 }
                 int maxDepthAttain = 0;
                 vector<pair<int, int>> Scores;
-                if(parsed.size() == 0){
+                if (parsed.size() == 0) {
                     parsed = {{"depth", "10"}};
                 }
-                for(unsigned idFen=0; idFen<benches.size(); idFen++){
-                    if(DEBUG){
+                for (unsigned idFen = 0; idFen < benches.size(); idFen++) {
+                    if (DEBUG) {
                         printf("\rposition %d/%d", idFen, (int)benches.size());
                         fflush(stdout);
                     }
@@ -359,63 +380,78 @@ void manageSearch(bool seeInput){
                     testState->root.fromFen(benches[idFen]);
                     bestMoveFinder.clear();
                     bool _;
-                    bestMoveResponse res=goCommand(parsed, *testState, false, _);
+                    bestMoveResponse res =
+                        goCommand(parsed, *testState, false, _);
                     vector<depthInfo> infos = get<3>(res);
-                    if(DEBUG)
-                        printf("fen: %s score: %d nodes: %" PRId64 "\n", testState->root.toFen().c_str(), get<2>(res), infos.empty()?0:infos.back().node);
-                    for(depthInfo info:infos){
+                    if (DEBUG)
+                        printf("fen: %s score: %d nodes: %" PRId64 "\n",
+                               testState->root.toFen().c_str(), get<2>(res),
+                               infos.empty() ? 0 : infos.back().node);
+                    for (depthInfo info : infos) {
                         sumNodes[info.depth] += info.node;
                         histDepth[info.depth]++;
                         sumSelDepth[info.depth] += info.seldepth;
-                        if(info.depth == maxDepth){
+                        if (info.depth == maxDepth) {
                             printf("\n%s\n", benches[idFen].c_str());
                         }
                         maxDepthAttain = max(maxDepthAttain, info.depth);
                     }
-                    if(infos.size()){
-                        depthInfo lastInfo = infos[infos.size()-1];
+                    if (infos.size()) {
+                        depthInfo lastInfo = infos[infos.size() - 1];
                         sumNPS += lastInfo.node;
                         sumTime += lastInfo.time;
                         Scores.push_back({lastInfo.depth, lastInfo.node});
                     }
                 }
-                if(DEBUG){
-                    printf("\rposition %d/%d\n", (int)benches.size(), (int)benches.size());
+                if (DEBUG) {
+                    printf("\rposition %d/%d\n", (int)benches.size(),
+                           (int)benches.size());
                     printf("depth\t");
-                    for(int i=0; i<=maxDepthAttain; i++)
+                    for (int i = 0; i <= maxDepthAttain; i++)
                         printf("\t%d", i);
                     printf("\nnodes\t");
-                    for(int i=0; i<=maxDepthAttain; i++){
-                        if(histDepth[i])
-                            printf("\t%d", sumNodes[i]/histDepth[i]);
-                        else printf("\t0");
+                    for (int i = 0; i <= maxDepthAttain; i++) {
+                        if (histDepth[i])
+                            printf("\t%d", sumNodes[i] / histDepth[i]);
+                        else
+                            printf("\t0");
                     }
                     printf("\nseldepth");
-                    for(int i=0; i<=maxDepthAttain; i++){
-                        if(histDepth[i])
-                            printf("\t%d", sumSelDepth[i]/histDepth[i]);
-                        else printf("\t0");
+                    for (int i = 0; i <= maxDepthAttain; i++) {
+                        if (histDepth[i])
+                            printf("\t%d", sumSelDepth[i] / histDepth[i]);
+                        else
+                            printf("\t0");
                     }
-                    printf("\n%.0fnps\n", sumNPS*1000.0/sumTime);
+                    printf("\n%.0fnps\n", sumNPS * 1000.0 / sumTime);
                 }
                 sort(Scores.begin(), Scores.end());
                 int size = Scores.size();
-                pair<int, big> scoreThird = {0.0, 0.0}, scoreAll={0.0, 0.0};
-                for(int i=0; i<size; i++){
-                    pair<int, big> locScore = {Scores[i].first, Scores[i].second};
+                pair<int, big> scoreThird = {0.0, 0.0}, scoreAll = {0.0, 0.0};
+                for (int i = 0; i < size; i++) {
+                    pair<int, big> locScore = {Scores[i].first,
+                                               Scores[i].second};
                     scoreAll.first += locScore.first;
                     scoreAll.second += locScore.second;
-                    if(i >= size/3 && i < size*2/3){
+                    if (i >= size / 3 && i < size * 2 / 3) {
                         scoreThird.first += locScore.first;
                         scoreThird.second += locScore.second;
                     }
                 }
-                if(DEBUG)printf("search score: (%d %" PRId64 ") (%d %" PRId64 ")\n", scoreThird.first, scoreThird.second, scoreAll.first, scoreAll.second);
-                printf("%" PRId64 " nodes %.0f nps\n", scoreAll.second, sumNPS*1000.0/sumTime);
+                if (DEBUG)
+                    printf("search score: (%d %" PRId64 ") (%d %" PRId64 ")\n",
+                           scoreThird.first, scoreThird.second, scoreAll.first,
+                           scoreAll.second);
+                printf("%" PRId64 " nodes %.0f nps\n", scoreAll.second,
+                       sumNPS * 1000.0 / sumTime);
 #ifdef DEBUG_MACRO
                 diffsStat.print("corrhist applied");
-                printf("nmp in allnodes stats : %d/%d = %.2f%%\n", nmpVerifPassAllNode, nmpVerifAllNode, nmpVerifPassAllNode*100.0/nmpVerifAllNode);
-                printf("nmp in curnodes stats : %d/%d = %.2f%%\n", nmpVerifPassCutNode, nmpVerifCutNode, nmpVerifPassCutNode*100.0/nmpVerifCutNode);
+                printf("nmp in allnodes stats : %d/%d = %.2f%%\n",
+                       nmpVerifPassAllNode, nmpVerifAllNode,
+                       nmpVerifPassAllNode * 100.0 / nmpVerifAllNode);
+                printf("nmp in curnodes stats : %d/%d = %.2f%%\n",
+                       nmpVerifPassCutNode, nmpVerifCutNode,
+                       nmpVerifPassCutNode * 100.0 / nmpVerifCutNode);
                 quiethistPreStat.print("quiethistPre");
                 capthistPreStat.print("capthistPre");
                 quiethistPostStat.print("quiethistPost");
@@ -426,7 +462,7 @@ void manageSearch(bool seeInput){
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
 #endif
-            }else if(command == "arch"){
+            } else if (command == "arch") {
 #ifdef __AVX512F__
                 printf("arch: AVX512\n");
 #elif defined(__AVX2__)
@@ -438,104 +474,113 @@ void manageSearch(bool seeInput){
 #else
                 printf("arch: unknow\n");
 #endif
-            }else if(command == "quit"){
+            } else if (command == "quit") {
                 stop_all = true;
-            }else if(command == "position"){
+            } else if (command == "position") {
                 state->movesFromRoot.clear();
-                for(unsigned long iarg = 0; iarg < parsed.size(); iarg++){
+                for (unsigned long iarg = 0; iarg < parsed.size(); iarg++) {
                     auto arg = parsed[iarg];
-                    if(arg.first == "fen"){
+                    if (arg.first == "fen") {
                         state->root.fromFen(arg.second);
-                    }if(arg.first == "startpos"){
-                        //printf("setting startpos\n");
-                        state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-                    }else if(arg.first == "kiwipete"){
-                        //printf("setting kiwipete\n");
-                        state->root.fromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
-                    }else if(arg.first == "moves"){
-                        //printf("moves called : %s\n", arg.second.c_str());
+                    }
+                    if (arg.first == "startpos") {
+                        // printf("setting startpos\n");
+                        state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/"
+                                            "PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+                    } else if (arg.first == "kiwipete") {
+                        // printf("setting kiwipete\n");
+                        state->root.fromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/"
+                                            "2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
+                    } else if (arg.first == "moves") {
+                        // printf("moves called : %s\n", arg.second.c_str());
                         istringstream moves(arg.second);
                         string curMove;
-                        while(moves >> curMove){
+                        while (moves >> curMove) {
                             Move move;
                             move.from_uci(curMove);
                             state->movesFromRoot.push_back(move);
                         }
-                    }else if(arg.first == "frc"){
+                    } else if (arg.first == "frc") {
                         state->root.setDFRC(stoi(arg.second), stoi(arg.second));
-                    }else if(arg.first == "dfrc"){
+                    } else if (arg.first == "dfrc") {
                         istringstream ids(arg.second);
                         int idwhite, idblack;
                         ids >> idwhite >> idblack;
                         state->root.setDFRC(idwhite, idblack);
                     }
                 }
-            }else if(command == "go"){
+            } else if (command == "go") {
                 bool printmove = true;
-                bestMoveResponse res=goCommand(parsed, *state, true, printmove);
+                bestMoveResponse res =
+                    goCommand(parsed, *state, true, printmove);
                 Move bm = get<0>(res);
-                Move ponder=get<1>(res);
-                if(printmove){
-                    if(ponder.moveInfo == nullMove.moveInfo)
-                        printf("bestmove %s\n", bm.moveInfo == nullMove.moveInfo ? "0000" : bm.to_str().c_str());
+                Move ponder = get<1>(res);
+                if (printmove) {
+                    if (ponder.moveInfo == nullMove.moveInfo)
+                        printf("bestmove %s\n", bm.moveInfo == nullMove.moveInfo
+                                                    ? "0000"
+                                                    : bm.to_str().c_str());
                     else
-                        printf("bestmove %s ponder %s\n", bm.to_str().c_str(), ponder.to_str().c_str());
+                        printf("bestmove %s ponder %s\n", bm.to_str().c_str(),
+                               ponder.to_str().c_str());
                     lastMove = ponder;
                     bestMoveFinder.aging();
                 }
-            }else if(command == "uci"){
+            } else if (command == "uci") {
 #ifdef VERSION
-                string v=VERSION;
+                string v = VERSION;
 #else
-                string v="test";
+                string v = "test";
 #endif
-                if(v[0] == 'v')
-                    v = v.substr(1, v.size()-1);
-                printf("id name Prune %s\nid author tgirolami09 & jbienvenue\n", v.c_str());
-                for(Option opt:Options)
+                if (v[0] == 'v')
+                    v = v.substr(1, v.size() - 1);
+                printf("id name Prune %s\nid author tgirolami09 & jbienvenue\n",
+                       v.c_str());
+                for (Option opt : Options)
                     opt.print();
                 printf("uciok\n");
-            }else if(command == "setoption"){
-                for(int i=0; i<(int)parsed.size(); i++){
-                    if(parsed[i].first == "name"){
-                        bool incr=true;
-                        if(parsed[i].second == "Hash")
-                            bestMoveFinder.reinit(stoi(parsed[i+1].second)*hashMul);
-                        else if(parsed[i].second == "Move Overhead")
-                            moveOverhead = stoi(parsed[i+1].second);
-                        else if(parsed[i].second == "Clear Hash"){
+            } else if (command == "setoption") {
+                for (int i = 0; i < (int)parsed.size(); i++) {
+                    if (parsed[i].first == "name") {
+                        bool incr = true;
+                        if (parsed[i].second == "Hash")
+                            bestMoveFinder.reinit(stoi(parsed[i + 1].second) *
+                                                  hashMul);
+                        else if (parsed[i].second == "Move Overhead")
+                            moveOverhead = stoi(parsed[i + 1].second);
+                        else if (parsed[i].second == "Clear Hash") {
                             bestMoveFinder.clear();
                             incr = false;
-                        }
-                        else if(parsed[i].second == "Threads"){
-                            int newT = stoi(parsed[i+1].second);
+                        } else if (parsed[i].second == "Threads") {
+                            int newT = stoi(parsed[i + 1].second);
                             bestMoveFinder.setThreads(newT);
                             nbThreads = newT;
-                        }
-                        else if(parsed[i].second == "SyzygyPath"){
-                            tbProbe.init(parsed[i+1].second);
-                            if(tbProbe.isAvailable())
-                                printf("info string Syzygy tablebases loaded, max %d pieces\n", tbProbe.maxPieces());
+                        } else if (parsed[i].second == "SyzygyPath") {
+                            tbProbe.init(parsed[i + 1].second);
+                            if (tbProbe.isAvailable())
+                                printf("info string Syzygy tablebases loaded, "
+                                       "max %d pieces\n",
+                                       tbProbe.maxPieces());
                             else
-                                printf("info string Could not find any tablebases at '%s'\n",parsed[i+1].second.c_str());
-                        }
-                        else if(parsed[i].second == "SyzygyProbeDepth"){
-                            tbProbe.setProbeDepth(stoi(parsed[i+1].second));
-                        }
-                        else if(parsed[i].second == "SyzygyProbeLimit"){
-                            tbProbe.setProbeLimit(stoi(parsed[i+1].second));
-                        }else if(parsed[i].second == "Minimal"){
-                            if(parsed[i+1].second == "true")
-                                bestMoveFinder.minimal=true;
+                                printf("info string Could not find any "
+                                       "tablebases at '%s'\n",
+                                       parsed[i + 1].second.c_str());
+                        } else if (parsed[i].second == "SyzygyProbeDepth") {
+                            tbProbe.setProbeDepth(stoi(parsed[i + 1].second));
+                        } else if (parsed[i].second == "SyzygyProbeLimit") {
+                            tbProbe.setProbeLimit(stoi(parsed[i + 1].second));
+                        } else if (parsed[i].second == "Minimal") {
+                            if (parsed[i + 1].second == "true")
+                                bestMoveFinder.minimal = true;
                             else
                                 bestMoveFinder.minimal = false;
-                        }else if(parsed[i].second == "UCI_ShowWDL"){
-                            if(parsed[i+1].second == "true")
+                        } else if (parsed[i].second == "UCI_ShowWDL") {
+                            if (parsed[i + 1].second == "true")
                                 WDLmodel::enabled = true;
                             else
                                 WDLmodel::enabled = false;
-                        }else if(parsed[i].second == "UCI_Chess960"){
-                            if(parsed[i+1].second == "true")
+                        } else if (parsed[i].second == "UCI_Chess960") {
+                            if (parsed[i + 1].second == "true")
                                 isdfrc = true;
                             else
                                 isdfrc = false;
@@ -543,53 +588,60 @@ void manageSearch(bool seeInput){
                         i += incr;
                     }
                 }
-            }else if(command == "runSEE"){
+            } else if (command == "runSEE") {
                 PositionSnapshot snap;
                 snap.save(state->root);
-                for(Move move:state->movesFromRoot)
+                for (Move move : state->movesFromRoot)
                     state->root.playPartialMove(move);
                 istringstream moves(parsed[0].second);
                 string curMove;
                 bool isExact = true;
-                while(moves >> curMove){
-                    if(curMove == "ge"){
-                        isExact=false;
+                while (moves >> curMove) {
+                    if (curMove == "ge") {
+                        isExact = false;
                         continue;
                     }
                     Move move;
                     move.from_uci(curMove);
                     int piece = type(state->root.getfullPiece(move.from()));
                     int capture = type(state->root.getfullPiece(move.to()));
-                    if(capture == SPACE && piece == PAWN && abs(move.from()-move.to()) != 8 && abs(move.from()-move.to()) != 16)
+                    if (capture == SPACE && piece == PAWN &&
+                        abs(move.from() - move.to()) != 8 &&
+                        abs(move.from() - move.to()) != 16)
                         move.setFlag(Move::fep), capture = 0;
                     int res;
-                    const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
-                    if(isExact){
+                    const int value_pieces[7] = {100, 300,    300, 500,
+                                                 900, 100000, 0};
+                    if (isExact) {
                         res = -fastSEE(move, state->root, value_pieces);
-                        if(capture == SPACE)
+                        if (capture == SPACE)
                             res += value_pieces[capture];
-                    }else
+                    } else
                         res = see_ge(0, move, state->root, value_pieces);
                     printf("%s : %d\n", move.to_str().c_str(), res);
                 }
                 snap.restore(state->root);
-            }else if(command == "debug"){
-                if(parsed[0].second == "off")
+            } else if (command == "debug") {
+                if (parsed[0].second == "off")
                     DEBUG = false;
                 else
                     DEBUG = true;
-            }else if(command == "print"){
+            } else if (command == "print") {
                 PositionSnapshot snap;
                 snap.save(state->root);
-                for(Move move:state->movesFromRoot)
+                for (Move move : state->movesFromRoot)
                     state->root.playPartialMove(move);
                 state->root.print();
                 snap.restore(state->root);
-            }else if(command == "stats"){
+            } else if (command == "stats") {
 #ifdef DEBUG_MACRO
                 diffsStat.print("corrhist applied");
-                printf("nmp in allnodes stats : %d/%d = %.2f%%\n", nmpVerifPassAllNode, nmpVerifAllNode, nmpVerifPassAllNode*100.0/nmpVerifAllNode);
-                printf("nmp in curnodes stats : %d/%d = %.2f%%\n", nmpVerifPassCutNode, nmpVerifCutNode, nmpVerifPassCutNode*100.0/nmpVerifCutNode);
+                printf("nmp in allnodes stats : %d/%d = %.2f%%\n",
+                       nmpVerifPassAllNode, nmpVerifAllNode,
+                       nmpVerifPassAllNode * 100.0 / nmpVerifAllNode);
+                printf("nmp in curnodes stats : %d/%d = %.2f%%\n",
+                       nmpVerifPassCutNode, nmpVerifCutNode,
+                       nmpVerifPassCutNode * 100.0 / nmpVerifCutNode);
                 quiethistPreStat.print("quiethistPre");
                 capthistPreStat.print("capthistPre");
                 quiethistPostStat.print("quiethistPost");
@@ -600,10 +652,10 @@ void manageSearch(bool seeInput){
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
 #endif
-            }else if(command == "fen"){
+            } else if (command == "fen") {
                 PositionSnapshot snap;
                 snap.save(state->root);
-                for(Move move:state->movesFromRoot)
+                for (Move move : state->movesFromRoot)
                     state->root.playPartialMove(move);
                 printf("%s\n", state->root.toFen().c_str());
                 snap.restore(state->root);
@@ -616,29 +668,29 @@ void manageSearch(bool seeInput){
             cv_command.notify_one();
         }
     }
-    if(seeInput)
+    if (seeInput)
         t.join();
 }
 
-int main(int argc, char** argv){
+int main(int argc, char **argv) {
 #ifdef NUMA
     prune_numa::init();
 #endif
     string UCI_instruction = "programStart";
     bool seeInput = true;
-    if(argc > 1){
+    if (argc > 1) {
         startQ = endQ = 0;
         seeInput = false;
-        if(string(argv[argc-1]) == string("continue")){
+        if (string(argv[argc - 1]) == string("continue")) {
             argc--;
             seeInput = true;
         }
-        for(int i=1; i<argc; i++){
-            inpQueue[endQ%sizeQ] = argv[i];
+        for (int i = 1; i < argc; i++) {
+            inpQueue[endQ % sizeQ] = argv[i];
             endQ++;
         }
-        if(!seeInput){
-            inpQueue[endQ%sizeQ] = "quit";
+        if (!seeInput) {
+            inpQueue[endQ % sizeQ] = "quit";
             endQ++;
         }
     }

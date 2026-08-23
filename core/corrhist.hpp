@@ -4,12 +4,11 @@
 #include "GameState.hpp"
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
-extern StatVar<sbig, 64*4, -64*4> diffsStat;
+extern StatVar<sbig, 64 * 4, -64 * 4> diffsStat;
 #endif
-const int corrhistGrain=64;
-template<int size, int maxCorrHist>
-class corrhist{
-public:
+const int corrhistGrain = 64;
+template <int size, int maxCorrHist> class corrhist {
+  public:
     corrhist();
     int table[2][size];
     void reset();
@@ -17,15 +16,16 @@ public:
     int probe(big, bool) const;
 };
 
-class corrhists{
-    corrhist<16384, 64*corrhistGrain> pawns;
-    corrhist<16384, 64*corrhistGrain> prevMove;
-    corrhist<16384, 64*corrhistGrain> cont;
-    corrhist<16384, 64*corrhistGrain> minor;
-public:
+class corrhists {
+    corrhist<16384, 64 * corrhistGrain> pawns;
+    corrhist<16384, 64 * corrhistGrain> prevMove;
+    corrhist<16384, 64 * corrhistGrain> cont;
+    corrhist<16384, 64 * corrhistGrain> minor;
+
+  public:
     corrhists();
-    void update(const GameState&, int, int);
-    int probe(const GameState& state) const;
+    void update(const GameState &, int, int);
+    int probe(const GameState &state) const;
     void reset();
 };
 #endif

@@ -1,11 +1,11 @@
+#include "viriformatUtil.hpp"
 #include "Functions.hpp"
-#include "Move.hpp"
 #include "GameState.hpp"
+#include "Move.hpp"
+#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <vector>
-#include "viriformatUtil.hpp"
-#include <cassert>
 
 /* Important note:
     my squares are H1=0, A1=7 A8=63 H8=56 :
@@ -20,104 +20,106 @@
     which are different from the expected A1=0, H1=7, A8=56, H8=63
     so to convert, I use:
         newSquare = square ^ 0x7
-    also why I use reverse_col : expected to mirror verticaly the board, to get the goo occupied-piece bitboard (comes from Functions.cpp)
+    also why I use reverse_col : expected to mirror verticaly the board, to get
+   the goo occupied-piece bitboard (comes from Functions.cpp)
  */
 
-template<typename T> 
-void fastWrite(T data, FILE* file){
-    fwrite(reinterpret_cast<const char*>(&data), sizeof(data), 1, file);
+template <typename T> void fastWrite(T data, FILE *file) {
+    fwrite(reinterpret_cast<const char *>(&data), sizeof(data), 1, file);
 }
 
-template<typename T> 
-uint32_t fastRead(T& data, FILE* file){
-    assert(fread(reinterpret_cast<char*>(&data), sizeof(data), 1, file));
+template <typename T> uint32_t fastRead(T &data, FILE *file) {
+    assert(fread(reinterpret_cast<char *>(&data), sizeof(data), 1, file));
     return data;
 }
 
-MoveInfo::MoveInfo(){
+MoveInfo::MoveInfo() {
     move = nullMove;
     score = 0;
 }
-void MoveInfo::dump(FILE* datafile){
+void MoveInfo::dump(FILE *datafile) {
     static constexpr int transfo[4] = {0, 2, 3, 1};
-    int to = move.to()^0x07, from=move.from()^0x07;
+    int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
     uint16_t mv = to << 6 | from;
-    mv |= (move.promotion()-(move.getFlag() == Move::fpromo)) << 12;
+    mv |= (move.promotion() - (move.getFlag() == Move::fpromo)) << 12;
     int type = transfo[move.getFlag()];
     mv |= type << 14;
     fastWrite(mv, datafile);
     fastWrite<int16_t>(score, datafile);
 }
-void GamePlayed::dump(FILE* datafile){
-    big occupied = startPos.board.colors[WHITE] | startPos.board.colors[BLACK]; // calculate the occupied bitboard
+void GamePlayed::dump(FILE *datafile) {
+    big occupied =
+        startPos.board.colors[WHITE] |
+        startPos.board.colors[BLACK]; // calculate the occupied bitboard
     fastWrite(reverse_col(occupied), datafile);
     uint8_t entry = 0x00;
     bool isSec = false;
     int nbEntry = 0;
     big castle = startPos.castlingMask;
-    for(int i=0; i<64; i++){
+    for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
         big mask = 1ULL << index;
-        if(mask & occupied){//if there is a piece there
+        if (mask & occupied) { // if there is a piece there
             int8_t piece = startPos.getfullPiece(index);
             int _c = color(piece);
             piece = type(piece);
-            if(piece == ROOK && (mask&castle)) // rook that can castle
+            if (piece == ROOK && (mask & castle)) // rook that can castle
                 piece = 6;
             uint8_t full = (_c << 3) | piece;
-            if(isSec){ //if it's the second piece of the byte, we write it
-                fastWrite<uint8_t>(entry|(full << 4), datafile);
-            }else {
+            if (isSec) { // if it's the second piece of the byte, we write it
+                fastWrite<uint8_t>(entry | (full << 4), datafile);
+            } else {
                 entry = full;
             }
             isSec ^= 1;
             nbEntry += 1;
         }
     }
-    for(int i=nbEntry; i<32; i++){
-        if(isSec)
+    for (int i = nbEntry; i < 32; i++) {
+        if (isSec)
             fastWrite<uint8_t>(entry, datafile);
         else
             entry = 0;
         isSec ^= 1;
     }
-    uint8_t info = startPos.lastDoublePawnPush == -1 ? 64 : startPos.lastDoublePawnPush^0x07; //en passant square
+    uint8_t info =
+        startPos.lastDoublePawnPush == -1
+            ? 64
+            : startPos.lastDoublePawnPush ^ 0x07; // en passant square
     info |= startPos.friendlyColor() << 7;
     fastWrite(info, datafile);
-    fastWrite<uint8_t>(0, datafile);  // halfmove clock (for 50 move rule)
-    fastWrite<uint16_t>(0, datafile); // full move
-    fastWrite<uint16_t>(0, datafile); //score of the position
+    fastWrite<uint8_t>(0, datafile);      // halfmove clock (for 50 move rule)
+    fastWrite<uint16_t>(0, datafile);     // full move
+    fastWrite<uint16_t>(0, datafile);     // score of the position
     fastWrite<uint8_t>(result, datafile); // result
-    fastWrite<uint8_t>(0, datafile); //unused extra byte
-    for(MoveInfo moves:game){//write all the stored moves
+    fastWrite<uint8_t>(0, datafile);      // unused extra byte
+    for (MoveInfo moves : game) {         // write all the stored moves
         moves.dump(datafile);
     }
-    fastWrite<uint32_t>(0, datafile); //ending 4 bytes
+    fastWrite<uint32_t>(0, datafile); // ending 4 bytes
 }
-void GamePlayed::clear(){
-    game.clear();
-}
+void GamePlayed::clear() { game.clear(); }
 
-GamePlayed readGame(FILE* file){
+GamePlayed readGame(FILE *file) {
     GamePlayed game;
-    big occupied=0;
+    big occupied = 0;
     fastRead(occupied, file);
     occupied = reverse_col(occupied);
-    uint8_t entry=0;
-    big castle=0;
-    bool isSec=false;
-    int nbEntry=0;
-    for(int i=0; i<64; i++){
+    uint8_t entry = 0;
+    big castle = 0;
+    bool isSec = false;
+    int nbEntry = 0;
+    for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
         big mask = 1ULL << index;
-        if(mask & occupied){//if there sould be a piece there
-            if(!isSec)
+        if (mask & occupied) { // if there sould be a piece there
+            if (!isSec)
                 fastRead(entry, file);
-            int8_t full=entry&0b1111;
+            int8_t full = entry & 0b1111;
             entry >>= 4;
-            int piece = full&0b111;
+            int piece = full & 0b111;
             int _c = full >> 3;
-            if(piece == 6){
+            if (piece == 6) {
                 castle |= mask;
                 piece = ROOK;
             }
@@ -127,8 +129,9 @@ GamePlayed readGame(FILE* file){
             nbEntry++;
         }
     }
-    for(int i=nbEntry; i<32; i++){
-        if(!isSec)fastRead(entry, file);
+    for (int i = nbEntry; i < 32; i++) {
+        if (!isSec)
+            fastRead(entry, file);
         isSec ^= 1;
     }
     ubyte info;
@@ -136,38 +139,38 @@ GamePlayed readGame(FILE* file){
     fastRead(infoGame, file);
     info = infoGame;
     infoGame >>= 8;
-    game.startPos.turnNumber = (info >> 7) == WHITE?1:0;
+    game.startPos.turnNumber = (info >> 7) == WHITE ? 1 : 0;
     info &= 0b1111111;
-    game.startPos.lastDoublePawnPush = info == 64?-1:info^0x07;
-    infoGame >>= 8;//halfmove = infoGame;
-    infoGame >>= 16;//fullmove = infoGame;
-    infoGame >>= 16;//score = infoGame;
-    game.result=infoGame;   infoGame >>= 8;
+    game.startPos.lastDoublePawnPush = info == 64 ? -1 : info ^ 0x07;
+    infoGame >>= 8;  // halfmove = infoGame;
+    infoGame >>= 16; // fullmove = infoGame;
+    infoGame >>= 16; // score = infoGame;
+    game.result = infoGame;
+    infoGame >>= 8;
     game.startPos.castlingFromMask(castle);
     uint32_t moveInfo;
-    while(fastRead(moveInfo, file) != 0){
-        //printf("%8x:", moveInfo);
+    while (fastRead(moveInfo, file) != 0) {
+        // printf("%8x:", moveInfo);
         MoveInfo move;
-        uint16_t mv=moveInfo;
-        move.score = (int16_t)(moveInfo>>16);
-        int from = mv&0x3f;
-        int to = (mv>>6)&0x3f;
+        uint16_t mv = moveInfo;
+        move.score = (int16_t)(moveInfo >> 16);
+        int from = mv & 0x3f;
+        int to = (mv >> 6) & 0x3f;
         to ^= 0x07;
         from ^= 0x07;
-        int type=mv>>14;
+        int type = mv >> 14;
         int promo = (mv >> 12) & 0b11;
-        if(type == 1)
+        if (type == 1)
             move.move.setFlag(Move::fep);
-        else if(type == 2){
+        else if (type == 2) {
             move.move.setFlag(Move::fcastle);
-        }
-        else if(type == 3)
-            move.move.updatePromotion(promo+1);
-        //printf("%d %d %d %d\n", from, to, type, move.score);
+        } else if (type == 3)
+            move.move.updatePromotion(promo + 1);
+        // printf("%d %d %d %d\n", from, to, type, move.score);
         move.move.updateFrom(from);
         move.move.updateTo(to);
         game.game.push_back(move);
     }
-    //printf("\n");
+    // printf("\n");
     return game;
 }

@@ -5,11 +5,10 @@
 #include <cstdint>
 #include <vector>
 const int maxAge = 0b11111;
-using residualHash=uint16_t;
-class __attribute__((packed)) infoScore{
-public:
-    int16_t score,
-            raw_eval;
+using residualHash = uint16_t;
+class __attribute__((packed)) infoScore {
+  public:
+    int16_t score, raw_eval;
     ubyte flag;
     ubyte padding;
     uint16_t depth;
@@ -21,50 +20,52 @@ public:
     bool tt_pv() const;
 };
 static_assert(sizeof(infoScore) == 12, "size of infoScore should be 12");
-const int clusterByte=64;
-const int clusterSize=clusterByte/sizeof(infoScore);
-const int paddingSize = clusterByte-clusterSize*sizeof(infoScore);
-class Cluster{
-public:
+const int clusterByte = 64;
+const int clusterSize = clusterByte / sizeof(infoScore);
+const int paddingSize = clusterByte - clusterSize * sizeof(infoScore);
+class Cluster {
+  public:
     infoScore entries[clusterSize];
     ubyte padding[paddingSize];
-    infoScore& probe(residualHash hash, bool& ttHit);
-    void push(infoScore& entry, int curAge);
+    infoScore &probe(residualHash hash, bool &ttHit);
+    void push(infoScore &entry, int curAge);
 };
 static_assert(sizeof(Cluster) == clusterByte, "size of cluster should be 32");
 
 const int INVALID = INT_MAX;
-class transpositionTable{
-public:
-    Cluster* table;
+class transpositionTable {
+  public:
+    Cluster *table;
     big modulo;
-    int rewrite=0;
-    int place=0;
+    int rewrite = 0;
+    int place = 0;
     int age;
     transpositionTable(size_t count);
 
-    int storedScore(int alpha, int beta, const infoScore& entry, const int rootDist) const;
-    infoScore& getEntry(const GameState& state, bool& ttHit);
+    int storedScore(int alpha, int beta, const infoScore &entry,
+                    const int rootDist) const;
+    infoScore &getEntry(const GameState &state, bool &ttHit);
 
-    Move getMove(const infoScore& entry) const;
+    Move getMove(const infoScore &entry) const;
 
-    void push(GameState& state, int score, ubyte typeNode, Move move, uint16_t depth, int16_t raw_eval, bool is_pv);
+    void push(GameState &state, int score, ubyte typeNode, Move move,
+              uint16_t depth, int16_t raw_eval, bool is_pv);
     void clearRange(big start, big end);
-    void prefetch(const GameState& state);
+    void prefetch(const GameState &state);
     void clear();
     void reinit(size_t count);
     void aging();
     int hashfull();
 };
 
-class perftMem{
-public:
+class perftMem {
+  public:
     big hash;
     big leefs;
     ubyte depth;
 };
-class TTperft{
-public:
+class TTperft {
+  public:
     vector<perftMem> mem;
     int modulo;
     TTperft(int alloted_mem);

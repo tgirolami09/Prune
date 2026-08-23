@@ -1,10 +1,10 @@
 bool isdfrc = true;
-#include "GameState.hpp"
-#include "Evaluator.hpp"
 #include "BestMoveFinder.hpp"
+#include "Evaluator.hpp"
+#include "GameState.hpp"
+#include "viriformatUtil.hpp"
 #include <string>
 #include <vector>
-#include "viriformatUtil.hpp"
 using namespace std;
 const int value_pieces[7] = {100, 299, 300, 500, 900, 100000, 0};
 string suitFens[71] = {
@@ -82,18 +82,18 @@ string suitFens[71] = {
 };
 
 string suitMoves[71] = {
-    "f1f4","d6f4","h5g4","h5g4","g4f3","d6e5","e1e8","e1e8","e1e8","f7f8q",
-    "f7f8n","f7f8q","f7f8b","f7f8r","h1f1","h1f1","c5c1","f3e5","f4e5","g5h6",
-    "g5h6","c3c8","c3c8","c3c5","g2c6","e6e4","h7e4","d3d4","d3e5","d3e5",
-    "h4f6","g4f3","c6d4","e6g7","e6g7","d6h2","d6h2","g4f3","b4c3","b6b2",
-    "f6d5","b8b3","b8b4","c8c1","f5c2","a5a2","a5a2","d5e7","d3e4","e4d6",
-    "e4d6","d5c6","d5c6","d5c6","d7d8q","d7d8q","d7d8q","c7c8q","c7c8q","c7c8q",
-    "g5f6","g5f6","g5f6","c7b8q","g1h2","c6d8","c7d8q","e6d8","e3d1","c3d1",
-    "e1h1"
-};
+    "f1f4",  "d6f4",  "h5g4",  "h5g4",  "g4f3",  "d6e5",  "e1e8",  "e1e8",
+    "e1e8",  "f7f8q", "f7f8n", "f7f8q", "f7f8b", "f7f8r", "h1f1",  "h1f1",
+    "c5c1",  "f3e5",  "f4e5",  "g5h6",  "g5h6",  "c3c8",  "c3c8",  "c3c5",
+    "g2c6",  "e6e4",  "h7e4",  "d3d4",  "d3e5",  "d3e5",  "h4f6",  "g4f3",
+    "c6d4",  "e6g7",  "e6g7",  "d6h2",  "d6h2",  "g4f3",  "b4c3",  "b6b2",
+    "f6d5",  "b8b3",  "b8b4",  "c8c1",  "f5c2",  "a5a2",  "a5a2",  "d5e7",
+    "d3e4",  "e4d6",  "e4d6",  "d5c6",  "d5c6",  "d5c6",  "d7d8q", "d7d8q",
+    "d7d8q", "c7c8q", "c7c8q", "c7c8q", "g5f6",  "g5f6",  "g5f6",  "c7b8q",
+    "g1h2",  "c6d8",  "c7d8q", "e6d8",  "e3d1",  "c3d1",  "e1h1"};
 
-void testSEE(){
-    for(int i=0; i<71; i++){
+void testSEE() {
+    for (int i = 0; i < 71; i++) {
         GameState state;
         state.fromFen(suitFens[i]);
         Move move;
@@ -101,113 +101,95 @@ void testSEE(){
         state.initMove(move);
         int threshold = -fastSEE(move, state, value_pieces);
         int capture = state.board.getCapture(move);
-        if(capture != SPACE)
+        if (capture != SPACE)
             threshold += value_pieces[capture];
-        if(!see_ge(threshold, move, state, value_pieces))
-            printf("%s & %s & %d\n", suitFens[i].c_str(), suitMoves[i].c_str(), threshold);
-        if(see_ge(threshold+1, move, state, value_pieces))
-            printf("%s & %s & %d\n", suitFens[i].c_str(), suitMoves[i].c_str(), threshold);
+        if (!see_ge(threshold, move, state, value_pieces))
+            printf("%s & %s & %d\n", suitFens[i].c_str(), suitMoves[i].c_str(),
+                   threshold);
+        if (see_ge(threshold + 1, move, state, value_pieces))
+            printf("%s & %s & %d\n", suitFens[i].c_str(), suitMoves[i].c_str(),
+                   threshold);
     }
 }
-const string StartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const string position2FromCPW = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
+const string StartFen =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const string position2FromCPW =
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
 const string position3FromCPW = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
-const string position4FromCPW = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
-const string position5FromCPW = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
-struct PTest{
+const string position4FromCPW =
+    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+const string position5FromCPW =
+    "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+struct PTest {
     string fen;
     vector<int> expResults;
 };
 const PTest TestsPerft[] = {
-    {StartFen, {
-        20,
-        400,
-        8902,
-        197281
-    }},
-    {position2FromCPW, {
-        48,
-        2039,
-        97862
-    }},
-    {position3FromCPW, {
-        14,
-        191,
-        2812,
-        43238,
-        674624
-    }},
-    {position4FromCPW, {
-        6,
-        264,
-        9467,
-    }},
-    {position5FromCPW, {
-        44,
-        1486,
-        62379
-    }},
-    {"7k/8/8/1Pp5/1K6/8/8/7B w - c6 0 2", {
-        8,
-        29,
-        369
-    }},
-    {"rnbqk1nr/pppp1pbp/6p1/4P3/8/2K5/PPP1PPPP/RNBQ1BNR b kq - 0 4", {
-        28,
-        912
-    }},
+    {StartFen, {20, 400, 8902, 197281}},
+    {position2FromCPW, {48, 2039, 97862}},
+    {position3FromCPW, {14, 191, 2812, 43238, 674624}},
+    {position4FromCPW,
+     {
+         6,
+         264,
+         9467,
+     }},
+    {position5FromCPW, {44, 1486, 62379}},
+    {"7k/8/8/1Pp5/1K6/8/8/7B w - c6 0 2", {8, 29, 369}},
+    {"rnbqk1nr/pppp1pbp/6p1/4P3/8/2K5/PPP1PPPP/RNBQ1BNR b kq - 0 4", {28, 912}},
     {"8/2p5/3p4/KP5r/4Ppk1/8/6P1/7R b - e3 0 3", {20}},
-    {"8/p2n1p2/1p1Pp2p/4P1k1/r4p1P/5K2/6P1/4R3 b - - 0 1", {
-        4,
-        59,
-        1219,
-        16899,
-        347600,
-        5076659
-    }},
+    {"8/p2n1p2/1p1Pp2p/4P1k1/r4p1P/5K2/6P1/4R3 b - - 0 1",
+     {4, 59, 1219, 16899, 347600, 5076659}},
     {"R7/5pk1/P5p1/6r1/8/6p1/r4PK1/5R2 w - - 0 36", {20, 464, 10317, 257367}},
-    {"4B3/5p2/6k1/8/4pq1p/8/2Q2P2/5K2 b - - 0 177", {24, 596, 13459, 337274, 7596070}}
-};
+    {"4B3/5p2/6k1/8/4pq1p/8/2Q2P2/5K2 b - - 0 177",
+     {24, 596, 13459, 337274, 7596070}}};
 
-void testPerft(){
+void testPerft() {
     Perft perft;
-    for(PTest test: TestsPerft){
+    for (PTest test : TestsPerft) {
         GameState game;
         game.fromFen(test.fen);
-        for(int depth=0; depth<(int)test.expResults.size(); depth++){
-            int res = perft.perft<true>(game, depth+1, false);
-            if(test.expResults[depth] != res){
-                printf("ERROR : fen %s expected %d != result %d\n", test.fen.c_str(), test.expResults[depth], res);
+        for (int depth = 0; depth < (int)test.expResults.size(); depth++) {
+            int res = perft.perft<true>(game, depth + 1, false);
+            if (test.expResults[depth] != res) {
+                printf("ERROR : fen %s expected %d != result %d\n",
+                       test.fen.c_str(), test.expResults[depth], res);
             }
         }
     }
 }
 
 const pair<string, big> TestsPolyHash[] = {
-    {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 0x463b96181691fc9c},
-    {"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", 0x823c9b50fd114196},
-    {"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3", 0x22a48b5a8e47ff78},
-    {"rnbqkbnr/p1pppppp/8/8/PpP4P/8/1P1PPPP1/RNBQKBNR b KQkq c3 0 3", 0x3c8123ea7b067637},
-    {"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4", 0x5c3f9b829b279560},
-    {"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3", 0x652a607ca3f242c1},
-    {"r1bqkbnr/ppp1pppp/2n5/3p4/3P4/4PN2/PPP2PPP/RNBQKB1R b KQkq - 1 3", 15834916877423137634ul}
-};
+    {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+     0x463b96181691fc9c},
+    {"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+     0x823c9b50fd114196},
+    {"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+     0x22a48b5a8e47ff78},
+    {"rnbqkbnr/p1pppppp/8/8/PpP4P/8/1P1PPPP1/RNBQKBNR b KQkq c3 0 3",
+     0x3c8123ea7b067637},
+    {"rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4",
+     0x5c3f9b829b279560},
+    {"rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3",
+     0x652a607ca3f242c1},
+    {"r1bqkbnr/ppp1pppp/2n5/3p4/3P4/4PN2/PPP2PPP/RNBQKB1R b KQkq - 1 3",
+     15834916877423137634ul}};
 
 vector<string> Games[] = {
     {"e2e4", "e7e5", "d1h5", "e8e7", "h5e5"},
     {"e2e4", "e7e5", "g1f3", "g8f6", "f1c4", "f8c5", "e1h1", "e8h8"},
-    {"e2e4", "d7d5", "g1f3", "c8g4", "f1b5", "b8c6", "e1h1", "d8d6", "f1e1", "e8h8"}
-};
+    {"e2e4", "d7d5", "g1f3", "c8g4", "f1b5", "b8c6", "e1h1", "d8d6", "f1e1",
+     "e8h8"}};
 
-void testViri(){
-    FILE* fptr;
+void testViri() {
+    FILE *fptr;
     fptr = fopen("test.out", "wb");
-    for(vector<string> moves:Games){
+    for (vector<string> moves : Games) {
         GamePlayed game;
         game.startPos.fromFen(startpos);
         GameState state;
         state.fromFen(startpos);
-        for(string move:moves){
+        for (string move : moves) {
             MoveInfo mv;
             mv.move.from_uci(move);
             mv.move = state.playPartialMove(mv.move);
@@ -219,7 +201,7 @@ void testViri(){
     fclose(fptr);
 }
 
-int main(){
+int main() {
     testSEE();
     testPerft();
     testViri();
