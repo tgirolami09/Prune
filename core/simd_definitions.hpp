@@ -82,44 +82,42 @@ constexpr int I8inI32 = nbTypes<int32_t, int8_t>;
 
 // SIMD utility functions
 #ifdef __ARM_NEON__
-inline simd<16> simd16_zero(){
+inline simd<16> simd16_zero() {
     return vdupq_n_s16(0);
 }
-inline simd<32> simdint_zero(){
+inline simd<32> simdint_zero() {
     return vdupq_n_s32(0);
 }
-inline simd<16> simd16_set1(dbyte value){
+inline simd<16> simd16_set1(dbyte value) {
     return vdupq_n_s16(value);
 }
-inline simd<32> simdint_set1(int value){
+inline simd<32> simdint_set1(int value) {
     return vdupq_n_s32(value);
 }
-inline uint32_t nonzero_mask(simd<8> reg){
+inline uint32_t nonzero_mask(simd<8> reg) {
     static constexpr uint32_t MASK[4] = {1, 2, 4, 8};
     return vaddvq_u32(vandq_u32(vtstq_u32(reg, reg), vld1q_u32(MASK)));
 }
 #else
-inline simd<16> simd16_zero(){
+inline simd<16> simd16_zero() {
     return ADDSIZE(ADDMM(setzero_si))();
 }
-inline simd<32> simdint_zero(){
+inline simd<32> simdint_zero() {
     return ADDSIZE(ADDMM(setzero_si))();
 }
-inline simd<16> simd16_set1(dbyte value){
+inline simd<16> simd16_set1(dbyte value) {
     return ADDMM(set1_epi16)(value);
 }
-inline simd<32> simdint_set1(int value){
+inline simd<32> simdint_set1(int value) {
     return ADDMM(set1_epi32)(value);
 }
 inline uint32_t nonzero_mask(__m512i reg) {
     return _mm512_cmpgt_epi32_mask(reg, _mm512_setzero_si512());
 }
 inline uint32_t nonzero_mask(__m256i reg) {
-    return _mm256_movemask_ps(
-        _mm256_castsi256_ps(_mm256_cmpgt_epi32(reg, _mm256_setzero_si256()))
-    );
+    return _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(reg, _mm256_setzero_si256())));
 }
-inline uint32_t nonzero_mask(__m128i reg){
+inline uint32_t nonzero_mask(__m128i reg) {
     return _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(reg, _mm_setzero_si128())));
 }
 #endif

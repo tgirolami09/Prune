@@ -5,15 +5,10 @@
 #include "Const.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
+#include "arch.hpp"
 #include "embeder.hpp"
 #include "simd_definitions.hpp"
-#include <cstdint>
-#include <fstream>
 #include "sparse.hpp"
-#include "arch.hpp"
-#include "Move.hpp"
-#include "embeder.hpp"
-#include "GameState.hpp"
 
 using namespace std;
 #ifdef DEBUG_MACRO
@@ -24,13 +19,12 @@ extern StatVar<sbig, 64, 0> TIupdateTotStat;
 extern StatVar<sbig, 128, -128> TIupdateDiffStat;
 #endif
 
-
 const int maxThreatUpdates = 80;
 
 #ifdef DEBUG_MACRO
-extern StatVar<sbig, L1/4, 0> nnzCount;
+extern StatVar<sbig, L1 / 4, 0> nnzCount;
 #endif
-static_assert(L1%nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
+static_assert(L1 % nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
 
 int getInputBucket(int Kpos, bool side, bool mirror);
 class NNUE;
@@ -126,11 +120,12 @@ struct lastLayer {
     void forward(const simd<32> x[input / nb<32>], int y[output]) const;
 };
 
-template<int input, int output>
-struct Layer1{
-    alignas(64) simd<8> weights[input*output/nb<8>];
-    alignas(64) simd<32> biases[output/nb<32>];
-    void forward(const uint32_t x[input/I8inI32], simd<32> y[output/nb<32>], const SparseIterator& si) const;
+template <int input, int output>
+struct Layer1 {
+    alignas(64) simd<8> weights[input * output / nb<8>];
+    alignas(64) simd<32> biases[output / nb<32>];
+    void forward(const uint32_t x[input / I8inI32], simd<32> y[output / nb<32>],
+                 const SparseIterator& si) const;
 };
 
 struct Layers {
