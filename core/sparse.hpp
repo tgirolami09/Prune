@@ -1,6 +1,7 @@
 // code from https://rmeguro.com/blogs/sparse-nnue.html
 #include <array>
 #include "arch.hpp"
+#include <bit>
 #include "simd_definitions.hpp"
 using namespace std;
 #ifdef __ARM_NEON__
