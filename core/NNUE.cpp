@@ -765,7 +765,7 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const {
         simd<16> neurons2 = pairwise(x2[i+1], x4[i+1],   x2[i+1+half], x4[i+1+half]);
         HL1_simd[i/2+half/2] = simd8_packus(neurons1, neurons2);
     }
-    for(int i=0; i<L1/nb<16>; i += 2){
+    for(int i=0; i<half; i += 2){
         si.add_nonzero(HL1_simd[i], HL1_simd[i+1]);
     }
     int finRes;
