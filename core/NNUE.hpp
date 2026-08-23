@@ -9,8 +9,8 @@
 #include "simd_definitions.hpp"
 #include <cstdint>
 #include <fstream>
-#include <array>
-#include <bit>
+#include "sparse.hpp"
+#include "arch.hpp"
 #include "Move.hpp"
 #include "embeder.hpp"
 #include "GameState.hpp"
@@ -24,44 +24,9 @@ extern StatVar<sbig, 64, 0> TIupdateTotStat;
 extern StatVar<sbig, 128, -128> TIupdateDiffStat;
 #endif
 
-constexpr inline int ilog2c(int n) {
-    return (31 ^ __builtin_clz(n)) + !!(n & (n - 1));
-}
-
-constexpr inline int _abs(int x) {
-    return x < 0 ? -x : x;
-}
 
 const int maxThreatUpdates = 80;
 
-const int INPUT_SIZE = 11 * 64;  // merged king planes
-const int THREAT_SIZE = 60144;
-
-constexpr int QA = 255;
-constexpr int QB = 128;
-constexpr int QC = 64;
-constexpr int FT_BITS = 9;
-constexpr int FT_LSHIFT = 16 - FT_BITS;
-
-constexpr int QA_bits = ilog2c(QA);
-constexpr int QB_bits = ilog2c(QB);
-constexpr int QC_bits = ilog2c(QC);
-constexpr int L1shift = _abs(16 + QC_bits - FT_LSHIFT - QA_bits * 2 - QB_bits);
-
-const int BUCKET = 8;
-const int nbInputBuckets = 16;
-
-const int L1 = 640;
-const int L2 = 16;
-const int L3 = 32;
-
-const int SCALE = 283;
-const int inputBuckets[32] = {
-    0,  1,  2,  3,  4,  5,  6,  7,  8,  8,  9,  9,  10, 10, 11, 11,
-    12, 12, 13, 13, 12, 12, 13, 13, 14, 14, 15, 15, 14, 14, 15, 15,
-
-};
-const int DIVISOR=32/BUCKET;
 #ifdef DEBUG_MACRO
 extern StatVar<sbig, L1/4, 0> nnzCount;
 #endif
@@ -69,86 +34,6 @@ static_assert(L1%nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
 
 int getInputBucket(int Kpos, bool side, bool mirror);
 class NNUE;
-#ifdef __ARM_NEON__
-using simdsmol=uint16x8_t;
-#else
-using simdsmol=__m128i;
-#endif
-static inline simdsmol loadsimd(const uint16_t* pointer){
-#ifdef __ARM_NEON__
-    return vld1q_u16(pointer);
-#else
-    return _mm_load_si128(reinterpret_cast<const __m128i*>(pointer));
-#endif
-}
-static inline void storesimd(uint16_t* pointer, simdsmol vec){
-#ifdef __ARM_NEON__
-    vst1q_u16(pointer, vec);
-#else
-    _mm_storeu_si128(reinterpret_cast<__m128i*>(pointer), vec);
-#endif
-}
-static inline simdsmol simdsmoladd(simdsmol a, simdsmol b){
-#ifdef __ARM_NEON__
-    return vaddq_u16(a, b);
-#else
-    return _mm_add_epi16(a, b);
-#endif
-}
-
-static inline simdsmol simdset(uint16_t x){
-#ifdef __ARM_NEON__
-    return vdupq_n_u16(x);
-#else
-    return _mm_set1_epi16(x);
-#endif
-}
-
-// code from https://rmeguro.com/blogs/sparse-nnue.html
-struct SparseIterator{
-    alignas(16) uint16_t indices[L1/4] = {0};
-    int count_ = 0;
-    simdsmol offset = simdset(0);
-    alignas(16) static constexpr array<uint16_t, 256*8> nonzero_idx = [] {
-        array<uint16_t, 256*8> idx{};
-
-        for (int32_t i = 0; i < 256; i++) {
-            int32_t nnz = 0;
-            for (uint8_t mask = i; mask != 0; mask &= mask - 1)
-                idx[i*8+(nnz++)] = countr_zero(mask);
-        }
-
-        return idx;
-    }();
-public:
-    int count() const{
-        return count_;
-    };
-    int index(int nnzidx) const{
-        return indices[nnzidx];
-    }
-    void add_nonzero(simd<8> ft_out0, simd<8> ft_out1) {
-        // VecU8 = __m256i on AVX2, __m512i on AVX512
-        // ALIGNMENT = 32 on AVX2 or 64 on AVX512
-        constexpr int32_t regw32 = SIZE / 8 / sizeof(int32_t);
-        constexpr int32_t n_mask_bytes = 2 * regw32 / 8;
-
-        uint32_t full_mask = (nonzero_mask(ft_out1) << regw32) | nonzero_mask(ft_out0);
-        for (int32_t i = 0; i < n_mask_bytes; i++) {
-            // get offset of up to 8 nonzero blocks
-            const uint8_t mask = full_mask & 0xFF;
-            full_mask >>= 8;
-            const auto idxs = simdsmoladd(
-                offset,
-                loadsimd(&nonzero_idx[mask*8])
-            );
-
-            storesimd(&indices[count_], idxs);
-            offset = simdsmoladd(offset, simdset(8));
-            count_ += popcount(mask);
-        }
-    }
-};
 
 class Index {
    public:
