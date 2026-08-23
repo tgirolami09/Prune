@@ -1,11 +1,11 @@
 #include "BestMoveFinder.hpp"
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <algorithm>
 #include <mutex>
 #include <string>
 #include <thread>
