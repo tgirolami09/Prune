@@ -836,8 +836,23 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y,
             y_pre[o][3] = matrix_mul(y_pre[o][3], inp4, weights4);
         }
     }
-    for (int nnz_idx = nnz_4; nnz_idx < nnz; nnz_idx++) {
-        const int idx = si.index(nnz_idx);
+    const int nnz_2 = (nnz / 2) * 2;
+    if (nnz_4 != nnz_2) {
+        const int idx1 = si.index(nnz_4);
+        const int idx2 = si.index(nnz_4 + 1);
+        const simd<8> inp1 = simd8_broadcast32(x[idx1]);
+        const simd<8> inp2 = simd8_broadcast32(x[idx2]);
+        const int offset1 = idx1 * I8inI32 * output / nb<8>;
+        const int offset2 = idx2 * I8inI32 * output / nb<8>;
+        for (int o = 0; o < output / nb<32>; o++) {
+            const simd<8> weights1 = weights[offset1 + o * nb<32> * I8inI32 / nb<8>];
+            const simd<8> weights2 = weights[offset2 + o * nb<32> * I8inI32 / nb<8>];
+            y_pre[o][0] = matrix_mul(y_pre[o][0], inp1, weights1);
+            y_pre[o][1] = matrix_mul(y_pre[o][1], inp2, weights2);
+        }
+    }
+    if (nnz_2 != nnz) {
+        const int idx = si.index(nnz_2);
         const simd<8> inp = simd8_broadcast32(x[idx]);
         const int offset = idx * I8inI32 * output / nb<8>;
         for (int o = 0; o < output / nb<32>; o++) {
