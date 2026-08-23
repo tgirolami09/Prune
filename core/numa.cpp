@@ -16,7 +16,7 @@ namespace prune_numa{
         threadMapping();
 
         const int numNodes = nodeCount();
-        printf("%d NUMA nodes\n", numNodes);
+        printf("info string %d NUMA nodes\n", numNodes);
         nnues.resize(numNodes);
         for(int i=0; i<numNodes; i++){
             memcpy(&nnues[i], baseModel, sizeof(NNUE));

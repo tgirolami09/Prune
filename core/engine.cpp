@@ -120,6 +120,7 @@ void manageInput(){
             bestMoveFinder.stop_flag = 2;
             stop_all = true;
             unique_lock<mutex> lock(mtx_new_command);
+            inpQueue[endQ%sizeQ] = "quit";
             endQ++;
             cv_new_command.notify_one();
         }else{
@@ -216,12 +217,20 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
     }
 }
 
-void manageSearch(){
+void manageSearch(bool seeInput){
     auto state = make_unique<Chess>();
     state->root.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     Move lastMove = nullMove;
     auto ieval = make_unique<IncrementalEvaluator>();
+    thread t;
+    if(seeInput)
+        t = thread(&manageInput);
     while(!stop_all){
+        if(!stop_all && endQ == startQ){
+            fflush(stdout);
+            unique_lock<mutex> lock(mtx_new_command);
+            cv_new_command.wait(lock, []{return endQ != startQ || stop_all;});
+        }
         if(startQ != endQ){
             {
                 lock_guard<mutex> lock(mtx_command);
@@ -606,12 +615,9 @@ void manageSearch(){
             }
             cv_command.notify_one();
         }
-        if(!stop_all && endQ == startQ){
-            fflush(stdout);
-            unique_lock<mutex> lock(mtx_new_command);
-            cv_new_command.wait(lock, []{return endQ != startQ || stop_all;});
-        }
     }
+    if(seeInput)
+        t.join();
 }
 
 int main(int argc, char** argv){
@@ -619,7 +625,6 @@ int main(int argc, char** argv){
     prune_numa::init();
 #endif
     string UCI_instruction = "programStart";
-    thread t;
     bool seeInput = true;
     if(argc > 1){
         startQ = endQ = 0;
@@ -637,10 +642,6 @@ int main(int argc, char** argv){
             endQ++;
         }
     }
-    if(seeInput)
-        t = thread(&manageInput);
-    manageSearch();
-    if(seeInput)
-        t.join();
-    clear_table();   
+    manageSearch(seeInput);
+    clear_table();
 }
