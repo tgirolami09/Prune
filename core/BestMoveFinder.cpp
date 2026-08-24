@@ -215,25 +215,6 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         }
         // hint = transposition.getMove(ttEntry);
     }
-    // Tablebase probe in quiescence
-    if (tbProbe.canProbe(state, ss.eval.getNbMan())) {
-        int wdl = tbProbe.probeWDL(state);
-        if (wdl != TB_RESULT_INVALID) {
-            ss.tbHits++;
-            int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
-            int flag;
-            if (wdl == TB_RESULT_WIN)
-                flag = LOWERBOUND;
-            else if (wdl == TB_RESULT_LOSS)
-                flag = UPPERBOUND;
-            else
-                flag = EXACT;
-            if (flag == EXACT || (flag == UPPERBOUND && tbScore <= alpha) ||
-                (flag == LOWERBOUND && tbScore >= beta)) {
-                return tbScore;
-            }
-        }
-    }
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
     int typeNode = UPPERBOUND;
