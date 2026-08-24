@@ -519,7 +519,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             int newNb = 0;
             for (int i = 0; i < order.nbMoves; i++) {
                 for (int j = 0; j < wdlFilterNb; j++) {
-                    if (order.moves[i].moveInfo == wdlFilterMoveInfos[j]) {
+                    if (order.moves[i] == wdlFilterMoveInfos[j]) {
                         order.moves[newNb++] = order.moves[i];
                         break;
                     }
@@ -974,7 +974,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         if (wdlFallback != TB_RESULT_INVALID) {
             wdlFilterNb = order.nbMoves;
             for (int i = 0; i < order.nbMoves; i++)
-                wdlFilterMoveInfos[i] = order.moves[i].moveInfo;
+                wdlFilterMoveInfos[i] = order.moves[i];
             if (verbose) {
                 printf("info string Tablebase WDL fallback: ");
                 switch (wdlFallback) {

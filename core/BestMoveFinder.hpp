@@ -118,7 +118,7 @@ class BestMoveFinder {
     timeMesure::time_point startSearch;
     TM globtm;
     chrono::nanoseconds getElapsedTime();
-    int16_t wdlFilterMoveInfos[maxMoves];
+    Move wdlFilterMoveInfos[maxMoves];
     int wdlFilterNb;
     template <bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
