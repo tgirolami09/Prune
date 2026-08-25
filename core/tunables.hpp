@@ -182,8 +182,8 @@ class tunables {
           mainHist(1022, 1049, 1100, 1032, 510, 272),
           prevHist(996, 924, 1131, 1042, 481, 267),
           aw_mul(1.9495),
-          nodetm_base(2.13688),
-          nodetm_mul(1.37487) {}
+          nodetm_base(2.0),
+          nodetm_mul(1.6) {}
 
     TunableInt iir_min_depth, iir_validity_depth, rfp_improving, rfp_nimproving, nmp_red_depth_div,
         nmp_red_base, nmp_min_depth, se_validity_depth, se_min_depth, se_dext_margin,
