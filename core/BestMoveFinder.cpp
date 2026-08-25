@@ -726,7 +726,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             bestScore = score;
     }
     bestScore = clamp(bestScore, syzygy_min, syzygy_max);
-    if (bestScore > oldalpha && typeNode != UPPERBOUND)
+    if (bestScore > oldalpha && typeNode == UPPERBOUND)
         ss.beginLine(rootDist);
     if (cutnode && bestScore == alpha)
         return bestScore;
