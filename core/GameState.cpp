@@ -272,6 +272,27 @@ inline bool GameState::isEnPassantPossibility(const int piece, const Move& move)
 int GameState::rule50_count() const {
     return rule50[turnNumber];
 }
+
+bool GameState::nfold(int rootDist) const {
+    const int minposs = max(0, turnNumber - rule50_count());
+    const int mintwofold = max(minposs, turnNumber - rootDist);
+    const int minthreefold = minposs;
+    int i;
+    for (i = turnNumber - 4; i >= mintwofold; i -= 2) {
+        if (repHist[i] == repHist[turnNumber])
+            return true;
+    }
+    bool repeated = false;
+    for (; i >= minthreefold; i -= 2) {
+        if (repHist[i] == repHist[turnNumber]) {
+            if (repeated)
+                return true;
+            repeated = true;
+        }
+    }
+    return false;
+}
+
 bool GameState::twofold() const {
     const int minposs = max(0, turnNumber - rule50_count());
     for (int i = turnNumber - 4; i >= minposs; i--) {
