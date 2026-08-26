@@ -278,10 +278,11 @@ int TablebaseProbe::rootFiltering(const GameState& state, rootMove* moves, int& 
         unsigned fathomFrom = TB_MOVE_FROM(results.moves[j].move);
         unsigned fathomTo = TB_MOVE_TO(results.moves[j].move);
         unsigned fathomProm = TB_MOVE_PROMOTES(results.moves[j].move);
-
+        moves[newNb].move.moveInfo = 0;
         moves[newNb].move.updateFrom(fathomFrom ^ 7);
-        moves[newNb].move.updateFrom(fathomTo ^ 7);
-        moves[newNb].move.updatePromotion(promoMap[fathomProm]);
+        moves[newNb].move.updateTo(fathomTo ^ 7);
+        if (promoMap[fathomProm] != PAWN)
+            moves[newNb].move.updatePromotion(promoMap[fathomProm]);
         moves[newNb].tb_upperbound_score = rank_to_upperbound_score(results.moves[j].tbRank);
         moves[newNb].tb_lowerbound_score = rank_to_lowerbound_score(results.moves[j].tbRank);
         newNb++;

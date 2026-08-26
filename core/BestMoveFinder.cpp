@@ -829,7 +829,6 @@ void BestMoveFinder::print_info(Record& rec, int depth, int bestScore, string li
         assert(false);
     }
     if (bm.tb_lowerbound_score > bestScore || bm.tb_upperbound_score < bestScore) {
-        printf("%d < %d < %d\n", bm.tb_lowerbound_score, bestScore, bm.tb_upperbound_score);
         bestScore = clamp(bestScore, bm.tb_lowerbound_score, bm.tb_upperbound_score);
         limit = "";
     }
