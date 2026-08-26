@@ -1050,6 +1050,11 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     return res;
 }
 
+template bestMoveResponse BestMoveFinder::goState<false>(GameState& state, TM tm, bool _verbose,
+                                                         int actDepth);
+template bestMoveResponse BestMoveFinder::goState<true>(GameState& state, TM tm, bool _verbose,
+                                                        int actDepth);
+
 void BestMoveFinder::aging() {
     transposition.aging();
 }

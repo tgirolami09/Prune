@@ -82,7 +82,7 @@ class threadHelper {
             return player1;
     }
     bestMoveResponse getEval(TM tm) {
-        return getPlayer().goState<1>(state, tm, false, game.game.size());
+        return getPlayer().goState<false>(state, tm, false, game.game.size());
     }
     void reset(string fen) {
         state.fromFen(fen);
@@ -191,7 +191,13 @@ int main(int argc, char** argv) {
         FILE* fptr;
         fptr = fopen(nameDataFile.c_str(), "ab");
         for (int i = startReg; i < endReg; i++) {
-            const TM tm(limitNodes, limitNodes * 1000);
+            const TM tm = [&]() {
+                TM _tm(0, WHITE);
+                _tm.softnodes = limitNodes;
+                _tm.hardnodes = limitNodes * 1000;
+                _tm.init();
+                return _tm;
+            }();
             // printf("begin thread %d loop %d\n", omp_get_thread_num(), i);
             int nbTry = 0;
             state->init(fens[i % fens.size()]);

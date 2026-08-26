@@ -26,3 +26,5 @@ prune*
 *.json
 *perf.data*
 !logo.png
+*.profdata
+*.profraw
