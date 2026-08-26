@@ -161,6 +161,7 @@ Order::Order() : dangerPositions(0) {}
 void Order::swap(int idMove1, int idMove2) {
     std::swap(moves[idMove1], moves[idMove2]);
     std::swap(scores[idMove1], scores[idMove2]);
+    std::swap(moveidx[idMove1], moveidx[idMove2]);
 }
 
 void Order::init(bool c, Move movePriority, const HelpOrdering& history, ubyte relDepth,
@@ -175,10 +176,9 @@ void Order::init(bool c, Move movePriority, const HelpOrdering& history, ubyte r
                                  100000,
                                  0};
     for (int i = 0; i < nbMoves; i++) {
+        moveidx[i] = i;
         if (movePriority == moves[i]) {
             this->swap(i, 0);
-            if (nbPriority)
-                this->swap(i, 1);
             nbPriority++;
         } else {
 #ifdef DEBUG_MACRO
