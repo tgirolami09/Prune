@@ -101,6 +101,7 @@ class GameState {
     int enemyColor() const;
     bool isEnPassantPossibility(const int piece, const Move& move);
     int rule50_count() const;
+    bool nfold(int rootdist) const;
     bool twofold() const;
     bool threefold() const;
     void playNullMove();

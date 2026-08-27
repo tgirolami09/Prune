@@ -546,7 +546,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         ss.stack[rootDist].snap.save(state);
         state.playMove(order.moves[0]);
         transposition.prefetch(state);
-        if (state.twofoldFast()) {
+        if (state.nfold(rootDist - 1)) {
             ss.stack[rootDist].snap.restore(state);
             if constexpr (isPV)
                 ss.beginLineMove(rootDist, order.moves[0]);
@@ -650,7 +650,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         bool isDraw = false;
         ss.stack[rootDist].searchedMoves[triedMove] = curMove;
         triedMove++;
-        if (state.twofoldFast()) {
+        if (state.nfold(rootDist - 1)) {
             score = MIDDLE;
             isDraw = true;
         } else {
