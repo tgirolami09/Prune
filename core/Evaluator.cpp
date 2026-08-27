@@ -192,16 +192,9 @@ int score_move(const Move& move, int historyScore, const GameState& state,
 
 void IncrementalEvaluator::print() {
     printf("phase = %d\n", mgPhase);
-    for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 6; j++) {
-            printf("piece = %d, color = %d, nbPieces = %d\n", j, i, presentPieces[i][j]);
-        }
-    }
 }
 
-IncrementalEvaluator::IncrementalEvaluator() {
-    memset(presentPieces, 0, sizeof(presentPieces));
-}
+IncrementalEvaluator::IncrementalEvaluator() {}
 
 void IncrementalEvaluator::init(
     const GameState& state,
@@ -227,7 +220,6 @@ void IncrementalEvaluator::init(
     nnue.calcThreats(stackAcc[stackIndex], BLACK, state.board);
     // printf("%d %d\n", stackAcc[stackIndex].idInputBucket[WHITE],
     // stackAcc[stackIndex].idInputBucket[BLACK]);
-    memset(presentPieces, 0, sizeof(presentPieces));
     for (int square = 0; square < 64; square++) {
         int piece = state.getfullPiece(square);
         if (type(piece) != SPACE) {
@@ -238,8 +230,8 @@ void IncrementalEvaluator::init(
     }
 }
 
-bool IncrementalEvaluator::isInsufficientMaterial() const {
-    if (mgPhase <= 1 && !presentPieces[WHITE][PAWN] && !presentPieces[BLACK][PAWN]) {
+bool IncrementalEvaluator::isInsufficientMaterial(const GameState& state) const {
+    if (mgPhase <= 1 && !state.board.pieces[PAWN]) {
         return true;
     }
     return false;
@@ -262,12 +254,11 @@ int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState&
 int IncrementalEvaluator::correctEval(int raw_eval, const corrhists& ch, const GameState& state,
                                       _unused const tunables& parameters) const {
     raw_eval += ch.probe(state);
-#if !defined(DATAGEN)
-    int nbQ = presentPieces[WHITE][QUEEN] + presentPieces[BLACK][QUEEN];
-    int nbR = presentPieces[WHITE][ROOK] + presentPieces[BLACK][ROOK];
-    int nbB = presentPieces[WHITE][BISHOP] + presentPieces[BLACK][BISHOP];
-    int nbN = presentPieces[WHITE][KNIGHT] + presentPieces[BLACK][KNIGHT];
-    int nbP = presentPieces[WHITE][PAWN] + presentPieces[BLACK][PAWN];
+    int nbQ = popcount(state.board.pieces[QUEEN]);
+    int nbR = popcount(state.board.pieces[ROOK]);
+    int nbB = popcount(state.board.pieces[BISHOP]);
+    int nbN = popcount(state.board.pieces[KNIGHT]);
+    int nbP = popcount(state.board.pieces[PAWN]);
     int mat = nbQ * parameters.mats_queen + nbR * parameters.mats_rook +
               nbB * parameters.mats_bishop + nbN * parameters.mats_knight +
               nbP * parameters.mats_pawn;
@@ -276,9 +267,6 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists& ch, const G
 #endif
     int matScaling = raw_eval * (mat + parameters.mats_offset) / (48 * 1024);
     return clamp(matScaling, -TB_WIN_SCORE + 100, TB_WIN_SCORE - 100);
-#else
-    return clamp(raw_eval, -TB_WIN_SCORE + 100, TB_WIN_SCORE - 100);
-#endif
 }
 void IncrementalEvaluator::undoMove(const NNUE& nnue, Move move, bool c,
                                     const PositionState& state1, const PositionState& state2) {
@@ -300,7 +288,6 @@ void IncrementalEvaluator::changePiece(_unused const NNUE& nnue, int pos, int pi
         }
     mgPhase += f * gamephaseInc[piece];
     nbMan += f;
-    presentPieces[c][piece] += f;
 }
 
 template <int f, bool updateNNUE>
@@ -319,7 +306,6 @@ void IncrementalEvaluator::changePiece2(_unused const NNUE& nnue, int pos, int p
     }
     mgPhase += f * gamephaseInc[piece];
     nbMan += f;
-    presentPieces[c][piece] += f;
 }
 
 template <int f>

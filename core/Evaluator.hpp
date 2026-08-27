@@ -22,7 +22,6 @@ const int tableSize = 1 << 10;  // must be a power of two, for now it's pretty
 
 class IncrementalEvaluator {
     int mgPhase;
-    int presentPieces[2][6];  // keep trace of number of pieces by side
     Accumulator stackAcc[maxDepth];
     FinnyTables finny;
     int nbMan;
@@ -37,7 +36,7 @@ class IncrementalEvaluator {
     void print();
     IncrementalEvaluator();
     void init(const GameState& state, const NNUE& nnue);
-    bool isInsufficientMaterial() const;
+    bool isInsufficientMaterial(const GameState& state) const;
     bool isOnlyPawns() const;
     int getScore(bool c, const corrhists& ch, const GameState& state, const tunables& parameters,
                  const NNUE& nnue);
