@@ -253,7 +253,6 @@ int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState&
 }
 int IncrementalEvaluator::correctEval(int raw_eval, const corrhists& ch, const GameState& state,
                                       _unused const tunables& parameters) const {
-    raw_eval += ch.probe(state);
     int nbQ = popcount(state.board.pieces[QUEEN]);
     int nbR = popcount(state.board.pieces[ROOK]);
     int nbB = popcount(state.board.pieces[BISHOP]);
@@ -266,6 +265,7 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists& ch, const G
     matScalingStats.update(mat);
 #endif
     int matScaling = raw_eval * (mat + parameters.mats_offset) / (48 * 1024);
+    matScaling += ch.probe(state);
     return clamp(matScaling, -TB_WIN_SCORE + 100, TB_WIN_SCORE - 100);
 }
 void IncrementalEvaluator::undoMove(const NNUE& nnue, Move move, bool c,
