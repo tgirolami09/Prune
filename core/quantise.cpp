@@ -17,7 +17,7 @@ const int IB = nbInputBuckets;
 const bool isPW = true;
 const bool isFactorised = true;
 const bool isMergedKing = true;
-const int rawInputSize = INPUT_SIZE + 64 * isMergedKing;
+const int rawInputSize = PSQ_SIZE + 64 * isMergedKing;
 const char zero = 0;  // for padding
 const float scaler = (float)QA / (1 << L1shift);
 
@@ -95,6 +95,7 @@ void padd(FILE* file) {
 }
 
 struct inputlayer {
+    float ppweights[THREAT_SIZE][L1];
     float threatweights[THREAT_SIZE][L1];
     float psqweights[IB + isFactorised][rawInputSize][L1];
     float biases[L1];
@@ -115,6 +116,11 @@ struct inputlayer {
                 int8_t quantised = _quantise_threat(threatweights[i][k]);
                 fwrite(&quantised, sizeof(int8_t), 1, file);
             }
+        for (int i = 0; i < PP_SIZE; i++)
+            for (int k = 0; k < L1; k++) {
+                int8_t quantised = _quantise_threat(ppweights[i][k]);
+                fwrite(&quantised, sizeof(int8_t), 1, file);
+            }
         printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow, THREAT_SIZE * L1);
         padd(file);
         for (int k = 0; k < L1; k++) {
@@ -133,6 +139,7 @@ struct nn {
 };
 
 int main(int argc, char** argv) {
+    assert(argc == 3);
     FILE* fin = fopen(argv[1], "r");
     FILE* fout = fopen(argv[2], "w");
     unique_ptr<nn> nnue = make_unique<nn>();

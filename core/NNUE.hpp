@@ -26,9 +26,11 @@ constexpr inline int _abs(int x) {
 }
 
 const int maxThreatUpdates = 80;
+const int maxPPUpdates = 38;
 
-const int INPUT_SIZE = 11 * 64;  // merged king planes
-const int THREAT_SIZE = 60144;
+const int PSQ_SIZE = 11 * 64;  // merged king planes
+const int THREAT_SIZE = 59808;
+const int PP_SIZE = 4560;
 
 constexpr int QA = 255;
 constexpr int QB = 128;
@@ -49,11 +51,18 @@ const int L2 = 16;
 const int L3 = 32;
 
 const int SCALE = 283;
+// clang-format off
 const int inputBuckets[32] = {
-    0,  1,  2,  3,  4,  5,  6,  7,  8,  8,  9,  9,  10, 10, 11, 11,
-    12, 12, 13, 13, 12, 12, 13, 13, 14, 14, 15, 15, 14, 14, 15, 15,
-
+    0,  1,  2,  3,
+    4,  5,  6,  7,
+    8,  8,  9,  9,
+    10, 10, 11, 11,
+    12, 12, 13, 13,
+    12, 12, 13, 13,
+    14, 14, 15, 15,
+    14, 14, 15, 15,
 };
+// clang-format on
 const int DIVISOR = 32 / BUCKET;
 
 static_assert(L1 % nb<16> == 0, "L1 size needs to be a multiple of nb<16>");
@@ -75,7 +84,7 @@ class Index {
     int fullpiece() const;
     void schangepov();
     void schangepov(bool needs);
-    operator int();
+    explicit operator int();
     bool operator==(const Index a) const;
     bool isnull();
     void print() const;
@@ -94,7 +103,7 @@ class ThreatIndex {
     bool issemiexcluded() const;
     void swap();
     ThreatIndex rswap() const;
-    operator int() const;
+    explicit operator int() const;
     ThreatIndex changepov(bool needs) const;
     ThreatIndex mirror(bool needs) const;
     void print() const;
@@ -105,6 +114,19 @@ class ThreatIndex {
         return isexcluded() ? ThreatIndex(to, from) : ThreatIndex(from, to);
     }
 };
+
+struct PPIndex {
+   public:
+    int pos1;
+    int pos2;
+    bool color1, color2;
+    PPIndex();
+    PPIndex(const int pos1, const bool colorpiece1, const int pos2, const bool colorpiece2);
+    explicit operator int() const;
+    PPIndex mirror(bool needs);
+    PPIndex changepov(bool needs);
+};
+
 using oneAccumulator = simd<16>[L1 / nb<16>];
 class FinnytableNormal {
    public:
@@ -124,13 +146,17 @@ class updateBuffer {
     Index sub1[2],
         sub2[2];  // each pieces provoque a change in black and white pov
     int nbThreats[2];
+    int nbPPs[2];
     ThreatIndex threatUpdates[2][32];
+    PPIndex PPUpdates[2][32];
     bool dirty;
     Move deferredMove;
     int type;
     updateBuffer();
     void reset(Index sub1, Index add1, Index sub2, Index add2);
     void addThreat(const ThreatIndex& threat, const bool remove);
+    void addPP(const int pos1, const bool colorpiece1, const int pos2, const bool colorpiece2,
+               const bool remove);
     void print();
 };
 
@@ -173,6 +199,8 @@ class Accumulator {
                              bool remove, int removepos, const big sliders[3]);
     void updatePiece(const PositionState& state, int piece, bool colorpiece, int square,
                      bool remove, int removepos);
+    void updatePP(const PositionState& state, const bool colorpiece, const int pos,
+                  const bool remove);
     template <bool enPassant = false, bool tworemove = false>
     void updateXrays(const PositionState& state, int square, bool remove, int removepos,
                      int removepos2 = -1);
@@ -201,8 +229,8 @@ class Accumulator {
 
 class NNUE {
    public:
-    alignas(64) simd<16> hlWeights[nbInputBuckets][INPUT_SIZE][L1 / nb<16>];
-    alignas(64) simd<8> threatWeights[THREAT_SIZE][L1 / nb<8>];
+    alignas(64) simd<16> hlWeights[nbInputBuckets][PSQ_SIZE][L1 / nb<16>];
+    alignas(64) simd<8> threatWeights[PP_SIZE + THREAT_SIZE][L1 / nb<8>];
     alignas(64) simd<16> hlBiases[L1 / nb<16>];
     Layers laterLayers[BUCKET];
 
@@ -246,7 +274,4 @@ class NNUE {
 };
 
 inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);
-inline void updateBuffer::addThreat(const ThreatIndex& threat, const bool remove) {
-    threatUpdates[remove][nbThreats[remove]++] = threat;
-}
 #endif
