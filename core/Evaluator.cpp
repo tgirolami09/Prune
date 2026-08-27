@@ -266,6 +266,7 @@ int IncrementalEvaluator::correctEval(int raw_eval, const corrhists& ch, const G
     matScalingStats.update(mat);
 #endif
     int matScaling = raw_eval * (mat + parameters.mats_offset) / (48 * 1024);
+    matScaling = matScaling * (200 - state.rule50_count()) / 200;
     return clamp(matScaling, -TB_WIN_SCORE + 100, TB_WIN_SCORE - 100);
 }
 void IncrementalEvaluator::undoMove(const NNUE& nnue, Move move, bool c,
