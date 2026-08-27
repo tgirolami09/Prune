@@ -192,7 +192,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         stop_flag = 1;
     if (ss.stop(stop_flag || smp_abort))
         return 0;
-    if (ss.eval.isInsufficientMaterial() || state.rule50_count() > 100)
+    if (ss.eval.isInsufficientMaterial(state) || state.rule50_count() > 100)
         return 0;
     ss.nodes++;
     if (isPV && relDepth > ss.seldepth)
@@ -346,7 +346,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         return 0;
     auto& curgenerator = ss.stack[rootDist].generator;
     auto& nextgenerator = ss.stack[rootDist + 1].generator;
-    if (state.rule50_count() >= 100 || ss.eval.isInsufficientMaterial()) {
+    if (state.rule50_count() >= 100 || ss.eval.isInsufficientMaterial(state)) {
         if constexpr (isPV)
             ss.beginLine(rootDist);
         if (state.rule50_count() == 100) {
