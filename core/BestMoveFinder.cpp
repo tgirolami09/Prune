@@ -905,7 +905,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
                 }
                 break;
             }
-            if (ss.mainThread && verbose && bestScore != -INF) {
+            if (ss.mainThread && verbose && bestScore != -INF && !minimal) {
                 print_info(rec, depth, bestScore, limit, material, finalBestMove, PV);
             }
         } while (!ss.stop(stop_flag || smp_abort));
