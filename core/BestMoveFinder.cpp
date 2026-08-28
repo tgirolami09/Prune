@@ -330,7 +330,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         cutnode = false;
     if constexpr (isRoot) {
         ss.searchedMoves = 0;
-        ss.rootBest = rootNullMove;
     }
     bool allnode = !cutnode && !isPV;
     const int rootDist = relDepth - startRelDepth;
@@ -694,7 +693,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                                raw_eval, isPV);
             if (isRoot) {
                 ss.rootBest = rootMoves[order.moveidx[rankMove]];
-                assert(ss.rootBest.move == curMove);
             }
             ss.history.addKiller(curMove, depth, rootDist, state.friendlyColor(), state,
                                  order.dangerPositions);
@@ -710,7 +708,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (score > alpha) {
             if (isRoot) {
                 ss.rootBest = rootMoves[order.moveidx[rankMove]];
-                assert(ss.rootBest.move == curMove);
                 ss.bestMoveNodes = ss.nodes - startNodes;
             }
             alpha = score;
@@ -817,17 +814,12 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
 }
 
 template <bool update>
-void BestMoveFinder::print_info(Record& rec, int depth, int bestScore, string limit, int material,
-                                rootMove bm, string PV) {
+void BestMoveFinder::print_info(Record& rec, int depth, int bestScore, string limit, int material) {
     if constexpr (update)
         updatemainSS(localSS, rec);
     sbig totNodes = localSS.nodes;
-    PV = localSS.PVprint(localSS.PVlines[0]);
-    if (localSS.PVlines[0].argMoves[0] != bm.move) {
-        printf("%s != %s\n", localSS.PVlines[0].argMoves[0].to_str().c_str(),
-               bm.move.to_str().c_str());
-        assert(false);
-    }
+    string PV = localSS.PVprint(localSS.PVlines[0]);
+    rootMove bm = localSS.rootBest;
     if (bm.tb_lowerbound_score > bestScore || bm.tb_upperbound_score < bestScore) {
         bestScore = clamp(bestScore, bm.tb_lowerbound_score, bm.tb_upperbound_score);
         limit = "";
@@ -846,7 +838,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
     vector<depthInfo> allInfos;
     const int material = state.material();
     ss.resetLines();
-    rootMove bestMove = rootNullMove;
+    ss.rootBest = rootNullMove;
     int depthMax = maxDepth;
     if (ss.mainThread) {
         depthMax = tm.maxdepth;
@@ -859,8 +851,8 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
     int lastScore = staticEval;
     Move ponderMove = nullMove;
     startRelDepth = actDepth - 1;
-    string PV;
     int depth;
+    string limit = "";
     for (depth = 1; depth <= depthMax && ((!stop_flag && !smp_abort) || depth == 1); depth++) {
         int deltaUp = parameters.aw_base;
         int deltaDown = parameters.aw_base;
@@ -868,9 +860,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         if (abs(lastScore) > MAXIMUM - maxDepth)
             deltaDown = 1;
         int bestScore = -INF;
-        rootMove finalBestMove = bestMove;
         sbig lastUsedNodes = 0;
-        string limit = "";
         if (depth == 1)
             ss.let_run = true;
         do {
@@ -883,21 +873,16 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
                 negamax<true, true>(ss, depth * fracDepth, state, alpha, beta, actDepth, false);
             bestScore = ss.searchedMoves ? newScore : bestScore;
             lastUsedNodes = ss.nodes - lastUsedNodes;
-            bestMove = (bestScore != -INF && ss.rootBest.move) ? ss.rootBest : finalBestMove;
             if (bestScore <= alpha) {
                 deltaDown = max<int>(deltaDown * parameters.aw_mul, lastScore - bestScore + 1);
                 limit = " upperbound";
             } else if (bestScore >= beta) {
                 deltaUp = max<int>(deltaUp * parameters.aw_mul, bestScore - lastScore + 1);
-                finalBestMove = bestMove;
                 limit = " lowerbound";
-                PV = finalBestMove.move.to_str().c_str();
                 ponderMove = nullMove;
             } else {
                 limit = "";
-                finalBestMove = bestMove;
                 if (ss.searchedMoves) {
-                    PV = ss.PVprint(ss.PVlines[0]);
                     if (ss.PVlines[0].cmove > 1)
                         ponderMove = ss.PVlines[0].argMoves[1];
                     else
@@ -907,11 +892,10 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             }
             if (ss.mainThread && verbose && bestScore != -INF && !minimal &&
                 getElapsedTime() > chrono::milliseconds{1000}) {
-                print_info(rec, depth, bestScore, limit, material, finalBestMove, PV);
+                print_info(rec, depth, bestScore, limit, material);
             }
         } while (!ss.stop(stop_flag || smp_abort));
         ss.let_run = false;
-        bestMove = finalBestMove;
         if (bestScore != -INF) {
             lastScore = bestScore;
             if (limit == "" && ss.searchedMoves != ss.stack[1].order.nbMoves)
@@ -928,19 +912,20 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
             if (tcpu != 0)
                 speed = totNodes / tcpu;
             if (verbose && !minimal) {
-                print_info<false>(rec, depth, lastScore, limit, material, bestMove, PV);
+                print_info<false>(rec, depth, lastScore, limit, material);
             }
             if (!stop_flag)
                 allInfos.push_back({ss.nodes, (int)(tcpu * 1000), (int)(speed), depth,
                                     ss.seldepth - startRelDepth, bestScore});
             if (tm.shouldstop_soft(totNodes, startSearch, depth, ss.bestMoveNodes, lastUsedNodes,
-                                   abs(bestScore - staticEval), bestMove.move, parameters, verbose))
+                                   abs(bestScore - staticEval), ss.rootBest.move, parameters,
+                                   verbose))
                 break;
         }
     }
     if (minimal && verbose)
-        print_info(rec, depth, lastScore, "", material, bestMove, PV);
-    return make_tuple(bestMove.move, ponderMove, lastScore, allInfos);
+        print_info(rec, depth, lastScore, limit, material);
+    return make_tuple(ss.rootBest.move, ponderMove, lastScore, allInfos);
 }
 
 template <bool set>

@@ -121,8 +121,7 @@ class BestMoveFinder {
     rootMove rootMoves[maxMoves];
     int nbRootMoves;
     template <bool update = true>
-    void print_info(Record& rec, int depth, int bestScore, string limit, int material, rootMove bm,
-                    string PV);
+    void print_info(Record& rec, int depth, int bestScore, string limit, int material);
     template <bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
