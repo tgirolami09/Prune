@@ -153,6 +153,7 @@ ThreatIndex::operator int() const {
     int index = ((int)threatIndex[from.fullpiece()][from.square][to.square]) +
                 threatoffset[from.fullpiece()] *
                     (piecesThreat[from.piece][to.piece] + to.color * valid_targets[from.piece]);
+    assert(index < THREAT_SIZE);
     return index;
 }
 ThreatIndex ThreatIndex::changepov(bool needs) const {
@@ -178,17 +179,24 @@ PPIndex::PPIndex() {}
 PPIndex::PPIndex(const int _pos1, const bool colorpiece1, const int _pos2, const bool colorpiece2)
     : pos1(_pos1), pos2(_pos2), color1(colorpiece1), color2(colorpiece2) {}
 PPIndex::operator int() const {
-    int p1 = pos1 - 8 + color1 * 48;
-    int p2 = pos2 - 8 + color2 * 48;
-    int hi = max(p1, p2);
-    int lo = min(p1, p2);
-    return hi * (hi - 1) / 2 + lo;
+    int hi = pos1 - 8 + color1 * 48;
+    int lo = pos2 - 8 + color2 * 48;
+    assert(hi > lo);
+    int idx = hi * (hi - 1) / 2 + lo;
+    assert(idx < PP_SIZE);
+    return idx;
 }
 PPIndex PPIndex::mirror(bool needs) {
     return PPIndex(pos1 ^ 7 * needs, color1, pos2 ^ 7 * needs, color2);
 }
 PPIndex PPIndex::changepov(bool needs) {
     return PPIndex(pos1 ^ 56 * needs, color1 ^ needs, pos2 ^ 56 * needs, color2 ^ needs);
+}
+bool PPIndex::isSemiExcluded() const {
+    return (pos1 + color1 * 64) < (pos2 + color2 * 64);
+}
+PPIndex PPIndex::swapSemiExcluded() const {
+    return isSemiExcluded() ? PPIndex(pos2, color2, pos1, color1) : *this;
 }
 
 updateBuffer::updateBuffer() : nbThreats{0, 0}, nbPPs{0, 0}, dirty(true) {}
@@ -333,7 +341,7 @@ void Accumulator::updatePieceIncoming(const PositionState& state, const int piec
 
 void Accumulator::updatePP(const PositionState& state, const bool colorpiece1, const int pos1,
                            const bool remove) {
-    big mask = state.pieces[PAWN];
+    big mask = state.pieces[PAWN] & wide3[col(pos1)] & ~(1ULL << pos1);
     for (; mask; mask &= mask - 1) {
         const int pos2 = __builtin_ctzll(mask);
         const bool colorpiece2 = state.colors[BLACK] & (1ULL << pos2);
@@ -446,7 +454,8 @@ void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov, const 
         }
     for (int j = 0; j < 2; j++)
         for (int i = 0; i < update.nbPPs[j]; i++) {
-            updates[j][i] = (int)update.PPUpdates[j][i].changepov(pov).mirror(Kside[pov]);
+            updates[j][i] =
+                (int)update.PPUpdates[j][i].changepov(pov).mirror(Kside[pov]).swapSemiExcluded();
             __builtin_prefetch(&nnue.threatWeights[updates[j][i]]);
         }
     int maxi = nbRelations[0] < nbRelations[1];
@@ -788,6 +797,20 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
             atkmask &= atkmask - 1;
         }
         mask &= mask - 1;
+    }
+    for (mask = state.pieces[PAWN]; mask; mask &= mask - 1) {
+        const int pos1 = __builtin_ctzll(mask);
+        const bool color1 = state.colors[BLACK] & (1ULL << pos1);
+        big omask = state.pieces[PAWN] & wide3[col(pos1)] & ~(1ULL << pos1);
+        for (; omask; omask &= omask - 1) {
+            const int pos2 = __builtin_ctzll(omask);
+            const bool color2 = state.colors[BLACK] & (1ULL << pos2);
+            PPIndex idx(pos1, color1, pos2, color2);
+            idx = idx.changepov(pov);
+            if (idx.isSemiExcluded())
+                continue;
+            addThreat<1>(accs, pov, (int)idx);
+        }
     }
 }
 

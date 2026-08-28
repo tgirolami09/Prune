@@ -123,6 +123,8 @@ struct PPIndex {
     PPIndex();
     PPIndex(const int pos1, const bool colorpiece1, const int pos2, const bool colorpiece2);
     explicit operator int() const;
+    bool isSemiExcluded() const;
+    PPIndex swapSemiExcluded() const;
     PPIndex mirror(bool needs);
     PPIndex changepov(bool needs);
 };

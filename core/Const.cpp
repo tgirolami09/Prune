@@ -16,6 +16,8 @@ big rook_full[64];
 big directions[64][64];
 big fullDir[64][64];
 
+big wide3[8];
+
 __attribute__((constructor(101))) void init_lines() {
     {
         big row = MAX_BIG >> (8 * 7 + 2) << 1;
@@ -91,4 +93,8 @@ __attribute__((constructor(101))) void init_lines() {
             }
         }
     }
+    wide3[0] = mask_col[0] | mask_col[1];
+    wide3[7] = mask_col[7] | mask_col[6];
+    for (int col = 1; col < 7; col++)
+        wide3[col] = mask_col[col] | mask_col[col + 1] | mask_col[col - 1];
 }
