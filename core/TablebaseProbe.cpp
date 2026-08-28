@@ -200,7 +200,33 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     return TB_GET_WDL(result);
 }
 
-int TablebaseProbe::rootFiltering(const GameState& state, Move* moves, int& nbMoves) const {
+static inline int rank_to_upperbound_score(int rank) {
+    if (rank >= 900)
+        return INF;
+    if (rank >= 100)
+        return 0;
+    if (rank > -100)
+        return 0;
+    if (rank > -900)
+        return 0;
+    else
+        return rank - TB_WIN_SCORE + 1000;
+}
+
+static inline int rank_to_lowerbound_score(int rank) {
+    if (rank >= 900)
+        return rank + TB_WIN_SCORE - 1000;
+    if (rank >= 100)
+        return 0;
+    if (rank > -100)
+        return 0;
+    if (rank > -900)
+        return 0;
+    else
+        return -INF;
+}
+
+int TablebaseProbe::rootFiltering(const GameState& state, rootMove* moves, int& nbMoves) const {
     if (!initialized)
         return TB_RESULT_INVALID;
 
@@ -245,32 +271,21 @@ int TablebaseProbe::rootFiltering(const GameState& state, Move* moves, int& nbMo
 
     // Filter moves[] in-place: keep only moves matching a best-rank TbRootMove
     int newNb = 0;
-    for (int i = 0; i < nbMoves; i++) {
-        int engineFrom = moves[i].from();
-        int engineTo = moves[i].to();
-        int engineProm = moves[i].promotion();
+    for (unsigned j = 0; j < results.size; j++) {
+        if (results.moves[j].tbRank < lowerbound)
+            continue;
 
-        bool keep = false;
-        for (unsigned j = 0; j < results.size; j++) {
-            if (results.moves[j].tbRank < lowerbound)
-                continue;
-
-            unsigned fathomFrom = TB_MOVE_FROM(results.moves[j].move);
-            unsigned fathomTo = TB_MOVE_TO(results.moves[j].move);
-            unsigned fathomProm = TB_MOVE_PROMOTES(results.moves[j].move);
-
-            if ((int)(fathomFrom ^ 7) != engineFrom)
-                continue;
-            if ((int)(fathomTo ^ 7) != engineTo)
-                continue;
-            if (promoMap[fathomProm] != engineProm)
-                continue;
-
-            keep = true;
-            break;
-        }
-        if (keep)
-            moves[newNb++] = moves[i];
+        unsigned fathomFrom = TB_MOVE_FROM(results.moves[j].move);
+        unsigned fathomTo = TB_MOVE_TO(results.moves[j].move);
+        unsigned fathomProm = TB_MOVE_PROMOTES(results.moves[j].move);
+        moves[newNb].move.moveInfo = 0;
+        moves[newNb].move.updateFrom(fathomFrom ^ 7);
+        moves[newNb].move.updateTo(fathomTo ^ 7);
+        if (promoMap[fathomProm] != PAWN)
+            moves[newNb].move.updatePromotion(promoMap[fathomProm]);
+        moves[newNb].tb_upperbound_score = rank_to_upperbound_score(results.moves[j].tbRank);
+        moves[newNb].tb_lowerbound_score = rank_to_lowerbound_score(results.moves[j].tbRank);
+        newNb++;
     }
 
     // Safety: if nothing matched (encoding mismatch), leave moves unchanged

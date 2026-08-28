@@ -33,7 +33,7 @@ class BestMoveFinder {
         class LINE {
            public:
             int cmove;
-            int16_t argMoves[maxDepth];
+            Move argMoves[maxDepth];
         };
         struct StackCase {
             Order order;
@@ -54,7 +54,7 @@ class BestMoveFinder {
         bool let_run;
         sbig tbHits;
         int idThread;
-        Move rootBest;
+        rootMove rootBest;
         bool mainThread;
         HelpOrdering history;
         int searchedMoves = 0;
@@ -118,8 +118,10 @@ class BestMoveFinder {
     timeMesure::time_point startSearch;
     TM globtm;
     chrono::nanoseconds getElapsedTime();
-    Move wdlFilterMoveInfos[maxMoves];
-    int wdlFilterNb;
+    rootMove rootMoves[maxMoves];
+    int nbRootMoves;
+    template <bool update = true>
+    void print_info(Record& rec, int depth, int bestScore, string limit, int material);
     template <bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;

@@ -43,6 +43,7 @@ class HelpOrdering {
 class Order {
    public:
     Move moves[maxMoves];
+    ubyte moveidx[maxMoves];
     int nbMoves;
 #if defined(__AVX2__)
     // +8 pour avoir la place de rajouter 8 valeurs de padding de simd

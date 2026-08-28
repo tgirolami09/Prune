@@ -45,7 +45,13 @@ class ExpendedMove {
     int piece;
     int capture;
 };
+struct rootMove {
+    Move move;
+    int tb_upperbound_score;
+    int tb_lowerbound_score;
+};
 
 const Move nullMove = {0};
 const ExpendedMove EnullMove = {{0}, 0, -2};
+const rootMove rootNullMove = {{0}, INF, -INF};
 #endif
