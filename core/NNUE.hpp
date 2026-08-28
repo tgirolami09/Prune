@@ -84,7 +84,7 @@ class Index {
     int fullpiece() const;
     void schangepov();
     void schangepov(bool needs);
-    explicit operator int();
+    explicit operator int() const;
     bool operator==(const Index a) const;
     bool isnull();
     void print() const;

@@ -119,7 +119,7 @@ Index Index::changepov() const {
 Index Index::changepov(bool needs) const {
     return Index(square ^ (56 * needs), piece, color ^ needs);
 }
-Index::operator int() {
+Index::operator int() const {
     int index = ((6 * color + piece) << 6) | (square ^ 7);
     index -= (piece == KING) * 6 * 64 * color;
     return index;
@@ -150,11 +150,8 @@ bool ThreatIndex::issemiexcluded() const {
     return from.piece == to.piece && (from.square ^ 7) < (to.square ^ 7);
 }
 ThreatIndex::operator int() const {
-    int index = ((int)threatIndex[from.fullpiece()][from.square][to.square]) +
-                threatoffset[from.fullpiece()] *
-                    (piecesThreat[from.piece][to.piece] + to.color * valid_targets[from.piece]);
-    assert(index < THREAT_SIZE);
-    return index;
+    assert(!issemiexcluded() && !isexcluded());
+    return getThreatIndex(from, to);
 }
 ThreatIndex ThreatIndex::changepov(bool needs) const {
     return ThreatIndex(from.changepov(needs), to.changepov(needs));
