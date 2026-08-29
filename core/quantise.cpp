@@ -95,10 +95,10 @@ void padd(FILE* file) {
 }
 
 struct inputlayer {
-    float ppweights[PP_SIZE][L1];
-    float threatweights[THREAT_SIZE][L1];
-    float psqweights[IB + isFactorised][rawInputSize][L1];
-    float biases[L1];
+    alignas(64) float psqweights[IB + isFactorised][rawInputSize][L1];
+    alignas(64) float ppweights[PP_SIZE][L1];
+    alignas(64) float threatweights[THREAT_SIZE][L1];
+    alignas(64) float biases[L1];
     void quantise(FILE* file) {
         for (int i = 0; i < IB; i++)
             for (int j = 0; j < rawInputSize; j++)
@@ -133,10 +133,10 @@ struct inputlayer {
 };
 
 struct nn {
-    inputlayer FT;
-    layer<L1 * (2 - isPW), L2> l1;
-    layer<L2, L3> l2;
-    layer<L3, 1> l3;
+    alignas(64) inputlayer FT;
+    alignas(64) layer<L1 * (2 - isPW), L2> l1;
+    alignas(64) layer<L2, L3> l2;
+    alignas(64) layer<L3, 1> l3;
 };
 
 int main(int argc, char** argv) {
