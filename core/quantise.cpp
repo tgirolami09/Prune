@@ -15,7 +15,7 @@ const int OB = BUCKET;
 const int IB = nbInputBuckets;
 
 const bool isPW = true;
-const bool isFactorised = false;
+const bool isFactorised = true;
 const bool isMergedKing = true;
 const int rawInputSize = PSQ_SIZE + 64 * isMergedKing;
 const char zero = 0;  // for padding
