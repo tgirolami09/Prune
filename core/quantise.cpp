@@ -121,7 +121,8 @@ struct inputlayer {
                 int8_t quantised = _quantise_threat(threatweights[i][k]);
                 fwrite(&quantised, sizeof(int8_t), 1, file);
             }
-        printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow, THREAT_SIZE * L1);
+        printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow,
+               (THREAT_SIZE + PP_SIZE) * L1);
         padd(file);
         for (int k = 0; k < L1; k++) {
             int16_t quantised = _quantise<int16_t, QA>(biases[k]);
