@@ -15,7 +15,7 @@ const int OB = BUCKET;
 const int IB = nbInputBuckets;
 
 const bool isPW = true;
-const bool isFactorised = true;
+const bool isFactorised = false;
 const bool isMergedKing = true;
 const int rawInputSize = PSQ_SIZE + 64 * isMergedKing;
 const char zero = 0;  // for padding
@@ -95,7 +95,7 @@ void padd(FILE* file) {
 }
 
 struct inputlayer {
-    float ppweights[THREAT_SIZE][L1];
+    float ppweights[PP_SIZE][L1];
     float threatweights[THREAT_SIZE][L1];
     float psqweights[IB + isFactorised][rawInputSize][L1];
     float biases[L1];
@@ -111,14 +111,14 @@ struct inputlayer {
                     fwrite(&quantised, sizeof(int16_t), 1, file);
                 }
         padd(file);
-        for (int i = 0; i < THREAT_SIZE; i++)
-            for (int k = 0; k < L1; k++) {
-                int8_t quantised = _quantise_threat(threatweights[i][k]);
-                fwrite(&quantised, sizeof(int8_t), 1, file);
-            }
         for (int i = 0; i < PP_SIZE; i++)
             for (int k = 0; k < L1; k++) {
                 int8_t quantised = _quantise_threat(ppweights[i][k]);
+                fwrite(&quantised, sizeof(int8_t), 1, file);
+            }
+        for (int i = 0; i < THREAT_SIZE; i++)
+            for (int k = 0; k < L1; k++) {
+                int8_t quantised = _quantise_threat(threatweights[i][k]);
                 fwrite(&quantised, sizeof(int8_t), 1, file);
             }
         printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow, THREAT_SIZE * L1);
