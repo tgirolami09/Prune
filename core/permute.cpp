@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
                         nn_in->FT.psqweights[ib][i][permute(k)];
                 }
             }
-    for (int i = 0; i < THREAT_SIZE; i++)
+    for (int i = 0; i < THREAT_SIZE + PP_SIZE; i++)
         for (int k = 0; k < L1; k++) {
             nn_out->FT.threatweights[i][k] = nn_in->FT.threatweights[i][permute(k)];
         }
