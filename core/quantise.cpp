@@ -96,8 +96,7 @@ void padd(FILE* file) {
 
 struct inputlayer {
     alignas(64) float psqweights[IB + isFactorised][rawInputSize][L1];
-    alignas(64) float ppweights[PP_SIZE][L1];
-    alignas(64) float threatweights[THREAT_SIZE][L1];
+    alignas(64) float ppweights[PP_SIZE + THREAT_SIZE][L1];
     alignas(64) float biases[L1];
     void quantise(FILE* file) {
         for (int i = 0; i < IB; i++)
@@ -111,14 +110,9 @@ struct inputlayer {
                     fwrite(&quantised, sizeof(int16_t), 1, file);
                 }
         padd(file);
-        for (int i = 0; i < PP_SIZE; i++)
+        for (int i = 0; i < PP_SIZE + THREAT_SIZE; i++)
             for (int k = 0; k < L1; k++) {
                 int8_t quantised = _quantise_threat(ppweights[i][k]);
-                fwrite(&quantised, sizeof(int8_t), 1, file);
-            }
-        for (int i = 0; i < THREAT_SIZE; i++)
-            for (int k = 0; k < L1; k++) {
-                int8_t quantised = _quantise_threat(threatweights[i][k]);
                 fwrite(&quantised, sizeof(int8_t), 1, file);
             }
         printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow,
