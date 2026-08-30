@@ -176,24 +176,27 @@ PPIndex::PPIndex() {}
 PPIndex::PPIndex(const int _pos1, const bool colorpiece1, const int _pos2, const bool colorpiece2)
     : pos1(_pos1), pos2(_pos2), color1(colorpiece1), color2(colorpiece2) {}
 PPIndex::operator int() const {
-    int hi = pos1 - 8 + color1 * 48;
-    int lo = pos2 - 8 + color2 * 48;
+    int hi = (pos1 ^ 7) - 8 + color1 * 48;
+    int lo = (pos2 ^ 7) - 8 + color2 * 48;
     assert(hi > lo);
     int idx = hi * (hi - 1) / 2 + lo;
     assert(idx < PP_SIZE);
     return idx;
 }
 PPIndex PPIndex::mirror(bool needs) {
-    return PPIndex(pos1 ^ 7 * needs, color1, pos2 ^ 7 * needs, color2);
+    return PPIndex(pos1 ^ (7 * needs), color1, pos2 ^ (7 * needs), color2);
 }
 PPIndex PPIndex::changepov(bool needs) {
-    return PPIndex(pos1 ^ 56 * needs, color1 ^ needs, pos2 ^ 56 * needs, color2 ^ needs);
+    return PPIndex(pos1 ^ (56 * needs), color1 ^ needs, pos2 ^ (56 * needs), color2 ^ needs);
 }
 bool PPIndex::isSemiExcluded() const {
-    return (pos1 + color1 * 64) < (pos2 + color2 * 64);
+    return ((pos1 ^ 7) + color1 * 64) < ((pos2 ^ 7) + color2 * 64);
 }
 PPIndex PPIndex::swapSemiExcluded() const {
     return isSemiExcluded() ? PPIndex(pos2, color2, pos1, color1) : *this;
+}
+void PPIndex::print() const {
+    printf("%d %d %d %d\n", pos1, color1, pos2, color2);
 }
 
 updateBuffer::updateBuffer() : nbThreats{0, 0}, nbPPs{0, 0}, dirty(true) {}
@@ -217,7 +220,7 @@ void updateBuffer::print() {
         printf("; %d %d %d", sub2[0].square, sub2[0].piece, sub2[0].color);
     if (type == 2)
         printf("; %d %d %d", add2[0].square, add2[0].piece, add2[0].color);
-    printf("\n");
+    printf(" (%s)\n", deferredMove.to_str().c_str());
 }
 
 inline void updateBuffer::addThreat(const ThreatIndex& threat, const bool remove) {
@@ -337,8 +340,9 @@ void Accumulator::updatePieceIncoming(const PositionState& state, const int piec
 }
 
 void Accumulator::updatePP(const PositionState& state, const bool colorpiece1, const int pos1,
-                           const bool remove) {
+                           const bool remove, int removepos) {
     big mask = state.pieces[PAWN] & wide3[col(pos1)] & ~(1ULL << pos1);
+    mask &= ~((removepos == -1 ? 0 : (1ULL << removepos)));
     for (; mask; mask &= mask - 1) {
         const int pos2 = __builtin_ctzll(mask);
         const bool colorpiece2 = state.colors[BLACK] & (1ULL << pos2);
@@ -357,7 +361,7 @@ void Accumulator::updatePiece(const PositionState& state, const int piece, const
     updatePieceIncoming(state, piece, colorpiece, pos, remove, removepos, sliders);
     updatePieceOutComing(state, piece, colorpiece, pos, remove, removepos, sliders);
     if (piece == PAWN) {
-        updatePP(state, colorpiece, pos, remove);
+        updatePP(state, colorpiece, pos, remove, removepos);
     }
 }
 
@@ -449,12 +453,14 @@ void Accumulator::applythreatsUpdates(Accumulator& accIn, const bool pov, const 
                                 .swapSemiExcluded();
             __builtin_prefetch(&nnue.threatWeights[updates[j][i]]);
         }
-    for (int j = 0; j < 2; j++)
+    for (int j = 0; j < 2; j++) {
+        int offset = update.nbThreats[j];
         for (int i = 0; i < update.nbPPs[j]; i++) {
-            updates[j][i] =
+            updates[j][i + offset] =
                 (int)update.PPUpdates[j][i].changepov(pov).mirror(Kside[pov]).swapSemiExcluded();
-            __builtin_prefetch(&nnue.threatWeights[updates[j][i]]);
+            __builtin_prefetch(&nnue.threatWeights[updates[j][i + offset]]);
         }
+    }
     int maxi = nbRelations[0] < nbRelations[1];
     Accumulator* inAcc = &accIn;
     int applied = 0;
@@ -803,7 +809,7 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
             const int pos2 = __builtin_ctzll(omask);
             const bool color2 = state.colors[BLACK] & (1ULL << pos2);
             PPIndex idx(pos1, color1, pos2, color2);
-            idx = idx.changepov(pov);
+            idx = idx.changepov(pov).mirror(mirror);
             if (idx.isSemiExcluded())
                 continue;
             addThreat<1>(accs, pov, (int)idx);

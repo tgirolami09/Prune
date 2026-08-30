@@ -127,6 +127,7 @@ struct PPIndex {
     PPIndex swapSemiExcluded() const;
     PPIndex mirror(bool needs);
     PPIndex changepov(bool needs);
+    void print() const;
 };
 
 using oneAccumulator = simd<16>[L1 / nb<16>];
@@ -202,7 +203,7 @@ class Accumulator {
     void updatePiece(const PositionState& state, int piece, bool colorpiece, int square,
                      bool remove, int removepos);
     void updatePP(const PositionState& state, const bool colorpiece, const int pos,
-                  const bool remove);
+                  const bool remove, int removepos);
     template <bool enPassant = false, bool tworemove = false>
     void updateXrays(const PositionState& state, int square, bool remove, int removepos,
                      int removepos2 = -1);
