@@ -5,7 +5,7 @@
 
 static constexpr bool isPW = true;
 static constexpr bool isMergedKingPlanes = true;
-constexpr int RawInputSize = INPUT_SIZE + isMergedKingPlanes * 64;
+constexpr int RawInputSize = PSQ_SIZE + isMergedKingPlanes * 64;
 #ifdef ARCHSIZE
 constexpr int simdSize = ARCHSIZE / 16;
 #else
@@ -34,8 +34,8 @@ struct layer {
 
 template <bool isPermuted>
 struct inputlayer {
-    alignas(64) int16_t psqweights[nbInputBuckets][isPermuted ? INPUT_SIZE : RawInputSize][L1];
-    alignas(64) int8_t threatweights[THREAT_SIZE][L1];
+    alignas(64) int16_t psqweights[nbInputBuckets][isPermuted ? PSQ_SIZE : RawInputSize][L1];
+    alignas(64) int8_t threatweights[PP_SIZE + THREAT_SIZE][L1];
     alignas(64) int16_t biases[L1];
 };
 
@@ -63,6 +63,7 @@ int main(int argc, char** argv) {
     assert(argc > 2);
     unique_ptr<nn<false>> nn_in = make_unique<nn<false>>();
     unique_ptr<nn<true>> nn_out = make_unique<nn<true>>();
+    printf("%ld / %ld\n", sizeof(*nn_in), sizeof(*nn_out));
     FILE* fin = fopen(argv[1], "rb");
     FILE* fout = fopen(argv[2], "wb");
     fread(&nn_in->FT, sizeof(nn_in->FT), 1, fin);
@@ -83,7 +84,7 @@ int main(int argc, char** argv) {
                         nn_in->FT.psqweights[ib][i][permute(k)];
                 }
             }
-    for (int i = 0; i < THREAT_SIZE; i++)
+    for (int i = 0; i < THREAT_SIZE + PP_SIZE; i++)
         for (int k = 0; k < L1; k++) {
             nn_out->FT.threatweights[i][k] = nn_in->FT.threatweights[i][permute(k)];
         }

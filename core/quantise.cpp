@@ -17,7 +17,7 @@ const int IB = nbInputBuckets;
 const bool isPW = true;
 const bool isFactorised = true;
 const bool isMergedKing = true;
-const int rawInputSize = INPUT_SIZE + 64 * isMergedKing;
+const int rawInputSize = PSQ_SIZE + 64 * isMergedKing;
 const char zero = 0;  // for padding
 const float scaler = (float)QA / (1 << L1shift);
 
@@ -95,9 +95,9 @@ void padd(FILE* file) {
 }
 
 struct inputlayer {
-    float threatweights[THREAT_SIZE][L1];
-    float psqweights[IB + isFactorised][rawInputSize][L1];
-    float biases[L1];
+    alignas(64) float psqweights[IB + isFactorised][rawInputSize][L1];
+    alignas(64) float ppweights[PP_SIZE + THREAT_SIZE][L1];
+    alignas(64) float biases[L1];
     void quantise(FILE* file) {
         for (int i = 0; i < IB; i++)
             for (int j = 0; j < rawInputSize; j++)
@@ -110,12 +110,13 @@ struct inputlayer {
                     fwrite(&quantised, sizeof(int16_t), 1, file);
                 }
         padd(file);
-        for (int i = 0; i < THREAT_SIZE; i++)
+        for (int i = 0; i < PP_SIZE + THREAT_SIZE; i++)
             for (int k = 0; k < L1; k++) {
-                int8_t quantised = _quantise_threat(threatweights[i][k]);
+                int8_t quantised = _quantise_threat(ppweights[i][k]);
                 fwrite(&quantised, sizeof(int8_t), 1, file);
             }
-        printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow, THREAT_SIZE * L1);
+        printf("clamped threat weights: >%d <%d / %d\n", clamphigh, clamplow,
+               (THREAT_SIZE + PP_SIZE) * L1);
         padd(file);
         for (int k = 0; k < L1; k++) {
             int16_t quantised = _quantise<int16_t, QA>(biases[k]);
@@ -126,13 +127,14 @@ struct inputlayer {
 };
 
 struct nn {
-    inputlayer FT;
-    layer<L1 * (2 - isPW), L2> l1;
-    layer<L2, L3> l2;
-    layer<L3, 1> l3;
+    alignas(64) inputlayer FT;
+    alignas(64) layer<L1 * (2 - isPW), L2> l1;
+    alignas(64) layer<L2, L3> l2;
+    alignas(64) layer<L3, 1> l3;
 };
 
 int main(int argc, char** argv) {
+    assert(argc == 3);
     FILE* fin = fopen(argv[1], "r");
     FILE* fout = fopen(argv[2], "w");
     unique_ptr<nn> nnue = make_unique<nn>();

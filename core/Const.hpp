@@ -78,4 +78,6 @@ constexpr int fdepth = d * fracDepth;
 extern big directions[64][64];
 extern big fullDir[64][64];
 
+extern big wide3[8];
+
 #endif

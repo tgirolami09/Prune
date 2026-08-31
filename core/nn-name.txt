@@ -1,2 +1,2 @@
-nn-wapusk-dev-6b62298
-wapusk
+nn-cygnus-dev-921fc75
+cygnus

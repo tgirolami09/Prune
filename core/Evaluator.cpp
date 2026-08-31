@@ -280,10 +280,10 @@ void IncrementalEvaluator::changePiece(_unused const NNUE& nnue, int pos, int pi
         if (updateNNUE2) {
             Index index(pos, piece, c);
             nnue.change1<f>(stackAcc[stackIndex], WHITE,
-                            index.mirror(stackAcc[stackIndex].Kside[WHITE]),
+                            (int)index.mirror(stackAcc[stackIndex].Kside[WHITE]),
                             stackAcc[stackIndex].idInputBucket[WHITE]);
             nnue.change1<f>(stackAcc[stackIndex], BLACK,
-                            index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(),
+                            (int)index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(),
                             stackAcc[stackIndex].idInputBucket[BLACK]);
         }
     mgPhase += f * gamephaseInc[piece];
@@ -295,10 +295,10 @@ void IncrementalEvaluator::changePiece2(_unused const NNUE& nnue, int pos, int p
     if (updateNNUE) {
         Index index(pos, piece, c);
         nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex + 1], WHITE,
-                        index.mirror(stackAcc[stackIndex].Kside[WHITE]),
+                        (int)index.mirror(stackAcc[stackIndex].Kside[WHITE]),
                         stackAcc[stackIndex].idInputBucket[WHITE]);
         nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex + 1], BLACK,
-                        index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(),
+                        (int)index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(),
                         stackAcc[stackIndex].idInputBucket[BLACK]);
         stackIndex++;
     } else {
