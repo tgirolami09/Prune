@@ -908,7 +908,7 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const {
                                      L1shift - QC_bits);
 
         simd<32> clamped =
-            simdint_clamp(y[o], simdint_set1(-(QC << L1shift)), simdint_set1(QC << L1shift));
+            simdint_clamp(tot, simdint_set1(-(QC << L1shift)), simdint_set1(QC << L1shift));
         simd<32> csrelu = simdint_shr(simdint_mullo(clamped, clamped), L1shift * 2);
         y[o] = crelu;
         y[o + output / nb<32>] = csrelu;
