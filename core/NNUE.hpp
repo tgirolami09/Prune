@@ -45,6 +45,7 @@ constexpr int L1shift = _abs(16 + QC_bits - FT_LSHIFT - QA_bits * 2 - QB_bits);
 
 const int BUCKET = 8;
 const int nbInputBuckets = 16;
+const bool dualact = true;
 
 const int L1 = 640;
 const int L2 = 16;
@@ -190,7 +191,7 @@ struct Layer1 {
 
 struct Layers {
     Layer1<L1, L2> l1;
-    midLayer<L2, L3, QC * QC * QC> l2;
+    midLayer<L2*(dualact + 1), L3, QC * QC * QC> l2;
     lastLayer<L3, 1> l3;
 };
 
