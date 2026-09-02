@@ -825,7 +825,7 @@ inline simd<16> pairwise(simd<16> apsq, simd<16> athr, simd<16> bpsq, simd<16> b
 dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const {
     alignas(64) uint32_t HL1[L1 / I8inI32];
     simd<8>* HL1_simd = reinterpret_cast<simd<8>*>(HL1);
-    alignas(64) int HL2[L2];
+    alignas(64) int HL2[L2 * (dualact + 1)];
     alignas(64) simd<32> HL3[L3 / nb<32>];
     const auto x1 = accs.accs[side];
     const auto x3 = accs.accs[side + 2];
@@ -903,10 +903,15 @@ void Layer1<input, output>::forward(const uint32_t* x, simd<32>* y) const {
     for (int o = 0; o < output / nb<32>; o++) {
         simd<32> pre1 = simdint_add(y_pre[o][0], y_pre[o][1]);
         simd<32> pre2 = simdint_add(y_pre[o][2], y_pre[o][3]);
-        y[o] = simdint_add(pre1, pre2);
-        y[o] = simdint_clamp(y[o], zero_32, simdint_set1(QC << L1shift));
-        y[o] = simdint_mullo(y[o], y[o]);
-        y[o] = simdint_shr(y[o], L1shift * 2);
+        simd<32> tot = simdint_add(pre1, pre2);
+        simd<32> crelu = simdint_shr(simdint_clamp(tot, zero_32, simdint_set1(QC << L1shift)),
+                                     L1shift - QC_bits);
+
+        simd<32> clamped =
+            simdint_clamp(tot, simdint_set1(-(QC << L1shift)), simdint_set1(QC << L1shift));
+        simd<32> csrelu = simdint_shr(simdint_mullo(clamped, clamped), L1shift * 2);
+        y[o] = crelu;
+        y[o + output / nb<32>] = csrelu;
     }
 }
 template <int input, int output>

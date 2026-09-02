@@ -1,2 +1,2 @@
-nn-cygnus-dev-921fc75
-cygnus
+nn-aquilus-dev-d7e67d4
+aquilus

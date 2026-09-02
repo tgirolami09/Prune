@@ -129,7 +129,7 @@ struct inputlayer {
 struct nn {
     alignas(64) inputlayer FT;
     alignas(64) layer<L1 * (2 - isPW), L2> l1;
-    alignas(64) layer<L2, L3> l2;
+    alignas(64) layer<L2*(dualact + 1), L3> l2;
     alignas(64) layer<L3, 1> l3;
 };
 
