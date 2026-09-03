@@ -42,7 +42,7 @@ struct inputlayer {
 struct lastLayers {
     layer<L1 * (2 - isPW), L2, int8_t> l1;
     layer<L2*(dualact + 1), L3, int32_t> l2;
-    layer<L3, 1, int32_t> l3;
+    layer<L3, 2, int32_t> l3;
 };
 
 template <bool isPermuted>

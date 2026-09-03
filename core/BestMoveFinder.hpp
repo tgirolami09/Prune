@@ -41,6 +41,7 @@ class BestMoveFinder {
             Move searchedMoves[maxMoves];
             int static_score;
             int raw_eval;
+            int uncertainty;
             PositionSnapshot snap;
         };
 

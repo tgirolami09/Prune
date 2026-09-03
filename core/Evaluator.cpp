@@ -241,19 +241,20 @@ bool IncrementalEvaluator::isOnlyPawns() const {
     return !mgPhase;
 }
 
-int IncrementalEvaluator::getRaw(bool c, _unused const NNUE& nnue) {
+pair<int, int> IncrementalEvaluator::getRaw(bool c, _unused const NNUE& nnue) {
     nnue.updateStack(stackAcc, stackIndex, finny);
     return nnue.eval(stackAcc[stackIndex], c, (nbMan - 2) / DIVISOR);
 }
 
 int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState& state,
                                    const tunables& parameters, const NNUE& nnue) {
-    int raw_eval = getRaw(c, nnue);
-    return correctEval(raw_eval, ch, state, parameters);
+    auto [raw_eval, uncertainty] = getRaw(c, nnue);
+    return correctEval(raw_eval, uncertainty, ch, state, parameters);
 }
-int IncrementalEvaluator::correctEval(int raw_eval, const corrhists& ch, const GameState& state,
+int IncrementalEvaluator::correctEval(int raw_eval, int uncertainty, const corrhists& ch,
+                                      const GameState& state,
                                       _unused const tunables& parameters) const {
-    raw_eval += ch.probe(state);
+    raw_eval += ch.probe(state, uncertainty);
     int nbQ = popcount(state.board.pieces[QUEEN]);
     int nbR = popcount(state.board.pieces[ROOK]);
     int nbB = popcount(state.board.pieces[BISHOP]);

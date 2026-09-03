@@ -1,6 +1,7 @@
 #include "NNUE.hpp"
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -822,7 +823,7 @@ inline simd<16> pairwise(simd<16> apsq, simd<16> athr, simd<16> bpsq, simd<16> b
                         simd16_sli(simd16_clamp(simd16_add(bpsq, bthr), zero_16, A_16), FT_LSHIFT));
 }
 
-dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const {
+pair<dbyte, ubyte> NNUE::eval(Accumulator& accs, bool side, int idB) const {
     alignas(64) uint32_t HL1[L1 / I8inI32];
     simd<8>* HL1_simd = reinterpret_cast<simd<8>*>(HL1);
     alignas(64) int HL2[L2 * (dualact + 1)];
@@ -842,13 +843,14 @@ dbyte NNUE::eval(Accumulator& accs, bool side, int idB) const {
         simd<16> neurons2 = pairwise(x2[i + 1], x4[i + 1], x2[i + 1 + half], x4[i + 1 + half]);
         HL1_simd[i / 2 + L1 / nb<8> / 2] = simd8_packus(neurons1, neurons2);
     }
-    int finRes;
+    int finRes[2];
     const auto& subnet = laterLayers[idB];
     subnet.l1.forward(HL1, reinterpret_cast<simd<32>*>(HL2));
     subnet.l2.forward(HL2, HL3);
-    subnet.l3.forward(HL3, &finRes);
-    finRes = finRes / (QC * QC) * SCALE / (QC * QC);
-    return finRes;
+    subnet.l3.forward(HL3, finRes);
+    finRes[0] = finRes[0] / (QC * QC) * SCALE / (QC * QC);
+    finRes[1] = 255 / (1 + exp(-(double)finRes[1] / (QC * QC * QC * QC)));
+    return {finRes[0], finRes[1]};
 }
 
 inline simd<32> matrix_mul(simd<32> output, simd<8> inputs, simd<8> weights) {
