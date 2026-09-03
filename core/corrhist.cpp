@@ -1,7 +1,6 @@
 #include "corrhist.hpp"
 #include <algorithm>
 #include <cassert>
-#include <cstdlib>
 #include <cstring>
 
 #ifdef DEBUG_MACRO
@@ -44,15 +43,15 @@ void corrhists::update(const GameState& state, int diff, int depth) {
     minor.update(state.minorZobrist, state.friendlyColor(), bonus, weight);
 }
 
-int corrhists::probe(const GameState& state) const {
+int corrhists::probe(const GameState& state, int uncertainty) const {
     int lastmoveid = state.getLastMove().move.moveInfo;
     int contmoveid = state.getContMove().move.moveInfo;
     int diff = (pawns.probe(state.pawnZobrist, state.friendlyColor()) +
                 cont.probe(contmoveid ^ ((uint32_t)lastmoveid * 0xa28fU & ((1U << 16) - 1)),
                            state.friendlyColor()) +
                 prevMove.probe(lastmoveid, state.friendlyColor()) +
-                minor.probe(state.minorZobrist, state.friendlyColor())) /
-               corrhistGrain;
+                minor.probe(state.minorZobrist, state.friendlyColor()));
+    diff = diff * (128 + uncertainty) / (corrhistGrain * 256);
 #ifdef DEBUG_MACRO
     diffsStat.update(diff);
 #endif

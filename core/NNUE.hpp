@@ -193,7 +193,7 @@ struct Layer1 {
 struct Layers {
     Layer1<L1, L2> l1;
     midLayer<L2*(dualact + 1), L3, QC * QC * QC> l2;
-    lastLayer<L3, 1> l3;
+    lastLayer<L3, 2> l3;
 };
 
 class Accumulator {
@@ -275,7 +275,7 @@ class NNUE {
                int indexto1, int indexfrom2, int indexto2, int idInputBucket) const;
     void updateStack(Accumulator* stack, int stackIndex, FinnyTables& finny) const;
     void calcThreats(Accumulator& accs, bool color, const PositionState& state) const;
-    dbyte eval(Accumulator& accs, bool side, int idB) const;
+    pair<dbyte, ubyte> eval(Accumulator& accs, bool side, int idB) const;
 };
 
 inline const NNUE& globnnue = *reinterpret_cast<const NNUE*>(baseModel);

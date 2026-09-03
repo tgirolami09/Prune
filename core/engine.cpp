@@ -280,7 +280,7 @@ void manageSearch(bool seeInput) {
                 for (Move move : state->movesFromRoot)
                     state->root.playPartialMove(move);
                 ieval->init(state->root, globnnue);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor(), globnnue);
+                int overall_eval = ieval->getRaw(state->root.friendlyColor(), globnnue).first;
                 for (int r = 7; r >= 0; r--) {
                     pair<char, int> evals[8];
                     for (int c = 0; c < 8; c++) {
@@ -291,7 +291,8 @@ void manageSearch(bool seeInput) {
                                                           color(piece));
                             char repr = id_to_piece[type(piece)];
                             int derived =
-                                overall_eval - ieval->getRaw(state->root.friendlyColor(), globnnue);
+                                overall_eval -
+                                ieval->getRaw(state->root.friendlyColor(), globnnue).first;
                             if (color(piece) == WHITE)
                                 repr = toupper(repr);
                             evals[7 - c] = {repr, derived};
@@ -330,9 +331,10 @@ void manageSearch(bool seeInput) {
                 for (Move move : state->movesFromRoot)
                     state->root.playPartialMove(move);
                 ieval->init(state->root, globnnue);
-                int overall_eval = ieval->getRaw(state->root.friendlyColor(), globnnue);
+                auto [overall_eval, uncertainty] =
+                    ieval->getRaw(state->root.friendlyColor(), globnnue);
                 snap.restore(state->root);
-                printf("%d cp\n", overall_eval);
+                printf("%d cp (uncertainty %d)\n", overall_eval, uncertainty);
             } else if (command == "ucinewgame") {
                 bestMoveFinder.clear();
                 lastMove = nullMove;

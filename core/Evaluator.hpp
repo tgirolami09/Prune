@@ -40,8 +40,8 @@ class IncrementalEvaluator {
     bool isOnlyPawns() const;
     int getScore(bool c, const corrhists& ch, const GameState& state, const tunables& parameters,
                  const NNUE& nnue);
-    int getRaw(bool c, const NNUE& nnue);
-    int correctEval(int eval, const corrhists& ch, const GameState& state,
+    pair<int, int> getRaw(bool c, const NNUE& nnue);
+    int correctEval(int eval, int uncertainty, const corrhists& ch, const GameState& state,
                     const tunables& parameters) const;
     int getNbMan() const { return nbMan; }
     template <int f = 1>

@@ -119,11 +119,12 @@ infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit) {
 }
 
 void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move,
-                              uint16_t depth, int16_t raw_eval, bool is_pv) {
+                              uint16_t depth, int16_t raw_eval, ubyte uncertainty, bool is_pv) {
     // if(score == 0)return; //because of the repetition
     infoScore info;
     auto [index, hash] = getIndex(state, modulo);
     info.raw_eval = raw_eval;
+    info.uncertainty = uncertainty;
     info.score = score;
     info.hash = hash;
     info.bestMove = move;

@@ -26,7 +26,7 @@ class corrhists {
    public:
     corrhists();
     void update(const GameState&, int, int);
-    int probe(const GameState& state) const;
+    int probe(const GameState& state, int uncertainty) const;
     void reset();
 };
 #endif

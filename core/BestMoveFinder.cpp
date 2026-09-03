@@ -207,10 +207,12 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     const int rootDist = relDepth - startRelDepth;
     __builtin_prefetch(&ss.stack[rootDist + 1]);
     const NNUE& localNNUE = prune_numa::getnnue(ss.idThread);
-    if (rootDist >= maxDepth)
-        return ss.eval.correctEval(ss.eval.getRaw(state.friendlyColor(), localNNUE),
+    if (rootDist >= maxDepth) {
+        auto [raw_eval, uncertainty] = ss.eval.getRaw(state.friendlyColor(), localNNUE);
+        return ss.eval.correctEval(raw_eval, uncertainty,
                                    shareds[prune_numa::getNode(ss.idThread)].correctionHistory,
                                    state, parameters);
+    }
     bool ttHit = false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
     if (ttHit) {
@@ -242,22 +244,28 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
     }
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
+    int& uncertainty = ss.stack[rootDist].uncertainty;
     int typeNode = UPPERBOUND;
     auto& generator = ss.stack[rootDist].generator;
     bool testCheck = generator.initDangers(state);
     int bestEval = MINIMUM;
     if (!testCheck) {
         if (!isCalc) {
-            if (ttHit)
+            if (ttHit) {
                 raw_eval = ttEntry.raw_eval;
-            else
-                raw_eval = ss.eval.getRaw(state.friendlyColor(), localNNUE);
+                uncertainty = ttEntry.raw_eval;
+            } else {
+                auto [_raw_eval, _uncertainty] = ss.eval.getRaw(state.friendlyColor(), localNNUE);
+                raw_eval = _raw_eval;
+                uncertainty = _uncertainty;
+            }
             staticEval = ss.eval.correctEval(
-                raw_eval, shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state,
-                parameters);
+                raw_eval, uncertainty, shareds[prune_numa::getNode(ss.idThread)].correctionHistory,
+                state, parameters);
         }
         if (staticEval >= beta) {
-            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval, isPV);
+            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval, uncertainty,
+                               isPV);
             return staticEval;
         }
         if (staticEval > alpha) {
@@ -299,7 +307,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             return 0;
         if (score >= beta) {
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, capture, 0,
-                               raw_eval, isPV);
+                               raw_eval, uncertainty, isPV);
             return score;
         }
         if (score > bestEval) {
@@ -312,7 +320,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         }
     }
     transposition.push(state, absoluteScore(bestEval, rootDist), typeNode, bestCapture, 0, raw_eval,
-                       isPV);
+                       uncertainty, isPV);
     return bestEval;
 }
 
@@ -369,17 +377,22 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     int& static_eval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
+    int& uncertainty = ss.stack[rootDist].uncertainty;
     bool ttHit = false;
     infoScore& ttEntry = transposition.getEntry(state, ttHit);
     bool inCheck = curgenerator.isCheck();
     if (!inCheck) {
-        if (ttHit)
+        if (ttHit) {
             raw_eval = ttEntry.raw_eval;
-        else
-            raw_eval = ss.eval.getRaw(state.friendlyColor(), localNNUE);
+            uncertainty = ttEntry.uncertainty;
+        } else {
+            auto [_raw_eval, _uncertainty] = ss.eval.getRaw(state.friendlyColor(), localNNUE);
+            raw_eval = _raw_eval;
+            uncertainty = _uncertainty;
+        }
         static_eval = ss.eval.correctEval(
-            raw_eval, shareds[prune_numa::getNode(ss.idThread)].correctionHistory, state,
-            parameters);
+            raw_eval, uncertainty, shareds[prune_numa::getNode(ss.idThread)].correctionHistory,
+            state, parameters);
     } else {
         static_eval = INF;
         raw_eval = INF;
@@ -690,7 +703,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if (score > oldalpha)
                 ss.beginLineMove(rootDist, curMove);
             transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth,
-                               raw_eval, isPV);
+                               raw_eval, uncertainty, isPV);
             if (isRoot) {
                 ss.rootBest = rootMoves[order.moveidx[rankMove]];
             }
@@ -730,7 +743,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         return bestScore;
     if ((!isRoot || typeNode != UPPERBOUND) && !excludedMove) {
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth,
-                           raw_eval, isPV);
+                           raw_eval, uncertainty, isPV);
     }
     if (!inCheck && (bestMove == nullMove || !state.board.isTactical(bestMove)) &&
         (typeNode != UPPERBOUND || bestScore < static_eval)) {
@@ -1005,7 +1018,7 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
             state.playMove(order.moves[idMove]);
             localSS.eval.playMove(localNNUE, order.moves[idMove], !state.friendlyColor(),
                                   localSS.stack[0].snap.board, state.board);
-            int score = -localSS.eval.getRaw(state.friendlyColor(), localNNUE);
+            int score = -localSS.eval.getRaw(state.friendlyColor(), localNNUE).first;
             if (score > bestScore) {
                 bestMove = order.moves[idMove];
                 bestScore = score;

@@ -10,7 +10,7 @@ class __attribute__((packed)) infoScore {
    public:
     int16_t score, raw_eval;
     ubyte flag;
-    ubyte padding;
+    ubyte uncertainty;
     uint16_t depth;
     Move bestMove;
     residualHash hash;
@@ -48,7 +48,7 @@ class transpositionTable {
     Move getMove(const infoScore& entry) const;
 
     void push(GameState& state, int score, ubyte typeNode, Move move, uint16_t depth,
-              int16_t raw_eval, bool is_pv);
+              int16_t raw_eval, ubyte uncertainty, bool is_pv);
     void clearRange(big start, big end);
     void prefetch(const GameState& state);
     void clear();
