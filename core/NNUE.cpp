@@ -19,6 +19,7 @@ StatVar<sbig, 64, 0> TIupdateRemStat;
 StatVar<sbig, 64, 0> TIupdateAddStat;
 StatVar<sbig, 64, 0> TIupdateTotStat;
 StatVar<sbig, 128, -128> TIupdateDiffStat;
+StatVar<sbig, 256, 0> uncertaintyStat;
 #endif
 int threatIndex[(nbPieces - 1) * 2][64][64];
 int threatoffset[(nbPieces - 1) * 2];
@@ -522,10 +523,14 @@ void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny, const NNUE&
     update.nbPPs[1] = 0;
     getThreatUpdates(accIn.board, board, update.deferredMove);
 #ifdef DEBUG_MACRO
-    TIupdateAddStat.update(update.nbRelations[0]);
-    TIupdateRemStat.update(update.nbRelations[1]);
-    TIupdateTotStat.update(update.nbRelations[0] + update.nbRelations[1]);
-    TIupdateDiffStat.update(update.nbRelations[0] - update.nbRelations[1]);
+    int nbRelations[2] = {
+        update.nbPPs[0] + update.nbThreats[0],
+        update.nbPPs[1] + update.nbThreats[1],
+    };
+    TIupdateAddStat.update(nbRelations[0]);
+    TIupdateRemStat.update(nbRelations[1]);
+    TIupdateTotStat.update(nbRelations[0] + nbRelations[1]);
+    TIupdateDiffStat.update(nbRelations[0] - nbRelations[1]);
 #endif
     if (threatrefresh) {
         nnue.calcThreats(*this, side, board);
@@ -850,6 +855,9 @@ pair<dbyte, ubyte> NNUE::eval(Accumulator& accs, bool side, int idB) const {
     subnet.l3.forward(HL3, finRes);
     finRes[0] = finRes[0] / (QC * QC) * SCALE / (QC * QC);
     finRes[1] = 255 / (1 + exp(-(double)finRes[1] / (QC * QC * QC * QC)));
+#ifdef DEBUG_MACRO
+    uncertaintyStat.update(finRes[1]);
+#endif
     return {finRes[0], finRes[1]};
 }
 

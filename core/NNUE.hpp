@@ -15,6 +15,7 @@ extern StatVar<sbig, 64, 0> TIupdateRemStat;
 extern StatVar<sbig, 64, 0> TIupdateAddStat;
 extern StatVar<sbig, 64, 0> TIupdateTotStat;
 extern StatVar<sbig, 128, -128> TIupdateDiffStat;
+extern StatVar<sbig, 256, 0> uncertaintyStat;
 #endif
 
 constexpr inline int ilog2c(int n) {
