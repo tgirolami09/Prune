@@ -42,7 +42,8 @@ struct inputlayer {
 struct lastLayers {
     layer<L1 * (2 - isPW), L2, int8_t> l1;
     layer<L2*(dualact + 1), L3, int32_t> l2;
-    layer<L3, 2, int32_t> l3;
+    layer<L3, 1, int32_t> l3;
+    layer<L3, 1, int32_t> l3_uncertainty;
 };
 
 template <bool isPermuted>
@@ -71,6 +72,7 @@ int main(int argc, char** argv) {
         fread(&nn_in->laterLayers[ob], sizeof(nn_in->laterLayers[ob]), 1, fin);
         memcpy(&nn_out->laterLayers[ob], &nn_in->laterLayers[ob], sizeof(nn_in->laterLayers[ob]));
     }
+    assert(ftell(fin) == sizeof(*nn_in));
 
     for (int ib = 0; ib < nbInputBuckets; ib++)
         for (int i = 0; i < RawInputSize; i++)
@@ -94,6 +96,7 @@ int main(int argc, char** argv) {
     fwrite(&nn_out->FT, sizeof(nn_out->FT), 1, fout);
     for (int i = 0; i < BUCKET; i++)
         fwrite(&nn_out->laterLayers[i], sizeof(nn_out->laterLayers[i]), 1, fout);
+    assert(ftell(fout) == sizeof(*nn_out));
     fclose(fin);
     fclose(fout);
 }

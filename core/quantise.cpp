@@ -129,7 +129,8 @@ struct nn {
     alignas(64) inputlayer FT;
     alignas(64) layer<L1 * (2 - isPW), L2> l1;
     alignas(64) layer<L2*(dualact + 1), L3> l2;
-    alignas(64) layer<L3, 2> l3;
+    alignas(64) layer<L3, 1> l3;
+    alignas(64) layer<L3, 1> l3_uncertainty;
 };
 
 int main(int argc, char** argv) {
@@ -141,6 +142,7 @@ int main(int argc, char** argv) {
     fread(&nnue->l1, sizeof(nnue->l1), 1, fin);
     fread(&nnue->l2, sizeof(nnue->l2), 1, fin);
     fread(&nnue->l3, sizeof(nnue->l3), 1, fin);
+    fread(&nnue->l3_uncertainty, sizeof(nnue->l3_uncertainty), 1, fin);
     fclose(fin);
     nnue->FT.quantise(fout);
     for (int id = 0; id < OB; id++) {
@@ -155,6 +157,10 @@ int main(int argc, char** argv) {
         nnue->l3.quantise<int32_t, false, true>(id, fout);
         padd(fout);
         nnue->l3.quantise_biases<int32_t, QC * QC * QC * QC>(id, fout);
+        padd(fout);
+        nnue->l3_uncertainty.quantise<int32_t, false, true>(id, fout);
+        padd(fout);
+        nnue->l3_uncertainty.quantise_biases<int32_t, QC * QC * QC * QC>(id, fout);
         padd(fout);
     }
     fclose(fout);

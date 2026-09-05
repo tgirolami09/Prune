@@ -853,6 +853,7 @@ pair<dbyte, ubyte> NNUE::eval(Accumulator& accs, bool side, int idB) const {
     subnet.l1.forward(HL1, reinterpret_cast<simd<32>*>(HL2));
     subnet.l2.forward(HL2, HL3);
     subnet.l3.forward(HL3, finRes);
+    subnet.l3_uncertainty.forward(HL3, &finRes[1]);
     finRes[0] = finRes[0] / (QC * QC) * SCALE / (QC * QC);
     finRes[1] = 255 * 6 / (1 + exp(-(double)finRes[1] / (QC * QC * QC * QC)));
     finRes[1] = min(finRes[1], 255);

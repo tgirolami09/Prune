@@ -171,15 +171,15 @@ static const inline simd<16> A_16 = simd16_set1(QA);
 
 template <int input, int output, int _clamp>
 struct midLayer {
-    simd<32> weights[input][output / nb<32>];
-    simd<32> biases[output / nb<32>];
+    alignas(64) simd<32> weights[input][output / nb<32>];
+    alignas(64) simd<32> biases[output / nb<32>];
     void forward(const int x[input], simd<32> y[output / nb<32>]) const;
 };
 
 template <int input, int output>
 struct lastLayer {
-    simd<32> weights[output][input / nb<32>];
-    int biases[output];
+    alignas(64) simd<32> weights[output][input / nb<32>];
+    alignas(64) int biases[output];
     void forward(const simd<32> x[input / nb<32>], int y[output]) const;
 };
 
@@ -194,7 +194,8 @@ struct Layer1 {
 struct Layers {
     Layer1<L1, L2> l1;
     midLayer<L2*(dualact + 1), L3, QC * QC * QC> l2;
-    lastLayer<L3, 2> l3;
+    lastLayer<L3, 1> l3;
+    lastLayer<L3, 1> l3_uncertainty;
 };
 
 class Accumulator {
