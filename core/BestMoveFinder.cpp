@@ -714,7 +714,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             if (curEMove.capture == SPACE && curEMove.move.getFlag() != Move::fpromo) {
                 if (score > static_eval && !inCheck)
                     shareds[prune_numa::getNode(ss.idThread)].correctionHistory.update(
-                        state, score - static_eval, depth);
+                        state, score - static_eval, depth, uncertainty);
             }
             return score;
         }
@@ -748,7 +748,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     if (!inCheck && (bestMove == nullMove || !state.board.isTactical(bestMove)) &&
         (typeNode != UPPERBOUND || bestScore < static_eval)) {
         shareds[prune_numa::getNode(ss.idThread)].correctionHistory.update(
-            state, bestScore - static_eval, depth);
+            state, bestScore - static_eval, depth, uncertainty);
     }
     return bestScore;
 }

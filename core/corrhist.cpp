@@ -9,6 +9,8 @@ StatVar<sbig, 64 * 4, -64 * 4> diffsStat;
 
 // used 256 / max(depth+1, 16) from https://github.com/mcthouacbb/Sirius
 
+constexpr int baseUncertainty = 2048;
+
 template <int size, int maxCorrHist>
 void corrhist<size, maxCorrHist>::reset() {
     memset(table, 0, sizeof(table));
@@ -31,7 +33,8 @@ void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int weight) 
     cur = clamp(cur, -maxCorrHist, maxCorrHist);
 }
 
-void corrhists::update(const GameState& state, int diff, int depth) {
+void corrhists::update(const GameState& state, int diff, int depth, int uncertainty) {
+    diff = diff * baseUncertainty / (uncertainty + baseUncertainty - 128);
     int bonus = diff * corrhistGrain;
     int weight = max(depth + fdepth<1>, fdepth<16>) / fracDepth;
     int lastmoveid = state.getLastMove().move.moveInfo;
@@ -51,9 +54,7 @@ int corrhists::probe(const GameState& state, _unused int uncertainty) const {
                            state.friendlyColor()) +
                 prevMove.probe(lastmoveid, state.friendlyColor()) +
                 minor.probe(state.minorZobrist, state.friendlyColor()));
-    diff /= corrhistGrain;
-    // constexpr int base = 2048;
-    // diff = diff * (uncertainty + base - 128) / (base * corrhistGrain);
+    diff = diff * (uncertainty + baseUncertainty - 128) / (baseUncertainty * corrhistGrain);
 #ifdef DEBUG_MACRO
     diffsStat.update(diff);
 #endif
