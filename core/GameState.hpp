@@ -7,8 +7,8 @@
 using namespace std;
 const int maxPly = 8848 * 2 + 2;
 const int zobrCastle = 64 * 2 * 6;
-const int zobrPassant = zobrCastle + 65;
-const int zobrTurn = zobrPassant + 8;
+const int zobrPassant = zobrCastle;
+const int zobrTurn = zobrPassant + 65;
 const int nbZobrist = zobrTurn + 1;
 const int sizeThreeFold = 8192;
 extern big zobrist[nbZobrist];

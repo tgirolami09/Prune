@@ -350,7 +350,7 @@ big LegalMoveGenerator::pseudoLegalPawnMoves(int pawnPosition, big Pieces, int f
 
         // En passant: the captured pawn is one rank behind the EP square
         constexpr int epCapturedOffset = IsWhite ? -8 : 8;
-        if (enPassant != -1 && ((pawnAttackMask & (1ull << enPassant)) != 0) &&
+        if (enPassant != 64 && ((pawnAttackMask & (1ull << enPassant)) != 0) &&
             ((captureMask & (1ull << (enPassant + epCapturedOffset))) != 0)) {
             big kingAsRook = pseudoLegalRookMoves(
                 friendKingPos,

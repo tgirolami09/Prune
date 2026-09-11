@@ -1,4 +1,5 @@
 #include "GameState.hpp"
+#include <bit>
 #include <cassert>
 #include <string>
 #include "Const.hpp"
@@ -12,14 +13,12 @@ static inline int posCastlingRook(bool side, bool c) {
 __attribute__((constructor)) void init_zobrs() {
     big state(42);
     for (int idz = 0; idz < nbZobrist; idz++) {
-        if (idz == zobrCastle)
-            idz++;
         big z = (state += 0x9E3779B97F4A7C15ULL);
         z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
         z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
         zobrist[idz] = z ^ (z >> 31);
     }
-    zobrist[zobrCastle] = 0;
+    zobrist[zobrCastle + 64] = 0;
 }
 
 GameState::GameState() {
@@ -28,7 +27,7 @@ GameState::GameState() {
     minorZobrist = 0;
     pawnZobrist = 0;
     turnNumber = 0;
-    lastDoublePawnPush = -1;
+    lastDoublePawnPush = 64;
     castlingMask = 0;
 }
 
@@ -104,7 +103,7 @@ void GameState::setDFRC(int idWhite, int idBlack) {
         zobristHash ^= zobrist[zobrCastle + __builtin_ffsll(cMask)];
         cMask &= cMask - 1;
     }
-    lastDoublePawnPush = -1;
+    lastDoublePawnPush = 64;
     repHist[turnNumber] = zobristHash;
     rule50[turnNumber] = 0;
 }
@@ -166,19 +165,18 @@ void GameState::fromFen(string fen) {
                 pos = isBlack * 56 + 7 - (position - 'a');
             }
             castlingMask |= 1ULL << pos;
-            zobristHash ^= zobrist[zobrCastle + pos + 1];
+            zobristHash ^= zobrist[zobrCastle + pos];
         }
     }
     id++;
     if (fen[id] == '-')
-        lastDoublePawnPush = -1;
+        lastDoublePawnPush = 64;
     else {
         lastDoublePawnPush = 7 - (fen[id] - 'a'), id++;
         lastDoublePawnPush += 8 * (fen[id] - '1'), id++;
     }
     // printf("In fen to data -> en passant goes to %d\n",lastDoublePawnPush);
-    if (lastDoublePawnPush != -1)
-        zobristHash ^= zobrist[zobrPassant + col(lastDoublePawnPush)];
+    zobristHash ^= zobrist[zobrPassant + lastDoublePawnPush];
     id += 2;
     int move50 = 0;
     while (id < (int)fen.size() && fen[id] != ' ') {
@@ -239,7 +237,7 @@ string GameState::toFen() const {
     else
         fen += castlingPart;
     fen += " ";
-    if (lastDoublePawnPush != -1) {
+    if (lastDoublePawnPush != 64) {
         // fen += (char)7-lastDoublePawnPush+'a';
         // fen += friendlyColor() == WHITE?'6':'3';
         fen += 'h' - (lastDoublePawnPush % 8);
@@ -319,10 +317,8 @@ void GameState::playNullMove() {
     movesSinceBeginning[turnNumber] = EnullMove;
     turnNumber++;
     zobristHash ^= zobrist[zobrTurn];
-    if (lastDoublePawnPush != -1) {
-        zobristHash ^= zobrist[zobrPassant + col(lastDoublePawnPush)];
-        lastDoublePawnPush = -1;
-    }
+    zobristHash ^= zobrist[zobrPassant + lastDoublePawnPush];
+    lastDoublePawnPush = 64;
     repHist[turnNumber] = zobristHash;
     rule50[turnNumber] = rule50[turnNumber - 1] + 1;
 }
@@ -405,7 +401,7 @@ void GameState::print() const {
                 printf("%c", s);
         }
     }
-    if (lastDoublePawnPush != -1) {
+    if (lastDoublePawnPush != 64) {
         printf(" %c", 'h' - (lastDoublePawnPush % 8));
         printf("%c", '0' + (lastDoublePawnPush / 8 + 1));
     }
@@ -433,7 +429,7 @@ void GameState::initMove(Move& move) {
 // Inline zobrist update for forward-only move application
 
 ExpendedMove GameState::playMove(Move move) {
-    zobristHash ^= zobrist[zobrPassant + col(lastDoublePawnPush)] * (lastDoublePawnPush != -1);
+    zobristHash ^= zobrist[zobrPassant + lastDoublePawnPush];
     rule50[turnNumber + 1] = (rule50[turnNumber] + 1) * !board.isChanger(move);
     const bool curColor = friendlyColor();
     const int piece = getPiece(move.from());
@@ -445,7 +441,7 @@ ExpendedMove GameState::playMove(Move move) {
         const bool enColor = enemyColor();
         if (((big)(capture == ROOK) << move.to()) & castlingMask) {
             castlingMask ^= 1ULL << move.to();
-            zobristHash ^= zobrist[zobrCastle + move.to() + 1];
+            zobristHash ^= zobrist[zobrCastle + move.to()];
         }
         int pieceCapture = capture;
         int posCapture = move.to();
@@ -460,18 +456,16 @@ ExpendedMove GameState::playMove(Move move) {
     }
     board.remPiece(move.from(), piece, curColor);
     if (isEnPassantPossibility(piece, move)) {
-        lastDoublePawnPush = 8 * ((row(move.from()) + row(move.to())) / 2) + col(move.from());
-        zobristHash ^= zobrist[zobrPassant + col(lastDoublePawnPush)];
+        lastDoublePawnPush = (move.from() + move.to()) / 2;
+        zobristHash ^= zobrist[zobrPassant + lastDoublePawnPush];
     } else {
-        lastDoublePawnPush = -1;
+        lastDoublePawnPush = 64;
     }
     if (piece == KING) {
         big cM = castlingMask & mask_row[row(move.from())];
-        int idx1 = __builtin_ffsll(cM);
-        zobristHash ^= zobrist[zobrCastle + idx1];
+        zobristHash ^= zobrist[zobrCastle + countl_zero(cM)];
         cM &= cM - 1;
-        int idx2 = __builtin_ffsll(cM);
-        zobristHash ^= zobrist[zobrCastle + idx2];
+        zobristHash ^= zobrist[zobrCastle + countl_zero(cM)];
         castlingMask &= ~mask_row[row(move.from())];
         if (move.getFlag() == Move::fcastle) {  // castling
             int startRook = move.to();
@@ -483,7 +477,7 @@ ExpendedMove GameState::playMove(Move move) {
         }
     } else if (((big)(piece == ROOK) << move.from()) & castlingMask) {
         castlingMask ^= 1ULL << move.from();
-        zobristHash ^= zobrist[zobrCastle + move.from() + 1];
+        zobristHash ^= zobrist[zobrCastle + move.from()];
     }
     updateZobrists(piece | move.promotion(), curColor, toSquare);
     board.addPiece(toSquare, piece | move.promotion(), curColor);
