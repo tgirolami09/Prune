@@ -238,7 +238,7 @@ Move Order::pop_max(int& flag) {
         __m256i vMaxScore = _mm256_set1_epi32(maxScore);
         __m256i vMaxIdx = _mm256_set1_epi32(bPointer);
 
-        for (int i = pointer + 1; i < nbMoves; i += 8) {
+        for (int i = pointer + 1; i < nbMoves; i = (i | 7) + 1) {
             __m256i vScores = _mm256_loadu_si256((__m256i*)&scores[i]);
             __m256i vIndices =
                 _mm256_add_epi32(_mm256_set1_epi32(i), _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7));
