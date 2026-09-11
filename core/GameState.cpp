@@ -437,12 +437,13 @@ ExpendedMove GameState::playMove(Move move) {
     const int capture = board.getCapture(move);
     movesSinceBeginning[turnNumber] = {move, piece, capture};
     updateZobrists(piece, curColor, move.from());
+    big castleRem = ((1ULL << move.to()) | (1ULL << move.from())) & castlingMask;
+    castlingMask ^= castleRem;
+    zobristHash ^= zobrist[zobrCastle + countl_zero(castleRem)];
+    castleRem &= castleRem - 1;
+    zobristHash ^= zobrist[zobrCastle + countl_zero(castleRem)];
     if (capture != SPACE) {
         const bool enColor = enemyColor();
-        if (((big)(capture == ROOK) << move.to()) & castlingMask) {
-            castlingMask ^= 1ULL << move.to();
-            zobristHash ^= zobrist[zobrCastle + move.to()];
-        }
         int pieceCapture = capture;
         int posCapture = move.to();
         if (move.getFlag() == Move::fep) {
@@ -464,8 +465,6 @@ ExpendedMove GameState::playMove(Move move) {
     if (piece == KING) {
         big cM = castlingMask & mask_row[row(move.from())];
         zobristHash ^= zobrist[zobrCastle + countl_zero(cM)];
-        cM &= cM - 1;
-        zobristHash ^= zobrist[zobrCastle + countl_zero(cM)];
         castlingMask &= ~mask_row[row(move.from())];
         if (move.getFlag() == Move::fcastle) {  // castling
             int startRook = move.to();
@@ -475,9 +474,6 @@ ExpendedMove GameState::playMove(Move move) {
             board.remPiece(startRook, ROOK, curColor);
             board.addPiece(endRook, ROOK, curColor);
         }
-    } else if (((big)(piece == ROOK) << move.from()) & castlingMask) {
-        castlingMask ^= 1ULL << move.from();
-        zobristHash ^= zobrist[zobrCastle + move.from()];
     }
     updateZobrists(piece | move.promotion(), curColor, toSquare);
     board.addPiece(toSquare, piece | move.promotion(), curColor);
