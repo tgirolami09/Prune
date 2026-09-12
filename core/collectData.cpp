@@ -217,7 +217,7 @@ int main(int argc, char** argv) {
                 for (big idpos = 0; idpos < curplayer.transposition.modulo; idpos++) {
                     for (int idx = 0; idx < clusterSize; idx++) {
                         const auto& entry = curplayer.transposition.table[idpos].entries[idx];
-                        if (entry.depth >= 5) {
+                        if (entry.depth >= 5 && entry.typeNode() != 3) {
                             dumpPosition(entry.hash, entry.padding, fptr2, entry.score,
                                          entry.typeNode(), entry.bestMove, entry.depth);
                         }

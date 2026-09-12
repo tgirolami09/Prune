@@ -104,11 +104,9 @@ void GamePlayed::clear() {
 }
 
 big chunkedToMask(__m256i chunk1, __m256i chunk2, ubyte piece) {
-    big occupied = _mm256_movemask_ps(
-        _mm256_castsi256_ps(_mm256_cmpeq_epi32(chunk1, _mm256_set1_epi8(piece))));
-    occupied <<= 32;
-    occupied |= _mm256_movemask_ps(
-        _mm256_castsi256_ps(_mm256_cmpeq_epi32(chunk2, _mm256_set1_epi8(piece))));
+    big occupied =
+        (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk1, _mm256_set1_epi8(piece)));
+    occupied |= (big)_mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk2, _mm256_set1_epi8(piece))) << 32;
     return occupied;
 }
 
@@ -124,21 +122,23 @@ big invpext(big x, big mask) {
 
 void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t score, ubyte bound,
                   Move move, int depth) {
-    __m256i chunk1 = position >> 4;
+    __m256i chunk1 = _mm256_and_si256(position >> 4, _mm256_set1_epi8(0b1111));
     __m256i chunk2 = _mm256_and_si256(position, _mm256_set1_epi8(0b1111));
     alignas(32) ubyte mailbox[64];
     _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox), chunk1);
     _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox) + 1, chunk2);
-    big occupied = ~chunkedToMask(chunk1, chunk2, SPACE);
+    big occupied = ~chunkedToMask(chunk1, chunk2, SPACE * 2);
     fastWrite(reverse_col(occupied), datafile);
-    const big rooks = chunkedToMask(chunk1, chunk2, ROOK);
-    const big pawns = chunkedToMask(chunk1, chunk2, PAWN);
+    const big rooks =
+        chunkedToMask(chunk1, chunk2, ROOK * 2) | chunkedToMask(chunk1, chunk2, ROOK * 2 + 1);
+    const big pawns =
+        chunkedToMask(chunk1, chunk2, PAWN * 2) | chunkedToMask(chunk1, chunk2, PAWN * 2 + 1);
     uint8_t entry = 0x00;
     bool isSec = false;
     int nbEntry = 0;
     bool stm = flags & 1;
     big castle = invpext(flags >> 1, rooks);
-    const int possepSquare = (flags >> 3) | (stm * 8 + 8 * 4);
+    const int possepSquare = (flags >> 5) | (8 * 5 - stm * 8 * 3);
     int ep = ((pawns >> possepSquare) & 1) * possepSquare;
     ep += 64 * !ep;
     for (int i = 0; i < 64; i++) {
