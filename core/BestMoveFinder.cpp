@@ -712,9 +712,13 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             ss.history.negUpdate(ss.stack[rootDist].searchedMoves, triedMove - 1,
                                  state.friendlyColor(), depth, state, order.dangerPositions);
             if (curEMove.capture == SPACE && curEMove.move.getFlag() != Move::fpromo) {
-                if (score > static_eval && !inCheck)
+                if (score > static_eval && !inCheck) {
+#ifdef DEBUG_MACRO
+                    correlationUncertaintyCH.update(abs(raw_eval - static_eval), uncertainty);
+#endif
                     shareds[prune_numa::getNode(ss.idThread)].correctionHistory.update(
-                        state, score - static_eval, depth);
+                        state, score - static_eval, depth, uncertainty);
+                }
             }
             return score;
         }
@@ -747,8 +751,11 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     if (!inCheck && (bestMove == nullMove || !state.board.isTactical(bestMove)) &&
         (typeNode != UPPERBOUND || bestScore < static_eval)) {
+#ifdef DEBUG_MACRO
+        correlationUncertaintyCH.update(abs(raw_eval - static_eval), uncertainty);
+#endif
         shareds[prune_numa::getNode(ss.idThread)].correctionHistory.update(
-            state, bestScore - static_eval, depth);
+            state, bestScore - static_eval, depth, uncertainty);
     }
     return bestScore;
 }

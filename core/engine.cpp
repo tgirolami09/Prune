@@ -445,6 +445,7 @@ void manageSearch(bool seeInput) {
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
                 uncertaintyStat.print("uncertainty");
+                correlationUncertaintyCH.print("corrhist", "uncertainty");
 #endif
             } else if (command == "arch") {
 #ifdef __AVX512F__
@@ -632,6 +633,7 @@ void manageSearch(bool seeInput) {
                 TIupdateDiffStat.print("TIupdateDiff");
                 matScalingStats.print("matScaling");
                 uncertaintyStat.print("uncertainty");
+                correlationUncertaintyCH.print("corrhist", "uncertainty");
 #endif
             } else if (command == "fen") {
                 PositionSnapshot snap;

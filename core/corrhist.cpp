@@ -5,6 +5,7 @@
 
 #ifdef DEBUG_MACRO
 StatVar<sbig, 64 * 4, -64 * 4> diffsStat;
+StatCorrelation correlationUncertaintyCH;
 #endif
 
 // used 256 / max(depth+1, 16) from https://github.com/mcthouacbb/Sirius
@@ -31,7 +32,7 @@ void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int weight) 
     cur = clamp(cur, -maxCorrHist, maxCorrHist);
 }
 
-void corrhists::update(const GameState& state, int diff, int depth) {
+void corrhists::update(const GameState& state, int diff, int depth, _unused int uncertainty) {
     int bonus = diff * corrhistGrain;
     int weight = max(depth + fdepth<1>, fdepth<16>) / fracDepth;
     int lastmoveid = state.getLastMove().move.moveInfo;

@@ -854,8 +854,10 @@ pair<dbyte, ubyte> NNUE::eval(Accumulator& accs, bool side, int idB) const {
     subnet.l2.forward(HL2, HL3);
     subnet.l3.forward(HL3, finRes);
     finRes[0] = finRes[0] / (QC * QC) * SCALE / (QC * QC);
-    finRes[1] = 255 * 6 / (1 + exp(-(double)finRes[1] / (QC * QC * QC * QC)));
-    finRes[1] = min(finRes[1], 255);
+    double p = sqrt(1 / (1 + exp(-(double)finRes[1] / (QC * QC * QC * QC))));
+    assert(p <= 1 && p >= 0);
+    finRes[1] = -log(p / (1 - p)) * 64;
+    finRes[1] = max(0, min(finRes[1], 255));
 #ifdef DEBUG_MACRO
     uncertaintyStat.update(finRes[1]);
 #endif

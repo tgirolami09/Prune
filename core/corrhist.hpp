@@ -5,6 +5,7 @@
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
 extern StatVar<sbig, 64 * 4, -64 * 4> diffsStat;
+extern StatCorrelation correlationUncertaintyCH;
 #endif
 const int corrhistGrain = 64;
 template <int size, int maxCorrHist>
@@ -25,7 +26,7 @@ class corrhists {
 
    public:
     corrhists();
-    void update(const GameState&, int, int);
+    void update(const GameState&, int, int, int uncertainty);
     int probe(const GameState& state, int uncertainty) const;
     void reset();
 };

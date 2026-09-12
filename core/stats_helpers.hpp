@@ -73,4 +73,25 @@ class StatVar {
         }
     }
 };
+
+struct StatCorrelation {
+    int64_t sum[2];
+    uint64_t squaresum[2];
+    uint64_t count;
+    int64_t sumprod;
+    void update(int64_t x, int64_t y) {
+        sum[0] += x;
+        squaresum[0] += x * x;
+        sum[1] += y;
+        squaresum[1] += y * y;
+        count++;
+        sumprod += x * y;
+    }
+    void print(string name1, string name2) {
+        double correlation = ((double)count * sumprod - (double)sum[0] * sum[1]) /
+                             (sqrt((double)count * squaresum[0] - (double)sum[0] * sum[0]) *
+                              sqrt((double)count * squaresum[1] - (double)sum[1] * sum[1]));
+        printf("%s vs %s : %.4f\n", name1.c_str(), name2.c_str(), correlation);
+    }
+};
 #endif
