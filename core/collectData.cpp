@@ -19,7 +19,7 @@ bool isdfrc = true;
 #include "viriformatUtil.hpp"
 // #define DEBUG
 using namespace std;
-const int alloted_space = 2 * 1000 * 1000;
+const int alloted_space = 8 * 1000 * 1000;
 
 string secondsToStr(big s) {
     string res = "";
@@ -122,12 +122,32 @@ bool moveRandom(threadHelper* state, int id) {
     return false;
 }
 
+_unused static inline bool testEqVec(__m256i hash1, __m256i hash2) {
+    return _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpeq_epi32(hash1, hash2))) == 0xff;
+}
+
+void printposition(__m256i position) {
+    __m256i chunk1 = _mm256_and_si256(position >> 4, _mm256_set1_epi8(0b1111));
+    __m256i chunk2 = _mm256_and_si256(position, _mm256_set1_epi8(0b1111));
+    alignas(32) ubyte mailbox[64];
+    _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox), chunk1);
+    _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox) + 1, chunk2);
+    for (int i = 0; i < 64; i++) {
+        if (mailbox[i] == SPACE * 2)
+            printf("   ");
+        else
+            printf("%2d ", mailbox[i]);
+        if (i % 8 == 7)
+            printf("\n");
+    }
+}
+
 int main(int argc, char** argv) {
     prune_numa::init();
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;
-    big globseed = time(NULL);
+    big globseed = 1789232754;
     printf("%ld\n", globseed);
     int limitNodes;
     if (argc > 3)
@@ -210,6 +230,7 @@ int main(int argc, char** argv) {
             int result = 1;  // 0 black win 1 draw 2 white win
             big dngpos;
             big localNodes = 0;
+            vector<vector<infoScore>> wrotepos(state->getPlayer().transposition.modulo);
             do {
                 bestMoveResponse res;
                 res = state->getEval(tm);
@@ -217,9 +238,17 @@ int main(int argc, char** argv) {
                 for (big idpos = 0; idpos < curplayer.transposition.modulo; idpos++) {
                     for (int idx = 0; idx < clusterSize; idx++) {
                         const auto& entry = curplayer.transposition.table[idpos].entries[idx];
-                        if (entry.depth >= 5 && entry.typeNode() != 3) {
-                            dumpPosition(entry.hash, entry.padding, fptr2, entry.score,
-                                         entry.typeNode(), entry.bestMove, entry.depth);
+                        if (entry.depth >= 5 && entry.typeNode() != 3) {  // is a valid entry
+                            bool added = false;
+                            for (auto& oldentry : wrotepos[idpos]) {
+                                if (testEqVec(oldentry.hash, entry.hash)) {
+                                    added = true;
+                                    break;
+                                }
+                            }
+                            if (!added) {
+                                wrotepos[idpos].push_back(entry);
+                            }
                         }
                     }
                 }
@@ -269,6 +298,12 @@ int main(int argc, char** argv) {
                 if (state->phase <= 1)
                     break;
             } while (state->state.rule50_count() < 100);
+            for (auto& listentry : wrotepos) {
+                for (auto& entry : listentry) {
+                    dumpPosition(entry.hash, entry.padding, fptr2, entry.score, entry.typeNode(),
+                                 entry.bestMove, entry.depth);
+                }
+            }
             state->game.result = result;
             state->game.dump(fptr);
             fflush(fptr);

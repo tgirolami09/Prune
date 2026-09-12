@@ -49,7 +49,7 @@ bool infoScore::tt_pv() const {
 }
 
 _unused static inline bool testEq(__m256i hash1, __m256i hash2) {
-    return _mm256_movemask_epi8(_mm256_cmpeq_epi32(hash1, hash2)) == 0xffffffffI;
+    return _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpeq_epi32(hash1, hash2))) == 0xff;
 }
 _unused static inline bool testEq(uint16_t hash1, uint16_t hash2) {
     return hash1 == hash2;

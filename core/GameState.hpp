@@ -121,6 +121,7 @@ class GameState {
     bool twofoldFast();
     bool threefoldFast();
     void castlingFromMask(big mask);
+    big refreshZobrists();
     int material();
 };
 

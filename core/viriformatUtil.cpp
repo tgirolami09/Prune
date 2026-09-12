@@ -32,7 +32,8 @@ void fastWrite(T data, FILE* file) {
 
 template <typename T>
 uint32_t fastRead(T& data, FILE* file) {
-    assert(fread(reinterpret_cast<char*>(&data), sizeof(data), 1, file));
+    _unused int x = fread(reinterpret_cast<char*>(&data), sizeof(data), 1, file);
+    assert(x);
     return data;
 }
 

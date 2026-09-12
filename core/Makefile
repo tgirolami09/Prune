@@ -5,7 +5,7 @@ ADDOPTION?=
 DEBUGOPT?=
 NETNAME?=
 myCPPFLAGS=-Werror -Wshadow -Wall -Wextra -Wno-c++11-narrowing -MMD -std=c++20 -I../Fathom/src $(ADDOPTION)
-OPT?=-O3 -flto -funroll-loops
+OPT?=-O3 -flto -funroll-loops -DNDEBUG
 
 TUNE?=false
 NUMA?=false

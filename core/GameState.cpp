@@ -186,6 +186,7 @@ void GameState::fromFen(string fen) {
     }
     repHist[turnNumber] = zobristHash;
     rule50[turnNumber] = move50;
+    assert(zobristHash == refreshZobrists());
 }
 
 string GameState::toFen() const {
@@ -429,6 +430,24 @@ void GameState::initMove(Move& move) {
 
 // Inline zobrist update for forward-only move application
 
+big GameState::refreshZobrists() {
+    big zobr = 0;
+    for (int i = 0; i < 64; i++) {
+        if (board.mailbox[i] != 2 * SPACE) {
+            int piece = board.mailbox[i];
+            zobr ^= zobrist[(color(piece) * 6 + type(piece)) * 64 + i];
+        }
+    }
+    big cM = castlingMask;
+    for (int i = 0; i < 4; i++) {
+        zobr ^= zobrist[zobrCastle + countr_zero(cM)];
+        cM &= cM - 1;
+    }
+    zobr ^= zobrist[zobrPassant + lastDoublePawnPush];
+    zobr ^= zobrist[zobrTurn] * friendlyColor();
+    return zobr;
+}
+
 ExpendedMove GameState::playMove(Move move) {
     zobristHash ^= zobrist[zobrPassant + lastDoublePawnPush];
     rule50[turnNumber + 1] = (rule50[turnNumber] + 1) * !board.isChanger(move);
@@ -443,7 +462,7 @@ ExpendedMove GameState::playMove(Move move) {
     castlingMask ^= castleRem;
     zobristHash ^= zobrist[zobrCastle + countr_zero(castleRem)];
     castleRem &= castleRem - 1;
-    zobristHash ^= zobrist[zobrCastle + countl_zero(castleRem)];
+    zobristHash ^= zobrist[zobrCastle + countr_zero(castleRem)];
     assert(!(castleRem & (castleRem - 1)));
     if (capture != SPACE) {
         const bool enColor = enemyColor();
@@ -481,6 +500,7 @@ ExpendedMove GameState::playMove(Move move) {
     turnNumber++;
     zobristHash ^= zobrist[zobrTurn];
     repHist[turnNumber] = zobristHash;
+    assert(zobristHash == refreshZobrists());
     return movesSinceBeginning[turnNumber - 1];
 }
 
