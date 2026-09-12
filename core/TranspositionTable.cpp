@@ -83,6 +83,8 @@ void Cluster::push(infoScore& entry, int curAge) {
             bestID = i;
         }
     }
+    if (!entry.bestMove && entries[bestID].hash == entry.hash && entries[bestID].typeNode() != 3)
+        entry.bestMove = entries[bestID].bestMove;
     if (entries[bestID].hash != entry.hash ||
         entry.depth + fracDepth * 2 * entry.tt_pv() >=
             entries[bestID].depth + fracDepth * entries[bestID].tt_pv() ||
