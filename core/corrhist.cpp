@@ -53,7 +53,7 @@ int corrhists::probe(const GameState& state, _unused int uncertainty) const {
                 prevMove.probe(lastmoveid, state.friendlyColor()) +
                 minor.probe(state.minorZobrist, state.friendlyColor()));
     constexpr int base = 512;
-    diff = diff * (uncertainty + base - 128) / (base * corrhistGrain);
+    diff = diff * (uncertainty + base - 100) / (base * corrhistGrain);
 #ifdef DEBUG_MACRO
     diffsStat.update(diff);
 #endif
