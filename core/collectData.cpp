@@ -190,6 +190,7 @@ int main(int argc, char** argv) {
         unique_ptr<threadHelper> state = make_unique<threadHelper>(idThread);
         FILE* fptr;
         fptr = fopen(nameDataFile.c_str(), "ab");
+        FILE* fptr2 = fopen((nameDataFile + "positions").c_str(), "ab");
         for (int i = startReg; i < endReg; i++) {
             const TM tm = [&]() {
                 TM _tm(0, WHITE);
@@ -212,6 +213,16 @@ int main(int argc, char** argv) {
             do {
                 bestMoveResponse res;
                 res = state->getEval(tm);
+                const auto& curplayer = state->getPlayer();
+                for (big idpos = 0; idpos < curplayer.transposition.modulo; idpos++) {
+                    for (int idx = 0; idx < clusterSize; idx++) {
+                        const auto& entry = curplayer.transposition.table[idpos].entries[idx];
+                        if (entry.depth >= 5) {
+                            dumpPosition(entry.hash, entry.padding, fptr2, entry.score,
+                                         entry.typeNode(), entry.bestMove, entry.depth);
+                        }
+                    }
+                }
                 vector<depthInfo> infos = get<3>(res);
                 if (!infos.empty())
                     localNodes += infos.back().node;

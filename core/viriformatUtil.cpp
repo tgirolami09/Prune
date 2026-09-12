@@ -1,4 +1,5 @@
 #include "viriformatUtil.hpp"
+#include <immintrin.h>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -100,6 +101,85 @@ void GamePlayed::dump(FILE* datafile) {
 }
 void GamePlayed::clear() {
     game.clear();
+}
+
+big chunkedToMask(__m256i chunk1, __m256i chunk2, ubyte piece) {
+    big occupied = _mm256_movemask_ps(
+        _mm256_castsi256_ps(_mm256_cmpeq_epi32(chunk1, _mm256_set1_epi8(piece))));
+    occupied <<= 32;
+    occupied |= _mm256_movemask_ps(
+        _mm256_castsi256_ps(_mm256_cmpeq_epi32(chunk2, _mm256_set1_epi8(piece))));
+    return occupied;
+}
+
+big invpext(big x, big mask) {
+    big res = 0;
+    while (mask) {
+        res |= (x & 1) << __builtin_ctzll(mask);
+        mask &= mask - 1;
+        x >>= 1;
+    }
+    return res;
+}
+
+void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t score, ubyte bound,
+                  Move move, int depth) {
+    __m256i chunk1 = position >> 4;
+    __m256i chunk2 = _mm256_and_si256(position, _mm256_set1_epi8(0b1111));
+    alignas(32) ubyte mailbox[64];
+    _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox), chunk1);
+    _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox) + 1, chunk2);
+    big occupied = ~chunkedToMask(chunk1, chunk2, SPACE);
+    fastWrite(reverse_col(occupied), datafile);
+    const big rooks = chunkedToMask(chunk1, chunk2, ROOK);
+    const big pawns = chunkedToMask(chunk1, chunk2, PAWN);
+    uint8_t entry = 0x00;
+    bool isSec = false;
+    int nbEntry = 0;
+    bool stm = flags & 1;
+    big castle = invpext(flags >> 1, rooks);
+    const int possepSquare = (flags >> 3) | (stm * 8 + 8 * 4);
+    int ep = ((pawns >> possepSquare) & 1) * possepSquare;
+    ep += 64 * !ep;
+    for (int i = 0; i < 64; i++) {
+        int index = i ^ 0x07;
+        big mask = 1ULL << index;
+        if (mask & occupied) {  // if there is a piece there
+            int8_t piece = mailbox[index];
+            int _c = color(piece);
+            piece = type(piece);
+            if (piece == ROOK && (mask & castle))  // rook that can castle
+                piece = 6;
+            uint8_t full = (_c << 3) | piece;
+            if (isSec) {  // if it's the second piece of the byte, we write it
+                fastWrite<uint8_t>(entry | (full << 4), datafile);
+            } else {
+                entry = full;
+            }
+            isSec ^= 1;
+            nbEntry += 1;
+        }
+    }
+    for (int i = nbEntry; i < 32; i++) {
+        if (isSec)
+            fastWrite<uint8_t>(entry, datafile);
+        else
+            entry = 0;
+        isSec ^= 1;
+    }
+    uint8_t info = ep ^ 0x07;  // en passant square
+    info |= stm << 7;
+    fastWrite(info, datafile);
+    fastWrite<uint8_t>(0, datafile);      // halfmove clock (for 50 move rule)
+    fastWrite<uint16_t>(0, datafile);     // full move
+    fastWrite<uint16_t>(0, datafile);     // score of the position
+    fastWrite<uint8_t>(bound, datafile);  // result
+    fastWrite<uint8_t>(depth, datafile);  // unused extra byte
+    MoveInfo mi;
+    mi.move = move;
+    mi.score = score;
+    mi.dump(datafile);
+    fastWrite<uint32_t>(0, datafile);  // ending 4 bytes
 }
 
 GamePlayed readGame(FILE* file) {

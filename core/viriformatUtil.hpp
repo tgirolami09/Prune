@@ -1,3 +1,4 @@
+#include <immintrin.h>
 #include <vector>
 #include "GameState.hpp"
 #include "Move.hpp"
@@ -21,5 +22,6 @@ class GamePlayed {
     void dump(FILE* datafile);
     void clear();
 };
-
+void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t score, ubyte bound,
+                  Move move, int depth);
 GamePlayed readGame(FILE* file);

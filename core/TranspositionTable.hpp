@@ -5,7 +5,12 @@
 #include <vector>
 #include "GameState.hpp"
 const int maxAge = 0b11111;
+#ifdef DATAGEN
+#include <immintrin.h>
+using residualHash = __m256i;
+#else
 using residualHash = uint16_t;
+#endif
 class __attribute__((packed)) infoScore {
    public:
     int16_t score, raw_eval;
@@ -19,8 +24,13 @@ class __attribute__((packed)) infoScore {
     void setFlag(int typeNode, int age, bool pv);
     bool tt_pv() const;
 };
+#ifdef DATAGEN
+static_assert(sizeof(infoScore) == 42, "size of infoScore should be 12");
+const int clusterByte = 128;
+#else
 static_assert(sizeof(infoScore) == 12, "size of infoScore should be 12");
 const int clusterByte = 64;
+#endif
 const int clusterSize = clusterByte / sizeof(infoScore);
 const int paddingSize = clusterByte - clusterSize * sizeof(infoScore);
 class Cluster {

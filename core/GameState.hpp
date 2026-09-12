@@ -15,7 +15,7 @@ extern big zobrist[nbZobrist];
 struct PositionState {
     big pieces[6];
     big colors[2];
-    int8_t mailbox[64];
+    alignas(32) uint8_t mailbox[64];
     forceinline void remPiece(int position, int piecetype, bool color) {
         pieces[piecetype] ^= 1ULL << position;
         colors[color] ^= 1ULL << position;

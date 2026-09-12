@@ -1,4 +1,5 @@
 #include "TranspositionTable.hpp"
+#include <immintrin.h>
 #include <cmath>
 #include <cstring>
 #include <thread>
@@ -47,9 +48,16 @@ bool infoScore::tt_pv() const {
     return flag >> 7;
 }
 
+_unused static inline bool testEq(__m256i hash1, __m256i hash2) {
+    return _mm256_movemask_epi8(_mm256_cmpeq_epi32(hash1, hash2)) == 0xffffffffI;
+}
+_unused static inline bool testEq(uint16_t hash1, uint16_t hash2) {
+    return hash1 == hash2;
+}
+
 infoScore& Cluster::probe(residualHash hash, bool& ttHit) {
     for (int i = 0; i < clusterSize; i++) {
-        if (entries[i].typeNode() != 3 && entries[i].hash == hash) {
+        if (entries[i].typeNode() != 3 && testEq(entries[i].hash, hash)) {
             ttHit = true;
             return entries[i];
         }
@@ -70,7 +78,7 @@ void Cluster::push(infoScore& entry, int curAge) {
     int bestID = 0;
     int bestScore = -INT_MAX;
     for (int i = 0; i < clusterSize; i++) {
-        if (entries[i].typeNode() == 3 || entries[i].hash == entry.hash) {
+        if (entries[i].typeNode() == 3 || testEq(entries[i].hash, entry.hash)) {
             bestID = i;
             break;
         }
@@ -85,7 +93,7 @@ void Cluster::push(infoScore& entry, int curAge) {
     }
     if (!entry.bestMove && entries[bestID].hash == entry.hash && entries[bestID].typeNode() != 3)
         entry.bestMove = entries[bestID].bestMove;
-    if (entries[bestID].hash != entry.hash ||
+    if (!testEq(entries[bestID].hash, entry.hash) ||
         entry.depth + fracDepth * 2 * entry.tt_pv() >=
             entries[bestID].depth + fracDepth * entries[bestID].tt_pv() ||
         entries[bestID].typeNode() == UPPERBOUND || entries[bestID].age() != entry.age())
@@ -94,9 +102,16 @@ void Cluster::push(infoScore& entry, int curAge) {
 
 pair<big, residualHash> getIndex(const GameState& state, big modulo) {
     __uint128_t tHash = ((__uint128_t)state.zobristHash) * modulo;
+#ifdef DATAGEN
+    tHash >>= 64;
+    __m256i hash = _mm256_load_si256(reinterpret_cast<const __m256i*>(state.board.mailbox)) << 4 |
+                   _mm256_load_si256(reinterpret_cast<const __m256i*>(state.board.mailbox) + 1);
+    return {tHash, hash};
+#else
     static const int dec = 8 * sizeof(residualHash);
     tHash >>= 64 - dec;
     return {tHash >> dec, tHash & ((1ULL << dec) - 1)};
+#endif
 }
 
 int transpositionTable::storedScore(int alpha, int beta, const infoScore& entry,
@@ -130,6 +145,9 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.hash = hash;
     info.bestMove = move;
     info.depth = depth;
+    info.padding = state.friendlyColor() |
+                   (_pext_u64(state.castlingMask, state.board.mailbox[ROOK]) << 1) |
+                   (col(state.lastDoublePawnPush) << 5);
     info.setFlag(typeNode, age, is_pv);
     // if(table[index].hash != info.hash && table[index].depth >=
     // info.depth)return;
