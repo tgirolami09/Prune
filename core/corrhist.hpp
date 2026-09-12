@@ -4,7 +4,7 @@
 #include "GameState.hpp"
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
-extern StatVar<sbig, 64 * 4, -64 * 4> diffsStat;
+extern StatVar<sbig, 64 * 4 * 2, -64 * 4 * 2> diffsStat;
 extern StatCorrelation correlationUncertaintyCH;
 #endif
 const int corrhistGrain = 64;

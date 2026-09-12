@@ -4,7 +4,7 @@
 #include <cstring>
 
 #ifdef DEBUG_MACRO
-StatVar<sbig, 64 * 4, -64 * 4> diffsStat;
+StatVar<sbig, 64 * 4 * 2, -64 * 4 * 2> diffsStat;
 StatCorrelation correlationUncertaintyCH;
 #endif
 
@@ -52,9 +52,8 @@ int corrhists::probe(const GameState& state, _unused int uncertainty) const {
                            state.friendlyColor()) +
                 prevMove.probe(lastmoveid, state.friendlyColor()) +
                 minor.probe(state.minorZobrist, state.friendlyColor()));
-    diff /= corrhistGrain;
-    // constexpr int base = 2048;
-    // diff = diff * (uncertainty + base - 128) / (base * corrhistGrain);
+    constexpr int base = 512;
+    diff = diff * (uncertainty + base - 128) / (base * corrhistGrain);
 #ifdef DEBUG_MACRO
     diffsStat.update(diff);
 #endif

@@ -253,7 +253,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         if (!isCalc) {
             if (ttHit) {
                 raw_eval = ttEntry.raw_eval;
-                uncertainty = ttEntry.raw_eval;
+                uncertainty = ttEntry.uncertainty;
             } else {
                 auto [_raw_eval, _uncertainty] = ss.eval.getRaw(state.friendlyColor(), localNNUE);
                 raw_eval = _raw_eval;
