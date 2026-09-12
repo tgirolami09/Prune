@@ -122,6 +122,8 @@ big invpext(big x, big mask) {
 
 void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t score, ubyte bound,
                   Move move, int depth) {
+    if (!move)
+        return;
     __m256i chunk1 = _mm256_and_si256(position >> 4, _mm256_set1_epi8(0b1111));
     __m256i chunk2 = _mm256_and_si256(position, _mm256_set1_epi8(0b1111));
     alignas(32) ubyte mailbox[64];
@@ -131,16 +133,11 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
     fastWrite(reverse_col(occupied), datafile);
     const big rooks =
         chunkedToMask(chunk1, chunk2, ROOK * 2) | chunkedToMask(chunk1, chunk2, ROOK * 2 + 1);
-    const big pawns =
-        chunkedToMask(chunk1, chunk2, PAWN * 2) | chunkedToMask(chunk1, chunk2, PAWN * 2 + 1);
     uint8_t entry = 0x00;
     bool isSec = false;
     int nbEntry = 0;
     bool stm = flags & 1;
     big castle = invpext(flags >> 1, rooks);
-    const int possepSquare = (flags >> 5) | (8 * 5 - stm * 8 * 3);
-    int ep = ((pawns >> possepSquare) & 1) * possepSquare;
-    ep += 64 * !ep;
     for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
         big mask = 1ULL << index;
@@ -167,7 +164,7 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
             entry = 0;
         isSec ^= 1;
     }
-    uint8_t info = ep ^ 0x07;  // en passant square
+    uint8_t info = move.getFlag() != Move::fep ? 64 : move.to() ^ 0x07;  // en passant square
     info |= stm << 7;
     fastWrite(info, datafile);
     fastWrite<uint8_t>(0, datafile);      // halfmove clock (for 50 move rule)

@@ -146,7 +146,7 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.bestMove = move;
     info.depth = depth;
     info.padding = state.friendlyColor() |
-                   (_pext_u64(state.castlingMask, state.board.mailbox[ROOK]) << 1) |
+                   (_pext_u64(state.castlingMask, state.board.pieces[ROOK]) << 1) |
                    (col(state.lastDoublePawnPush) << 5);
     info.setFlag(typeNode, age, is_pv);
     // if(table[index].hash != info.hash && table[index].depth >=
