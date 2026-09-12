@@ -103,7 +103,7 @@ static void stateToFathom(const GameState& state, uint64_t& white, uint64_t& bla
     pawns = reverse_col(state.board.pieces[PAWN]);
 
     // En passant: convert engine square to Fathom square
-    if (state.lastDoublePawnPush != -1) {
+    if (state.lastDoublePawnPush != 64) {
         // lastDoublePawnPush is the pawn's destination (rank 4 or 5 in standard
         // terms) Fathom wants the EP capture square
         int engineEpTarget;
