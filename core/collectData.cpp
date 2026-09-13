@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;
-    big globseed = 1789232754;
+    big globseed = time(NULL);
     printf("%ld\n", globseed);
     int limitNodes;
     if (argc > 3)
