@@ -1,9 +1,9 @@
 #include "embeder.hpp"
 #ifndef HCE
-alignas(64) const unsigned char baseModel[] = {
+alignas(64) constexpr unsigned char baseModel[] = {
 #embed "model.bin"
 };
 #endif
-alignas(64) const unsigned char magicsData[] = {
+alignas(64) constexpr unsigned char magicsData[] = {
 #embed "magics.out"
 };
