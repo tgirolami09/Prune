@@ -436,12 +436,11 @@ ExpendedMove GameState::playMove(Move move) {
     const int toSquare = move.toMover();
     const int capture = board.getCapture(move);
     movesSinceBeginning[turnNumber] = {move, piece, capture};
-    updateZobrists(piece, curColor, move.from());
-    big castleRem = ((1ULL << move.to()) | (1ULL << move.from())) & castlingMask;
+    big castleRem = ((1ULL << move.to()) | (1ULL << move.from()) | mask_row[curColor * 7] * (piece == KING)) & castlingMask;
     castlingMask ^= castleRem;
-    zobristHash ^= zobrist[zobrCastle + countl_zero(castleRem)];
+    zobristHash ^= zobrist[zobrCastle + countr_zero(castleRem)];
     castleRem &= castleRem - 1;
-    zobristHash ^= zobrist[zobrCastle + countl_zero(castleRem)];
+    zobristHash ^= zobrist[zobrCastle + countr_zero(castleRem)];
     if (capture != SPACE) {
         const bool enColor = enemyColor();
         int pieceCapture = capture;
@@ -455,6 +454,7 @@ ExpendedMove GameState::playMove(Move move) {
         updateZobrists(pieceCapture, enColor, posCapture);
         board.remPiece(posCapture, pieceCapture, enColor);
     }
+    updateZobrists(piece, curColor, move.from());
     board.remPiece(move.from(), piece, curColor);
     if (isEnPassantPossibility(piece, move)) {
         lastDoublePawnPush = (move.from() + move.to()) / 2;
@@ -463,9 +463,6 @@ ExpendedMove GameState::playMove(Move move) {
         lastDoublePawnPush = 64;
     }
     if (piece == KING) {
-        big cM = castlingMask & mask_row[row(move.from())];
-        zobristHash ^= zobrist[zobrCastle + countl_zero(cM)];
-        castlingMask &= ~mask_row[row(move.from())];
         if (move.getFlag() == Move::fcastle) {  // castling
             int startRook = move.to();
             int endRook = toSquare + 2 * (move.from() > move.to()) - 1;
