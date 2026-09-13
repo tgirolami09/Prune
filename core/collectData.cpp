@@ -238,7 +238,8 @@ int main(int argc, char** argv) {
                 for (big idpos = 0; idpos < curplayer.transposition.modulo; idpos++) {
                     for (int idx = 0; idx < clusterSize; idx++) {
                         const auto& entry = curplayer.transposition.table[idpos].entries[idx];
-                        if (entry.depth >= 5 && entry.typeNode() != 3) {  // is a valid entry
+                        if (entry.depth >= fdepth<5> &&
+                            entry.typeNode() != 3) {  // is a valid entry
                             bool added = false;
                             for (auto& oldentry : wrotepos[idpos]) {
                                 if (testEqVec(oldentry.hash, entry.hash)) {
@@ -301,7 +302,7 @@ int main(int argc, char** argv) {
             for (auto& listentry : wrotepos) {
                 for (auto& entry : listentry) {
                     dumpPosition(entry.hash, entry.padding, fptr2, entry.score, entry.typeNode(),
-                                 entry.bestMove, entry.depth);
+                                 entry.bestMove, entry.depth, 0);
                 }
             }
             state->game.result = result;

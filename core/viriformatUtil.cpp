@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <vector>
+#include "Const.hpp"
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
@@ -122,62 +123,57 @@ big invpext(big x, big mask) {
 }
 
 void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t score, ubyte bound,
-                  Move move, int depth) {
-    if (!move)
-        return;
+                  Move move, int depth, int count50) {
     __m256i chunk1 = _mm256_and_si256(position >> 4, _mm256_set1_epi8(0b1111));
     __m256i chunk2 = _mm256_and_si256(position, _mm256_set1_epi8(0b1111));
     alignas(32) ubyte mailbox[64];
     _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox), chunk1);
     _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox) + 1, chunk2);
     big occupied = ~chunkedToMask(chunk1, chunk2, SPACE * 2);
-    fastWrite(reverse_col(occupied), datafile);
+
+    fastWrite(reverse_col(occupied), datafile);  // 8B written
+
     const big rooks =
         chunkedToMask(chunk1, chunk2, ROOK * 2) | chunkedToMask(chunk1, chunk2, ROOK * 2 + 1);
-    uint8_t entry = 0x00;
-    bool isSec = false;
-    int nbEntry = 0;
     bool stm = flags & 1;
     big castle = invpext(flags >> 1, rooks);
+
+    __uint128_t compressedMB = 0;
+    int kingpos1 = 0;
+    int kingpos2 = 0;
+    int idPiece = 0;
+    int epsquare = move.getFlag() == Move::fep ? move.to() : 128;
+    epsquare += stm ? +8 : -8;
     for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
         big mask = 1ULL << index;
         if (mask & occupied) {  // if there is a piece there
+            idPiece++;
             int8_t piece = mailbox[index];
-            int _c = color(piece);
-            piece = type(piece);
-            if (piece == ROOK && (mask & castle))  // rook that can castle
-                piece = 6;
-            uint8_t full = (_c << 3) | piece;
-            if (isSec) {  // if it's the second piece of the byte, we write it
-                fastWrite<uint8_t>(entry | (full << 4), datafile);
+            if (mask & castle)
+                piece = 10;
+            if (piece != KING && i == epsquare) {
+                compressedMB = compressedMB * 11 + piece;
             } else {
-                entry = full;
+                if (!color(piece))
+                    kingpos1 = idPiece;
+                else
+                    kingpos2 = idPiece;
             }
-            isSec ^= 1;
-            nbEntry += 1;
         }
     }
-    for (int i = nbEntry; i < 32; i++) {
-        if (isSec)
-            fastWrite<uint8_t>(entry, datafile);
-        else
-            entry = 0;
-        isSec ^= 1;
-    }
-    uint8_t info = move.getFlag() != Move::fep ? 64 : move.to() ^ 0x07;  // en passant square
-    info |= stm << 7;
-    fastWrite(info, datafile);
-    fastWrite<uint8_t>(0, datafile);      // halfmove clock (for 50 move rule)
-    fastWrite<uint16_t>(0, datafile);     // full move
-    fastWrite<uint16_t>(0, datafile);     // score of the position
-    fastWrite<uint8_t>(bound, datafile);  // result
-    fastWrite<uint8_t>(depth, datafile);  // unused extra byte
+    compressedMB = (compressedMB * 32 + kingpos1) * 31 + (kingpos2 - (kingpos1 < kingpos2));
+    compressedMB = compressedMB * 2 + stm;
+    compressedMB = compressedMB * 100 + count50;
+    compressedMB = compressedMB * 3 + bound;
+    compressedMB = compressedMB * 32 + min(depth / fracDepth, 31);
+    fastWrite(compressedMB, datafile);
+    // 8B + 16B = 24B written
     MoveInfo mi;
     mi.move = move;
     mi.score = score;
     mi.dump(datafile);
-    fastWrite<uint32_t>(0, datafile);  // ending 4 bytes
+    // 24B + 4B = 28B written
 }
 
 GamePlayed readGame(FILE* file) {
