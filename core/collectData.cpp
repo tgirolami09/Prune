@@ -243,6 +243,18 @@ int main(int argc, char** argv) {
                             bool added = false;
                             for (auto& oldentry : wrotepos[idpos]) {
                                 if (testEqVec(oldentry.hash, entry.hash)) {
+                                    if ((entry.typeNode() == EXACT) ^ (oldentry.typeNode() == EXACT)
+                                            ?  // one of them is exact
+                                            entry.typeNode() == EXACT
+                                            : (((bool)entry.bestMove ^ (bool)oldentry.bestMove)
+                                                   ?  // only one of them has a bestmove
+                                                   (bool)entry.bestMove
+                                                   : entry.depth >=
+                                                         oldentry.depth  // last condition, keep the
+                                                                         // entry with biggest depth
+                                               )) {
+                                        oldentry = entry;
+                                    }
                                     added = true;
                                     break;
                                 }
