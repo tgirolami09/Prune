@@ -322,4 +322,29 @@ nElo: 12.91 +/- 8.22
 ```
 </td>
 <td>no need to be tested</td>
+</tr>
+<tr>
+<td>keep the tt move on fail low</td>
+<td>no need to be tested</td>
+<td>
+
+```
+(10+0.1, 1t, 16MB):
+2.55 +/- 2.05
+4.85 +/- 3.90
+[130, 3561, 7667, 3713, 166]
+[0.00, 5.00] (passed)
+```
+</td>
+<td>
+
+```
+(60+0.6, 1t, 128MB):
+7.05 +/- 4.29
+14.43 +/- 8.78
+[3, 646, 1588, 766, 4]
+[0.00, 5.00] (passed)
+```
+</td>
+<td>no need to be tested</td>
 </table>
