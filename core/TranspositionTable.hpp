@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include "GameState.hpp"
+#define DATAGEN
 const int maxAge = 0b11111;
 #ifdef DATAGEN
 #include <immintrin.h>

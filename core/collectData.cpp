@@ -311,10 +311,10 @@ int main(int argc, char** argv) {
                 if (state->phase <= 1)
                     break;
             } while (state->state.rule50_count() < 100);
+            vector<infoScore> entries;
             for (auto& listentry : wrotepos) {
                 for (auto& entry : listentry) {
-                    dumpPosition(entry.hash, entry.padding, fptr2, entry.score, entry.typeNode(),
-                                 entry.bestMove, entry.depth, 0);
+                    entries.push_back(entry);
                 }
             }
             state->game.result = result;

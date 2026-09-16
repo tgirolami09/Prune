@@ -3,11 +3,13 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <vector>
 #include "Const.hpp"
 #include "Functions.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
+#include "TranspositionTable.hpp"
 
 /* Important note:
     my squares are H1=0, A1=7 A8=63 H8=56 :
@@ -174,6 +176,114 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
     mi.score = score;
     mi.dump(datafile);
     // 24B + 4B = 28B written
+}
+
+uint64_t diffelement(__m256i position1, __m256i position2) {
+    __m256i chunk11 = _mm256_and_si256(position1 >> 4, _mm256_set1_epi8(0b1111));
+    __m256i chunk12 = _mm256_and_si256(position1, _mm256_set1_epi8(0b1111));
+    __m256i chunk21 = _mm256_and_si256(position2 >> 4, _mm256_set1_epi8(0b1111));
+    __m256i chunk22 = _mm256_and_si256(position2, _mm256_set1_epi8(0b1111));
+    uint32_t part1 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk11, chunk21));
+    uint32_t part2 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk12, chunk22));
+    return (uint64_t)part1 << 32 | part2;
+}
+
+int hammingdistance(__m256i position1, __m256i position2) {
+    return popcount(diffelement(position1, position2));
+}
+
+static void writedescendance(FILE* datafile, int node, int parent, const vector<vector<int>>& G,
+                             const vector<infoScore>& entries) {
+    uint32_t nbChild = G[node].size() - (parent != -1);
+    fastWrite(nbChild, datafile);
+    for (int child : G[node]) {
+        if (child == parent)
+            continue;
+        uint64_t diff = diffelement(entries[node].hash, entries[child].hash);
+        fastWrite(diff, datafile);
+        alignas(64) int8_t mailbox[64];
+        __m256i chunk1 = _mm256_and_si256(entries[child].hash >> 4, _mm256_set1_epi8(0b1111));
+        __m256i chunk2 = _mm256_and_si256(entries[child].hash, _mm256_set1_epi8(0b1111));
+        _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox), chunk1);
+        _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox) + 1, chunk2);
+        uint64_t buffer = 0;
+        uint64_t curmax = 1;
+        auto add = [&](uint64_t data, uint64_t maxrange) {
+            assert(data < maxrange);
+            if (curmax > UINT64_MAX / maxrange) {
+                fastWrite(buffer, datafile);
+                curmax = 1;
+                buffer = 0;
+            }
+            buffer = buffer * maxrange + data;
+            curmax *= maxrange;
+        };
+        for (uint64_t mask = diff; mask; mask &= mask - 1) {
+            int pos = countr_zero(mask);
+            add(mailbox[pos], 13);
+        }
+        add(entries[child].padding, 2);
+        add(entries[child].padding, 100);
+        add(entries[child].typeNode(), 3);
+        add(min(entries[child].depth / fracDepth, 31), 32);
+        fwrite(&buffer, ((63 - countl_zero(curmax) + !!(curmax & (curmax - 1))) + 7) / 8, 1,
+               datafile);
+        MoveInfo mi;
+        mi.move = entries[child].bestMove;
+        mi.score = entries[child].score;
+        mi.dump(datafile);
+
+        writedescendance(datafile, child, node, G, entries);
+    }
+}
+
+void compressPositions(vector<infoScore>& entries, FILE* datafile) {
+    vector<vector<pair<int, int>>> edges(65);
+    for (unsigned int idi = 0; idi < entries.size(); idi++) {
+        for (unsigned int idj = idi + 1; idj < entries.size(); idj++) {
+            int dist = hammingdistance(entries[idi].hash, entries[idj].hash);
+            edges[dist].push_back({idi, idj});
+        }
+    }
+    vector<vector<int>> G(entries.size());
+    {
+        function<int(int)> getBoss;
+        vector<int> boss(entries.size());
+        vector<int> sizes(entries.size());
+        for (unsigned int node = 0; node < entries.size(); node++) {
+            boss[node] = node;
+            sizes[node] = 1;
+        }
+        getBoss = [&](int node) {
+            if (boss[node] == node)
+                return node;
+            return boss[node] = getBoss(node);
+        };
+
+        auto fuse = [&](int a, int b) {
+            int bossa = getBoss(a);
+            int bossb = getBoss(b);
+            if (bossa != bossb) {
+                if (sizes[bossa] > sizes[bossb]) {
+                    sizes[bossa] += sizes[bossb];
+                    boss[bossb] = bossa;
+                } else {
+                    sizes[bossb] += sizes[bossa];
+                    boss[bossa] = bossb;
+                }
+                return true;
+            }
+            return false;
+        };
+        for (const auto& v : edges) {
+            for (auto edge : v) {
+                if (fuse(edge.first, edge.second)) {
+                    G[edge.first].push_back(edge.second);
+                    G[edge.second].push_back(edge.first);
+                }
+            }
+        }
+    }
 }
 
 GamePlayed readGame(FILE* file) {
