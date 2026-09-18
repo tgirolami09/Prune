@@ -43,13 +43,17 @@ MoveInfo::MoveInfo() {
     score = 0;
 }
 void MoveInfo::dump(FILE* datafile) {
-    static constexpr int transfo[4] = {0, 2, 3, 1};
-    int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
-    uint16_t mv = to << 6 | from;
-    mv |= (move.promotion() - (move.getFlag() == Move::fpromo)) << 12;
-    int type = transfo[move.getFlag()];
-    mv |= type << 14;
-    fastWrite(mv, datafile);
+    if (move) {
+        static constexpr int transfo[4] = {0, 2, 3, 1};
+        int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
+        uint16_t mv = to << 6 | from;
+        mv |= (move.promotion() - (move.getFlag() == Move::fpromo)) << 12;
+        int type = transfo[move.getFlag()];
+        mv |= type << 14;
+        fastWrite(mv, datafile);
+    } else {
+        fastWrite<uint16_t>(0, datafile);
+    }
     fastWrite<int16_t>(score, datafile);
 }
 void GamePlayed::dump(FILE* datafile) {
@@ -132,27 +136,21 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
     big occupied = ~chunkedToMask(chunk1, chunk2, SPACE * 2);
 
     fastWrite(reverse_col(occupied), datafile);  // 8B written
-
-    const big rooks =
-        chunkedToMask(chunk1, chunk2, ROOK * 2) | chunkedToMask(chunk1, chunk2, ROOK * 2 + 1);
     bool stm = flags & 1;
-    big castle = invpext(flags >> 1, rooks);
 
     __uint128_t compressedMB = 0;
     int kingpos1 = 0;
     int kingpos2 = 0;
     int idPiece = 0;
-    int epsquare = move.getFlag() == Move::fep ? move.to() : 128;
-    epsquare += stm ? +8 : -8;
     for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
         big mask = 1ULL << index;
         if (mask & occupied) {  // if there is a piece there
             idPiece++;
             int8_t piece = mailbox[index];
-            if (mask & castle)
+            if (piece == SPACE * 2 + 1)
                 piece = 10;
-            if (piece != KING && i == epsquare) {
+            if (type(piece) != KING) {
                 compressedMB = compressedMB * 11 + piece;
             } else {
                 if (!color(piece))

@@ -103,9 +103,18 @@ void Cluster::push(infoScore& entry, int curAge) {
 pair<big, residualHash> getIndex(const GameState& state, big modulo) {
     __uint128_t tHash = ((__uint128_t)state.zobristHash) * modulo;
 #ifdef DATAGEN
-    tHash >>= 64;
-    __m256i hash = _mm256_load_si256(reinterpret_cast<const __m256i*>(state.board.mailbox)) << 4 |
-                   _mm256_load_si256(reinterpret_cast<const __m256i*>(state.board.mailbox) + 1);
+    alignas(64) uint8_t localmailbox[64];
+    memcpy(localmailbox, state.board.mailbox, 64);
+    if (state.lastDoublePawnPush != 64) {
+        localmailbox[state.lastDoublePawnPush + (state.friendlyColor() ? +8 : -8)] = SPACE * 2 + 1;
+    }
+    big mask = state.castlingMask;
+    while (mask) {
+        localmailbox[__builtin_ctzll(mask)] = SPACE * 2 + 1;
+        mask &= mask - 1;
+    }
+    __m256i hash = _mm256_load_si256(reinterpret_cast<const __m256i*>(localmailbox)) << 4 |
+                   _mm256_load_si256(reinterpret_cast<const __m256i*>(localmailbox) + 1);
     return {tHash, hash};
 #else
     static const int dec = 8 * sizeof(residualHash);
@@ -145,9 +154,9 @@ void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move 
     info.hash = hash;
     info.bestMove = move;
     info.depth = depth;
-    info.padding = state.friendlyColor() |
-                   (_pext_u64(state.castlingMask, state.board.pieces[ROOK]) << 1) |
-                   (col(state.lastDoublePawnPush) << 5);
+#ifdef DATAGEN
+    info.padding = state.friendlyColor();
+#endif
     info.setFlag(typeNode, age, is_pv);
     // if(table[index].hash != info.hash && table[index].depth >=
     // info.depth)return;
