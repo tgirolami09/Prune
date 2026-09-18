@@ -104,6 +104,7 @@ void Cluster::push(infoScore& entry, int curAge) {
 pair<big, residualHash> getIndex(const GameState& state, big modulo) {
     __uint128_t tHash = ((__uint128_t)state.zobristHash) * modulo;
 #ifdef DATAGEN
+    tHash >>= 64;
     alignas(64) uint8_t localmailbox[64];
     memcpy(localmailbox, state.board.mailbox, 64);
     if (state.lastDoublePawnPush != 64) {
