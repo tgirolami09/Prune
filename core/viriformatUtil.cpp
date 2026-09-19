@@ -1,8 +1,9 @@
 #include "viriformatUtil.hpp"
 #include <immintrin.h>
+#include <array>
+#include <bit>
 #include <cassert>
 #include <cstdint>
-#include <cstring>
 #include <vector>
 #include "Const.hpp"
 #include "Functions.hpp"
@@ -126,6 +127,15 @@ big invpext(big x, big mask) {
     return res;
 }
 
+constexpr array<int, 31> bytepos = []() {
+    array<int, 31> res{};
+    for (int i = 0; i < 31; i++) {
+        res[i] = ((24.183015000882754 + 3.4594316186372973 * i) + 8) / 8;
+        // res[i] = log2(32*31 * 2 * 100 * 3 * 32) + log2(11)*i;
+    }
+    return res;
+}();
+
 void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t score, ubyte bound,
                   Move move, int depth, int count50) {
     __m256i chunk1 = _mm256_and_si256(position >> 4, _mm256_set1_epi8(0b1111));
@@ -167,7 +177,7 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
     compressedMB = compressedMB * 100 + count50;
     compressedMB = compressedMB * 3 + bound;
     compressedMB = compressedMB * 32 + min(depth / fracDepth, 31);
-    fastWrite(compressedMB, datafile);
+    fwrite(&compressedMB, bytepos[popcount(occupied) - 2], 1, datafile);
     // 8B + 16B = 24B written
     MoveInfo mi;
     mi.move = move;
