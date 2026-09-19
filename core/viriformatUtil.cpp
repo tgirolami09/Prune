@@ -134,6 +134,8 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
     _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox), chunk1);
     _mm256_store_si256(reinterpret_cast<__m256i*>(mailbox) + 1, chunk2);
     big occupied = ~chunkedToMask(chunk1, chunk2, SPACE * 2);
+    assert(popcount(chunkedToMask(chunk1, chunk2, PAWN * 2)) <= 8);
+    assert(popcount(chunkedToMask(chunk1, chunk2, PAWN * 2 + 1)) <= 8);
 
     fastWrite(reverse_col(occupied), datafile);  // 8B written
     bool stm = flags & 1;

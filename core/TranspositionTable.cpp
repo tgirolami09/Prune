@@ -108,9 +108,12 @@ pair<big, residualHash> getIndex(const GameState& state, big modulo) {
     alignas(64) uint8_t localmailbox[64];
     memcpy(localmailbox, state.board.mailbox, 64);
     if (state.lastDoublePawnPush != 64) {
-        localmailbox[state.lastDoublePawnPush + (state.friendlyColor() ? +8 : -8)] = SPACE * 2 + 1;
+        int sq = state.lastDoublePawnPush + (state.friendlyColor() ? +8 : -8);
+        assert(type(localmailbox[sq]) == PAWN);
+        localmailbox[sq] = SPACE * 2 + 1;
     }
     big mask = state.castlingMask;
+    assert((mask & (mask_row[0] | mask_row[7])) == mask);
     while (mask) {
         localmailbox[__builtin_ctzll(mask)] = SPACE * 2 + 1;
         mask &= mask - 1;
