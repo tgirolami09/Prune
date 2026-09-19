@@ -28,3 +28,4 @@ prune*
 !logo.png
 *.profdata
 *.profraw
+*.tar*
