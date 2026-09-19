@@ -146,11 +146,10 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
         int index = i ^ 0x07;
         big mask = 1ULL << index;
         if (mask & occupied) {  // if there is a piece there
-            idPiece++;
             int8_t piece = mailbox[index];
-            if (piece == SPACE * 2 + 1)
-                piece = 10;
             if (type(piece) != KING) {
+                if (piece == SPACE * 2 + 1)
+                    piece = 10;
                 compressedMB = compressedMB * 11 + piece;
             } else {
                 if (!color(piece))
@@ -158,6 +157,7 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
                 else
                     kingpos2 = idPiece;
             }
+            idPiece++;
         }
     }
     compressedMB = (compressedMB * 32 + kingpos1) * 31 + (kingpos2 - (kingpos1 < kingpos2));
