@@ -562,7 +562,8 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (sc > alpha && isPV)
             ss.transfer(rootDist, order.moves[0]);
         if constexpr (isRoot) {
-            ss.searchedMoves = 1;
+            if(!ss.stop(stop_flag || smp_abort))
+                ss.searchedMoves = 1;
         }
         return sc;
     }
