@@ -130,7 +130,7 @@ big invpext(big x, big mask) {
 constexpr array<int, 31> bytepos = []() {
     array<int, 31> res{};
     for (int i = 0; i < 31; i++) {
-        res[i] = ((24.183015000882754 + 3.4594316186372973 * i) + 8) / 8;
+        res[i] = (24.183015000882754 + 3.4594316186372973 * i) / 8 + 1;
         // res[i] = log2(32*31 * 2 * 100 * 3 * 32) + log2(11)*i;
     }
     return res;
@@ -151,8 +151,8 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
     bool stm = flags & 1;
 
     __uint128_t compressedMB = 0;
-    int kingpos1 = 0;
-    int kingpos2 = 0;
+    int kingpos1 = -1;
+    int kingpos2 = -1;
     int idPiece = 0;
     for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
@@ -172,7 +172,8 @@ void dumpPosition(__m256i position, const ubyte flags, FILE* datafile, int16_t s
             idPiece++;
         }
     }
-    compressedMB = (compressedMB * 32 + kingpos1) * 31 + (kingpos2 - (kingpos1 < kingpos2));
+    assert(kingpos1 != -1 && kingpos2 != -1);
+    compressedMB = (compressedMB * 32 + kingpos1) * 31 + (kingpos2 - (kingpos2 > kingpos1));
     compressedMB = compressedMB * 2 + stm;
     compressedMB = compressedMB * 100 + count50;
     compressedMB = compressedMB * 3 + bound;
