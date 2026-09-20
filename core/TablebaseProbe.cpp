@@ -2,6 +2,7 @@
 #include "../Fathom/src/tbprobe.h"
 #include "Const.hpp"
 #include "Functions.hpp"
+#include <memory>
 
 // Global tablebase prober instance
 TablebaseProbe tbProbe;
@@ -235,22 +236,22 @@ int TablebaseProbe::rootFiltering(const GameState& state, rootMove* moves, int& 
     bool turn;
     stateToFathom(state, white, black, kings, queens, rooks, bishops, knights, pawns, ep, turn);
 
-    TbRootMoves results;
+    unique_ptr<TbRootMoves> results = make_unique<TbRootMoves>();
     int ok = tb_probe_root_dtz(white, black, kings, queens, rooks, bishops, knights, pawns,
-                               state.rule50_count(), 0, ep, turn, true, true, &results);
-    if (!ok || results.size == 0) {
+                               state.rule50_count(), 0, ep, turn, true, true, &*results);
+    if (!ok || results->size == 0) {
         ok = tb_probe_root_wdl(white, black, kings, queens, rooks, bishops, knights, pawns,
-                               state.rule50_count(), 0, ep, turn, true, &results);
-        if (!ok || results.size == 0)
+                               state.rule50_count(), 0, ep, turn, true, &*results);
+        if (!ok || results->size == 0)
             return TB_RESULT_INVALID;
     }
     // Find the best (highest) rank across all moves.
     // WdlToRank[] in Fathom: LOSS=-1000, BLESSED_LOSS=-899, DRAW=0,
     // CURSED_WIN=899, WIN=1000
-    int32_t bestRank = results.moves[0].tbRank;
-    for (unsigned i = 1; i < results.size; i++) {
-        if (results.moves[i].tbRank > bestRank)
-            bestRank = results.moves[i].tbRank;
+    int32_t bestRank = results->moves[0].tbRank;
+    for (unsigned i = 1; i < results->size; i++) {
+        if (results->moves[i].tbRank > bestRank)
+            bestRank = results->moves[i].tbRank;
     }
     // Map best rank back to TB_RESULT_* constant
     int wdl;
@@ -271,20 +272,20 @@ int TablebaseProbe::rootFiltering(const GameState& state, rootMove* moves, int& 
 
     // Filter moves[] in-place: keep only moves matching a best-rank TbRootMove
     int newNb = 0;
-    for (unsigned j = 0; j < results.size; j++) {
-        if (results.moves[j].tbRank < lowerbound)
+    for (unsigned j = 0; j < results->size; j++) {
+        if (results->moves[j].tbRank < lowerbound)
             continue;
 
-        unsigned fathomFrom = TB_MOVE_FROM(results.moves[j].move);
-        unsigned fathomTo = TB_MOVE_TO(results.moves[j].move);
-        unsigned fathomProm = TB_MOVE_PROMOTES(results.moves[j].move);
+        unsigned fathomFrom = TB_MOVE_FROM(results->moves[j].move);
+        unsigned fathomTo = TB_MOVE_TO(results->moves[j].move);
+        unsigned fathomProm = TB_MOVE_PROMOTES(results->moves[j].move);
         moves[newNb].move.moveInfo = 0;
         moves[newNb].move.updateFrom(fathomFrom ^ 7);
         moves[newNb].move.updateTo(fathomTo ^ 7);
         if (promoMap[fathomProm] != PAWN)
             moves[newNb].move.updatePromotion(promoMap[fathomProm]);
-        moves[newNb].tb_upperbound_score = rank_to_upperbound_score(results.moves[j].tbRank);
-        moves[newNb].tb_lowerbound_score = rank_to_lowerbound_score(results.moves[j].tbRank);
+        moves[newNb].tb_upperbound_score = rank_to_upperbound_score(results->moves[j].tbRank);
+        moves[newNb].tb_lowerbound_score = rank_to_lowerbound_score(results->moves[j].tbRank);
         newNb++;
     }
 
