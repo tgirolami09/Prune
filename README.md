@@ -8,7 +8,7 @@ this is a hobby project made by two passionate about informatic.
 currently, the engine includes:
 - Evaluation:
     - nnue
-        - (60144+704x16hm -> 640-pw)x2 -> (16(dualact) -> 32 -> 1)x8
+        - ((59808+4560+704x16)hm -> 640-pw)x2 -> (16(dualact) -> 32 -> 1)x8
         - generating data from random net
     - trained on self-gen data using [bullet](https://github.com/jw1912/bullet) (if you want the data used to train it, you can directly ask one of us)
     - correction history :
