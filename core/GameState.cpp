@@ -436,7 +436,9 @@ ExpendedMove GameState::playMove(Move move) {
     const int toSquare = move.toMover();
     const int capture = board.getCapture(move);
     movesSinceBeginning[turnNumber] = {move, piece, capture};
-    big castleRem = ((1ULL << move.to()) | (1ULL << move.from()) | mask_row[curColor * 7] * (piece == KING)) & castlingMask;
+    big castleRem =
+        ((1ULL << move.to()) | (1ULL << move.from()) | mask_row[curColor * 7] * (piece == KING)) &
+        castlingMask;
     castlingMask ^= castleRem;
     zobristHash ^= zobrist[zobrCastle + countr_zero(castleRem)];
     castleRem &= castleRem - 1;

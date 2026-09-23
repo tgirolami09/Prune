@@ -1,8 +1,8 @@
 #include "TablebaseProbe.hpp"
+#include <memory>
 #include "../Fathom/src/tbprobe.h"
 #include "Const.hpp"
 #include "Functions.hpp"
-#include <memory>
 
 // Global tablebase prober instance
 TablebaseProbe tbProbe;

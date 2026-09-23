@@ -1,6 +1,7 @@
 #include "Evaluator.hpp"
 #include <assert.h>
 #include <algorithm>
+#include <bit>
 #include <cstring>
 #include "Const.hpp"
 #include "Functions.hpp"

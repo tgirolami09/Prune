@@ -1,4 +1,5 @@
 #include "BestMoveFinder.hpp"
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -562,7 +563,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         if (sc > alpha && isPV)
             ss.transfer(rootDist, order.moves[0]);
         if constexpr (isRoot) {
-            if(!ss.stop(stop_flag || smp_abort))
+            if (!ss.stop(stop_flag || smp_abort))
                 ss.searchedMoves = 1;
         }
         return sc;
