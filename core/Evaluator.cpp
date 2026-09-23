@@ -104,7 +104,7 @@ big firstTouch(int square, int square2, big occupancy) {
 }
 
 bool see_ge(int born, const Move& move, const GameState& state, const int* value_pieces) {
-    if (move.getMovePart() == Move::fcastle)
+    if (move.getFlag() == Move::fcastle)
         return born < 0;
     int square = move.to();
     // occupancy ^= 1ULL << move.from();
