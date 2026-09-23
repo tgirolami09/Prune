@@ -1,7 +1,7 @@
 #ifndef FUNCTIONS_HPP
 #define FUNCTIONS_HPP
-#include "Const.hpp"
 #include <string>
+#include "Const.hpp"
 using namespace std;
 int col(const int& square);
 int row(const int& square);
@@ -26,8 +26,8 @@ big mask_full_bishop(int square);
 big maskCol(int square);
 char transform(ubyte n);
 int sign(int n);
-class depthInfo{
-public:
+class depthInfo {
+   public:
     sbig node;
     int time, nps, depth, seldepth, score;
 };
