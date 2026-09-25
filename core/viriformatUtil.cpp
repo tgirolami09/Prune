@@ -39,7 +39,7 @@ MoveInfo::MoveInfo() {
     move = nullMove;
     score = 0;
 }
-void MoveInfo::dump(FILE* datafile) {
+void MoveInfo::dump(FILE* datafile) const {
     static constexpr int transfo[4] = {0, 2, 3, 1};
     int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
     uint16_t mv = to << 6 | from;
@@ -49,6 +49,62 @@ void MoveInfo::dump(FILE* datafile) {
     fastWrite(mv, datafile);
     fastWrite<int16_t>(score, datafile);
 }
+void MoveInfo::dump(vector<uint8_t>& datafile) const {
+    static constexpr int transfo[4] = {0, 2, 3, 1};
+    int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
+    uint16_t mv = to << 6 | from;
+    mv |= (move.promotion() - (move.getFlag() == Move::fpromo)) << 12;
+    int type = transfo[move.getFlag()];
+    mv |= type << 14;
+    size_t base = datafile.size();
+    datafile.resize(base + 4, 0);
+    int16_t scorei16 = score;
+    memcpy(&datafile[base + 0], &mv, 2);
+    memcpy(&datafile[base + 2], &scorei16, 2);
+}
+
+void dumpposition(vector<uint8_t>& buffer, const GameState& startPos) {
+    big occupied = startPos.board.colors[WHITE] |
+                   startPos.board.colors[BLACK];  // calculate the occupied bitboard
+    size_t base = buffer.size();
+    buffer.resize(base + 32);
+    big revocc = reverse_col(occupied);
+    memcpy(&buffer[base], &revocc, 8);
+    uint8_t entry = 0x00;
+    bool isSec = false;
+    int nbEntry = 0;
+    big castle = startPos.castlingMask;
+    for (int i = 0; i < 64; i++) {
+        int index = i ^ 0x07;
+        big mask = 1ULL << index;
+        if (mask & occupied) {  // if there is a piece there
+            int8_t piece = startPos.getfullPiece(index);
+            int _c = color(piece);
+            piece = type(piece);
+            if (piece == ROOK && (mask & castle))  // rook that can castle
+                piece = 6;
+            uint8_t full = (_c << 3) | piece;
+            if (isSec) {  // if it's the second piece of the byte, we write it
+                uint8_t w = entry | (full << 4);
+                buffer[base + 8 + nbEntry / 2] = w;
+            } else {
+                entry = full;
+            }
+            isSec ^= 1;
+            nbEntry += 1;
+        }
+    }
+    uint8_t info = startPos.lastDoublePawnPush == 64
+                       ? 64
+                       : startPos.lastDoublePawnPush ^ 0x07;  // en passant square
+    info |= startPos.friendlyColor() << 7;
+    buffer[base + 24] = info;
+    buffer[base + 25] = startPos.rule50_count();  // halfmove clock (for 50 move rule)
+    // full move
+    // score of the position
+    // unused extra byte
+}
+
 void GamePlayed::dump(FILE* datafile) {
     big occupied = startPos.board.colors[WHITE] |
                    startPos.board.colors[BLACK];  // calculate the occupied bitboard

@@ -4,12 +4,14 @@
 
 template <typename T>
 void fastWrite(T data, FILE* file);
+void dumpposition(vector<uint8_t>& buffer, const GameState& startPos);
 class MoveInfo {
    public:
     Move move;
     int score;
     MoveInfo();
-    void dump(FILE* datafile);
+    void dump(FILE* datafile) const;
+    void dump(vector<uint8_t>& datafile) const;
     static const int size = 4;
 };
 class GamePlayed {
