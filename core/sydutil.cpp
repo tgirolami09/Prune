@@ -64,7 +64,7 @@ void totree(GameState& state, const transpositionTable& tt, Link curnode,
         bool ttHit = false;
         const auto& ttentry = tt.getEntry(state, ttHit);
         // printf("%s (%s) => %d\n", state.toFen().c_str(), legalMoves[i].to_str().c_str(), ttHit);
-        if (ttHit) {
+        if (ttHit && ttentry.depth > fdepth<5>) {
             auto [idx, rem] = getIndex(state, nodetable.size());
             assert(idx < nodetable.size());
             bool added = false;
