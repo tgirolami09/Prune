@@ -39,6 +39,10 @@ MoveInfo::MoveInfo() {
     move = nullMove;
     score = 0;
 }
+MoveInfo::MoveInfo(Move mv, int sc) {
+    move = mv;
+    score = sc;
+}
 void MoveInfo::dump(FILE* datafile) const {
     static constexpr int transfo[4] = {0, 2, 3, 1};
     int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
