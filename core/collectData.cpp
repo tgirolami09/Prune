@@ -214,17 +214,13 @@ int main(int argc, char** argv) {
             {
                 node curnode;
                 curnode.rem = remroot;
-                curnode.depth = -1;
-                curnode.bound = UPPERBOUND;
-                curnode.mvscore.score = 0;
-                curnode.mvscore.move = nullMove;
-                curnode.age = -1;
                 nodetable[idxroot].push_back(curnode);
             }
             int result = 1;  // 0 black win 1 draw 2 white win
             big dngpos;
             big localNodes = 0;
             int curage = 0;
+            Link lastlink{(uint32_t)idxroot, 0, nullMove};
             do {
                 bestMoveResponse res;
                 res = state->getEval(tm);
@@ -235,21 +231,37 @@ int main(int argc, char** argv) {
                 Move curMove = get<0>(res);
                 auto [idx, rem] = getIndex(state->state, nodetable.size());
                 bool found = false;
+                bool ttHit = false;
+                auto entry = state->getPlayer().transposition.getEntry(state->state, ttHit);
+                if (!ttHit)
+                    entry = infoScore{
+                        0, 0, EXACT, 0, (uint16_t)(get<3>(res).size() * fracDepth), curMove, rem};
                 for (uint32_t bucketidx = 0; bucketidx < nodetable[idx].size(); bucketidx++) {
-                    auto possnode = nodetable[idx][bucketidx];
+                    auto& possnode = nodetable[idx][bucketidx];
                     if (possnode.rem == rem) {
                         found = true;
                         // printf("from position %s bm %s\n", state->state.toFen().c_str(),
                         // curMove.to_str().c_str()); printf("age=%d stocking to tree\n", curage);
-                        int nbNew = 0;
                         Link l{(uint32_t)idx, bucketidx, nullMove};
+                        lastlink = l;
+                        int nbNew = 0;
+                        possnode.update(entry);
                         totree(state->state, state->getPlayer().transposition, l, nodetable,
                                curage++, nbNew);
                         // printf("added %d new positions\n", nbNew);
                         break;
                     }
                 }
-                assert(found);
+                if (!found) {
+                    Link newlink{(uint32_t)idx, (uint32_t)nodetable[idx].size(),
+                                 state->state.getLastMove().move};
+                    node newnode(entry);
+                    nodetable[lastlink.hashidx][lastlink.bucketidx].childs.push_back(newlink);
+                    nodetable[idx].push_back(newnode);
+                    int nbNew = 0;
+                    totree(state->state, state->getPlayer().transposition, newlink, nodetable,
+                           curage++, nbNew);
+                }
                 if (curMove.moveInfo == nullMove.moveInfo) {
                     if (score == 0)
                         break;

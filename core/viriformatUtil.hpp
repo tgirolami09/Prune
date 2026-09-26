@@ -12,6 +12,7 @@ class MoveInfo {
     Move move;
     int score;
     MoveInfo();
+    MoveInfo(Move move, int score);
     void dump(FILE* datafile) const;
     void dump(vector<uint8_t>& datafile) const;
     static const int size = 4;
