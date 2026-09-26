@@ -261,6 +261,7 @@ int main(int argc, char** argv) {
                     int nbNew = 0;
                     totree(state->state, state->getPlayer().transposition, newlink, nodetable,
                            curage++, nbNew);
+                    lastlink = newlink;
                 }
                 if (curMove.moveInfo == nullMove.moveInfo) {
                     if (score == 0)
