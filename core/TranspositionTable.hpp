@@ -28,9 +28,17 @@ class Cluster {
     infoScore entries[clusterSize];
     ubyte padding[paddingSize];
     infoScore& probe(residualHash hash, bool& ttHit);
+    const infoScore& probe(residualHash hash, bool& ttHit) const;
     void push(infoScore& entry, int curAge);
 };
 static_assert(sizeof(Cluster) == clusterByte, "size of cluster should be 32");
+
+static inline pair<big, residualHash> getIndex(const GameState& state, big modulo) {
+    __uint128_t tHash = ((__uint128_t)state.zobristHash) * modulo;
+    static const int dec = 8 * sizeof(residualHash);
+    tHash >>= 64 - dec;
+    return {tHash >> dec, tHash & ((1ULL << dec) - 1)};
+}
 
 const int INVALID = INT_MAX;
 class transpositionTable {
@@ -44,6 +52,7 @@ class transpositionTable {
 
     int storedScore(int alpha, int beta, const infoScore& entry, const int rootDist) const;
     infoScore& getEntry(const GameState& state, bool& ttHit);
+    const infoScore& getEntry(const GameState& state, bool& ttHit) const;
 
     Move getMove(const infoScore& entry) const;
 

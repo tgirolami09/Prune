@@ -49,6 +49,19 @@ void MoveInfo::dump(FILE* datafile) const {
     fastWrite(mv, datafile);
     fastWrite<int16_t>(score, datafile);
 }
+
+void dumpmove(Move move, vector<uint8_t>& buffer) {
+    static constexpr int transfo[4] = {0, 2, 3, 1};
+    int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
+    uint16_t mv = to << 6 | from;
+    mv |= (move.promotion() - (move.getFlag() == Move::fpromo)) << 12;
+    int type = transfo[move.getFlag()];
+    mv |= type << 14;
+    size_t base = buffer.size();
+    buffer.resize(base + 2, 0);
+    memcpy(&buffer[base], &mv, 2);
+}
+
 void MoveInfo::dump(vector<uint8_t>& datafile) const {
     static constexpr int transfo[4] = {0, 2, 3, 1};
     int to = move.to() ^ 0x07, from = move.from() ^ 0x07;

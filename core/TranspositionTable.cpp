@@ -58,6 +58,17 @@ infoScore& Cluster::probe(residualHash hash, bool& ttHit) {
     return entries[0];
 }
 
+const infoScore& Cluster::probe(residualHash hash, bool& ttHit) const {
+    for (int i = 0; i < clusterSize; i++) {
+        if (entries[i].typeNode() != 3 && entries[i].hash == hash) {
+            ttHit = true;
+            return entries[i];
+        }
+    }
+    ttHit = false;
+    return entries[0];
+}
+
 int absEntryScore(const infoScore& entry, int curAge) {
     return entry.depth - ((curAge - entry.age()) & maxAge) * 4 * fracDepth;
 }
@@ -92,13 +103,6 @@ void Cluster::push(infoScore& entry, int curAge) {
         entries[bestID] = entry;
 }
 
-pair<big, residualHash> getIndex(const GameState& state, big modulo) {
-    __uint128_t tHash = ((__uint128_t)state.zobristHash) * modulo;
-    static const int dec = 8 * sizeof(residualHash);
-    tHash >>= 64 - dec;
-    return {tHash >> dec, tHash & ((1ULL << dec) - 1)};
-}
-
 int transpositionTable::storedScore(int alpha, int beta, const infoScore& entry,
                                     int rootDist) const {
     const int score = fromTT(entry.score, rootDist);
@@ -116,6 +120,11 @@ Move transpositionTable::getMove(const infoScore& entry) const {
 }
 
 infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit) {
+    auto [index, hash] = getIndex(state, modulo);
+    return table[index].probe(hash, ttHit);
+}
+
+const infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit) const {
     auto [index, hash] = getIndex(state, modulo);
     return table[index].probe(hash, ttHit);
 }
