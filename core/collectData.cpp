@@ -12,14 +12,15 @@ bool isdfrc = true;
 #include <fstream>
 #include <vector>
 #include "BestMoveFinder.hpp"
-#include "Evaluator.hpp"
 #include "GameState.hpp"
 #include "LegalMoveGenerator.hpp"
+#include "TranspositionTable.hpp"
 #include "numa.hpp"
+#include "sydutil.hpp"
 #include "viriformatUtil.hpp"
 // #define DEBUG
 using namespace std;
-const int alloted_space = 2 * 1000 * 1000;
+const int alloted_space = 16 * 1024 * 1024;
 
 string secondsToStr(big s) {
     string res = "";
@@ -127,7 +128,7 @@ int main(int argc, char** argv) {
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;
-    big globseed = time(NULL);
+    big globseed = 1790417112;  // time(NULL);
     printf("%ld\n", globseed);
     int limitNodes;
     if (argc > 3)
@@ -190,6 +191,7 @@ int main(int argc, char** argv) {
         unique_ptr<threadHelper> state = make_unique<threadHelper>(idThread);
         FILE* fptr;
         fptr = fopen(nameDataFile.c_str(), "ab");
+        FILE* fsyd = fopen((nameDataFile + "syd").c_str(), "ab");
         for (int i = startReg; i < endReg; i++) {
             const TM tm = [&]() {
                 TM _tm(0, WHITE);
@@ -206,9 +208,23 @@ int main(int argc, char** argv) {
                    abs(get<2>(state->getEval(tm))) > 500) {
                 state->reset(fens[i % fens.size()]);
             }
+            vector<vector<node>> nodetable(state->player0.transposition.modulo);
+            auto [idxroot, remroot] = getIndex(state->state, nodetable.size());
+            unique_ptr<GameState> realstartpos = make_unique<GameState>(state->state);
+            {
+                node curnode;
+                curnode.rem = remroot;
+                curnode.depth = -1;
+                curnode.bound = UPPERBOUND;
+                curnode.mvscore.score = 0;
+                curnode.mvscore.move = nullMove;
+                curnode.age = -1;
+                nodetable[idxroot].push_back(curnode);
+            }
             int result = 1;  // 0 black win 1 draw 2 white win
             big dngpos;
             big localNodes = 0;
+            int curage = 0;
             do {
                 bestMoveResponse res;
                 res = state->getEval(tm);
@@ -217,6 +233,23 @@ int main(int argc, char** argv) {
                     localNodes += infos.back().node;
                 int score = get<2>(res);
                 Move curMove = get<0>(res);
+                auto [idx, rem] = getIndex(state->state, nodetable.size());
+                bool found = false;
+                for (uint32_t bucketidx = 0; bucketidx < nodetable[idx].size(); bucketidx++) {
+                    auto possnode = nodetable[idx][bucketidx];
+                    if (possnode.rem == rem) {
+                        found = true;
+                        // printf("from position %s bm %s\n", state->state.toFen().c_str(),
+                        // curMove.to_str().c_str()); printf("age=%d stocking to tree\n", curage);
+                        int nbNew = 0;
+                        Link l{(uint32_t)idx, bucketidx, nullMove};
+                        totree(state->state, state->getPlayer().transposition, l, nodetable,
+                               curage++, nbNew);
+                        // printf("added %d new positions\n", nbNew);
+                        break;
+                    }
+                }
+                assert(found);
                 if (curMove.moveInfo == nullMove.moveInfo) {
                     if (score == 0)
                         break;
@@ -261,6 +294,12 @@ int main(int argc, char** argv) {
             state->game.result = result;
             state->game.dump(fptr);
             fflush(fptr);
+            vector<uint8_t> buffer;
+            nodetable[idxroot][0].writeroot(buffer, *realstartpos, nodetable);
+            unsigned int size = buffer.size();
+            fwrite(&size, sizeof(size), 1, fsyd);
+            fwrite(&buffer[0], 1, buffer.size(), fsyd);
+            fflush(fsyd);
 #ifndef NOTHREAD
 #pragma omp atomic update
 #endif
@@ -313,6 +352,7 @@ int main(int argc, char** argv) {
             }
         }
         fclose(fptr);
+        fclose(fsyd);
     }
     printf("\n");
     clear_table();

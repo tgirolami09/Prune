@@ -95,10 +95,10 @@ class BestMoveFinder {
     };
     vector<Shared> shareds;
     // Returns the best move given a position and time to use
-    transpositionTable transposition;
     int thread0;
 
    public:
+    transpositionTable transposition;
     std::atomic<int> stop_flag;
     bool minimal = false;
     BestMoveFinder(int memory, int baseThread = -1);
