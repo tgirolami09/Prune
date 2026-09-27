@@ -728,8 +728,6 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     bestScore = clamp(bestScore, syzygy_min, syzygy_max);
     if (bestScore > oldalpha && typeNode == UPPERBOUND)
         ss.beginLine(rootDist);
-    if (cutnode && bestScore == alpha)
-        return bestScore;
     if ((!isRoot || typeNode != UPPERBOUND) && !excludedMove) {
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth,
                            raw_eval, isPV);
