@@ -232,10 +232,12 @@ int main(int argc, char** argv) {
                 auto [idx, rem] = getIndex(state->state, nodetable.size());
                 bool found = false;
                 bool ttHit = false;
-                auto entry = state->getPlayer().transposition.getEntry(state->state, ttHit);
+                const BestMoveFinder& player = state->getPlayer();
+                auto entry = player.transposition.getEntry(state->state, ttHit);
                 if (!ttHit)
                     entry = infoScore{
-                        0, 0, EXACT, 0, (uint16_t)(get<3>(res).size() * fracDepth), curMove, rem};
+                        (int16_t)score, 0,  3 - EXACT, 0, (uint16_t)(infos.size() * fracDepth),
+                        curMove,        rem};
                 for (uint32_t bucketidx = 0; bucketidx < nodetable[idx].size(); bucketidx++) {
                     auto& possnode = nodetable[idx][bucketidx];
                     if (possnode.rem == rem) {
@@ -246,21 +248,23 @@ int main(int argc, char** argv) {
                         lastlink = l;
                         int nbNew = 0;
                         possnode.update(entry);
-                        totree(state->state, state->getPlayer().transposition, l, nodetable,
-                               curage++, nbNew);
+                        possnode.age = curage;
+                        totree(state->state, player.transposition, l, nodetable, curage++, nbNew);
                         // printf("added %d new positions\n", nbNew);
                         break;
                     }
                 }
                 if (!found) {
+                    assert(curage != 0);
                     Link newlink{(uint32_t)idx, (uint32_t)nodetable[idx].size(),
                                  state->state.getLastMove().move};
+                    assert(newlink.mv != nullMove);
                     node newnode(entry);
+                    newnode.age = curage;
                     nodetable[lastlink.hashidx][lastlink.bucketidx].childs.push_back(newlink);
                     nodetable[idx].push_back(newnode);
                     int nbNew = 0;
-                    totree(state->state, state->getPlayer().transposition, newlink, nodetable,
-                           curage++, nbNew);
+                    totree(state->state, player.transposition, newlink, nodetable, curage++, nbNew);
                     lastlink = newlink;
                 }
                 if (curMove.moveInfo == nullMove.moveInfo) {

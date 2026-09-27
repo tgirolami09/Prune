@@ -10,9 +10,8 @@ void node::dumpinfo(vector<uint8_t>& buffer) const {
     buffer.push_back(min(depth / fracDepth, 256 / 3) * 3 + bound);
 }
 void node::write(vector<uint8_t>& buffer, const vector<vector<node>>& nodetable) const {
-    uint8_t s = childs.size();
     dumpinfo(buffer);
-    buffer.push_back(s);
+    buffer.push_back(childs.size());
     for (const auto& p : childs) {
         const node& a = nodetable[p.hashidx][p.bucketidx];
         dumpmove(p.mv, buffer);
@@ -84,19 +83,13 @@ void totree(GameState& state, const transpositionTable& tt, Link curnode,
                 nbNew++;
                 // printf("add position %s %s\n", state.toFen().c_str(),
                 // legalMoves[i].to_str().c_str());
-                node newnode;
-                newnode.bound = ttentry.typeNode();
-                newnode.depth = ttentry.depth;
-                newnode.mvscore.move = ttentry.bestMove;
-                newnode.mvscore.score = ttentry.score;
-                newnode.rem = ttentry.hash;
+                node newnode(ttentry);
                 newnode.age = curage;
+                Link newlink{(uint32_t)idx, (uint32_t)nodetable[idx].size(), legalMoves[i]};
 
-                nodetable[curnode.hashidx][curnode.bucketidx].childs.push_back(
-                    {(uint32_t)idx, (uint32_t)nodetable[idx].size(), legalMoves[i]});
-                Link nlink = nodetable[curnode.hashidx][curnode.bucketidx].childs.back();
+                nodetable[curnode.hashidx][curnode.bucketidx].childs.push_back(newlink);
                 nodetable[idx].push_back(newnode);
-                totree(state, tt, nlink, nodetable, curage, nbNew);
+                totree(state, tt, newlink, nodetable, curage, nbNew);
             }
         }
         snap->restore(state);
