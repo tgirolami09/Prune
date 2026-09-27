@@ -1,5 +1,9 @@
 #include "embeder.hpp"
 #ifndef HCE
-BINARY_ASM_INCLUDE("model.bin", baseModel);
+alignas(64) constexpr unsigned char baseModel[] = {
+#embed "model.bin"
+};
 #endif
-BINARY_ASM_INCLUDE("magics.out", magicsData);
+alignas(64) constexpr unsigned char magicsData[] = {
+#embed "magics.out"
+};

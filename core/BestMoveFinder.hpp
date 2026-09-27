@@ -1,138 +1,144 @@
 #ifndef BESTMOVEFINDER_HPP
 #define BESTMOVEFINDER_HPP
-#include "Const.hpp"
-#include "TranspositionTable.hpp"
-#include "TimeManagement.hpp"
-#include "Move.hpp"
-#include "GameState.hpp"
-#include "Evaluator.hpp"
-#include "LegalMoveGenerator.hpp"
-#include "MoveOrdering.hpp"
-#include "TablebaseProbe.hpp"
-#include <vector>
-#include "tunables.hpp"
-#include <chrono>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <string>
-#include <vector>
 #include <thread>
+#include <vector>
+#include "Const.hpp"
+#include "Evaluator.hpp"
+#include "GameState.hpp"
+#include "LegalMoveGenerator.hpp"
+#include "Move.hpp"
+#include "MoveOrdering.hpp"
+#include "TablebaseProbe.hpp"
+#include "TimeManagement.hpp"
+#include "TranspositionTable.hpp"
+#include "numa.hpp"
+#include "tunables.hpp"
 #define MoveScore pair<int, Move>
 #define bestMoveResponse tuple<Move, Move, int, vector<depthInfo>>
-
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
-extern int
-    nmpVerifAllNode,
-    nmpVerifCutNode,
-    nmpVerifPassCutNode,
-    nmpVerifPassAllNode;
-extern StatVar<sbig, maxHistory*2, -maxHistory*2> quiethistPostStat;
+extern int nmpVerifAllNode, nmpVerifCutNode, nmpVerifPassCutNode, nmpVerifPassAllNode;
+extern StatVar<sbig, maxHistory * 2, -maxHistory * 2> quiethistPostStat;
 extern StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
-using timeMesure=chrono::high_resolution_clock;
-//Class to find the best in a situation
-class BestMoveFinder{
-    class usefull{
-    private:
-        class LINE{
-        public:
+// Class to find the best in a situation
+class BestMoveFinder {
+    class usefull {
+       private:
+        class LINE {
+           public:
             int cmove;
-            int16_t argMoves[maxDepth];
+            Move argMoves[maxDepth];
         };
-        struct StackCase{
+        struct StackCase {
             Order order;
+            LegalMoveGenerator generator;
             Move searchedMoves[maxMoves];
             int static_score;
             int raw_eval;
             PositionSnapshot snap;
         };
-    public:
-        LegalMoveGenerator generator;
-        StackCase stack[maxDepth];
+
+       public:
+        StackCase stack[maxDepth + 1];
         LINE PVlines[maxDepth];
         IncrementalEvaluator eval;
         atomic<sbig> nodes;
         atomic<sbig> bestMoveNodes;
         atomic<int> seldepth;
+        bool let_run;
         sbig tbHits;
-        Move rootBest;
+        int idThread;
+        rootMove rootBest;
         bool mainThread;
         HelpOrdering history;
-        corrhists correctionHistory;
         int searchedMoves = 0;
-        int min_nmp_ply=0;
-        usefull(const GameState& state, const tunables& parameters);
+        int min_nmp_ply = 0;
+        usefull(const GameState& state, const tunables& parameters, const NNUE& nnue);
         usefull();
-        void reinit(const GameState& state);
+        void reinit(const GameState& state, const NNUE& nnue);
         string PVprint(LINE pvLine);
         void transfer(int relDepth, Move move);
         void beginLine(int relDepth);
         void beginLineMove(int relDepth, Move move);
         void resetLines();
+        inline bool stop(bool stop_flags) { return !let_run && stop_flags; }
     };
 
-    struct Record{
+    struct Record {
         sbig nodes;
         sbig tbHits;
     };
 
-    class HelperThread{
-    public:
+    class HelperThread {
+       public:
         usefull local;
         GameState localState;
         thread t;
         bool running;
         mutex mtx;
         condition_variable cv;
+        atomic<bool> isready;
         int ans;
-        int relDepth, limitWay;
-        void launch(int relDepth, int limitWay);
+        int relDepth;
+        void launch(int relDepth);
         void wait_thread();
     };
 
-    //Returns the best move given a position and time to use
+    struct Shared {
+        corrhists correctionHistory;
+    };
+    vector<Shared> shareds;
+    // Returns the best move given a position and time to use
     transpositionTable transposition;
-public:
-    std::atomic<bool> running;
+    int thread0;
+
+   public:
+    std::atomic<int> stop_flag;
     bool minimal = false;
-    BestMoveFinder(int memory);
+    BestMoveFinder(int memory, int baseThread = -1);
     BestMoveFinder();
     sbig hardBound;
-    timeMesure::time_point startSearch;
-    chrono::milliseconds hardBoundTime;
     ~BestMoveFinder();
-    void stop();
-    #ifdef TUNE
+#ifdef TUNE
     tunables parameters;
-    #else
+#else
     static constexpr tunables parameters{};
-    #endif
-private:
+#endif
+   private:
     usefull localSS;
     vector<HelperThread> helperThreads;
     atomic<bool> smp_abort, smp_end;
     void clear_helpers();
+    timeMesure::time_point startSearch;
+    TM globtm;
     chrono::nanoseconds getElapsedTime();
-    int16_t wdlFilterMoveInfos[maxMoves];
-    int wdlFilterNb;
-    template<int limitWay, bool isPV, bool isCalc>
+    rootMove rootMoves[maxMoves];
+    int nbRootMoves;
+    template <bool update = true>
+    void print_info(Record& rec, int depth, int bestScore, string limit, int material);
+    template <bool isPV, bool isCalc>
     int quiescenceSearch(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     int startRelDepth;
-    template<bool isPV, int limitWay>
+    template <bool isPV>
     inline int Evaluate(usefull& ss, GameState& state, int alpha, int beta, int relDepth);
     bool verbose;
-    template <bool isPV, int limitWay, bool isRoot=false>
-    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta, const int relDepth, bool cutnode, const int16_t excludedMove=nullMove.moveInfo);
+    template <bool isPV, bool isRoot = false>
+    int negamax(usefull& ss, const int depth, GameState& state, int alpha, const int beta,
+                const int relDepth, bool cutnode, const Move excludedMove = nullMove);
     void launchSMP(int idThread);
     void updatemainSS(usefull& ss, Record& oldss);
-public:
-    template<int limitWay>
+
+   public:
     bestMoveResponse iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth);
-    template <int limitWay=0>
-    bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot, bool verbose=true);
-    template <int limitWay=0>
+    bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot,
+                              bool verbose = true);
+    template <bool set = false>
     bestMoveResponse goState(GameState& state, TM tm, bool verbose, int actDepth);
     int testQuiescenceSearch(GameState& state);
     void clear();
@@ -141,17 +147,16 @@ public:
     void aging();
 };
 
-
-class Perft{
-public:
+class Perft {
+   public:
     Move stack[100][maxMoves];
     LegalMoveGenerator generator;
     Perft();
     big visitedNodes;
-    template<bool bulk>
+    template <bool bulk>
     big _perft(GameState& state, ubyte depth);
-    template<bool bulk>
-    big perft(GameState& state, ubyte depth, bool verbose=true);
+    template <bool bulk>
+    big perft(GameState& state, ubyte depth, bool verbose = true);
     void reinit(size_t count);
 };
 #endif

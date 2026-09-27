@@ -8,8 +8,8 @@ this is a hobby project made by two passionate about informatic.
 currently, the engine includes:
 - Evaluation:
     - nnue
-        - (60144+768x4hm -> 384-pw)x2 -> (16 -> 32 -> 1)x8
-        - 13 iterations from random net
+        - ((59808+4560+704x16)hm -> 640-pw)x2 -> (16(dualact) -> 32 -> 1)x8
+        - generating data from random net
     - trained on self-gen data using [bullet](https://github.com/jw1912/bullet) (if you want the data used to train it, you can directly ask one of us)
     - correction history :
         - pawn
@@ -21,7 +21,7 @@ currently, the engine includes:
     - iterative Deepening
     - quiescence search
     - aspiration window
-    - enhanced forward pruning
+    - fractional depth
     - Reduction:
         - late move reduction :
             - log base
@@ -30,12 +30,13 @@ currently, the engine includes:
     - pruning:
         - null move pruning
         - reverse futility pruning (improving and not improving)
-        - razoring at depth 1
+        - razoring
         - late move pruning
         - history pruning
+        - capthist pruning
         - capture history pruning
         - futility pruning
-        - SEE pruning in QS
+        - SEE pruning in QS and search
     - transposition table
         - buckets of 3 entries
     - move ordering:
@@ -72,7 +73,7 @@ currently, the engine includes:
 - syzygy probing is done thanks to a copy of Fathom from : https://github.com/jdart1/Fathom
 
 - support multithreading (lazy smp)
-- don't support yet frc, planed for v4
+- support dfrc
 
 to compile, just run 
 
@@ -86,7 +87,7 @@ in the core/ directory, and you will have the executable prune, which contains t
 for the version naming, we currently use the following :
 - 3rd digit is only for bug fix versions
 - 2nd digit is for elo improvement (for now, we target a +190 elo per release)
-- 1st digit is for new features (as smp for v3, or planed frc for v4)
+- 1st digit is for new features (as smp for v3, or frc for v4)
 
 ## thanks
 - stockfish discord :
