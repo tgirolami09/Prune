@@ -212,8 +212,7 @@ int main(int argc, char** argv) {
             auto [idxroot, remroot] = getIndex(state->state, nodetable.size());
             unique_ptr<GameState> realstartpos = make_unique<GameState>(state->state);
             {
-                node curnode;
-                curnode.rem = remroot;
+                node curnode(state->state.zobristHash);
                 nodetable[idxroot].push_back(curnode);
             }
             int result = 1;  // 0 black win 1 draw 2 white win
@@ -240,7 +239,7 @@ int main(int argc, char** argv) {
                         curMove,        rem};
                 for (uint32_t bucketidx = 0; bucketidx < nodetable[idx].size(); bucketidx++) {
                     auto& possnode = nodetable[idx][bucketidx];
-                    if (possnode.rem == rem) {
+                    if (possnode.hash == state->state.zobristHash) {
                         found = true;
                         // printf("from position %s bm %s\n", state->state.toFen().c_str(),
                         // curMove.to_str().c_str()); printf("age=%d stocking to tree\n", curage);
@@ -259,7 +258,7 @@ int main(int argc, char** argv) {
                     Link newlink{(uint32_t)idx, (uint32_t)nodetable[idx].size(),
                                  state->state.getLastMove().move};
                     assert(newlink.mv != nullMove);
-                    node newnode(entry);
+                    node newnode(entry, state->state.zobristHash);
                     newnode.age = curage;
                     nodetable[lastlink.hashidx][lastlink.bucketidx].childs.push_back(newlink);
                     nodetable[idx].push_back(newnode);

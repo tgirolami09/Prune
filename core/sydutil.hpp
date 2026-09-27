@@ -18,22 +18,21 @@ struct node {
     MoveInfo mvscore;
     uint8_t bound;
     uint16_t depth;
-    residualHash rem;
+    uint64_t hash;
     vector<Link> childs;
     int age;
-    node() {
+    node(uint64_t _hash) : hash(_hash) {
         depth = 0;
         bound = UPPERBOUND;
         mvscore.score = 0;
         mvscore.move = nullMove;
         age = -1;
     }
-    node(const infoScore& entry) {
+    node(const infoScore& entry, uint64_t _hash) : hash(_hash) {
         mvscore.score = entry.score;
         mvscore.move = entry.bestMove;
         depth = entry.depth;
         bound = entry.typeNode();
-        rem = entry.hash;
     }
     void write(vector<uint8_t>& buffer, const vector<vector<node>>& nodetable) const;
     void writeroot(vector<uint8_t>& buffer, const GameState& root,
