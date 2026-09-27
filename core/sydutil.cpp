@@ -69,7 +69,7 @@ void totree(GameState& state, const transpositionTable& tt, Link curnode,
             bool added = false;
             for (uint32_t bucketidx = 0; bucketidx < nodetable[idx].size(); bucketidx++) {
                 auto& nnode = nodetable[idx][bucketidx];
-                if (nnode.rem == rem) {
+                if (nnode.hash == state.zobristHash) {
                     nnode.update(ttentry);
                     if (nnode.age != curage) {
                         nnode.age = curage;
@@ -83,7 +83,7 @@ void totree(GameState& state, const transpositionTable& tt, Link curnode,
                 nbNew++;
                 // printf("add position %s %s\n", state.toFen().c_str(),
                 // legalMoves[i].to_str().c_str());
-                node newnode(ttentry);
+                node newnode(ttentry, state.zobristHash);
                 newnode.age = curage;
                 Link newlink{(uint32_t)idx, (uint32_t)nodetable[idx].size(), legalMoves[i]};
 
