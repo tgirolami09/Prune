@@ -41,23 +41,23 @@ __attribute__((constructor(106))) void initThreatIndices() {
         int atk = _atk % 5 * 2 + _atk / 5;
         int lastindex = index;
         for (int from = 0; from < 64; from++) {
-            if (type(atk) == PAWN && (row(from) == 0 || row(from) == 7))
+            if (type(atk) == Pawn && (row(from) == 0 || row(from) == 7))
                 continue;
             big mask = 0;
             switch (type(atk)) {
-                case PAWN:
+                case Pawn:
                     mask = attackPawns[from + color(atk) * 64];
                     break;
-                case KNIGHT:
+                case Knight:
                     mask = KnightMoves[from];
                     break;
-                case BISHOP:
+                case Bishop:
                     mask = mask_full_bishop(from);
                     break;
-                case ROOK:
+                case Rook:
                     mask = mask_full_rook(from);
                     break;
-                case QUEEN:
+                case Queen:
                     mask = mask_full_rook(from) | mask_full_bishop(from);
                     break;
                 default:
@@ -77,7 +77,7 @@ __attribute__((constructor(106))) void initThreatIndices() {
 }
 
 int getThreatIndex(Index atk, Index def) {
-    assert(def.piece != PAWN || atk.piece != PAWN);
+    assert(def.piece != Pawn || atk.piece != Pawn);
     int index = threatIndex[atk.fullpiece()][atk.square][def.square] +
                 threatoffset[atk.fullpiece()] *
                     (piecesThreat[atk.piece][def.piece] + def.color * valid_targets[atk.piece]);
@@ -121,7 +121,7 @@ Index Index::changepov(bool needs) const {
 }
 Index::operator int() const {
     int index = ((6 * color + piece) << 6) | (square ^ 7);
-    index -= (piece == KING) * 6 * 64 * color;
+    index -= (piece == King) * 6 * 64 * color;
     return index;
 }
 bool Index::operator==(const Index a) const {
@@ -260,16 +260,16 @@ void Accumulator::updateXrays(const PositionState& state, int pos, bool remove, 
         maskremove |= (1ULL << removepos2) | firstafter(removepos2, pos, stateOccupied, masks[2]);
     }
     const big maskFkings =
-        state.pieces[KING] |
-        ((state.getMask(KING, WHITE) & masks[2])
-             ? fullDir[__builtin_ctzll(state.getMask(KING, WHITE))][pos] & stateOccupied & masks[2]
+        state.pieces[King] |
+        ((state.getMask(King, White) & masks[2])
+             ? fullDir[__builtin_ctzll(state.getMask(King, White))][pos] & stateOccupied & masks[2]
              : 0) |
-        ((state.getMask(KING, BLACK) & masks[2])
-             ? fullDir[__builtin_ctzll(state.getMask(KING, BLACK))][pos] & stateOccupied & masks[2]
+        ((state.getMask(King, Black) & masks[2])
+             ? fullDir[__builtin_ctzll(state.getMask(King, Black))][pos] & stateOccupied & masks[2]
              : 0);
     const big filterout = ~(maskremove | maskFkings);
-    big mask = ((masks[0] & (state.pieces[BISHOP])) | (masks[1] & (state.pieces[ROOK])) |
-                (masks[2] & (state.pieces[QUEEN]))) &
+    big mask = ((masks[0] & (state.pieces[Bishop])) | (masks[1] & (state.pieces[Rook])) |
+                (masks[2] & (state.pieces[Queen]))) &
                filterout;
     while (mask) {
         const int posatk = __builtin_ctzll(mask);
@@ -295,12 +295,12 @@ void Accumulator::updatePieceOutComing(const PositionState& state, const int pie
                                        const int removepos, const big sliders[3]) {
     const Index posatk(pos, piece, colorpiece);
     big atkmask;
-    if (piece == PAWN)
+    if (piece == Pawn)
         atkmask = attackPawns[pos + colorpiece * 64];
-    else if (piece == KNIGHT)
+    else if (piece == Knight)
         atkmask = KnightMoves[pos];
     else
-        atkmask = sliders[piece - BISHOP];
+        atkmask = sliders[piece - Bishop];
     big authMask = 0;
     for (int x = 0; x < nbPieces - 1; x++)
         if (piecesThreat[piece][x] != -1)
@@ -321,15 +321,15 @@ void Accumulator::updatePieceIncoming(const PositionState& state, const int piec
                                       const bool colorpiece, const int pos, const bool remove,
                                       const int removepos, const big sliders[3]) {
     const Index posdef(pos, piece, colorpiece);
-    const big maskremove = ~((removepos == -1 ? 0 : (1ULL << removepos)) | state.pieces[KING]);
+    const big maskremove = ~((removepos == -1 ? 0 : (1ULL << removepos)) | state.pieces[King]);
     big possMask =
-        (piecesThreat[PAWN][piece] != -1) *
-            ((attackPawns[pos + 64 * !colorpiece] & state.getMask(PAWN, colorpiece)) |
-             (attackPawns[pos + 64 * colorpiece] & state.getMask(PAWN, !colorpiece))) |  // pawns
-        ((piece != KNIGHT) * (KnightMoves[pos] & state.pieces[KNIGHT])) |                // knights
-        ((piece != QUEEN && piece != BISHOP) * (sliders[0] & state.pieces[BISHOP])) |    // bishops
-        ((piece != QUEEN && piece != ROOK) * (sliders[1] & state.pieces[ROOK])) |        // queens
-        ((piece != QUEEN) * (sliders[2] & state.pieces[QUEEN]));                         // queens
+        (piecesThreat[Pawn][piece] != -1) *
+            ((attackPawns[pos + 64 * !colorpiece] & state.getMask(Pawn, colorpiece)) |
+             (attackPawns[pos + 64 * colorpiece] & state.getMask(Pawn, !colorpiece))) |  // pawns
+        ((piece != Knight) * (KnightMoves[pos] & state.pieces[Knight])) |                // knights
+        ((piece != Queen && piece != Bishop) * (sliders[0] & state.pieces[Bishop])) |    // bishops
+        ((piece != Queen && piece != Rook) * (sliders[1] & state.pieces[Rook])) |        // queens
+        ((piece != Queen) * (sliders[2] & state.pieces[Queen]));                         // queens
     possMask &= maskremove;
     for (; possMask; possMask &= possMask - 1) {
         const int atkpos = __builtin_ctzll(possMask);
@@ -341,11 +341,11 @@ void Accumulator::updatePieceIncoming(const PositionState& state, const int piec
 
 void Accumulator::updatePP(const PositionState& state, const bool colorpiece1, const int pos1,
                            const bool remove, int removepos) {
-    big mask = state.pieces[PAWN] & wide3[col(pos1)] & ~(1ULL << pos1);
+    big mask = state.pieces[Pawn] & wide3[col(pos1)] & ~(1ULL << pos1);
     mask &= ~((removepos == -1 ? 0 : (1ULL << removepos)));
     for (; mask; mask &= mask - 1) {
         const int pos2 = __builtin_ctzll(mask);
-        const bool colorpiece2 = state.colors[BLACK] & (1ULL << pos2);
+        const bool colorpiece2 = state.colors[Black] & (1ULL << pos2);
         update.addPP(pos1, colorpiece1, pos2, colorpiece2, remove);
     }
 }
@@ -360,7 +360,7 @@ void Accumulator::updatePiece(const PositionState& state, const int piece, const
     sliders[2] = sliders[0] | sliders[1];
     updatePieceIncoming(state, piece, colorpiece, pos, remove, removepos, sliders);
     updatePieceOutComing(state, piece, colorpiece, pos, remove, removepos, sliders);
-    if (piece == PAWN) {
+    if (piece == Pawn) {
         updatePP(state, colorpiece, pos, remove, removepos);
     }
 }
@@ -370,22 +370,22 @@ void Accumulator::getThreatUpdates(const PositionState& state1, const PositionSt
     const int piece = type(state1.mailbox[move.from()]);
     const int toPiece = move.promotion() | piece;
     const int capture = type(state1.mailbox[move.to()]);
-    const bool isCapture = capture != SPACE;
+    const bool isCapture = capture != Void;
     if (move.getFlag() == Move::fep) {  // en passant
-        const int enpassantpos = move.to() + ((side == WHITE) ? -8 : 8);
-        updatePiece(state1, PAWN, side, move.from(), true, -1);
+        const int enpassantpos = move.to() + ((side == White) ? -8 : 8);
+        updatePiece(state1, Pawn, side, move.from(), true, -1);
         updateXrays<false, true>(state1, move.to(), true, move.from(), enpassantpos);
-        updatePiece(state1, PAWN, !side, enpassantpos, true, move.from());
-        updatePiece(state2, PAWN, side, move.to(), false, -1);
+        updatePiece(state1, Pawn, !side, enpassantpos, true, move.from());
+        updatePiece(state2, Pawn, side, move.to(), false, -1);
         updateXrays(state2, move.from(), false, move.to());
         updateXrays<true>(state2, enpassantpos, false,
                           move.to());  // remove the common rook side ray
     } else if (state1.isCastling(move)) {
-        updatePiece(state1, ROOK, side, update.sub2[0].square, true, -1);
-        updatePiece(state2, ROOK, side, update.add2[0].square, false, -1);
+        updatePiece(state1, Rook, side, update.sub2[0].square, true, -1);
+        updatePiece(state2, Rook, side, update.add2[0].square, false, -1);
     } else {
         // first remove the threat that will disappear because of the move
-        if (piece != KING)
+        if (piece != King)
             updatePiece(state1, piece, side, move.from(), true, -1);
         if (isCapture) {
             updatePiece(state1, capture, !side, move.to(), true,
@@ -396,7 +396,7 @@ void Accumulator::getThreatUpdates(const PositionState& state1, const PositionSt
                         move.from());  // threat including move.from has already
                                        // been removed
         // then add the new threats
-        if (piece != KING)
+        if (piece != King)
             updatePiece(state2, toPiece, side, move.to(), false, -1);
         updateXrays(state2, move.from(), false,
                     move.to());  // threat including move.to() has already been
@@ -406,7 +406,7 @@ void Accumulator::getThreatUpdates(const PositionState& state1, const PositionSt
 
 void Accumulator::defstaterelated(const PositionState& _state) {
     memcpy(&board, &_state, sizeof(board));
-    occupied = board.colors[WHITE] | board.colors[BLACK];
+    occupied = board.colors[White] | board.colors[Black];
 }
 
 void Accumulator::reinit(const Move& move, const PositionState&, const PositionState& state2,
@@ -427,7 +427,7 @@ void Accumulator::reinit(const Move& move, const PositionState&, const PositionS
         pstrefresh = true;
         Kside[side] ^= 1;
     }
-    if (add1.piece == KING && getInputBucket(add1.square, side, Kside[side]) !=
+    if (add1.piece == King && getInputBucket(add1.square, side, Kside[side]) !=
                                   idInputBucket[side]) {  // king moves are always represented in
                                                           // sub1/add1
         idInputBucket[side] = getInputBucket(add1.square, side, Kside[side]);
@@ -530,8 +530,8 @@ void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny, const NNUE&
         nnue.calcThreats(*this, side, board);
         applythreatsUpdates(accIn, !side, nnue);
     } else {
-        applythreatsUpdates(accIn, WHITE, nnue);
-        applythreatsUpdates(accIn, BLACK, nnue);
+        applythreatsUpdates(accIn, White, nnue);
+        applythreatsUpdates(accIn, Black, nnue);
     }
     if (pstrefresh) {
         int index = (idInputBucket[side] * 2 + Kside[side]) * 2 + side;
@@ -587,26 +587,26 @@ void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny, const NNUE&
         return;
     }
     if (update.type == 0) {
-        nnue.move2(WHITE, accIn, *this, (int)update.sub1[0].mirror(Kside[WHITE]),
-                   (int)update.add1[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
-        nnue.move2(BLACK, accIn, *this, (int)update.sub1[1].mirror(Kside[BLACK]),
-                   (int)update.add1[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
+        nnue.move2(White, accIn, *this, (int)update.sub1[0].mirror(Kside[White]),
+                   (int)update.add1[0].mirror(Kside[White]), idInputBucket[White]);
+        nnue.move2(Black, accIn, *this, (int)update.sub1[1].mirror(Kside[Black]),
+                   (int)update.add1[1].mirror(Kside[Black]), idInputBucket[Black]);
     } else if (update.type == 1) {
-        nnue.move3(WHITE, accIn, *this, (int)update.sub1[0].mirror(Kside[WHITE]),
-                   (int)update.add1[0].mirror(Kside[WHITE]),
-                   (int)update.sub2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
-        nnue.move3(BLACK, accIn, *this, (int)update.sub1[1].mirror(Kside[BLACK]),
-                   (int)update.add1[1].mirror(Kside[BLACK]),
-                   (int)update.sub2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
+        nnue.move3(White, accIn, *this, (int)update.sub1[0].mirror(Kside[White]),
+                   (int)update.add1[0].mirror(Kside[White]),
+                   (int)update.sub2[0].mirror(Kside[White]), idInputBucket[White]);
+        nnue.move3(Black, accIn, *this, (int)update.sub1[1].mirror(Kside[Black]),
+                   (int)update.add1[1].mirror(Kside[Black]),
+                   (int)update.sub2[1].mirror(Kside[Black]), idInputBucket[Black]);
     } else {
-        nnue.move4(WHITE, accIn, *this, (int)update.sub1[0].mirror(Kside[WHITE]),
-                   (int)update.add1[0].mirror(Kside[WHITE]),
-                   (int)update.sub2[0].mirror(Kside[WHITE]),
-                   (int)update.add2[0].mirror(Kside[WHITE]), idInputBucket[WHITE]);
-        nnue.move4(BLACK, accIn, *this, (int)update.sub1[1].mirror(Kside[BLACK]),
-                   (int)update.add1[1].mirror(Kside[BLACK]),
-                   (int)update.sub2[1].mirror(Kside[BLACK]),
-                   (int)update.add2[1].mirror(Kside[BLACK]), idInputBucket[BLACK]);
+        nnue.move4(White, accIn, *this, (int)update.sub1[0].mirror(Kside[White]),
+                   (int)update.add1[0].mirror(Kside[White]),
+                   (int)update.sub2[0].mirror(Kside[White]),
+                   (int)update.add2[0].mirror(Kside[White]), idInputBucket[White]);
+        nnue.move4(Black, accIn, *this, (int)update.sub1[1].mirror(Kside[Black]),
+                   (int)update.add1[1].mirror(Kside[Black]),
+                   (int)update.sub2[1].mirror(Kside[Black]),
+                   (int)update.add2[1].mirror(Kside[Black]), idInputBucket[Black]);
     }
     update.dirty = false;
 }
@@ -659,8 +659,8 @@ T get_int(const unsigned char* source, int length) {
 
 void NNUE::initAcc(Accumulator& accs) const {
     for (int i = 0; i < L1 / nb<16>; i++) {
-        accs[WHITE][i] = hlBiases[i];
-        accs[BLACK][i] = hlBiases[i];
+        accs[White][i] = hlBiases[i];
+        accs[Black][i] = hlBiases[i];
     }
 }
 
@@ -744,8 +744,8 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
     for (int i = 0; i < L1 / nb<16>; i++) {
         accs[pov + 2][i] = simd16_zero();
     }
-    big blackbb = state.colors[BLACK];
-    big whitebb = state.colors[WHITE];
+    big blackbb = state.colors[Black];
+    big whitebb = state.colors[White];
     const big occupied = whitebb | blackbb;
     big authMasks[nbPieces - 1];
     for (int i = 0; i < nbPieces - 1; i++) {
@@ -754,38 +754,38 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
             if (p != i && piecesThreat[i][p] != -1)
                 authMasks[i] |= state.pieces[p];
     }
-    bool mirror = col(__builtin_ctzll(state.getMask(KING, pov))) <= 3;
-    big mask = occupied & ~(state.pieces[KING]);
+    bool mirror = col(__builtin_ctzll(state.getMask(King, pov))) <= 3;
+    big mask = occupied & ~(state.pieces[King]);
     while (mask) {
         const int pos = __builtin_ctzll(mask);
         const int idPiece = state.mailbox[pos];
         big authMask = authMasks[type(idPiece)];
-        big semiexcluded = state.pieces[type(idPiece)] * (type(idPiece) != PAWN);
+        big semiexcluded = state.pieces[type(idPiece)] * (type(idPiece) != Pawn);
 
         big atkmask = 0;
         Index posatk(pos, type(idPiece), color(idPiece));
         posatk.smirror(mirror);
         posatk.schangepov(pov);
         switch (type(idPiece)) {
-            case PAWN:
+            case Pawn:
                 atkmask = attackPawns[pos + color(idPiece) * 64];
                 break;
-            case KNIGHT:
+            case Knight:
                 atkmask = KnightMoves[pos];
                 break;
-            case BISHOP:
+            case Bishop:
                 atkmask = moves_table(pos, occupied, mask_empty_bishop(pos));
                 break;
-            case ROOK:
+            case Rook:
                 atkmask = moves_table(pos + 64, occupied, mask_empty_rook(pos));
                 break;
-            case QUEEN:
+            case Queen:
                 atkmask = moves_table(pos, occupied, mask_empty_bishop(pos)) |
                           moves_table(pos + 64, occupied, mask_empty_rook(pos));
                 break;
         }
         big semiEmask = (MAX_BIG >> (63 - pos)) ^ (mask_row[row(pos)] * (!mirror ^ pov));
-        if (pov == BLACK)
+        if (pov == Black)
             semiEmask = ~semiEmask;
         atkmask &= authMask | (semiexcluded & semiEmask);
         while (atkmask) {
@@ -801,13 +801,13 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
         }
         mask &= mask - 1;
     }
-    for (mask = state.pieces[PAWN]; mask; mask &= mask - 1) {
+    for (mask = state.pieces[Pawn]; mask; mask &= mask - 1) {
         const int pos1 = __builtin_ctzll(mask);
-        const bool color1 = state.colors[BLACK] & (1ULL << pos1);
-        big omask = state.pieces[PAWN] & wide3[col(pos1)] & ~(1ULL << pos1);
+        const bool color1 = state.colors[Black] & (1ULL << pos1);
+        big omask = state.pieces[Pawn] & wide3[col(pos1)] & ~(1ULL << pos1);
         for (; omask; omask &= omask - 1) {
             const int pos2 = __builtin_ctzll(omask);
-            const bool color2 = state.colors[BLACK] & (1ULL << pos2);
+            const bool color2 = state.colors[Black] & (1ULL << pos2);
             PPIndex idx(pos1, color1, pos2, color2);
             idx = idx.changepov(pov).mirror(mirror);
             if (idx.isSemiExcluded())

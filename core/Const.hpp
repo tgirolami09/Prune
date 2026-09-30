@@ -15,22 +15,18 @@ extern int nbThreads;
 extern bool DEBUG;
 extern bool isdfrc;
 const big MAX_BIG = ~0ULL;
-const int WHITE = 0;
-const int BLACK = 1;  // odd = black
-const int PAWN = 0;
-const int KNIGHT = 1;
-const int BISHOP = 2;
-const int ROOK = 3;
-const int QUEEN = 4;
-const int KING = 5;
-const int SPACE = 6;
+enum Color : uint8_t {
+    White,
+    Black,
+};
+enum Piece : uint8_t { Pawn, Knight, Bishop, Rook, Queen, King, Void };
 const int nbPieces = 6;
 const big colA = 0x8080808080808080;
 const big colH = 0x0101010101010101;
 const big row1 = 0xff;
 const big row8 = 0xffULL << 56;
-const map<char, int> piece_to_id = {{'r', ROOK},  {'n', KNIGHT}, {'b', BISHOP},
-                                    {'q', QUEEN}, {'k', KING},   {'p', PAWN}};
+const map<char, int> piece_to_id = {{'r', Piece::Rook},  {'n', Piece::Knight}, {'b', Piece::Bishop},
+                                    {'q', Piece::Queen}, {'k', Piece::King},   {'p', Piece::Pawn}};
 const char id_to_piece[7] = {'p', 'n', 'b', 'r', 'q', 'k', ' '};
 
 extern big clipped_row[8];
@@ -60,9 +56,11 @@ const int MAXIMUM = -MINIMUM;
 const int INF = MAXIMUM;
 const int MIDDLE = 0;
 
-const ubyte EXACT = 0;
-const ubyte LOWERBOUND = 1;
-const ubyte UPPERBOUND = 2;
+enum Bound : uint8_t {
+    Exact,
+    Lower,
+    Upper,
+};
 const int KILLER_ADVANTAGE = 1 << 20;
 // const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
 const int maxHistory = 16384;

@@ -25,7 +25,7 @@ int& HelpOrdering::getTactIndex(const GameState& state, Move move, bool c) {
     if (move.getFlag() != Move::fpromo)
         return captHist[c][piece][capture][move.to()];
     else
-        return captHist[c][move.promotion() - KNIGHT + nbPieces][capture - 1][move.to()];
+        return captHist[c][move.promotion() - Knight + nbPieces][capture - 1][move.to()];
 }
 bool HelpOrdering::fastEq(Move a, Move b) const {
     return a.moveInfo == b.moveInfo;
@@ -85,7 +85,7 @@ void HelpOrdering::negUpdate(Move moves[maxMoves], int upto, bool c, int depth,
 
 void HelpOrdering::addKiller(Move move, int depth, int relDepth, bool c, const GameState& state,
                              big attacked) {
-    if (state.getPiece(move.to()) == SPACE || move.getFlag() == Move::fcastle) {
+    if (state.getPiece(move.to()) == Void || move.getFlag() == Move::fcastle) {
         if (!fastEq(move, killers[relDepth][0])) {
             killers[relDepth][1] = killers[relDepth][0];
             killers[relDepth][0] = move;
@@ -106,7 +106,7 @@ int HelpOrdering::getCaptScore(Move move, bool c, const GameState& state) const 
     if (move.getFlag() != Move::fpromo)
         return captHist[c][piece][capture][move.to()];
     else
-        return captHist[c][move.promotion() - KNIGHT + nbPieces][capture - 1][move.to()];
+        return captHist[c][move.promotion() - Knight + nbPieces][capture - 1][move.to()];
 }
 
 template <int id>
@@ -152,7 +152,7 @@ template int HelpOrdering::getHistoryScore<TunableHist::FP>(Move, bool, const Ga
 int HelpOrdering::getMoveScore(Move move, bool c, int relDepth, const GameState& state,
                                big attacked) const {
     int score = 0;
-    if (state.board.getCapture(move) == SPACE && isKiller(move, relDepth))
+    if (state.board.getCapture(move) == Void && isKiller(move, relDepth))
         score = KILLER_ADVANTAGE;
     return score + getHistoryScore<TunableHist::ORDER>(move, c, state, attacked);
 }

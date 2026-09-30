@@ -19,7 +19,7 @@ struct PositionState {
     forceinline void remPiece(int position, int piecetype, bool color) {
         pieces[piecetype] ^= 1ULL << position;
         colors[color] ^= 1ULL << position;
-        mailbox[position] = SPACE * 2;
+        mailbox[position] = Void * 2;
     }
     forceinline void addPiece(int position, int piecetype, bool color) {
         pieces[piecetype] ^= 1ULL << position;
@@ -30,7 +30,7 @@ struct PositionState {
     forceinline void remPiece(int position, int fullpiece) {
         pieces[type(fullpiece)] ^= 1ULL << position;
         colors[color(fullpiece)] ^= 1ULL << position;
-        mailbox[position] = SPACE * 2;
+        mailbox[position] = Void * 2;
     }
     forceinline void addPiece(int position, int fullpiece) {
         pieces[type(fullpiece)] ^= 1ULL << position;
@@ -40,27 +40,27 @@ struct PositionState {
     forceinline void reset() {
         memset(pieces, 0, sizeof(pieces));
         memset(colors, 0, sizeof(colors));
-        memset(mailbox, SPACE * 2, sizeof(mailbox));
+        memset(mailbox, Void * 2, sizeof(mailbox));
     }
     forceinline big getMask(int piece, bool color) const { return pieces[piece] & colors[color]; }
     forceinline big getMask(int piece) const { return pieces[type(piece)] & colors[color(piece)]; }
-    forceinline big occupancy() const { return colors[WHITE] | colors[BLACK]; }
+    forceinline big occupancy() const { return colors[White] | colors[Black]; }
     forceinline bool isChanger(const Move& move) const {
-        return type(mailbox[move.from()]) == PAWN ||  // mover == PAWN (takes care of ep+promo)
-               (type(mailbox[move.to()]) != SPACE &&
+        return type(mailbox[move.from()]) == Pawn ||  // mover == PAWN (takes care of ep+promo)
+               (type(mailbox[move.to()]) != Void &&
                 move.getFlag() != Move::fcastle);  // capture and not castling
     }
     forceinline bool isCastling(const Move& move) const { return move.getFlag() == Move::fcastle; }
     forceinline bool isTactical(const Move& move) const {
-        return move.getFlag() > Move::fcastle ||                        // promotion+ep
-               (!move.getFlag() && type(mailbox[move.to()]) != SPACE);  //! castling + capture
+        return move.getFlag() > Move::fcastle ||                       // promotion+ep
+               (!move.getFlag() && type(mailbox[move.to()]) != Void);  //! castling + capture
     }
     forceinline int getCapture(const Move& move) const {
         return type(mailbox[move.to()]) *           // normal capture
                    (move.getFlag() != Move::fep) +  // ep => x0 => capture=0=PAWN
-               (SPACE - ROOK) *
+               (Void - Rook) *
                    (move.getFlag() == Move::fcastle);  // castle => previous=ROOK =>
-                                                       // ROOK+SPACE-ROOK = SPACE => no capture
+                                                       // Rook+Void-Rook = Void => no capture
     }
 };
 

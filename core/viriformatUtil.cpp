@@ -50,8 +50,8 @@ void MoveInfo::dump(FILE* datafile) {
     fastWrite<int16_t>(score, datafile);
 }
 void GamePlayed::dump(FILE* datafile) {
-    big occupied = startPos.board.colors[WHITE] |
-                   startPos.board.colors[BLACK];  // calculate the occupied bitboard
+    big occupied = startPos.board.colors[White] |
+                   startPos.board.colors[Black];  // calculate the occupied bitboard
     fastWrite(reverse_col(occupied), datafile);
     uint8_t entry = 0x00;
     bool isSec = false;
@@ -64,7 +64,7 @@ void GamePlayed::dump(FILE* datafile) {
             int8_t piece = startPos.getfullPiece(index);
             int _c = color(piece);
             piece = type(piece);
-            if (piece == ROOK && (mask & castle))  // rook that can castle
+            if (piece == Rook && (mask & castle))  // rook that can castle
                 piece = 6;
             uint8_t full = (_c << 3) | piece;
             if (isSec) {  // if it's the second piece of the byte, we write it
@@ -123,7 +123,7 @@ GamePlayed readGame(FILE* file) {
             int _c = full >> 3;
             if (piece == 6) {
                 castle |= mask;
-                piece = ROOK;
+                piece = Rook;
             }
             game.startPos.board.addPiece(index, piece, _c);
             game.startPos.updateZobrists(piece, _c, i);
@@ -141,7 +141,7 @@ GamePlayed readGame(FILE* file) {
     fastRead(infoGame, file);
     info = infoGame;
     infoGame >>= 8;
-    game.startPos.turnNumber = (info >> 7) == WHITE ? 1 : 0;
+    game.startPos.turnNumber = (info >> 7) == White ? 1 : 0;
     info &= 0b1111111;
     game.startPos.lastDoublePawnPush = info == 64 ? 64 : info ^ 0x07;
     infoGame >>= 8;   // halfmove = infoGame;

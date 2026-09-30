@@ -35,8 +35,8 @@ void TM::init() {
     if (wtime != INT_MAX || btime != INT_MAX) {
         enabledtm = true;
         enabledtime = true;
-        int time = (colorstm == WHITE) ? wtime : btime;
-        int inc = (colorstm == WHITE) ? winc : binc;
+        int time = (colorstm == White) ? wtime : btime;
+        int inc = (colorstm == White) ? winc : binc;
         hardtime = min<sbig>(hardtime, max(min(time / 4 + inc * 2 / 3, time - moveOverhead), 10));
         originsofttime = softtime = min(time / 30 + inc * 2 / 3, movetime);
     }

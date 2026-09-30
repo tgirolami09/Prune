@@ -26,48 +26,48 @@ inline int getLVA(int square, const GameState& state, bool stm, big occupancy,
                   int& pieceType) {  // return the square where the lva come
                                      // from, set pieceType
     // Pawns
-    big mask = occupancy & state.board.getMask(PAWN, stm) & attackPawns[(!stm) * 64 + square];
+    big mask = occupancy & state.board.getMask(Pawn, stm) & attackPawns[(!stm) * 64 + square];
     if (mask) {
-        pieceType = PAWN;
+        pieceType = Pawn;
         return __builtin_ctzll(mask);
     }
     // Knight
-    mask = occupancy & state.board.getMask(KNIGHT, stm) & KnightMoves[square];
+    mask = occupancy & state.board.getMask(Knight, stm) & KnightMoves[square];
     if (mask) {
-        pieceType = KNIGHT;
+        pieceType = Knight;
         return __builtin_ctzll(mask);
     }
     // Bishop
     big maskB = occupancy & get_bishop_lines(occupancy, square);
-    mask = state.board.getMask(BISHOP, stm) & maskB;
+    mask = state.board.getMask(Bishop, stm) & maskB;
     if (mask) {
-        pieceType = BISHOP;
+        pieceType = Bishop;
         return __builtin_ctzll(mask);
     }
     // Rook
     big maskR = occupancy & get_rook_lines(occupancy, square);
-    mask = state.board.getMask(ROOK, stm) & maskR;
+    mask = state.board.getMask(Rook, stm) & maskR;
     if (mask) {
-        pieceType = ROOK;
+        pieceType = Rook;
         return __builtin_ctzll(mask);
     }
     // Queen
-    mask = state.board.getMask(QUEEN, stm) & (maskR | maskB);
+    mask = state.board.getMask(Queen, stm) & (maskR | maskB);
     if (mask) {
-        pieceType = QUEEN;
+        pieceType = Queen;
         return __builtin_ctzll(mask);
     }
-    // KING
-    mask = occupancy & state.board.getMask(KING, stm) & normalKingMoves[square];
+    // King
+    mask = occupancy & state.board.getMask(King, stm) & normalKingMoves[square];
     if (mask) {
-        pieceType = KING;
+        pieceType = King;
         return __builtin_ctzll(mask);
     }
     return -1;
 }
 
 int fastSEE(const Move& move, const GameState& state, const int* value_pieces) {
-    big occupancy = state.board.colors[WHITE] | state.board.colors[BLACK];
+    big occupancy = state.board.colors[White] | state.board.colors[Black];
     occupancy ^= 1ULL << move.from();
     int square = move.to();
     bool stm = !state.friendlyColor();
@@ -114,8 +114,8 @@ bool see_ge(int born, const Move& move, const GameState& state, const int* value
     int lastPiece = state.board.getCapture(move);
     int pieceType = state.getPiece(move.from());
     bool sstm = stm;
-    const big diagPieces = state.board.pieces[BISHOP] | state.board.pieces[QUEEN];
-    const big hvPieces = state.board.pieces[ROOK] | state.board.pieces[QUEEN];
+    const big diagPieces = state.board.pieces[Bishop] | state.board.pieces[Queen];
+    const big hvPieces = state.board.pieces[Rook] | state.board.pieces[Queen];
     big occupancy = state.board.occupancy() ^ (1ULL << atk);
     born = value_pieces[lastPiece] - born;
     stm = !stm;
@@ -125,10 +125,10 @@ bool see_ge(int born, const Move& move, const GameState& state, const int* value
     big bishopAtk = mask_empty_bishop(square);
     big attacks = ((get_bishop_lines(occupancy, square) & diagPieces) |
                    (get_rook_lines(occupancy, square) & hvPieces) |
-                   (KnightMoves[square] & state.board.pieces[KNIGHT]) |
-                   (attackPawns[square] & state.board.getMask(PAWN, 1)) |
-                   (attackPawns[square + 64] & state.board.getMask(PAWN, 0)) |
-                   (normalKingMoves[square] & state.board.pieces[KING])) &
+                   (KnightMoves[square] & state.board.pieces[Knight]) |
+                   (attackPawns[square] & state.board.getMask(Pawn, 1)) |
+                   (attackPawns[square + 64] & state.board.getMask(Pawn, 0)) |
+                   (normalKingMoves[square] & state.board.pieces[King])) &
                   occupancy;
     bool begin2first = false;
     bool begin2second = false;
@@ -143,7 +143,7 @@ bool see_ge(int born, const Move& move, const GameState& state, const int* value
                 break;
             }
         }
-        if ((pieceType == KING && (attacks & (attacks - 1))))
+        if ((pieceType == King && (attacks & (attacks - 1))))
             break;
         occupancy ^= 1ULL << atk;
         born = value_pieces[lastPiece] - born;
@@ -154,18 +154,18 @@ bool see_ge(int born, const Move& move, const GameState& state, const int* value
                 return true;
         } else if (born < 0)
             return false;
-        if (pieceType == KING)
+        if (pieceType == King)
             break;
         begin2first = begin2second;
-        begin2second = pieceType > KNIGHT;
-        if (pieceType == QUEEN) {
+        begin2second = pieceType > Knight;
+        if (pieceType == Queen) {
             if ((1ULL << atk) & bishopAtk)
                 attacks |= firstTouch(square, atk, occupancy) & diagPieces;
             else
                 attacks |= firstTouch(square, atk, occupancy) & hvPieces;
-        } else if (pieceType == ROOK)
+        } else if (pieceType == Rook)
             attacks |= firstTouch(square, atk, occupancy) & hvPieces;
-        else if (pieceType != KNIGHT)
+        else if (pieceType != Knight)
             attacks |= firstTouch(square, atk, occupancy) & diagPieces;
         attacks &= occupancy;
     }
@@ -178,7 +178,7 @@ int score_move(const Move& move, int historyScore, const GameState& state,
     int score = 0;
     if (state.board.isTactical(move)) {
         int cap = state.board.getCapture(move);
-        if (cap != SPACE)
+        if (cap != Void)
             score += cap * 6;
         if (move.getFlag() == Move::fpromo)
             score += move.promotion();
@@ -208,22 +208,22 @@ void IncrementalEvaluator::init(
     stackAcc[stackIndex].update.nbThreats[0] = 0;
     stackAcc[stackIndex].update.nbThreats[1] = 0;
     stackAcc[stackIndex].update.dirty = false;
-    stackAcc[stackIndex].Kside[WHITE] = col(__builtin_ctzll(state.board.getMask(KING, WHITE))) <= 3;
-    stackAcc[stackIndex].Kside[BLACK] = col(__builtin_ctzll(state.board.getMask(KING, BLACK))) <= 3;
-    stackAcc[stackIndex].idInputBucket[WHITE] =
-        getInputBucket(__builtin_ctzll(state.board.getMask(KING, WHITE)), WHITE,
-                       stackAcc[stackIndex].Kside[WHITE]);
-    stackAcc[stackIndex].idInputBucket[BLACK] =
-        getInputBucket(__builtin_ctzll(state.board.getMask(KING, BLACK)), BLACK,
-                       stackAcc[stackIndex].Kside[BLACK]);
+    stackAcc[stackIndex].Kside[White] = col(__builtin_ctzll(state.board.getMask(King, White))) <= 3;
+    stackAcc[stackIndex].Kside[Black] = col(__builtin_ctzll(state.board.getMask(King, Black))) <= 3;
+    stackAcc[stackIndex].idInputBucket[White] =
+        getInputBucket(__builtin_ctzll(state.board.getMask(King, White)), White,
+                       stackAcc[stackIndex].Kside[White]);
+    stackAcc[stackIndex].idInputBucket[Black] =
+        getInputBucket(__builtin_ctzll(state.board.getMask(King, Black)), Black,
+                       stackAcc[stackIndex].Kside[Black]);
     memcpy(&stackAcc[stackIndex].board, &state.board, sizeof(stackAcc[stackIndex].board));
-    nnue.calcThreats(stackAcc[stackIndex], WHITE, state.board);
-    nnue.calcThreats(stackAcc[stackIndex], BLACK, state.board);
-    // printf("%d %d\n", stackAcc[stackIndex].idInputBucket[WHITE],
-    // stackAcc[stackIndex].idInputBucket[BLACK]);
+    nnue.calcThreats(stackAcc[stackIndex], White, state.board);
+    nnue.calcThreats(stackAcc[stackIndex], Black, state.board);
+    // printf("%d %d\n", stackAcc[stackIndex].idInputBucket[White],
+    // stackAcc[stackIndex].idInputBucket[Black]);
     for (int square = 0; square < 64; square++) {
         int piece = state.getfullPiece(square);
-        if (type(piece) != SPACE) {
+        if (type(piece) != Void) {
             changePiece<1, true>(nnue, square, type(piece), color(piece));
             // printf("intermediate eval : %d\n",
             // getScore(state.friendlyColor()));
@@ -232,7 +232,7 @@ void IncrementalEvaluator::init(
 }
 
 bool IncrementalEvaluator::isInsufficientMaterial(const GameState& state) const {
-    if (mgPhase <= 1 && !state.board.pieces[PAWN]) {
+    if (mgPhase <= 1 && !state.board.pieces[Pawn]) {
         return true;
     }
     return false;
@@ -255,11 +255,11 @@ int IncrementalEvaluator::getScore(bool c, const corrhists& ch, const GameState&
 int IncrementalEvaluator::correctEval(int raw_eval, const corrhists& ch, const GameState& state,
                                       _unused const tunables& parameters) const {
     raw_eval += ch.probe(state);
-    int nbQ = popcount(state.board.pieces[QUEEN]);
-    int nbR = popcount(state.board.pieces[ROOK]);
-    int nbB = popcount(state.board.pieces[BISHOP]);
-    int nbN = popcount(state.board.pieces[KNIGHT]);
-    int nbP = popcount(state.board.pieces[PAWN]);
+    int nbQ = popcount(state.board.pieces[Queen]);
+    int nbR = popcount(state.board.pieces[Rook]);
+    int nbB = popcount(state.board.pieces[Bishop]);
+    int nbN = popcount(state.board.pieces[Knight]);
+    int nbP = popcount(state.board.pieces[Pawn]);
     int mat = nbQ * parameters.mats_queen + nbR * parameters.mats_rook +
               nbB * parameters.mats_bishop + nbN * parameters.mats_knight +
               nbP * parameters.mats_pawn;
@@ -281,12 +281,12 @@ void IncrementalEvaluator::changePiece(_unused const NNUE& nnue, int pos, int pi
     if (updateNNUE)
         if (updateNNUE2) {
             Index index(pos, piece, c);
-            nnue.change1<f>(stackAcc[stackIndex], WHITE,
-                            (int)index.mirror(stackAcc[stackIndex].Kside[WHITE]),
-                            stackAcc[stackIndex].idInputBucket[WHITE]);
-            nnue.change1<f>(stackAcc[stackIndex], BLACK,
-                            (int)index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(),
-                            stackAcc[stackIndex].idInputBucket[BLACK]);
+            nnue.change1<f>(stackAcc[stackIndex], White,
+                            (int)index.mirror(stackAcc[stackIndex].Kside[White]),
+                            stackAcc[stackIndex].idInputBucket[White]);
+            nnue.change1<f>(stackAcc[stackIndex], Black,
+                            (int)index.mirror(stackAcc[stackIndex].Kside[Black]).changepov(),
+                            stackAcc[stackIndex].idInputBucket[Black]);
         }
     mgPhase += f * gamephaseInc[piece];
     nbMan += f;
@@ -296,12 +296,12 @@ template <int f, bool updateNNUE>
 void IncrementalEvaluator::changePiece2(_unused const NNUE& nnue, int pos, int piece, bool c) {
     if (updateNNUE) {
         Index index(pos, piece, c);
-        nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex + 1], WHITE,
-                        (int)index.mirror(stackAcc[stackIndex].Kside[WHITE]),
-                        stackAcc[stackIndex].idInputBucket[WHITE]);
-        nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex + 1], BLACK,
-                        (int)index.mirror(stackAcc[stackIndex].Kside[BLACK]).changepov(),
-                        stackAcc[stackIndex].idInputBucket[BLACK]);
+        nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex + 1], White,
+                        (int)index.mirror(stackAcc[stackIndex].Kside[White]),
+                        stackAcc[stackIndex].idInputBucket[White]);
+        nnue.change2<f>(stackAcc[stackIndex], stackAcc[stackIndex + 1], Black,
+                        (int)index.mirror(stackAcc[stackIndex].Kside[Black]).changepov(),
+                        stackAcc[stackIndex].idInputBucket[Black]);
         stackIndex++;
     } else {
         stackIndex--;
@@ -325,28 +325,28 @@ void IncrementalEvaluator::playMove(const NNUE& nnue, Move move, bool c,
     }
     Index sub1(move.from(), piece, c), add1(toSquare, toPiece, c), sub2, add2;
     bool mirror = false;
-    if (capture != SPACE) {
+    if (capture != Void) {
         int posCapture = move.to();
         int pieceCapture = capture;
         if (move.getFlag() == Move::fep) {
-            if (c == WHITE)
+            if (c == White)
                 posCapture -= 8;
             else
                 posCapture += 8;
-            pieceCapture = PAWN;
+            pieceCapture = Pawn;
         }
         changePiece<-f, false>(nnue, posCapture, pieceCapture, !c);
         if (f == 1)
             sub2 = Index(posCapture, pieceCapture, !c);
     }
-    if (piece == KING) {
+    if (piece == King) {
         if ((col(move.from()) > 3) != (col(toSquare) > 3))
             mirror = true;
         if (move.getFlag() == Move::fcastle) {  // castling
             int rookStart = move.to();
             int rookEnd = toSquare + 2 * (move.from() > move.to()) - 1;
             if (f == 1)
-                sub2 = Index(rookStart, ROOK, c), add2 = Index(rookEnd, ROOK, c);
+                sub2 = Index(rookStart, Rook, c), add2 = Index(rookEnd, Rook, c);
         }
     }
     if (f == 1) {
@@ -368,27 +368,27 @@ void IncrementalEvaluator::playNoBack(_unused const GameState& state, Move move,
     int capture = state.board.getCapture(move);
     int toSquare = move.toMover();
     bool mirror = false;
-    if (piece == KING && (col(move.from()) > 3) != (col(toSquare) > 3))
+    if (piece == King && (col(move.from()) > 3) != (col(toSquare) > 3))
         mirror = true;
     changePiece<-1, true>(nnue, move.from(), piece, c, !mirror);
     changePiece<1, true>(nnue, toSquare, toPiece, c, !mirror);
-    if (capture != SPACE) {
+    if (capture != Void) {
         int posCapture = move.to();
         int pieceCapture = capture;
         if (move.getFlag() == Move::fep) {  // for en passant
-            if (c == WHITE)
+            if (c == White)
                 posCapture -= 8;
             else
                 posCapture += 8;
-            pieceCapture = PAWN;
+            pieceCapture = Pawn;
         }
         changePiece<-1, true>(nnue, posCapture, pieceCapture, !c, !mirror);
     }
     if (move.getFlag() == Move::fcastle) {  // castling
         int rookStart = move.to();
         int rookEnd = toSquare + 2 * (move.from() > move.to()) - 1;
-        changePiece<-1, true>(nnue, rookStart, ROOK, c, !mirror);
-        changePiece<1, true>(nnue, rookEnd, ROOK, c, !mirror);
+        changePiece<-1, true>(nnue, rookStart, Rook, c, !mirror);
+        changePiece<1, true>(nnue, rookEnd, Rook, c, !mirror);
     }
     if (mirror) {
         stackAcc[stackIndex].Kside[state.enemyColor()] ^= 1;

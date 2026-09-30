@@ -88,7 +88,7 @@ void Cluster::push(infoScore& entry, int curAge) {
     if (entries[bestID].hash != entry.hash ||
         entry.depth + fracDepth * 2 * entry.tt_pv() >=
             entries[bestID].depth + fracDepth * entries[bestID].tt_pv() ||
-        entries[bestID].typeNode() == UPPERBOUND || entries[bestID].age() != entry.age())
+        entries[bestID].typeNode() == Bound::Upper || entries[bestID].age() != entry.age())
         entries[bestID] = entry;
 }
 
@@ -102,11 +102,11 @@ pair<big, residualHash> getIndex(const GameState& state, big modulo) {
 int transpositionTable::storedScore(int alpha, int beta, const infoScore& entry,
                                     int rootDist) const {
     const int score = fromTT(entry.score, rootDist);
-    if (entry.typeNode() == EXACT)
+    if (entry.typeNode() == Bound::Exact)
         return score;
-    if (score >= beta && entry.typeNode() == LOWERBOUND)
+    if (score >= beta && entry.typeNode() == Bound::Lower)
         return score;
-    if (score <= alpha && entry.typeNode() == UPPERBOUND)
+    if (score <= alpha && entry.typeNode() == Bound::Upper)
         return score;
     return INVALID;
 }

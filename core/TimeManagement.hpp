@@ -22,7 +22,7 @@ class TM {
     sbig originsofttime;
     Move lastbestMove;
     int nbInARow;
-    TM(int moveOverhead = 0, bool color = WHITE, int wtime = INT_MAX, int winc = INT_MAX,
+    TM(int moveOverhead = 0, bool color = White, int wtime = INT_MAX, int winc = INT_MAX,
        int btime = INT_MAX, int binc = INT_MAX, int movetime = INT_MAX, big hardnodes = MAX_BIG,
        big softnodes = MAX_BIG, int maxdepth = maxDepth);
     void init();
