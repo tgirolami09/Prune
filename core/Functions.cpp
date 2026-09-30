@@ -51,7 +51,7 @@ u64 reverse_col(u64 board) {
 void print_mask(u64 mask) {
     for (int row = 0; row < 8; row++) {
         for (int col = 0; col < 8; col++) {
-            u64 _mask = 1ULL << (63 - (row * 8 + col));
+            u64 _mask = 1ULL << (56 ^ (row * 8 + col));
             if (mask & _mask)
                 printf("1");
             else
@@ -70,14 +70,14 @@ u64 removeBitFromMask(u64 mask, int pos) {
 }
 
 int from_str(string a) {
-    int col = 7 - (a[0] - 'a');
+    int col = (a[0] - 'a');
     int row = (a[1] - '0') - 1;
     return row << 3 | col;
 }
 
 string to_uci(int pos) {
     string uci;
-    uci += (7 - col(pos)) + 'a';
+    uci += col(pos) + 'a';
     uci += row(pos) + '1';
     return uci;
 }
@@ -104,7 +104,7 @@ u64 mask_full_bishop(int square) {
 }
 
 u64 maskCol(int square) {
-    return colH << col(square);
+    return colA << col(square);
 }
 
 char transform(u8 n) {

@@ -89,19 +89,18 @@ bool TablebaseProbe::canProbe(const GameState& state) const {
 static void stateToFathom(const GameState& state, uint64_t& white, uint64_t& black, uint64_t& kings,
                           uint64_t& queens, uint64_t& rooks, uint64_t& bishops, uint64_t& knights,
                           uint64_t& pawns, unsigned& ep, bool& turn) {
-    // Combine color bitboard.piecess and convert to Fathom format using
-    // reverse_col
-    white = reverse_col(state.board.colors[White]);
+    // Combine color bitboard.piecess and convert to Fathom format
+    white = state.board.colors[White];
 
-    black = reverse_col(state.board.colors[Black]);
+    black = state.board.colors[Black];
 
     // Combine piece type bitboard.piecess and convert to Fathom format
-    kings = reverse_col(state.board.pieces[King]);
-    queens = reverse_col(state.board.pieces[Queen]);
-    rooks = reverse_col(state.board.pieces[Rook]);
-    bishops = reverse_col(state.board.pieces[Bishop]);
-    knights = reverse_col(state.board.pieces[Knight]);
-    pawns = reverse_col(state.board.pieces[Pawn]);
+    kings = state.board.pieces[King];
+    queens = state.board.pieces[Queen];
+    rooks = state.board.pieces[Rook];
+    bishops = state.board.pieces[Bishop];
+    knights = state.board.pieces[Knight];
+    pawns = state.board.pieces[Pawn];
 
     // En passant: convert engine square to Fathom square
     if (state.lastDoublePawnPush != 64) {

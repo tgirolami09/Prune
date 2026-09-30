@@ -8,7 +8,7 @@ using namespace std;
 
 u64 zobrist[nbZobrist];
 static inline int posCastlingRook(bool side, bool c) {
-    return ((7 - side * 7) + c * (8 * 7));
+    return ((side * 7) + c * (8 * 7));
 }
 __attribute__((constructor)) void init_zobrs() {
     u64 state(42);
@@ -84,8 +84,6 @@ void GameState::setDFRC(int idWhite, int idBlack) {
         board.pieces[Knight] |= maskN << shiftPieces;
         board.pieces[Pawn] |= ((1ULL << 8) - 1) << shiftPawn;
     }
-    for (int piece = Knight; piece <= King; piece++)
-        board.pieces[piece] = reverse_col(board.pieces[piece]);
     castlingMask = board.pieces[Rook];
 
     for (int piece = 0; piece <= King; piece++) {
@@ -114,7 +112,7 @@ void GameState::fromFen(string fen) {
     minorZobrist = 0;
     board.reset();
     int id = 0;
-    int dec = 63;
+    int dec = 0;
     for (; id < (int)fen.size(); id++) {
         char c = fen[id];
         if (isalpha(c)) {
@@ -124,11 +122,11 @@ void GameState::fromFen(string fen) {
                 color_p = White;
             else
                 color_p = Black;
-            board.addPiece(dec, piece, color_p);
-            updateZobrists(piece, color_p, dec);
-            dec--;
+            board.addPiece(dec ^ 56, piece, color_p);
+            updateZobrists(piece, color_p, dec ^ 56);
+            dec++;
         } else if (isdigit(c)) {
-            dec -= c - '0';
+            dec += c - '0';
         } else if (c == ' ')
             break;
     }
@@ -157,12 +155,12 @@ void GameState::fromFen(string fen) {
                 int upto = posCastlingRook(position == 'k', isBlack);
                 int kingpos = __builtin_ctzll(board.getMask(King * 2 + isBlack));
                 u64 rmask = directions[kingpos][upto] & board.getMask(Rook * 2 + isBlack);
-                if (position == 'q')
+                if (position == 'r')
                     pos = 63 ^ __builtin_clzll(rmask);
                 else
                     pos = __builtin_ctzll(rmask);
             } else {
-                pos = isBlack * 56 + 7 - (position - 'a');
+                pos = isBlack * 56 + (position - 'a');
             }
             castlingMask |= 1ULL << pos;
             zobristHash ^= zobrist[zobrCastle + pos];
@@ -172,7 +170,7 @@ void GameState::fromFen(string fen) {
     if (fen[id] == '-')
         lastDoublePawnPush = 64;
     else {
-        lastDoublePawnPush = 7 - (fen[id] - 'a'), id++;
+        lastDoublePawnPush = (fen[id] - 'a'), id++;
         lastDoublePawnPush += 8 * (fen[id] - '1'), id++;
     }
     // printf("In fen to data -> en passant goes to %d\n",lastDoublePawnPush);
@@ -189,10 +187,10 @@ void GameState::fromFen(string fen) {
 
 string GameState::toFen() const {
     string fen = "";
-    for (int row = 0; row < 8; row++) {
+    for (int row = 7; row >= 0; row--) {
         int nbSpace = 0;
         for (int col = 0; col < 8; col++) {
-            int p = getfullPiece(63 - (row << 3 | col));
+            int p = getfullPiece(row << 3 | col);
             if (type(p) == Void) {
                 nbSpace++;
             } else {
@@ -208,7 +206,7 @@ string GameState::toFen() const {
         }
         if (nbSpace)
             fen += (char)nbSpace + '0';
-        if (row != 7)
+        if (row != 0)
             fen += "/";
     }
     fen += " ";
@@ -226,7 +224,7 @@ string GameState::toFen() const {
             isBlack = true;
             position -= 56;
         }
-        char c = (7 - position) + 'a';
+        char c = position + 'a';
         if (!isBlack)
             c = toupper(c);
         castlingPart += c;
@@ -240,7 +238,7 @@ string GameState::toFen() const {
     if (lastDoublePawnPush != 64) {
         // fen += (char)7-lastDoublePawnPush+'a';
         // fen += friendlyColor() == WHITE?'6':'3';
-        fen += 'h' - (lastDoublePawnPush % 8);
+        fen += 'a' + (lastDoublePawnPush % 8);
         fen += '0' + (lastDoublePawnPush / 8 + 1);
     } else
         fen += "-";
@@ -362,10 +360,10 @@ void GameState::print() const {
         printf("−−");
     }
     printf("−−\\\n");
-    for (int row = 0; row < 8; row++) {
+    for (int row = 7; row >= 0; row--) {
         printf("|");
         for (int col = 0; col < 8; col++) {
-            int pos = 63 - (row << 3 | col);
+            int pos = row << 3 | col;
             int piece = getfullPiece(pos);
             char c;
             if (piece == Void * 2)
@@ -422,7 +420,7 @@ void GameState::initMove(Move& move) {
     }
     if (mover == King && !isdfrc && abs(move.from() - move.to()) == 2) {
         move.setFlag(Move::fcastle);
-        move.resetTo(move.to() + (move.to() > move.from() ? 2 : -1));
+        move.resetTo(move.to() + (move.to() > move.from() ? 1 : -2));
     }
 }
 
@@ -467,7 +465,7 @@ ExpendedMove GameState::playMove(Move move) {
     if (piece == King) {
         if (move.getFlag() == Move::fcastle) {  // castling
             int startRook = move.to();
-            int endRook = toSquare + 2 * (move.from() > move.to()) - 1;
+            int endRook = rookposCastle[move.from() < move.to()] | (move.from() & 56);
             updateZobrists(Rook, curColor, startRook);
             updateZobrists(Rook, curColor, endRook);
             board.remPiece(startRook, Rook, curColor);

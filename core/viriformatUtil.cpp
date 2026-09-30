@@ -7,23 +7,6 @@
 #include "GameState.hpp"
 #include "Move.hpp"
 
-/* Important note:
-    my squares are H1=0, A1=7 A8=63 H8=56 :
-    63 62 61 60 59 58 57 56
-    55 54 53 52 51 50 49 48
-    47 46 45 44 43 42 41 40
-    39 38 37 36 35 34 33 32
-    31 30 29 28 27 26 25 24
-    23 22 21 20 19 18 17 16
-    15 14 13 12 11 10  9  8
-     7  6  5  4  3  2  1  0
-    which are different from the expected A1=0, H1=7, A8=56, H8=63
-    so to convert, I use:
-        newSquare = square ^ 0x7
-    also why I use reverse_col : expected to mirror verticaly the board, to get
-   the goo occupied-piece bitboard (comes from Functions.cpp)
- */
-
 template <typename T>
 void fastWrite(T data, FILE* file) {
     fwrite(reinterpret_cast<const char*>(&data), sizeof(data), 1, file);
@@ -41,7 +24,7 @@ MoveInfo::MoveInfo() {
 }
 void MoveInfo::dump(FILE* datafile) {
     static constexpr int transfo[4] = {0, 2, 3, 1};
-    int to = move.to() ^ 0x07, from = move.from() ^ 0x07;
+    int to = move.to(), from = move.from();
     uint16_t mv = to << 6 | from;
     mv |= (move.promotion() - (move.getFlag() == Move::fpromo)) << 12;
     int type = transfo[move.getFlag()];
@@ -52,13 +35,13 @@ void MoveInfo::dump(FILE* datafile) {
 void GamePlayed::dump(FILE* datafile) {
     u64 occupied = startPos.board.colors[White] |
                    startPos.board.colors[Black];  // calculate the occupied bitboard
-    fastWrite(reverse_col(occupied), datafile);
+    fastWrite(occupied, datafile);
     uint8_t entry = 0x00;
     bool isSec = false;
     int nbEntry = 0;
     u64 castle = startPos.castlingMask;
     for (int i = 0; i < 64; i++) {
-        int index = i ^ 0x07;
+        int index = i;
         u64 mask = 1ULL << index;
         if (mask & occupied) {  // if there is a piece there
             int8_t piece = startPos.getfullPiece(index);
@@ -83,9 +66,8 @@ void GamePlayed::dump(FILE* datafile) {
             entry = 0;
         isSec ^= 1;
     }
-    uint8_t info = startPos.lastDoublePawnPush == 64
-                       ? 64
-                       : startPos.lastDoublePawnPush ^ 0x07;  // en passant square
+    uint8_t info =
+        startPos.lastDoublePawnPush == 64 ? 64 : startPos.lastDoublePawnPush;  // en passant square
     info |= startPos.friendlyColor() << 7;
     fastWrite(info, datafile);
     fastWrite<uint8_t>(0, datafile);       // halfmove clock (for 50 move rule)
@@ -106,13 +88,12 @@ GamePlayed readGame(FILE* file) {
     GamePlayed game;
     u64 occupied = 0;
     fastRead(occupied, file);
-    occupied = reverse_col(occupied);
     uint8_t entry = 0;
     u64 castle = 0;
     bool isSec = false;
     int nbEntry = 0;
     for (int i = 0; i < 64; i++) {
-        int index = i ^ 0x07;
+        int index = i;
         u64 mask = 1ULL << index;
         if (mask & occupied) {  // if there sould be a piece there
             if (!isSec)
@@ -143,7 +124,7 @@ GamePlayed readGame(FILE* file) {
     infoGame >>= 8;
     game.startPos.turnNumber = (info >> 7) == White ? 1 : 0;
     info &= 0b1111111;
-    game.startPos.lastDoublePawnPush = info == 64 ? 64 : info ^ 0x07;
+    game.startPos.lastDoublePawnPush = info == 64 ? 64 : info;
     infoGame >>= 8;   // halfmove = infoGame;
     infoGame >>= 16;  // fullmove = infoGame;
     infoGame >>= 16;  // score = infoGame;
@@ -158,8 +139,6 @@ GamePlayed readGame(FILE* file) {
         move.score = (int16_t)(moveInfo >> 16);
         int from = mv & 0x3f;
         int to = (mv >> 6) & 0x3f;
-        to ^= 0x07;
-        from ^= 0x07;
         int type = mv >> 14;
         int promo = (mv >> 12) & 0b11;
         if (type == 1)

@@ -24,8 +24,8 @@ enum Color : uint8_t {
 };
 enum Piece : uint8_t { Pawn, Knight, Bishop, Rook, Queen, King, Void };
 const int nbPieces = 6;
-const u64 colA = 0x8080808080808080;
-const u64 colH = 0x0101010101010101;
+const u64 colH = 0x8080808080808080;
+const u64 colA = 0x0101010101010101;
 const u64 row1 = 0xff;
 const u64 row8 = 0xffULL << 56;
 const map<char, int> piece_to_id = {{'r', Piece::Rook},  {'n', Piece::Knight}, {'b', Piece::Bishop},
@@ -68,8 +68,8 @@ const int KILLER_ADVANTAGE = 1 << 20;
 // const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
 const int maxHistory = 16384;
 
-constexpr int kingposCastle[2] = {1, 5};
-constexpr int rookposCastle[2] = {2, 4};
+constexpr int kingposCastle[2] = {2, 6};
+constexpr int rookposCastle[2] = {3, 5};
 constexpr int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
 
 constexpr int fracDepth = 128;

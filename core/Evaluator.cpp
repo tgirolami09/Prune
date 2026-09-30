@@ -208,8 +208,8 @@ void IncrementalEvaluator::init(
     stackAcc[stackIndex].update.nbThreats[0] = 0;
     stackAcc[stackIndex].update.nbThreats[1] = 0;
     stackAcc[stackIndex].update.dirty = false;
-    stackAcc[stackIndex].Kside[White] = col(__builtin_ctzll(state.board.getMask(King, White))) <= 3;
-    stackAcc[stackIndex].Kside[Black] = col(__builtin_ctzll(state.board.getMask(King, Black))) <= 3;
+    stackAcc[stackIndex].Kside[White] = col(__builtin_ctzll(state.board.getMask(King, White))) > 3;
+    stackAcc[stackIndex].Kside[Black] = col(__builtin_ctzll(state.board.getMask(King, Black))) > 3;
     stackAcc[stackIndex].idInputBucket[White] =
         getInputBucket(__builtin_ctzll(state.board.getMask(King, White)), White,
                        stackAcc[stackIndex].Kside[White]);

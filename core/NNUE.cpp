@@ -66,7 +66,7 @@ __attribute__((constructor(106))) void initThreatIndices() {
             u8 topos[64];
             int nbto = places(mask, topos);
             for (int idto = 0; idto < nbto; idto++) {
-                threatIndex[atk][from ^ 7][topos[idto] ^ 7] = index++;
+                threatIndex[atk][from][topos[idto]] = index++;
             }
         }
         int curpiece = index - lastindex;
@@ -87,7 +87,7 @@ int getThreatIndex(Index atk, Index def) {
 int getInputBucket(int Kpos, bool side, bool mirror) {
     if (side)
         Kpos ^= 56;
-    if (!mirror)
+    if (mirror)
         Kpos ^= 7;
     return inputBuckets[(col(Kpos)) | (row(Kpos) << 2)];
 }
@@ -120,7 +120,7 @@ Index Index::changepov(bool needs) const {
     return Index(square ^ (56 * needs), piece, color ^ needs);
 }
 Index::operator int() const {
-    int index = ((6 * color + piece) << 6) | (square ^ 7);
+    int index = ((6 * color + piece) << 6) | square;
     index -= (piece == King) * 6 * 64 * color;
     return index;
 }
@@ -135,7 +135,7 @@ int Index::fullpiece() const {
 }
 
 void Index::print() const {
-    printf("%d %d %d", piece, color, square ^ 7);
+    printf("%d %d %d", piece, color, square);
 }
 ThreatIndex::ThreatIndex() {}
 ThreatIndex::ThreatIndex(Index _from, Index _to) : from(_from), to(_to) {}
@@ -147,7 +147,7 @@ bool ThreatIndex::isexcluded() const {
     return piecesThreat[from.piece][to.piece] == -1;
 }
 bool ThreatIndex::issemiexcluded() const {
-    return from.piece == to.piece && (from.square ^ 7) < (to.square ^ 7);
+    return from.piece == to.piece && from.square < to.square;
 }
 ThreatIndex::operator int() const {
     assert(!issemiexcluded() && !isexcluded());
@@ -176,8 +176,8 @@ PPIndex::PPIndex() {}
 PPIndex::PPIndex(const int _pos1, const bool colorpiece1, const int _pos2, const bool colorpiece2)
     : pos1(_pos1), pos2(_pos2), color1(colorpiece1), color2(colorpiece2) {}
 PPIndex::operator int() const {
-    int hi = (pos1 ^ 7) - 8 + color1 * 48;
-    int lo = (pos2 ^ 7) - 8 + color2 * 48;
+    int hi = pos1 - 8 + color1 * 48;
+    int lo = pos2 - 8 + color2 * 48;
     assert(hi > lo);
     int idx = hi * (hi - 1) / 2 + lo;
     assert(idx < PP_SIZE);
@@ -190,7 +190,7 @@ PPIndex PPIndex::changepov(bool needs) {
     return PPIndex(pos1 ^ (56 * needs), color1 ^ needs, pos2 ^ (56 * needs), color2 ^ needs);
 }
 bool PPIndex::isSemiExcluded() const {
-    return ((pos1 ^ 7) + color1 * 64) < ((pos2 ^ 7) + color2 * 64);
+    return (pos1 + color1 * 64) < (pos2 + color2 * 64);
 }
 PPIndex PPIndex::swapSemiExcluded() const {
     return isSemiExcluded() ? PPIndex(pos2, color2, pos1, color1) : *this;
@@ -676,10 +676,6 @@ void NNUE::init1Acc(oneAccumulator& accs) const {
     }
 }
 
-int NNUE::get_index(int piece, int c, int square) const {
-    return ((6 * c + piece) << 6) | (square ^ 7);
-}
-
 template <int f>
 void NNUE::addThreat(Accumulator& accs, bool pov, int index) const {
     static_assert(f == 1 || f == -1, "f should be either 1 or -1");
@@ -754,7 +750,7 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
             if (p != i && piecesThreat[i][p] != -1)
                 authMasks[i] |= state.pieces[p];
     }
-    bool mirror = col(__builtin_ctzll(state.getMask(King, pov))) <= 3;
+    bool mirror = col(__builtin_ctzll(state.getMask(King, pov))) > 3;
     u64 mask = occupied & ~(state.pieces[King]);
     while (mask) {
         const int pos = __builtin_ctzll(mask);
