@@ -66,8 +66,7 @@ void GamePlayed::dump(FILE* datafile) {
             entry = 0;
         isSec ^= 1;
     }
-    uint8_t info =
-        startPos.lastDoublePawnPush == 64 ? 64 : startPos.lastDoublePawnPush;  // en passant square
+    uint8_t info = startPos.lastDoublePawnPush;  // en passant square
     info |= startPos.friendlyColor() << 7;
     fastWrite(info, datafile);
     fastWrite<uint8_t>(0, datafile);       // halfmove clock (for 50 move rule)
@@ -124,7 +123,7 @@ GamePlayed readGame(FILE* file) {
     infoGame >>= 8;
     game.startPos.turnNumber = (info >> 7) == White ? 1 : 0;
     info &= 0b1111111;
-    game.startPos.lastDoublePawnPush = info == 64 ? 64 : info;
+    game.startPos.lastDoublePawnPush = info;
     infoGame >>= 8;   // halfmove = infoGame;
     infoGame >>= 16;  // fullmove = infoGame;
     infoGame >>= 16;  // score = infoGame;

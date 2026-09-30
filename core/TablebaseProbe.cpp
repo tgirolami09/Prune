@@ -114,7 +114,7 @@ static void stateToFathom(const GameState& state, uint64_t& white, uint64_t& bla
             // White just pushed, EP target is rank 3 (index 2)
             engineEpTarget = (state.lastDoublePawnPush & 7) + 2 * 8;
         }
-        ep = engineEpTarget ^ 7;  // convert to Fathom square
+        ep = engineEpTarget;  // convert to Fathom square
     } else {
         ep = 0;
     }
@@ -170,8 +170,8 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     unsigned promo = TB_GET_PROMOTES(result);
 
     // Convert Fathom squares to engine squares
-    int from = fathomFrom ^ 7;
-    int to = fathomTo ^ 7;
+    int from = fathomFrom;
+    int to = fathomTo;
 
     // Determine piece type from engine position
 
@@ -279,8 +279,8 @@ int TablebaseProbe::rootFiltering(const GameState& state, rootMove* moves, int& 
         unsigned fathomTo = TB_MOVE_TO(results->moves[j].move);
         unsigned fathomProm = TB_MOVE_PROMOTES(results->moves[j].move);
         moves[newNb].move.moveInfo = 0;
-        moves[newNb].move.updateFrom(fathomFrom ^ 7);
-        moves[newNb].move.updateTo(fathomTo ^ 7);
+        moves[newNb].move.updateFrom(fathomFrom);
+        moves[newNb].move.updateTo(fathomTo);
         if (promoMap[fathomProm] != Pawn)
             moves[newNb].move.updatePromotion(promoMap[fathomProm]);
         moves[newNb].tb_upperbound_score = rank_to_upperbound_score(results->moves[j].tbRank);
