@@ -780,7 +780,7 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
                           moves_table(pos + 64, occupied, mask_empty_rook(pos));
                 break;
         }
-        u64 semiEmask = (MAX_BIG >> (63 - pos)) ^ (mask_row[row(pos)] * (!mirror ^ pov));
+        u64 semiEmask = (MAX_BIG >> (63 - pos)) ^ (mask_row[row(pos)] * (mirror ^ pov));
         if (pov == Black)
             semiEmask = ~semiEmask;
         atkmask &= authMask | (semiexcluded & semiEmask);
