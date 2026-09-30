@@ -92,7 +92,7 @@ void Cluster::push(infoScore& entry, int curAge) {
         entries[bestID] = entry;
 }
 
-pair<big, residualHash> getIndex(const GameState& state, big modulo) {
+pair<u64, residualHash> getIndex(const GameState& state, u64 modulo) {
     __uint128_t tHash = ((__uint128_t)state.zobristHash) * modulo;
     static const int dec = 8 * sizeof(residualHash);
     tHash >>= 64 - dec;
@@ -120,8 +120,8 @@ infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit) {
     return table[index].probe(hash, ttHit);
 }
 
-void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move,
-                              uint16_t depth, int16_t raw_eval, bool is_pv) {
+void transpositionTable::push(GameState& state, int score, u8 typeNode, Move move, uint16_t depth,
+                              int16_t raw_eval, bool is_pv) {
     // if(score == 0)return; //because of the repetition
     infoScore info;
     auto [index, hash] = getIndex(state, modulo);
@@ -140,7 +140,7 @@ void transpositionTable::prefetch(const GameState& state) {
     __builtin_prefetch(&table[getIndex(state, modulo).first]);
 }
 
-void transpositionTable::clearRange(big start, big end) {
+void transpositionTable::clearRange(u64 start, u64 end) {
     memset(table + start, 0, (end - start) * sizeof(Cluster));
 }
 
@@ -151,8 +151,8 @@ void transpositionTable::clear() {
     } else {
         thread* threads = (thread*)calloc(nbThreads, sizeof(Cluster));
         for (int i = 0; i < nbThreads; i++) {
-            big start = modulo * i / nbThreads;
-            big end = modulo * (i + 1) / nbThreads;
+            u64 start = modulo * i / nbThreads;
+            u64 end = modulo * (i + 1) / nbThreads;
             threads[i] = thread(&transpositionTable::clearRange, this, start, end);
         }
         for (int i = 0; i < nbThreads; i++) {
@@ -213,7 +213,7 @@ void TTperft::push(perftMem eval) {
     int index = eval.hash % modulo;
     mem[index] = eval;
 }
-int TTperft::get_eval(big hash, int depth) {
+int TTperft::get_eval(u64 hash, int depth) {
     int index = (hash * 256 + depth) % modulo;
     if (mem[index].depth == depth && mem[index].hash == hash)
         return mem[index].leefs;

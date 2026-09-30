@@ -16,7 +16,7 @@ class GamePlayed {
    public:
     vector<MoveInfo> game;
     GameState startPos;
-    ubyte result;
+    u8 result;
     static const int headerSize = 8 + 16 + 8;
     void dump(FILE* datafile);
     void clear();

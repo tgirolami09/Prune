@@ -183,7 +183,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
                            bool& printmove) {
     if (!args.empty() && args[0].first == "perft") {
         printmove = false;
-        big result;
+        u64 result;
         PositionSnapshot snap;
         snap.save(state.root);
         for (Move move : state.movesFromRoot)
@@ -210,7 +210,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
             else if (arg.first == "movetime")
                 tm.movetime = min(tm.movetime, stoi(arg.second));
             else if (arg.first == "nodes")
-                tm.hardnodes = min<big>(tm.hardnodes, stoull(arg.second));
+                tm.hardnodes = min<u64>(tm.hardnodes, stoull(arg.second));
             else if (arg.first == "depth")
                 tm.maxdepth = min(tm.maxdepth, stoi(arg.second));
             else
@@ -413,9 +413,9 @@ void manageSearch(bool seeInput) {
                 }
                 sort(Scores.begin(), Scores.end());
                 int size = Scores.size();
-                pair<int, big> scoreThird = {0.0, 0.0}, scoreAll = {0.0, 0.0};
+                pair<int, u64> scoreThird = {0.0, 0.0}, scoreAll = {0.0, 0.0};
                 for (int i = 0; i < size; i++) {
-                    pair<int, big> locScore = {Scores[i].first, Scores[i].second};
+                    pair<int, u64> locScore = {Scores[i].first, Scores[i].second};
                     scoreAll.first += locScore.first;
                     scoreAll.second += locScore.second;
                     if (i >= size / 3 && i < size * 2 / 3) {

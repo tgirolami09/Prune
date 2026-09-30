@@ -6,14 +6,14 @@
 #include "Functions.hpp"
 using namespace std;
 
-big zobrist[nbZobrist];
+u64 zobrist[nbZobrist];
 static inline int posCastlingRook(bool side, bool c) {
     return ((7 - side * 7) + c * (8 * 7));
 }
 __attribute__((constructor)) void init_zobrs() {
-    big state(42);
+    u64 state(42);
     for (int idz = 0; idz < nbZobrist; idz++) {
-        big z = (state += 0x9E3779B97F4A7C15ULL);
+        u64 z = (state += 0x9E3779B97F4A7C15ULL);
         z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
         z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
         zobrist[idz] = z ^ (z >> 31);
@@ -32,7 +32,7 @@ GameState::GameState() {
 }
 
 void GameState::updateZobrists(int piece, bool color, int square) {
-    big zobr = zobrist[(color * 6 + piece) * 64 + square];
+    u64 zobr = zobrist[(color * 6 + piece) * 64 + square];
     zobristHash ^= zobr;
     if (piece == Pawn)
         pawnZobrist ^= zobr;
@@ -40,8 +40,8 @@ void GameState::updateZobrists(int piece, bool color, int square) {
         minorZobrist ^= zobr;
 }
 
-static inline big inv_pext(big n, big mask) {
-    big res = 0;
+static inline u64 inv_pext(u64 n, u64 mask) {
+    u64 res = 0;
     while (mask) {
         res |= (n & 1) << __builtin_ctzll(mask);
         mask &= mask - 1;
@@ -59,7 +59,7 @@ void GameState::setDFRC(int idWhite, int idBlack) {
     movesSinceBeginning[0] = EnullMove;
     board.colors[White] = (1 << 16) - 1;
     board.colors[Black] = board.colors[White] << (6 * 8);
-    static constexpr big knightsTable[10] = {
+    static constexpr u64 knightsTable[10] = {
         0b00011, 0b00101, 0b01001, 0b10001, 0b00110, 0b01010, 0b10010, 0b01100, 0b10100, 0b11000,
     };
     for (int c = 0; c < 2; c++) {
@@ -70,11 +70,11 @@ void GameState::setDFRC(int idWhite, int idBlack) {
         int idB = id % 16;
         assert(idN < 10 && idQ < 6 && idB < 16);
         int idB1 = (idB / 4) * 2, idB2 = (idB % 4) * 2 + 1;
-        big maskB = (1 << idB1) | (1 << idB2);
-        big maskQ = inv_pext(1 << idQ, ~maskB);
-        big maskN = inv_pext(knightsTable[idN], ~(maskB | maskQ));
-        big maskR = inv_pext(0b101, ~(maskB | maskQ | maskN));
-        big maskK = inv_pext(0b010, ~(maskB | maskQ | maskN));
+        u64 maskB = (1 << idB1) | (1 << idB2);
+        u64 maskQ = inv_pext(1 << idQ, ~maskB);
+        u64 maskN = inv_pext(knightsTable[idN], ~(maskB | maskQ));
+        u64 maskR = inv_pext(0b101, ~(maskB | maskQ | maskN));
+        u64 maskK = inv_pext(0b010, ~(maskB | maskQ | maskN));
         const int shiftPieces = c == Color::White ? 0 : 56;
         const int shiftPawn = c == Color::White ? 8 : 48;
         board.pieces[King] |= maskK << shiftPieces;
@@ -89,7 +89,7 @@ void GameState::setDFRC(int idWhite, int idBlack) {
     castlingMask = board.pieces[Rook];
 
     for (int piece = 0; piece <= King; piece++) {
-        big mask = board.pieces[piece];
+        u64 mask = board.pieces[piece];
         while (mask) {
             int pos = __builtin_ctzll(mask);
             int idP = piece * 2 + !(board.colors[White] & (1ULL << pos));
@@ -98,7 +98,7 @@ void GameState::setDFRC(int idWhite, int idBlack) {
             mask &= mask - 1;
         }
     }
-    big cMask = castlingMask;
+    u64 cMask = castlingMask;
     while (cMask) {
         zobristHash ^= zobrist[zobrCastle + __builtin_ffsll(cMask)];
         cMask &= cMask - 1;
@@ -156,7 +156,7 @@ void GameState::fromFen(string fen) {
             if (position == 'q' || position == 'k') {
                 int upto = posCastlingRook(position == 'k', isBlack);
                 int kingpos = __builtin_ctzll(board.getMask(King * 2 + isBlack));
-                big rmask = directions[kingpos][upto] & board.getMask(Rook * 2 + isBlack);
+                u64 rmask = directions[kingpos][upto] & board.getMask(Rook * 2 + isBlack);
                 if (position == 'q')
                     pos = 63 ^ __builtin_clzll(rmask);
                 else
@@ -218,7 +218,7 @@ string GameState::toFen() const {
         fen += "b";
     fen += " ";
     string castlingPart = "";
-    big Cmask = castlingMask;
+    u64 Cmask = castlingMask;
     while (Cmask) {
         int position = __builtin_ctzll(Cmask);
         bool isBlack = false;
@@ -262,7 +262,7 @@ int GameState::enemyColor() const {
 }
 
 inline bool GameState::isEnPassantPossibility(const int piece, const Move& move) {
-    big sidePawn = ((1ULL << clipped_left(move.to())) | (1ULL << clipped_right(move.to())));
+    u64 sidePawn = ((1ULL << clipped_left(move.to())) | (1ULL << clipped_right(move.to())));
     sidePawn &= getEnemyMask(Pawn);
     return piece == Pawn && abs(move.from() - move.to()) == 2 * 8 && sidePawn;
 }
@@ -349,10 +349,10 @@ int GameState::getPiece(int square) const {
 int GameState::getfullPiece(int square) const {
     return board.mailbox[square];
 }
-big GameState::getFriendlyMask(int piece) const {
+u64 GameState::getFriendlyMask(int piece) const {
     return board.getMask(piece, friendlyColor());
 }
-big GameState::getEnemyMask(int piece) const {
+u64 GameState::getEnemyMask(int piece) const {
     return board.getMask(piece, enemyColor());
 }
 
@@ -436,7 +436,7 @@ ExpendedMove GameState::playMove(Move move) {
     const int toSquare = move.toMover();
     const int capture = board.getCapture(move);
     movesSinceBeginning[turnNumber] = {move, piece, capture};
-    big castleRem =
+    u64 castleRem =
         ((1ULL << move.to()) | (1ULL << move.from()) | mask_row[curColor * 7] * (piece == King)) &
         castlingMask;
     castlingMask ^= castleRem;
@@ -511,6 +511,6 @@ int GameState::material() {
            countbit(board.pieces[Queen]) * 9;
 }
 
-void GameState::castlingFromMask(big mask) {
+void GameState::castlingFromMask(u64 mask) {
     castlingMask = mask;
 }

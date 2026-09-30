@@ -22,8 +22,8 @@
 
 #ifdef DEBUG_MACRO
 int nmpVerifAllNode = 0, nmpVerifCutNode = 0, nmpVerifPassCutNode = 0, nmpVerifPassAllNode = 0;
-StatVar<sbig, maxHistory * 2, -maxHistory * 2> quiethistPostStat;
-StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
+StatVar<i64, maxHistory * 2, -maxHistory * 2> quiethistPostStat;
+StatVar<i64, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
 BestMoveFinder::usefull::usefull(const GameState& state, const tunables& histparameters,
@@ -437,7 +437,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
         lastBest = transposition.getMove(ttEntry);
     }
-    ubyte typeNode = Bound::Upper;
+    u8 typeNode = Bound::Upper;
     Order& order = ss.stack[rootDist].order;
     bool improving = false;
     if ((!ttHit || ttEntry.depth + parameters.iir_validity_depth < depth) &&
@@ -584,7 +584,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         Move curMove = order.pop_max(flag);
         if (excludedMove == curMove)
             continue;
-        sbig startNodes = ss.nodes;
+        i64 startNodes = ss.nodes;
         if (isRoot && verbose && ss.mainThread && DEBUG && !minimal) {
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n",
                    depth, curMove.to_str().c_str(), rankMove + 1, ss.nodes.load(), flag);
@@ -819,7 +819,7 @@ template <bool update>
 void BestMoveFinder::print_info(Record& rec, int depth, int bestScore, string limit, int material) {
     if constexpr (update)
         updatemainSS(localSS, rec);
-    sbig totNodes = localSS.nodes;
+    i64 totNodes = localSS.nodes;
     string PV = localSS.PVprint(localSS.PVlines[0]);
     rootMove bm = localSS.rootBest;
     if (bm.tb_lowerbound_score > bestScore || bm.tb_upperbound_score < bestScore) {
@@ -862,7 +862,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         if (abs(lastScore) > MAXIMUM - maxDepth)
             deltaDown = 1;
         int bestScore = -INF;
-        sbig lastUsedNodes = 0;
+        i64 lastUsedNodes = 0;
         if (depth == 1)
             ss.let_run = true;
         do {
@@ -909,7 +909,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         if (ss.mainThread) {
             updatemainSS(ss, rec);
             double tcpu = getElapsedTime().count() / 1'000'000'000.0;
-            sbig totNodes = ss.nodes;
+            i64 totNodes = ss.nodes;
             double speed = 0;
             if (tcpu != 0)
                 speed = totNodes / tcpu;
@@ -996,8 +996,8 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if (verbose) {
         printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64
                "B by cluster)\n",
-               transposition.modulo, (big)transposition.modulo * sizeof(Cluster) / hashMul,
-               (big)sizeof(Cluster));
+               transposition.modulo, (u64)transposition.modulo * sizeof(Cluster) / hashMul,
+               (u64)sizeof(Cluster));
     }
     if (tm.hardnodes == 1) {
         localSS.stack[0].snap.save(state);
@@ -1078,49 +1078,49 @@ void BestMoveFinder::reinit(size_t count) {
 Perft::Perft() {}
 
 template <bool bulk>
-big Perft::_perft(GameState& state, ubyte depth) {
+u64 Perft::_perft(GameState& state, u8 depth) {
     visitedNodes++;
     if (depth == 0)
         return 1;
-    // big lastCall=tt.get_eval(state.zobristHash, depth);
+    // u64 lastCall=tt.get_eval(state.zobristHash, depth);
     // if(lastCall != MAX_BIG)return lastCall;
     bool inCheck;
-    big dangerPositions = 0;
+    u64 dangerPositions = 0;
     generator.initDangers(state);
     int nbMoves = generator.generateLegalMoves(state, inCheck, stack[depth], dangerPositions);
     if constexpr (bulk)
         if (depth == 1)
             return nbMoves;
-    big count = 0;
+    u64 count = 0;
     for (int i = 0; i < nbMoves; i++) {
         PositionSnapshot snap;
         snap.save(state);
         state.playMove(stack[depth][i]);
-        big nbNodes = _perft<bulk>(state, depth - 1);
+        u64 nbNodes = _perft<bulk>(state, depth - 1);
         snap.restore(state);
         count += nbNodes;
     }
     return count;
 }
 template <bool bulk>
-big Perft::perft(GameState& state, ubyte depth, bool verbose) {
+u64 Perft::perft(GameState& state, u8 depth, bool verbose) {
     visitedNodes = 0;
     if (depth == 0)
         return 1;
     clock_t start = clock();
     bool inCheck;
     Move moves[maxMoves];
-    big dangerPositions = 0;
+    u64 dangerPositions = 0;
     generator.initDangers(state);
     int nbMoves = generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
-    big count = 0;
+    u64 count = 0;
     for (int i = 0; i < nbMoves; i++) {
         clock_t startMove = clock();
-        big startVisitedNodes = count;
+        u64 startVisitedNodes = count;
         PositionSnapshot snap;
         snap.save(state);
         state.playMove(moves[i]);
-        big nbNodes = _perft<bulk>(state, depth - 1);
+        u64 nbNodes = _perft<bulk>(state, depth - 1);
         snap.restore(state);
         clock_t end = clock();
         double tcpu = double(end - startMove) / CLOCKS_PER_SEC;
@@ -1140,5 +1140,5 @@ big Perft::perft(GameState& state, ubyte depth, bool verbose) {
     return count;
 }
 
-template big Perft::perft<false>(GameState&, ubyte, bool);
-template big Perft::perft<true>(GameState&, ubyte, bool);
+template u64 Perft::perft<false>(GameState&, u8, bool);
+template u64 Perft::perft<true>(GameState&, u8, bool);

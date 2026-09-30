@@ -9,8 +9,8 @@ using residualHash = uint16_t;
 class __attribute__((packed)) infoScore {
    public:
     int16_t score, raw_eval;
-    ubyte flag;
-    ubyte padding;
+    u8 flag;
+    u8 padding;
     uint16_t depth;
     Move bestMove;
     residualHash hash;
@@ -26,7 +26,7 @@ const int paddingSize = clusterByte - clusterSize * sizeof(infoScore);
 class Cluster {
    public:
     infoScore entries[clusterSize];
-    ubyte padding[paddingSize];
+    u8 padding[paddingSize];
     infoScore& probe(residualHash hash, bool& ttHit);
     void push(infoScore& entry, int curAge);
 };
@@ -36,7 +36,7 @@ const int INVALID = INT_MAX;
 class transpositionTable {
    public:
     Cluster* table;
-    big modulo;
+    u64 modulo;
     int rewrite = 0;
     int place = 0;
     int age;
@@ -47,9 +47,9 @@ class transpositionTable {
 
     Move getMove(const infoScore& entry) const;
 
-    void push(GameState& state, int score, ubyte typeNode, Move move, uint16_t depth,
-              int16_t raw_eval, bool is_pv);
-    void clearRange(big start, big end);
+    void push(GameState& state, int score, u8 typeNode, Move move, uint16_t depth, int16_t raw_eval,
+              bool is_pv);
+    void clearRange(u64 start, u64 end);
     void prefetch(const GameState& state);
     void clear();
     void reinit(size_t count);
@@ -59,9 +59,9 @@ class transpositionTable {
 
 class perftMem {
    public:
-    big hash;
-    big leefs;
-    ubyte depth;
+    u64 hash;
+    u64 leefs;
+    u8 depth;
 };
 class TTperft {
    public:
@@ -69,7 +69,7 @@ class TTperft {
     int modulo;
     TTperft(int alloted_mem);
     void push(perftMem eval);
-    int get_eval(big hash, int depth);
+    int get_eval(u64 hash, int depth);
     void clear();
     void reinit(int count);
     void clearMem();

@@ -32,7 +32,7 @@ const int piecesThreat[nbPieces][nbPieces] = {
     {-1, -1, -1, -1, -1, -1},
 };
 // clang-format on
-static_assert(sizeof(threatIndex) + sizeof(threatoffset) < 1024 * 1024, "way too big for nothing");
+static_assert(sizeof(threatIndex) + sizeof(threatoffset) < 1024 * 1024, "way too u64 for nothing");
 
 __attribute__((constructor(106))) void initThreatIndices() {
     memset(threatIndex, 0xff, sizeof(threatIndex));
@@ -43,7 +43,7 @@ __attribute__((constructor(106))) void initThreatIndices() {
         for (int from = 0; from < 64; from++) {
             if (type(atk) == Pawn && (row(from) == 0 || row(from) == 7))
                 continue;
-            big mask = 0;
+            u64 mask = 0;
             switch (type(atk)) {
                 case Pawn:
                     mask = attackPawns[from + color(atk) * 64];
@@ -63,7 +63,7 @@ __attribute__((constructor(106))) void initThreatIndices() {
                 default:
                     assert(false);
             }
-            ubyte topos[64];
+            u8 topos[64];
             int nbto = places(mask, topos);
             for (int idto = 0; idto < nbto; idto++) {
                 threatIndex[atk][from ^ 7][topos[idto] ^ 7] = index++;
@@ -231,8 +231,8 @@ inline void updateBuffer::addPP(const int pos1, const bool colorpiece1, const in
     PPUpdates[remove][nbPPs[remove]++] = PPIndex(pos1, colorpiece1, pos2, colorpiece2);
 }
 
-inline big firstInDirection(int square, int square2, big occupancy) {
-    big mask = fullDir[square][square2] & occupancy;
+inline u64 firstInDirection(int square, int square2, u64 occupancy) {
+    u64 mask = fullDir[square][square2] & occupancy;
     if (!mask)
         return 0;
     if (square2 > square)
@@ -240,7 +240,7 @@ inline big firstInDirection(int square, int square2, big occupancy) {
     else
         return 1ULL << (__builtin_clzll(mask) ^ 63);
 }
-inline big firstafter(int square, int square2, big occupancy, big atkmask) {
+inline u64 firstafter(int square, int square2, u64 occupancy, u64 atkmask) {
     if (!((1ULL << square) & atkmask))
         return 0;
     return fullDir[square][square2] & occupancy & atkmask;
@@ -249,17 +249,17 @@ inline big firstafter(int square, int square2, big occupancy, big atkmask) {
 template <bool enPassant, bool tworemove>
 void Accumulator::updateXrays(const PositionState& state, int pos, bool remove, int removepos,
                               int removepos2) {
-    const big stateOccupied = state.occupancy();
-    big masks[3] = {moves_table(pos, stateOccupied, mask_empty_bishop(pos)),
+    const u64 stateOccupied = state.occupancy();
+    u64 masks[3] = {moves_table(pos, stateOccupied, mask_empty_bishop(pos)),
                     moves_table(pos + 64, stateOccupied, mask_empty_rook(pos))};
     if constexpr (enPassant)
         masks[1] &= ~mask_row[row(pos)];
     masks[2] = masks[0] | masks[1];
-    big maskremove = (1ULL << removepos) | firstafter(removepos, pos, stateOccupied, masks[2]);
+    u64 maskremove = (1ULL << removepos) | firstafter(removepos, pos, stateOccupied, masks[2]);
     if constexpr (tworemove) {
         maskremove |= (1ULL << removepos2) | firstafter(removepos2, pos, stateOccupied, masks[2]);
     }
-    const big maskFkings =
+    const u64 maskFkings =
         state.pieces[King] |
         ((state.getMask(King, White) & masks[2])
              ? fullDir[__builtin_ctzll(state.getMask(King, White))][pos] & stateOccupied & masks[2]
@@ -267,13 +267,13 @@ void Accumulator::updateXrays(const PositionState& state, int pos, bool remove, 
         ((state.getMask(King, Black) & masks[2])
              ? fullDir[__builtin_ctzll(state.getMask(King, Black))][pos] & stateOccupied & masks[2]
              : 0);
-    const big filterout = ~(maskremove | maskFkings);
-    big mask = ((masks[0] & (state.pieces[Bishop])) | (masks[1] & (state.pieces[Rook])) |
+    const u64 filterout = ~(maskremove | maskFkings);
+    u64 mask = ((masks[0] & (state.pieces[Bishop])) | (masks[1] & (state.pieces[Rook])) |
                 (masks[2] & (state.pieces[Queen]))) &
                filterout;
     while (mask) {
         const int posatk = __builtin_ctzll(mask);
-        const big maskdef = fullDir[posatk][pos] & masks[2] & stateOccupied;
+        const u64 maskdef = fullDir[posatk][pos] & masks[2] & stateOccupied;
         if (maskdef) {
             const bool coloratk = color(state.mailbox[posatk]);
             const int pieceatk = type(state.mailbox[posatk]);
@@ -292,16 +292,16 @@ void Accumulator::updateXrays(const PositionState& state, int pos, bool remove, 
 
 void Accumulator::updatePieceOutComing(const PositionState& state, const int piece,
                                        const bool colorpiece, const int pos, const bool remove,
-                                       const int removepos, const big sliders[3]) {
+                                       const int removepos, const u64 sliders[3]) {
     const Index posatk(pos, piece, colorpiece);
-    big atkmask;
+    u64 atkmask;
     if (piece == Pawn)
         atkmask = attackPawns[pos + colorpiece * 64];
     else if (piece == Knight)
         atkmask = KnightMoves[pos];
     else
         atkmask = sliders[piece - Bishop];
-    big authMask = 0;
+    u64 authMask = 0;
     for (int x = 0; x < nbPieces - 1; x++)
         if (piecesThreat[piece][x] != -1)
             authMask |= state.pieces[x];
@@ -319,10 +319,10 @@ void Accumulator::updatePieceOutComing(const PositionState& state, const int pie
 
 void Accumulator::updatePieceIncoming(const PositionState& state, const int piece,
                                       const bool colorpiece, const int pos, const bool remove,
-                                      const int removepos, const big sliders[3]) {
+                                      const int removepos, const u64 sliders[3]) {
     const Index posdef(pos, piece, colorpiece);
-    const big maskremove = ~((removepos == -1 ? 0 : (1ULL << removepos)) | state.pieces[King]);
-    big possMask =
+    const u64 maskremove = ~((removepos == -1 ? 0 : (1ULL << removepos)) | state.pieces[King]);
+    u64 possMask =
         (piecesThreat[Pawn][piece] != -1) *
             ((attackPawns[pos + 64 * !colorpiece] & state.getMask(Pawn, colorpiece)) |
              (attackPawns[pos + 64 * colorpiece] & state.getMask(Pawn, !colorpiece))) |  // pawns
@@ -341,7 +341,7 @@ void Accumulator::updatePieceIncoming(const PositionState& state, const int piec
 
 void Accumulator::updatePP(const PositionState& state, const bool colorpiece1, const int pos1,
                            const bool remove, int removepos) {
-    big mask = state.pieces[Pawn] & wide3[col(pos1)] & ~(1ULL << pos1);
+    u64 mask = state.pieces[Pawn] & wide3[col(pos1)] & ~(1ULL << pos1);
     mask &= ~((removepos == -1 ? 0 : (1ULL << removepos)));
     for (; mask; mask &= mask - 1) {
         const int pos2 = __builtin_ctzll(mask);
@@ -352,8 +352,8 @@ void Accumulator::updatePP(const PositionState& state, const bool colorpiece1, c
 
 void Accumulator::updatePiece(const PositionState& state, const int piece, const bool colorpiece,
                               const int pos, const bool remove, const int removepos) {
-    const big stateOccupied = state.occupancy();
-    big sliders[3] = {
+    const u64 stateOccupied = state.occupancy();
+    u64 sliders[3] = {
         moves_table(pos, stateOccupied, mask_empty_bishop(pos)),
         moves_table(pos + 64, stateOccupied, mask_empty_rook(pos)),
     };
@@ -538,11 +538,11 @@ void Accumulator::updateSelf(Accumulator& accIn, FinnyTables& finny, const NNUE&
         oneAccumulator& curAcc = finny.normals[index].accs;
         for (int c = 0; c < 2; c++)
             for (int piece = 0; piece < nbPieces; piece++) {
-                big maskFinny =
+                u64 maskFinny =
                     finny.normals[index].bitboards[piece] & finny.normals[index].bitboards[c + 6];
-                const big common = board.getMask(piece, c) & maskFinny;
-                big maskadd = board.getMask(piece, c) & ~common;
-                big maskrem = maskFinny & ~common;
+                const u64 common = board.getMask(piece, c) & maskFinny;
+                u64 maskadd = board.getMask(piece, c) & ~common;
+                u64 maskrem = maskFinny & ~common;
                 while (maskadd && maskrem) {
                     const int posrem = __builtin_ctzll(maskrem);
                     const int posadd = __builtin_ctzll(maskadd);
@@ -643,8 +643,8 @@ void NNUE::set_simd16_element(simd<16>& vec, int index, dbyte value) {
     ptr[index] = value;
 }
 
-big genRandom(big& state) {
-    big z = (state += 0x9E3779B97F4A7C15ULL);
+u64 genRandom(u64& state) {
+    u64 z = (state += 0x9E3779B97F4A7C15ULL);
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
     return z ^ (z >> 31);
@@ -744,10 +744,10 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
     for (int i = 0; i < L1 / nb<16>; i++) {
         accs[pov + 2][i] = simd16_zero();
     }
-    big blackbb = state.colors[Black];
-    big whitebb = state.colors[White];
-    const big occupied = whitebb | blackbb;
-    big authMasks[nbPieces - 1];
+    u64 blackbb = state.colors[Black];
+    u64 whitebb = state.colors[White];
+    const u64 occupied = whitebb | blackbb;
+    u64 authMasks[nbPieces - 1];
     for (int i = 0; i < nbPieces - 1; i++) {
         authMasks[i] = 0;
         for (int p = 0; p < nbPieces; p++)
@@ -755,14 +755,14 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
                 authMasks[i] |= state.pieces[p];
     }
     bool mirror = col(__builtin_ctzll(state.getMask(King, pov))) <= 3;
-    big mask = occupied & ~(state.pieces[King]);
+    u64 mask = occupied & ~(state.pieces[King]);
     while (mask) {
         const int pos = __builtin_ctzll(mask);
         const int idPiece = state.mailbox[pos];
-        big authMask = authMasks[type(idPiece)];
-        big semiexcluded = state.pieces[type(idPiece)] * (type(idPiece) != Pawn);
+        u64 authMask = authMasks[type(idPiece)];
+        u64 semiexcluded = state.pieces[type(idPiece)] * (type(idPiece) != Pawn);
 
-        big atkmask = 0;
+        u64 atkmask = 0;
         Index posatk(pos, type(idPiece), color(idPiece));
         posatk.smirror(mirror);
         posatk.schangepov(pov);
@@ -784,7 +784,7 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
                           moves_table(pos + 64, occupied, mask_empty_rook(pos));
                 break;
         }
-        big semiEmask = (MAX_BIG >> (63 - pos)) ^ (mask_row[row(pos)] * (!mirror ^ pov));
+        u64 semiEmask = (MAX_BIG >> (63 - pos)) ^ (mask_row[row(pos)] * (!mirror ^ pov));
         if (pov == Black)
             semiEmask = ~semiEmask;
         atkmask &= authMask | (semiexcluded & semiEmask);
@@ -804,7 +804,7 @@ void NNUE::calcThreats(Accumulator& accs, bool pov, const PositionState& state) 
     for (mask = state.pieces[Pawn]; mask; mask &= mask - 1) {
         const int pos1 = __builtin_ctzll(mask);
         const bool color1 = state.colors[Black] & (1ULL << pos1);
-        big omask = state.pieces[Pawn] & wide3[col(pos1)] & ~(1ULL << pos1);
+        u64 omask = state.pieces[Pawn] & wide3[col(pos1)] & ~(1ULL << pos1);
         for (; omask; omask &= omask - 1) {
             const int pos2 = __builtin_ctzll(omask);
             const bool color2 = state.colors[Black] & (1ULL << pos2);

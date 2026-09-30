@@ -1,27 +1,27 @@
 #include "Const.hpp"
 
-big clipped_row[8];
-big clipped_col[8];
-big clipped_diag[15];
-big clipped_idiag[15];
-big mask_row[8];
-big mask_col[8];
-big mask_diag[15];
-big mask_idiag[15];
-big bishop_empty[64];
-big rook_empty[64];
-big bishop_full[64];
-big rook_full[64];
+u64 clipped_row[8];
+u64 clipped_col[8];
+u64 clipped_diag[15];
+u64 clipped_idiag[15];
+u64 mask_row[8];
+u64 mask_col[8];
+u64 mask_diag[15];
+u64 mask_idiag[15];
+u64 bishop_empty[64];
+u64 rook_empty[64];
+u64 bishop_full[64];
+u64 rook_full[64];
 
-big directions[64][64];
-big fullDir[64][64];
+u64 directions[64][64];
+u64 fullDir[64][64];
 
-big wide3[8];
+u64 wide3[8];
 
 __attribute__((constructor(101))) void init_lines() {
     {
-        big row = MAX_BIG >> (8 * 7 + 2) << 1;
-        big col = 0x0001010101010100ULL;
+        u64 row = MAX_BIG >> (8 * 7 + 2) << 1;
+        u64 col = 0x0001010101010100ULL;
         for (int i = 0; i < 8; i++) {
             clipped_row[i] = row;
             // print_mask(row);
@@ -38,8 +38,8 @@ __attribute__((constructor(101))) void init_lines() {
             row <<= 8;
             col <<= 1;
         }
-        big diag = 0;
-        big idiag = 0;
+        u64 diag = 0;
+        u64 idiag = 0;
         for (int i = 0; i < 15; i++) {
             diag <<= 8;
             if (i < 8)
@@ -54,7 +54,7 @@ __attribute__((constructor(101))) void init_lines() {
         }
         for (int i = 0; i < 64; i++) {
             int colP = i & 7, rowP = i >> 3;
-            big maskPos = ~(1ULL << i);
+            u64 maskPos = ~(1ULL << i);
             bishop_empty[i] = clipped_diag[colP + rowP] ^ clipped_idiag[rowP - colP + 7];
             bishop_full[i] = mask_diag[colP + rowP] ^ mask_idiag[rowP - colP + 7];
             rook_empty[i] = (clipped_col[colP] | clipped_row[rowP]) & maskPos;
@@ -74,7 +74,7 @@ __attribute__((constructor(101))) void init_lines() {
             for (int idDir = 0; idDir < 8; idDir++) {
                 int r = row + dirs[idDir][0];
                 int c = col + dirs[idDir][1];
-                big mask = 0;
+                u64 mask = 0;
                 while (r >= 0 && r < 8 && c >= 0 && c < 8) {
                     int sq = (r * 8 + c);
                     mask |= 1ULL << sq;

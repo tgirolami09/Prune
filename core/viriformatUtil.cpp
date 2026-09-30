@@ -50,16 +50,16 @@ void MoveInfo::dump(FILE* datafile) {
     fastWrite<int16_t>(score, datafile);
 }
 void GamePlayed::dump(FILE* datafile) {
-    big occupied = startPos.board.colors[White] |
+    u64 occupied = startPos.board.colors[White] |
                    startPos.board.colors[Black];  // calculate the occupied bitboard
     fastWrite(reverse_col(occupied), datafile);
     uint8_t entry = 0x00;
     bool isSec = false;
     int nbEntry = 0;
-    big castle = startPos.castlingMask;
+    u64 castle = startPos.castlingMask;
     for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
-        big mask = 1ULL << index;
+        u64 mask = 1ULL << index;
         if (mask & occupied) {  // if there is a piece there
             int8_t piece = startPos.getfullPiece(index);
             int _c = color(piece);
@@ -104,16 +104,16 @@ void GamePlayed::clear() {
 
 GamePlayed readGame(FILE* file) {
     GamePlayed game;
-    big occupied = 0;
+    u64 occupied = 0;
     fastRead(occupied, file);
     occupied = reverse_col(occupied);
     uint8_t entry = 0;
-    big castle = 0;
+    u64 castle = 0;
     bool isSec = false;
     int nbEntry = 0;
     for (int i = 0; i < 64; i++) {
         int index = i ^ 0x07;
-        big mask = 1ULL << index;
+        u64 mask = 1ULL << index;
         if (mask & occupied) {  // if there sould be a piece there
             if (!isSec)
                 fastRead(entry, file);
@@ -136,8 +136,8 @@ GamePlayed readGame(FILE* file) {
             fastRead(entry, file);
         isSec ^= 1;
     }
-    ubyte info;
-    uint64_t infoGame;
+    u8 info;
+    u64 infoGame;
     fastRead(infoGame, file);
     info = infoGame;
     infoGame >>= 8;

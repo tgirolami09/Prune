@@ -22,8 +22,8 @@
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
 extern int nmpVerifAllNode, nmpVerifCutNode, nmpVerifPassCutNode, nmpVerifPassAllNode;
-extern StatVar<sbig, maxHistory * 2, -maxHistory * 2> quiethistPostStat;
-extern StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
+extern StatVar<i64, maxHistory * 2, -maxHistory * 2> quiethistPostStat;
+extern StatVar<i64, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
 // Class to find the best in a situation
@@ -48,11 +48,11 @@ class BestMoveFinder {
         StackCase stack[maxDepth + 1];
         LINE PVlines[maxDepth];
         IncrementalEvaluator eval;
-        atomic<sbig> nodes;
-        atomic<sbig> bestMoveNodes;
+        atomic<i64> nodes;
+        atomic<i64> bestMoveNodes;
         atomic<int> seldepth;
         bool let_run;
-        sbig tbHits;
+        i64 tbHits;
         int idThread;
         rootMove rootBest;
         bool mainThread;
@@ -71,8 +71,8 @@ class BestMoveFinder {
     };
 
     struct Record {
-        sbig nodes;
-        sbig tbHits;
+        i64 nodes;
+        i64 tbHits;
     };
 
     class HelperThread {
@@ -103,7 +103,7 @@ class BestMoveFinder {
     bool minimal = false;
     BestMoveFinder(int memory, int baseThread = -1);
     BestMoveFinder();
-    sbig hardBound;
+    i64 hardBound;
     ~BestMoveFinder();
 #ifdef TUNE
     tunables parameters;
@@ -152,11 +152,11 @@ class Perft {
     Move stack[100][maxMoves];
     LegalMoveGenerator generator;
     Perft();
-    big visitedNodes;
+    u64 visitedNodes;
     template <bool bulk>
-    big _perft(GameState& state, ubyte depth);
+    u64 _perft(GameState& state, u8 depth);
     template <bool bulk>
-    big perft(GameState& state, ubyte depth, bool verbose = true);
+    u64 perft(GameState& state, u8 depth, bool verbose = true);
     void reinit(size_t count);
 };
 #endif

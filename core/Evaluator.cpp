@@ -12,21 +12,21 @@
 #include "tunables.hpp"
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
-StatVar<big, 48 * 1024, 0> matScalingStats;
+StatVar<u64, 48 * 1024, 0> matScalingStats;
 #endif
 
-big get_rook_lines(big occupancy, int square) {
+u64 get_rook_lines(u64 occupancy, int square) {
     return moves_table(square + 64, occupancy, mask_empty_rook(square));
 }
-big get_bishop_lines(big occupancy, int square) {
+u64 get_bishop_lines(u64 occupancy, int square) {
     return moves_table(square, occupancy, mask_empty_bishop(square));
 }
 
-inline int getLVA(int square, const GameState& state, bool stm, big occupancy,
+inline int getLVA(int square, const GameState& state, bool stm, u64 occupancy,
                   int& pieceType) {  // return the square where the lva come
                                      // from, set pieceType
     // Pawns
-    big mask = occupancy & state.board.getMask(Pawn, stm) & attackPawns[(!stm) * 64 + square];
+    u64 mask = occupancy & state.board.getMask(Pawn, stm) & attackPawns[(!stm) * 64 + square];
     if (mask) {
         pieceType = Pawn;
         return __builtin_ctzll(mask);
@@ -38,14 +38,14 @@ inline int getLVA(int square, const GameState& state, bool stm, big occupancy,
         return __builtin_ctzll(mask);
     }
     // Bishop
-    big maskB = occupancy & get_bishop_lines(occupancy, square);
+    u64 maskB = occupancy & get_bishop_lines(occupancy, square);
     mask = state.board.getMask(Bishop, stm) & maskB;
     if (mask) {
         pieceType = Bishop;
         return __builtin_ctzll(mask);
     }
     // Rook
-    big maskR = occupancy & get_rook_lines(occupancy, square);
+    u64 maskR = occupancy & get_rook_lines(occupancy, square);
     mask = state.board.getMask(Rook, stm) & maskR;
     if (mask) {
         pieceType = Rook;
@@ -67,13 +67,13 @@ inline int getLVA(int square, const GameState& state, bool stm, big occupancy,
 }
 
 int fastSEE(const Move& move, const GameState& state, const int* value_pieces) {
-    big occupancy = state.board.colors[White] | state.board.colors[Black];
+    u64 occupancy = state.board.colors[White] | state.board.colors[Black];
     occupancy ^= 1ULL << move.from();
     int square = move.to();
     bool stm = !state.friendlyColor();
     int atk;
     int pieceType;
-    ubyte stack[16];
+    u8 stack[16];
     int idStack = 0;
     int lastPiece = state.getPiece(move.from());
     while ((atk = getLVA(square, state, stm, occupancy, pieceType)) != -1) {
@@ -90,12 +90,12 @@ int fastSEE(const Move& move, const GameState& state, const int* value_pieces) {
     return res;
 }
 
-big get_mask(const GameState& state, int p) {
+u64 get_mask(const GameState& state, int p) {
     return state.board.pieces[p];
 }
 
-big firstTouch(int square, int square2, big occupancy) {
-    big mask = fullDir[square][square2] & occupancy;
+u64 firstTouch(int square, int square2, u64 occupancy) {
+    u64 mask = fullDir[square][square2] & occupancy;
     if (!mask)
         return 0;
     if (square2 > square)
@@ -114,16 +114,16 @@ bool see_ge(int born, const Move& move, const GameState& state, const int* value
     int lastPiece = state.board.getCapture(move);
     int pieceType = state.getPiece(move.from());
     bool sstm = stm;
-    const big diagPieces = state.board.pieces[Bishop] | state.board.pieces[Queen];
-    const big hvPieces = state.board.pieces[Rook] | state.board.pieces[Queen];
-    big occupancy = state.board.occupancy() ^ (1ULL << atk);
+    const u64 diagPieces = state.board.pieces[Bishop] | state.board.pieces[Queen];
+    const u64 hvPieces = state.board.pieces[Rook] | state.board.pieces[Queen];
+    u64 occupancy = state.board.occupancy() ^ (1ULL << atk);
     born = value_pieces[lastPiece] - born;
     stm = !stm;
     lastPiece = pieceType;
     if (born < 0)
         return false;
-    big bishopAtk = mask_empty_bishop(square);
-    big attacks = ((get_bishop_lines(occupancy, square) & diagPieces) |
+    u64 bishopAtk = mask_empty_bishop(square);
+    u64 attacks = ((get_bishop_lines(occupancy, square) & diagPieces) |
                    (get_rook_lines(occupancy, square) & hvPieces) |
                    (KnightMoves[square] & state.board.pieces[Knight]) |
                    (attackPawns[square] & state.board.getMask(Pawn, 1)) |
@@ -132,11 +132,11 @@ bool see_ge(int born, const Move& move, const GameState& state, const int* value
                   occupancy;
     bool begin2first = false;
     bool begin2second = false;
-    big sideAtks;
+    u64 sideAtks;
     while ((sideAtks = (attacks & state.board.colors[stm]))) {
         pieceType = -1;
         for (int p = begin2first * 2; p < nbPieces; p++) {
-            big mask = state.board.pieces[p] & sideAtks;
+            u64 mask = state.board.pieces[p] & sideAtks;
             if (mask) {
                 atk = __builtin_ctzll(mask);
                 pieceType = p;

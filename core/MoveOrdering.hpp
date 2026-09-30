@@ -8,8 +8,8 @@
 
 #ifdef DEBUG_MACRO
 #include "stats_helpers.hpp"
-extern StatVar<sbig, maxHistory * 2, -maxHistory * 2> quiethistPreStat;
-extern StatVar<sbig, maxHistory, -maxHistory> capthistPreStat;
+extern StatVar<su64, maxHistory * 2, -maxHistory * 2> quiethistPreStat;
+extern StatVar<su64, maxHistory, -maxHistory> capthistPreStat;
 #endif
 
 class HelpOrdering {
@@ -19,31 +19,31 @@ class HelpOrdering {
     int captHist[2][nbPieces + 4][nbPieces][64];
     int& getTactIndex(const GameState& state, Move move, bool c);
     bool fastEq(Move a, Move b) const;
-    void bonusMove(int depth, Move move, bool c, const GameState& state, big attacked);
-    void malusMove(int depth, Move move, bool c, const GameState& state, big attacked);
+    void bonusMove(int depth, Move move, bool c, const GameState& state, u64 attacked);
+    void malusMove(int depth, Move move, bool c, const GameState& state, u64 attacked);
 
    public:
     tunables parameters;
     void init(const tunables& parameters);
     void addKiller(Move move, int depth, int relDepth, bool c, const GameState& state,
-                   big attacked);
+                   u64 attacked);
     bool isKiller(Move move, int relDepth) const;
     int getCaptScore(Move move, bool c, const GameState& state) const;
     template <int id>
-    int getQuietScore(Move move, bool c, const GameState& state, big attacked) const;
+    int getQuietScore(Move move, bool c, const GameState& state, u64 attacked) const;
     template <int id>
-    int getHistoryScore(Move move, bool c, const GameState& state, big attacked) const;
+    int getHistoryScore(Move move, bool c, const GameState& state, u64 attacked) const;
     void updateHistory(int bonus, int& hist);
     void negUpdate(Move[maxMoves], int upto, bool c, int depth, const GameState& state,
-                   big attacked);
+                   u64 attacked);
 
-    int getMoveScore(Move move, bool c, int relDepth, const GameState& state, big attacked) const;
+    int getMoveScore(Move move, bool c, int relDepth, const GameState& state, u64 attacked) const;
 };
 
 class Order {
    public:
     Move moves[maxMoves];
-    ubyte moveidx[maxMoves];
+    u8 moveidx[maxMoves];
     int nbMoves;
 #if defined(__AVX2__)
     // +8 pour avoir la place de rajouter 8 valeurs de padding de simd
@@ -58,11 +58,11 @@ class Order {
 #endif
     int nbPriority;
     int pointer;
-    big dangerPositions;
+    u64 dangerPositions;
     bool sorted = false;
     Order();
     void swap(int idMove1, int idMove2);
-    void init(bool c, Move moveInfoPriority, const HelpOrdering& history, ubyte relDepth,
+    void init(bool c, Move moveInfoPriority, const HelpOrdering& history, u8 relDepth,
               const GameState& state);
     bool compareMove(int idMove1, int idMove2);
     Move pop_max(int& flag);

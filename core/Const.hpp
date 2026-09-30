@@ -4,52 +4,55 @@
 #include <cstdint>
 #include <map>
 // #define ASSERT
-#define big uint64_t
-#define ubyte uint8_t
-#define dbyte int16_t
-#define sbig int64_t
+using u64 = uint64_t;
+using i64 = int64_t;
+
+using u16 = uint16_t;
+using i16 = int16_t;
+
+using u8 = uint8_t;
 using namespace std;
 #define forceinline __attribute__((always_inline))
 #define _unused __attribute__((unused))
 extern int nbThreads;
 extern bool DEBUG;
 extern bool isdfrc;
-const big MAX_BIG = ~0ULL;
+const u64 MAX_BIG = ~0ULL;
 enum Color : uint8_t {
     White,
     Black,
 };
 enum Piece : uint8_t { Pawn, Knight, Bishop, Rook, Queen, King, Void };
 const int nbPieces = 6;
-const big colA = 0x8080808080808080;
-const big colH = 0x0101010101010101;
-const big row1 = 0xff;
-const big row8 = 0xffULL << 56;
+const u64 colA = 0x8080808080808080;
+const u64 colH = 0x0101010101010101;
+const u64 row1 = 0xff;
+const u64 row8 = 0xffULL << 56;
 const map<char, int> piece_to_id = {{'r', Piece::Rook},  {'n', Piece::Knight}, {'b', Piece::Bishop},
                                     {'q', Piece::Queen}, {'k', Piece::King},   {'p', Piece::Pawn}};
 const char id_to_piece[7] = {'p', 'n', 'b', 'r', 'q', 'k', ' '};
 
-extern big clipped_row[8];
-extern big clipped_col[8];
-extern big clipped_diag[15];
-extern big clipped_idiag[15];
-extern big mask_row[8];
-extern big mask_col[8];
-extern big mask_diag[15];   // diag : index = column+row
-extern big mask_idiag[15];  // idiag : index = row-column+7
-extern big bishop_empty[64];
-extern big rook_empty[64];
-extern big bishop_full[64];
-extern big rook_full[64];
-const big clipped_brow = (MAX_BIG >> 16 << 8);
-const big clipped_bcol = (~0x8181818181818181);
-const big clipped_mask = clipped_brow & clipped_bcol;
+extern u64 clipped_row[8];
+extern u64 clipped_col[8];
+extern u64 clipped_diag[15];
+extern u64 clipped_idiag[15];
+extern u64 mask_row[8];
+extern u64 mask_col[8];
+extern u64 mask_diag[15];   // diag : index = column+row
+extern u64 mask_idiag[15];  // idiag : index = row-column+7
+extern u64 bishop_empty[64];
+extern u64 rook_empty[64];
+extern u64 bishop_full[64];
+extern u64 rook_full[64];
+const u64 clipped_brow = (MAX_BIG >> 16 << 8);
+const u64 clipped_bcol = (~0x8181818181818181);
+const u64 clipped_mask = clipped_brow & clipped_bcol;
 
 const int maxDepth = 200;
 const int maxMoves = 218;
 const int maxCaptures = 12 * 8 + 4 * 4;
 const int maxExtension = 16;
-const big hashMul = 1024 * 1024;
+const u64 hashMul = 1024 * 1024;
 
 const int MINIMUM = -32767;
 const int MAXIMUM = -MINIMUM;
@@ -73,9 +76,9 @@ constexpr int fracDepth = 128;
 template <int d>
 constexpr int fdepth = d * fracDepth;
 
-extern big directions[64][64];
-extern big fullDir[64][64];
+extern u64 directions[64][64];
+extern u64 fullDir[64][64];
 
-extern big wide3[8];
+extern u64 wide3[8];
 
 #endif

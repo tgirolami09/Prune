@@ -11,10 +11,10 @@ const int zobrPassant = zobrCastle;
 const int zobrTurn = zobrPassant + 65;
 const int nbZobrist = zobrTurn + 1;
 const int sizeThreeFold = 8192;
-extern big zobrist[nbZobrist];
+extern u64 zobrist[nbZobrist];
 struct PositionState {
-    big pieces[6];
-    big colors[2];
+    u64 pieces[6];
+    u64 colors[2];
     int8_t mailbox[64];
     forceinline void remPiece(int position, int piecetype, bool color) {
         pieces[piecetype] ^= 1ULL << position;
@@ -42,9 +42,9 @@ struct PositionState {
         memset(colors, 0, sizeof(colors));
         memset(mailbox, Void * 2, sizeof(mailbox));
     }
-    forceinline big getMask(int piece, bool color) const { return pieces[piece] & colors[color]; }
-    forceinline big getMask(int piece) const { return pieces[type(piece)] & colors[color(piece)]; }
-    forceinline big occupancy() const { return colors[White] | colors[Black]; }
+    forceinline u64 getMask(int piece, bool color) const { return pieces[piece] & colors[color]; }
+    forceinline u64 getMask(int piece) const { return pieces[type(piece)] & colors[color(piece)]; }
+    forceinline u64 occupancy() const { return colors[White] | colors[Black]; }
     forceinline bool isChanger(const Move& move) const {
         return type(mailbox[move.from()]) == Pawn ||  // mover == PAWN (takes care of ep+promo)
                (type(mailbox[move.to()]) != Void &&
@@ -72,7 +72,7 @@ class GameState {
     ExpendedMove movesSinceBeginning
         [maxPly];  // maximum number of moves
                    // https://www.reddit.com/r/chess/comments/168qmk6/longest_possible_chess_game_88485_moves/
-    big repHist[maxPly];
+    u64 repHist[maxPly];
     int rule50[maxPly];
 
     // Contains a bitboard of the white pieces, then a bitboard of the black
@@ -85,14 +85,14 @@ class GameState {
     void updateZobrists(int piece, bool color, int square);
     // To determine whose turn it is to play
     int turnNumber;
-    big zobristHash;
-    big pawnZobrist;
-    big minorZobrist;
+    u64 zobristHash;
+    u64 pawnZobrist;
+    u64 minorZobrist;
     PositionState board;
     // End of last double pawn push, (-1) if last move was not a double pawn
     // push
     int lastDoublePawnPush;
-    big castlingMask;
+    u64 castlingMask;
     GameState();
     void setDFRC(int idWhite, int idBlack);
     void fromFen(string fen);
@@ -110,8 +110,8 @@ class GameState {
     Move playPartialMove(Move move);
     int getPiece(int square) const;
     int getfullPiece(int square) const;
-    big getFriendlyMask(int piece) const;
-    big getEnemyMask(int piece) const;
+    u64 getFriendlyMask(int piece) const;
+    u64 getEnemyMask(int piece) const;
     void print() const;
     void initMove(Move& move);
 
@@ -120,7 +120,7 @@ class GameState {
     // Optimized repetition detection: step by 2 (zobrist includes turn bit)
     bool twofoldFast();
     bool threefoldFast();
-    void castlingFromMask(big mask);
+    void castlingFromMask(u64 mask);
     int material();
 };
 
@@ -131,11 +131,11 @@ const string startpos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 
 // No nbMoves, posRook, or deathRook — not needed in forward-only mode
 struct PositionSnapshot {
     PositionState board;
-    big zobristHash;
-    big pawnZobrist;
-    big minorZobrist;
+    u64 zobristHash;
+    u64 pawnZobrist;
+    u64 minorZobrist;
     int lastDoublePawnPush;
-    big castlingMask;
+    u64 castlingMask;
     int turnNumber;
 
     inline void save(const GameState& s) {
