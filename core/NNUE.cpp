@@ -231,21 +231,6 @@ inline void updateBuffer::addPP(const int pos1, const bool colorpiece1, const in
     PPUpdates[remove][nbPPs[remove]++] = PPIndex(pos1, colorpiece1, pos2, colorpiece2);
 }
 
-inline u64 firstInDirection(int square, int square2, u64 occupancy) {
-    u64 mask = fullDir[square][square2] & occupancy;
-    if (!mask)
-        return 0;
-    if (square2 > square)
-        return mask & -mask;
-    else
-        return 1ULL << (__builtin_clzll(mask) ^ 63);
-}
-inline u64 firstafter(int square, int square2, u64 occupancy, u64 atkmask) {
-    if (!((1ULL << square) & atkmask))
-        return 0;
-    return fullDir[square][square2] & occupancy & atkmask;
-}
-
 template <bool enPassant, bool tworemove>
 void Accumulator::updateXrays(const PositionState& state, int pos, bool remove, int removepos,
                               int removepos2) {
@@ -260,8 +245,8 @@ void Accumulator::updateXrays(const PositionState& state, int pos, bool remove, 
         maskremove |= 1ULL << removepos2;
     }
     const u64 filterout = ~(maskremove | state.pieces[King]);
-    u64 mask = ((masks[0] & (state.pieces[Bishop])) | (masks[1] & (state.pieces[Rook])) |
-                (masks[2] & (state.pieces[Queen]))) &
+    u64 mask = ((masks[0] & state.pieces[Bishop]) | (masks[1] & state.pieces[Rook]) |
+                (masks[2] & state.pieces[Queen])) &
                filterout;
     while (mask) {
         const int posatk = __builtin_ctzll(mask);
