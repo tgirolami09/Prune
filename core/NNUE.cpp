@@ -255,25 +255,17 @@ void Accumulator::updateXrays(const PositionState& state, int pos, bool remove, 
     if constexpr (enPassant)
         masks[1] &= ~mask_row[row(pos)];
     masks[2] = masks[0] | masks[1];
-    u64 maskremove = (1ULL << removepos) | firstafter(removepos, pos, stateOccupied, masks[2]);
+    u64 maskremove = 1ULL << removepos;
     if constexpr (tworemove) {
-        maskremove |= (1ULL << removepos2) | firstafter(removepos2, pos, stateOccupied, masks[2]);
+        maskremove |= 1ULL << removepos2;
     }
-    const u64 maskFkings =
-        state.pieces[King] |
-        ((state.getMask(King, White) & masks[2])
-             ? fullDir[__builtin_ctzll(state.getMask(King, White))][pos] & stateOccupied & masks[2]
-             : 0) |
-        ((state.getMask(King, Black) & masks[2])
-             ? fullDir[__builtin_ctzll(state.getMask(King, Black))][pos] & stateOccupied & masks[2]
-             : 0);
-    const u64 filterout = ~(maskremove | maskFkings);
+    const u64 filterout = ~(maskremove | state.pieces[King]);
     u64 mask = ((masks[0] & (state.pieces[Bishop])) | (masks[1] & (state.pieces[Rook])) |
                 (masks[2] & (state.pieces[Queen]))) &
                filterout;
     while (mask) {
         const int posatk = __builtin_ctzll(mask);
-        const u64 maskdef = fullDir[posatk][pos] & masks[2] & stateOccupied;
+        const u64 maskdef = fullDir[posatk][pos] & (masks[2] & stateOccupied & filterout);
         if (maskdef) {
             const bool coloratk = color(state.mailbox[posatk]);
             const int pieceatk = type(state.mailbox[posatk]);
