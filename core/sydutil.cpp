@@ -49,15 +49,14 @@ void node::update(const infoScore& ttentry) {
 }
 
 void totree(GameState& state, const transpositionTable& tt, Link curnode,
-            vector<vector<node>>& nodetable, int curage, int& nbNew) {
-    LegalMoveGenerator generator;
-    vector<Move> legalMoves(maxMoves);
-    bool inCheck;
-    u64 dangerPositions;
-    generator.initDangers(state);
-    int nbMoves = generator.generateLegalMoves(state, inCheck, &legalMoves[0], dangerPositions);
+            vector<vector<node>>& nodetable, int curage, int& nbNew, const vector<Move>& legalMoves,
+            const int nbMoves) {
     unique_ptr<PositionSnapshot> snap = make_unique<PositionSnapshot>();
     snap->save(state);
+    LegalMoveGenerator generator;
+    vector<Move> nextlegalMoves(maxMoves);
+    bool inCheck;
+    u64 dangerPositions;
     for (int i = 0; i < nbMoves; i++) {
         state.playMove(legalMoves[i]);
         bool ttHit = false;
@@ -65,31 +64,46 @@ void totree(GameState& state, const transpositionTable& tt, Link curnode,
         // printf("%s (%s) => %d\n", state.toFen().c_str(), legalMoves[i].to_str().c_str(), ttHit);
         if (ttHit && ttentry.depth > fdepth<5>) {
             auto [idx, rem] = getIndex(state, nodetable.size());
-            assert(idx < nodetable.size());
-            bool added = false;
-            for (uint32_t bucketidx = 0; bucketidx < nodetable[idx].size(); bucketidx++) {
-                auto& nnode = nodetable[idx][bucketidx];
-                if (nnode.hash == state.zobristHash) {
-                    nnode.update(ttentry);
-                    if (nnode.age != curage) {
-                        nnode.age = curage;
-                        Link l{(uint32_t)idx, bucketidx, nullMove};
-                        totree(state, tt, l, nodetable, curage, nbNew);
-                    }
-                    added = true;
+            generator.initDangers(state);
+            int nextnbMoves =
+                generator.generateLegalMoves(state, inCheck, &nextlegalMoves[0], dangerPositions);
+            bool isin = !ttentry.bestMove;
+            for (int idM = 0; idM < nbMoves; idM++) {
+                const auto& mv = nextlegalMoves[idM];
+                if (mv == ttentry.bestMove) {
+                    isin = true;
+                    break;
                 }
             }
-            if (!added) {
-                nbNew++;
-                // printf("add position %s %s\n", state.toFen().c_str(),
-                // legalMoves[i].to_str().c_str());
-                node newnode(ttentry, state.zobristHash);
-                newnode.age = curage;
-                Link newlink{(uint32_t)idx, (uint32_t)nodetable[idx].size(), legalMoves[i]};
+            if (isin) {
+                assert(idx < nodetable.size());
+                bool added = false;
+                for (uint32_t bucketidx = 0; bucketidx < nodetable[idx].size(); bucketidx++) {
+                    auto& nnode = nodetable[idx][bucketidx];
+                    if (nnode.hash == state.zobristHash) {
+                        nnode.update(ttentry);
+                        if (nnode.age != curage) {
+                            nnode.age = curage;
+                            Link l{(uint32_t)idx, bucketidx, nullMove};
+                            totree(state, tt, l, nodetable, curage, nbNew, nextlegalMoves,
+                                   nextnbMoves);
+                        }
+                        added = true;
+                    }
+                }
+                if (!added) {
+                    nbNew++;
+                    // printf("add position %s %s\n", state.toFen().c_str(),
+                    // legalMoves[i].to_str().c_str());
+                    node newnode(ttentry, state.zobristHash);
+                    newnode.age = curage;
+                    Link newlink{(uint32_t)idx, (uint32_t)nodetable[idx].size(), legalMoves[i]};
 
-                nodetable[curnode.hashidx][curnode.bucketidx].childs.push_back(newlink);
-                nodetable[idx].push_back(newnode);
-                totree(state, tt, newlink, nodetable, curage, nbNew);
+                    nodetable[curnode.hashidx][curnode.bucketidx].childs.push_back(newlink);
+                    nodetable[idx].push_back(newnode);
+                    totree(state, tt, newlink, nodetable, curage, nbNew, nextlegalMoves,
+                           nextnbMoves);
+                }
             }
         }
         snap->restore(state);

@@ -23,7 +23,7 @@ struct node {
     int age;
     node(uint64_t _hash) : hash(_hash) {
         depth = 0;
-        bound = UPPERBOUND;
+        bound = Bound::Upper;
         mvscore.score = 0;
         mvscore.move = nullMove;
         age = -1;
@@ -41,4 +41,5 @@ struct node {
     void dumpinfo(vector<uint8_t>& buffer) const;
 };
 void totree(GameState& state, const transpositionTable& tt, Link curnode,
-            vector<vector<node>>& nodetable, int curage, int& nbNew);
+            vector<vector<node>>& nodetable, int curage, int& nbNew, const vector<Move>& legalMoves,
+            const int nbMoves);

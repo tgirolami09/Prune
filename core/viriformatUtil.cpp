@@ -58,8 +58,8 @@ void MoveInfo::dump(vector<uint8_t>& datafile) const {
     mv |= type << 14;
     size_t base = datafile.size();
     datafile.resize(base + 4, 0);
-    int16_t scorei16 = score;
     memcpy(&datafile[base + 0], &mv, 2);
+    int16_t scorei16 = score;
     memcpy(&datafile[base + 2], &scorei16, 2);
 }
 
@@ -92,6 +92,9 @@ void dumpposition(vector<uint8_t>& buffer, const GameState& startPos) {
             isSec ^= 1;
             nbEntry += 1;
         }
+    }
+    if (nbEntry % 2 == 1) {
+        buffer[base + 8 + nbEntry / 2] = entry;
     }
     uint8_t info = startPos.lastDoublePawnPush;  // en passant square
     info |= startPos.friendlyColor() << 7;
