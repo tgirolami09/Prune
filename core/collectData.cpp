@@ -237,6 +237,17 @@ int main(int argc, char** argv) {
                     entry = infoScore{
                         (int16_t)score, 0,  3 - EXACT, 0, (uint16_t)(infos.size() * fracDepth),
                         curMove,        rem};
+
+                vector<Move> legalMoves(maxMoves);
+                int _nbMoves;
+                {
+                    LegalMoveGenerator generator;
+                    bool inCheck;
+                    big dangerPositions;
+                    generator.initDangers(state->state);
+                    _nbMoves = generator.generateLegalMoves(state->state, inCheck, &legalMoves[0],
+                                                            dangerPositions);
+                }
                 for (uint32_t bucketidx = 0; bucketidx < nodetable[idx].size(); bucketidx++) {
                     auto& possnode = nodetable[idx][bucketidx];
                     if (possnode.hash == state->state.zobristHash) {
@@ -248,7 +259,8 @@ int main(int argc, char** argv) {
                         int nbNew = 0;
                         possnode.update(entry);
                         possnode.age = curage;
-                        totree(state->state, player.transposition, l, nodetable, curage++, nbNew);
+                        totree(state->state, player.transposition, l, nodetable, curage++, nbNew,
+                               legalMoves, _nbMoves);
                         // printf("added %d new positions\n", nbNew);
                         break;
                     }
@@ -263,7 +275,8 @@ int main(int argc, char** argv) {
                     nodetable[lastlink.hashidx][lastlink.bucketidx].childs.push_back(newlink);
                     nodetable[idx].push_back(newnode);
                     int nbNew = 0;
-                    totree(state->state, player.transposition, newlink, nodetable, curage++, nbNew);
+                    totree(state->state, player.transposition, newlink, nodetable, curage++, nbNew,
+                           legalMoves, _nbMoves);
                     lastlink = newlink;
                 }
                 if (curMove.moveInfo == nullMove.moveInfo) {

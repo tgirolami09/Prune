@@ -41,4 +41,5 @@ struct node {
     void dumpinfo(vector<uint8_t>& buffer) const;
 };
 void totree(GameState& state, const transpositionTable& tt, Link curnode,
-            vector<vector<node>>& nodetable, int curage, int& nbNew);
+            vector<vector<node>>& nodetable, int curage, int& nbNew, const vector<Move>& legalMoves,
+            const int nbMoves);
