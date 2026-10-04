@@ -1,10 +1,10 @@
 #ifndef TABLEBASEPROBE_HPP
 #define TABLEBASEPROBE_HPP
 
-#include "GameState.hpp"
-#include "Move.hpp"
 #include "Const.hpp"
 #include "Functions.hpp"
+#include "GameState.hpp"
+#include "Move.hpp"
 
 // Tablebase result values (matching Fathom constants)
 constexpr int TB_RESULT_LOSS = 0;
@@ -15,18 +15,18 @@ constexpr int TB_RESULT_WIN = 4;
 constexpr int TB_RESULT_INVALID = -1;
 
 // Score values for tablebase results
-constexpr int TB_WIN_SCORE = 20000;  // Below mate but clearly winning
-constexpr int TB_CURSED_WIN_SCORE = 1;  // Winning but drawable by 50-move
+constexpr int TB_WIN_SCORE = 20000;        // Below mate but clearly winning
+constexpr int TB_CURSED_WIN_SCORE = 1;     // Winning but drawable by 50-move
 constexpr int TB_BLESSED_LOSS_SCORE = -1;  // Losing but drawable by 50-move
 
 class TablebaseProbe {
-private:
+   private:
     bool initialized;
     int probeDepth;      // Minimum depth to probe
     int probeLimit;      // Maximum pieces to probe
     unsigned tbLargest;  // From Fathom: max pieces in loaded tables
 
-public:
+   public:
     TablebaseProbe();
     ~TablebaseProbe();
 
@@ -54,7 +54,7 @@ public:
     // WDL-only root probe fallback (for when DTZ files are missing).
     // Filters moves[] in-place to only those with the optimal WDL rank.
     // Returns best WDL (TB_RESULT_*) or TB_RESULT_INVALID on failure.
-    int rootFiltering(const GameState& state, Move* moves, int& nbMoves) const;
+    int rootFiltering(const GameState& state, rootMove* moves, int& nbMoves) const;
 
     // Convert WDL result to centipawn score adjusted for ply
     static int wdlToScore(int wdl, int ply);
@@ -63,8 +63,9 @@ public:
     static int countPieces(const GameState& state);
 
     // Check if position can be probed (piece count, no castling)
-    // Overload accepting precomputed piece count (from IncrementalEvaluator::getNbMan)
-    // depth variant also checks depth >= probeDepth (for in-search gating)
+    // Overload accepting precomputed piece count (from
+    // IncrementalEvaluator::getNbMan) depth variant also checks depth >=
+    // probeDepth (for in-search gating)
     bool canProbe(const GameState& state, int nbMan, int depth) const;
     bool canProbe(const GameState& state, int nbMan) const;
     bool canProbe(const GameState& state) const;

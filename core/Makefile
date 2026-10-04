@@ -1,11 +1,14 @@
+CXX=clang++
+CC=clang
+
 ADDOPTION?=
 DEBUGOPT?=
 NETNAME?=
-myCPPFLAGS=-Werror -Wshadow -Wall -Wextra -MMD -std=gnu++17 -I../Fathom/src $(ADDOPTION)
+myCPPFLAGS=-Werror -Wshadow -Wall -Wextra -Wno-c++11-narrowing -MMD -std=c++20 -I../Fathom/src $(ADDOPTION)
 OPT?=-O3 -flto -funroll-loops
 
 TUNE?=false
-HCE?=false
+NUMA?=false
 DATAGEN?=false
 UNITTEST?=false
 
@@ -15,7 +18,6 @@ FATHOM_DIR = ../Fathom/src
 FATHOM_OBJ = tbprobe.o
 COM=$(shell git rev-parse HEAD)
 ARCH?=native
-CPUSET?=unknow
 EXE?=
 SOURCES := $(wildcard *.cpp)
 SOURCES := $(filter-out collectData.cpp,$(SOURCES))
@@ -24,7 +26,6 @@ SOURCES := $(filter-out unittest.cpp,$(SOURCES))
 SOURCES := $(filter-out netScale.cpp,$(SOURCES))
 SOURCES := $(filter-out spsa.cpp,$(SOURCES))
 SOURCES := $(filter-out datasetStats.cpp,$(SOURCES))
-SOURCES := $(filter-out testTI.cpp,$(SOURCES))
 SOURCES := $(filter-out quantise.cpp,$(SOURCES))
 SOURCES := $(filter-out permute.cpp,$(SOURCES))
 OBJECTS := $(SOURCES:%.cpp=%.o) $(FATHOM_OBJ)
@@ -36,26 +37,27 @@ THENET=model.bin
 BASENAME=prune
 ADDSUFFIX=true
 NOTMAIN=
+ifeq ($(DATAGEN), true)
+	MAIN=collectData.cpp
+endif
 ifneq ($(MAIN), engine.cpp)
 	BASENAME=$(MAIN:%.cpp=%)
 	ADDSUFFIX=false
 endif
 ifeq ($(MAIN), collectData.cpp)
 	BASENAME=coreGen
+	NOTMAIN := $(NOTMAIN) -DDATAGEN
 	MAINFLAGS := -fopenmp
 	ADDSUFFIX=false
-endif
-ifeq ($(HCE), true)
-	OBJECTS := $(filter-out NNUE.o,$(OBJECTS))
-	myCPPFLAGS := $(myCPPFLAGS) -DHCE
-	THENET :=
-	BASENAME := pruneHCE
 endif
 ifeq ($(TUNE), true)
 	NOTMAIN := $(NOTMAIN) -DTUNE
 	BASENAME := spsa
 	MAIN=spsa.cpp
 	ADDSUFFIX=false
+endif
+ifeq ($(NUMA), true)
+	myCPPFLAGS := $(myCPPFLAGS) -DNUMA -lnuma -Wno-unused-command-line-argument
 endif
 
 myLDFLAGS=
@@ -76,10 +78,15 @@ ifneq ($(ARCH), unknow)
 else
 	ARCHCOM=
 endif
-ifneq ($(CPUSET), unknow)
-	ARCHCOM := $(ARCHCOM) -m$(CPUSET)
+ARCHSIZE=-march=native
+ifeq ($(ARCH), x86-64-v2)
+	ARCHSIZE = -DARCHSIZE=128
+else ifeq ($(ARCH), x86-64-v3)
+	ARCHSIZE = -DARCHSIZE=256
+else ifeq ($(ARCH), x86-64-v4)
+	ARCHSIZE = -DARCHSIZE=512
 endif
-TAG=$(shell git tag --contains=HEAD)
+TAG=$(shell git tag --points-at=HEAD)
 ifeq ($(TAG), )
 	REC=$(strip $(shell git rev-parse --short HEAD) )
 else
@@ -92,6 +99,11 @@ ifeq ($(ARCH), native)
 	ARCHNAME=
 else
 	ARCHNAME=-$(ARCH)
+endif
+
+CXX_ISCLANG=$(shell $(CXX) --version | grep -q clang && echo yes || echo no)
+ifeq ($(CXX_ISCLANG), yes)
+	myCPPFLAGS := $(myCPPFLAGS) -Wno-c23-extensions
 endif
 EXTENSION=
 VERSIONNING=-DCOMMIT=\"$(COM)\" -DVERSION=\"$(REC)\"
@@ -124,23 +136,23 @@ else
 	NEEDINGFILE=
 endif
 
-override CPPFLAGS += $(myCPPFLAGS) $(NOTMAIN) $(OPT) $(ARCHCOM) $(ADDOPTION)
+override CPPFLAGS += $(myCPPFLAGS) $(NOTMAIN) $(OPT) $(ARCHCOM)
 override LDFLAGS += $(myLDFLAGS)
 
 all: $(MAIN) $(OBJECTS)
 	$(CXX) -m64 $(myCPPFLAGS) $(OPT) $(ARCHCOM) -o $(NAME) $(VERSIONNING) $^ $(LDFLAGS) $(MAINFLAGS)
 
 download:
-	@if [ ! -f model.bin ]; then \
+	@if [ ! -f $(NETNAME).bin ]; then \
 		echo "File missing, downloading..."; \
 		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell head -1 nn-name.txt)/$(NETNAME).bin"; \
-	elif [ "$$(sha256sum $(NETNAME).bin | cut -c1-7)" != "$$(head -1 nn-name.txt | grep -P ".{7}$$" -o)" ]; then \
+	elif [ "$$(sha256sum $(NETNAME).bin | cut -c1-7)" != "$$(head -1 nn-name.txt | grep -E ".{7}$$" -o)" ]; then \
 		echo "SHA mismatch, re-downloading..."; \
 		curl -OL "https://github.com/tgirolami09/Prune-nets/releases/download/$(shell head -1 nn-name.txt)/$(NETNAME).bin"; \
 	fi
 
 permute: permute.cpp
-	$(CXX) -m64 $(OPT) $(ARCHCOM) -D_CRT_SECURE_NO_WARNINGS -std=gnu++17 -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
+	$(CXX) -m64 $(OPT) $(ARCHSIZE) -D_CRT_SECURE_NO_WARNINGS -std=gnu++17 -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
 
 $(NETNAME): $(NEEDINGFILE)
 
