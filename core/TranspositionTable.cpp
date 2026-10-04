@@ -88,11 +88,11 @@ void Cluster::push(infoScore& entry, int curAge) {
     if (entries[bestID].hash != entry.hash ||
         entry.depth + fracDepth * 2 * entry.tt_pv() >=
             entries[bestID].depth + fracDepth * entries[bestID].tt_pv() ||
-        entries[bestID].typeNode() == UPPERBOUND || entries[bestID].age() != entry.age())
+        entries[bestID].typeNode() == Bound::Upper || entries[bestID].age() != entry.age())
         entries[bestID] = entry;
 }
 
-pair<big, residualHash> getIndex(const GameState& state, big modulo) {
+pair<u64, residualHash> getIndex(const GameState& state, u64 modulo) {
     __uint128_t tHash = ((__uint128_t)state.zobristHash) * modulo;
     static const int dec = 8 * sizeof(residualHash);
     tHash >>= 64 - dec;
@@ -102,11 +102,11 @@ pair<big, residualHash> getIndex(const GameState& state, big modulo) {
 int transpositionTable::storedScore(int alpha, int beta, const infoScore& entry,
                                     int rootDist) const {
     const int score = fromTT(entry.score, rootDist);
-    if (entry.typeNode() == EXACT)
+    if (entry.typeNode() == Bound::Exact)
         return score;
-    if (score >= beta && entry.typeNode() == LOWERBOUND)
+    if (score >= beta && entry.typeNode() == Bound::Lower)
         return score;
-    if (score <= alpha && entry.typeNode() == UPPERBOUND)
+    if (score <= alpha && entry.typeNode() == Bound::Upper)
         return score;
     return INVALID;
 }
@@ -120,8 +120,8 @@ infoScore& transpositionTable::getEntry(const GameState& state, bool& ttHit) {
     return table[index].probe(hash, ttHit);
 }
 
-void transpositionTable::push(GameState& state, int score, ubyte typeNode, Move move,
-                              uint16_t depth, int16_t raw_eval, bool is_pv) {
+void transpositionTable::push(GameState& state, int score, u8 typeNode, Move move, uint16_t depth,
+                              int16_t raw_eval, bool is_pv) {
     // if(score == 0)return; //because of the repetition
     infoScore info;
     auto [index, hash] = getIndex(state, modulo);
@@ -140,7 +140,7 @@ void transpositionTable::prefetch(const GameState& state) {
     __builtin_prefetch(&table[getIndex(state, modulo).first]);
 }
 
-void transpositionTable::clearRange(big start, big end) {
+void transpositionTable::clearRange(u64 start, u64 end) {
     memset(table + start, 0, (end - start) * sizeof(Cluster));
 }
 
@@ -151,8 +151,8 @@ void transpositionTable::clear() {
     } else {
         thread* threads = (thread*)calloc(nbThreads, sizeof(Cluster));
         for (int i = 0; i < nbThreads; i++) {
-            big start = modulo * i / nbThreads;
-            big end = modulo * (i + 1) / nbThreads;
+            u64 start = modulo * i / nbThreads;
+            u64 end = modulo * (i + 1) / nbThreads;
             threads[i] = thread(&transpositionTable::clearRange, this, start, end);
         }
         for (int i = 0; i < nbThreads; i++) {
@@ -213,7 +213,7 @@ void TTperft::push(perftMem eval) {
     int index = eval.hash % modulo;
     mem[index] = eval;
 }
-int TTperft::get_eval(big hash, int depth) {
+int TTperft::get_eval(u64 hash, int depth) {
     int index = (hash * 256 + depth) % modulo;
     if (mem[index].depth == depth && mem[index].hash == hash)
         return mem[index].leefs;

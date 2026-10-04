@@ -59,7 +59,7 @@ int TablebaseProbe::maxPieces() const {
 }
 
 int TablebaseProbe::countPieces(const GameState& state) {
-    return countbit(state.board.colors[WHITE] | state.board.colors[BLACK]);
+    return countbit(state.board.colors[White] | state.board.colors[Black]);
 }
 
 bool TablebaseProbe::canProbe(const GameState& state, int nbMan, int depth) const {
@@ -89,38 +89,37 @@ bool TablebaseProbe::canProbe(const GameState& state) const {
 static void stateToFathom(const GameState& state, uint64_t& white, uint64_t& black, uint64_t& kings,
                           uint64_t& queens, uint64_t& rooks, uint64_t& bishops, uint64_t& knights,
                           uint64_t& pawns, unsigned& ep, bool& turn) {
-    // Combine color bitboard.piecess and convert to Fathom format using
-    // reverse_col
-    white = reverse_col(state.board.colors[WHITE]);
+    // Combine color bitboard.piecess and convert to Fathom format
+    white = state.board.colors[White];
 
-    black = reverse_col(state.board.colors[BLACK]);
+    black = state.board.colors[Black];
 
     // Combine piece type bitboard.piecess and convert to Fathom format
-    kings = reverse_col(state.board.pieces[KING]);
-    queens = reverse_col(state.board.pieces[QUEEN]);
-    rooks = reverse_col(state.board.pieces[ROOK]);
-    bishops = reverse_col(state.board.pieces[BISHOP]);
-    knights = reverse_col(state.board.pieces[KNIGHT]);
-    pawns = reverse_col(state.board.pieces[PAWN]);
+    kings = state.board.pieces[King];
+    queens = state.board.pieces[Queen];
+    rooks = state.board.pieces[Rook];
+    bishops = state.board.pieces[Bishop];
+    knights = state.board.pieces[Knight];
+    pawns = state.board.pieces[Pawn];
 
     // En passant: convert engine square to Fathom square
     if (state.lastDoublePawnPush != 64) {
         // lastDoublePawnPush is the pawn's destination (rank 4 or 5 in standard
         // terms) Fathom wants the EP capture square
         int engineEpTarget;
-        if (state.friendlyColor() == WHITE) {
+        if (state.friendlyColor() == White) {
             // Black just pushed, EP target is rank 6 (index 5)
             engineEpTarget = (state.lastDoublePawnPush & 7) + 5 * 8;
         } else {
             // White just pushed, EP target is rank 3 (index 2)
             engineEpTarget = (state.lastDoublePawnPush & 7) + 2 * 8;
         }
-        ep = engineEpTarget ^ 7;  // convert to Fathom square
+        ep = engineEpTarget;  // convert to Fathom square
     } else {
         ep = 0;
     }
 
-    turn = (state.friendlyColor() == WHITE);
+    turn = (state.friendlyColor() == White);
 }
 
 int TablebaseProbe::probeWDL(const GameState& state) const {
@@ -171,19 +170,19 @@ int TablebaseProbe::probeRoot(const GameState& state, Move& bestMove) const {
     unsigned promo = TB_GET_PROMOTES(result);
 
     // Convert Fathom squares to engine squares
-    int from = fathomFrom ^ 7;
-    int to = fathomTo ^ 7;
+    int from = fathomFrom;
+    int to = fathomTo;
 
     // Determine piece type from engine position
 
     // Handle en passant
 
     // Convert promotion piece type
-    // Fathom: QUEEN=1, ROOK=2, BISHOP=3, KNIGHT=4
+    // Fathom: Queen=1, Rook=2, Bishop=3, Knight=4
     // Engine uses piece type constants from Const.hpp
     int8_t promotion = -1;
     if (promo != TB_PROMOTES_NONE) {
-        const int promoMap[] = {-1, QUEEN, ROOK, BISHOP, KNIGHT};
+        const int promoMap[] = {-1, Queen, Rook, Bishop, Knight};
         promotion = promoMap[promo];
     }
 
@@ -268,7 +267,7 @@ int TablebaseProbe::rootFiltering(const GameState& state, rootMove* moves, int& 
         wdl = TB_RESULT_LOSS, lowerbound = -1000;
 
     // Promotion mapping: Fathom (NONE=0,Q=1,R=2,B=3,N=4) -> engine piece type
-    const int promoMap[] = {0, QUEEN, ROOK, BISHOP, KNIGHT};
+    const int promoMap[] = {0, Queen, Rook, Bishop, Knight};
 
     // Filter moves[] in-place: keep only moves matching a best-rank TbRootMove
     int newNb = 0;
@@ -280,9 +279,9 @@ int TablebaseProbe::rootFiltering(const GameState& state, rootMove* moves, int& 
         unsigned fathomTo = TB_MOVE_TO(results->moves[j].move);
         unsigned fathomProm = TB_MOVE_PROMOTES(results->moves[j].move);
         moves[newNb].move.moveInfo = 0;
-        moves[newNb].move.updateFrom(fathomFrom ^ 7);
-        moves[newNb].move.updateTo(fathomTo ^ 7);
-        if (promoMap[fathomProm] != PAWN)
+        moves[newNb].move.updateFrom(fathomFrom);
+        moves[newNb].move.updateTo(fathomTo);
+        if (promoMap[fathomProm] != Pawn)
             moves[newNb].move.updatePromotion(promoMap[fathomProm]);
         moves[newNb].tb_upperbound_score = rank_to_upperbound_score(results->moves[j].tbRank);
         moves[newNb].tb_lowerbound_score = rank_to_lowerbound_score(results->moves[j].tbRank);

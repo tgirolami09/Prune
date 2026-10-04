@@ -9,7 +9,7 @@ using namespace std;
 
 const float bestMoveStabScaling[] = {2.50, 1.20, 0.90, 0.80, 0.75};
 TM::TM(int moveOverhead, bool color, int wtime, int winc, int btime, int binc, int movetime,
-       big hardnodes, big softnodes, int maxdepth)
+       u64 hardnodes, u64 softnodes, int maxdepth)
     : moveOverhead(moveOverhead),
       colorstm(color),
       wtime(wtime),
@@ -35,14 +35,14 @@ void TM::init() {
     if (wtime != INT_MAX || btime != INT_MAX) {
         enabledtm = true;
         enabledtime = true;
-        int time = (colorstm == WHITE) ? wtime : btime;
-        int inc = (colorstm == WHITE) ? winc : binc;
-        hardtime = min<sbig>(hardtime, max(min(time / 4 + inc * 2 / 3, time - moveOverhead), 10));
+        int time = (colorstm == White) ? wtime : btime;
+        int inc = (colorstm == White) ? winc : binc;
+        hardtime = min<i64>(hardtime, max(min(time / 4 + inc * 2 / 3, time - moveOverhead), 10));
         originsofttime = softtime = min(time / 30 + inc * 2 / 3, movetime);
     }
 }
 
-bool TM::shouldstop_hard(big nodes, timeMesure::time_point start) {
+bool TM::shouldstop_hard(u64 nodes, timeMesure::time_point start) {
     if (enablednodes && nodes >= hardnodes)
         return true;
     if (enabledtime && (nodes & 1023) == 0) {
@@ -52,8 +52,8 @@ bool TM::shouldstop_hard(big nodes, timeMesure::time_point start) {
     }
     return false;
 }
-bool TM::shouldstop_soft(big nodes, timeMesure::time_point start, int depth, big bestMoveNodes,
-                         big lastUsedNodes, int evaldiff, Move bestmove, const tunables& parameters,
+bool TM::shouldstop_soft(u64 nodes, timeMesure::time_point start, int depth, u64 bestMoveNodes,
+                         u64 lastUsedNodes, int evaldiff, Move bestmove, const tunables& parameters,
                          bool verbose) {
     if (enablednodes && nodes >= softnodes)
         return true;
@@ -66,8 +66,8 @@ bool TM::shouldstop_soft(big nodes, timeMesure::time_point start, int depth, big
     return false;
 }
 
-sbig TM::updateSoft(int depth, big bestMoveNodes, big totalNodes, int evaldiff, Move bestmove,
-                    const tunables& parameters, bool verbose) {
+i64 TM::updateSoft(int depth, u64 bestMoveNodes, u64 totalNodes, int evaldiff, Move bestmove,
+                   const tunables& parameters, bool verbose) {
     if (!enabledtm)
         return softtime;
     if (lastbestMove == bestmove)
@@ -82,7 +82,7 @@ sbig TM::updateSoft(int depth, big bestMoveNodes, big totalNodes, int evaldiff, 
     double scalecomplexity = 0.8 + clamp<double>(evaldiff / 200.0, 0, 1) * 0.4;
     if (depth < 6)
         scalecomplexity = 1.;
-    sbig newSoft = originsofttime * scalebm * scalenode * scalecomplexity;
+    i64 newSoft = originsofttime * scalebm * scalenode * scalecomplexity;
     if (verbose)
         printf("info string newSoft %" PRId64 " hard %" PRId64
                " frac %.2f scalenode %.2f scaletm %.2f scalecomplexity %.2f\n",

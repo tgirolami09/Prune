@@ -134,7 +134,7 @@ struct PPIndex {
 using oneAccumulator = simd<16>[L1 / nb<16>];
 class FinnytableNormal {
    public:
-    big bitboards[8];
+    u64 bitboards[8];
     oneAccumulator accs;
 };
 
@@ -199,9 +199,9 @@ struct Layers {
 class Accumulator {
     void defstaterelated(const PositionState& state);
     void updatePieceOutComing(const PositionState& state, int piece, bool colorpiece, int square,
-                              bool remove, int removepos, const big sliders[3]);
+                              bool remove, int removepos, const u64 sliders[3]);
     void updatePieceIncoming(const PositionState& state, int piece, bool colorpiece, int square,
-                             bool remove, int removepos, const big sliders[3]);
+                             bool remove, int removepos, const u64 sliders[3]);
     void updatePiece(const PositionState& state, int piece, bool colorpiece, int square,
                      bool remove, int removepos);
     void updatePP(const PositionState& state, const bool colorpiece, const int pos,
@@ -219,7 +219,7 @@ class Accumulator {
     bool side;
     bool pstrefresh;
     bool threatrefresh;
-    big occupied;
+    u64 occupied;
     int idInputBucket[2];
     PositionState board;
     updateBuffer update;

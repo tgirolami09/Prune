@@ -78,9 +78,9 @@ int main(int argc, char** argv) {
                 const int pieceType = i / 64 % 6;
                 const int color = i / 64 / 6;
                 const int pos = i % 64;
-                if (pieceType != KING || (col(pos) > 3 && color) ||
+                if (pieceType != King || (col(pos) > 3 && color) ||
                     (col(pos) <= 3 && (inputBuckets[col(pos) | (row(pos) << 2)] != ib) == color)) {
-                    nn_out->FT.psqweights[ib][i - 6 * 64 * (pieceType == KING && color)][k] =
+                    nn_out->FT.psqweights[ib][i - 6 * 64 * (pieceType == King && color)][k] =
                         nn_in->FT.psqweights[ib][i][permute(k)];
                 }
             }

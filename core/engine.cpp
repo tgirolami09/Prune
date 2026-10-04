@@ -166,8 +166,8 @@ const Option Options[] = {Option("Hash", "spin", "64", 1, 2147483647),
 
 pair<int, int> computeAllotedTime(int wtime, int btime, int binc, int winc, bool color,
                                   bool worthMoreTime) {
-    int time = color == WHITE ? wtime : btime;
-    int inc = color == WHITE ? winc : binc;
+    int time = color == White ? wtime : btime;
+    int inc = color == White ? winc : binc;
     int hardBound;
     if (worthMoreTime)
         hardBound = time / 10 + inc / 2 - moveOverhead;
@@ -183,7 +183,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
                            bool& printmove) {
     if (!args.empty() && args[0].first == "perft") {
         printmove = false;
-        big result;
+        u64 result;
         PositionSnapshot snap;
         snap.save(state.root);
         for (Move move : state.movesFromRoot)
@@ -210,7 +210,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
             else if (arg.first == "movetime")
                 tm.movetime = min(tm.movetime, stoi(arg.second));
             else if (arg.first == "nodes")
-                tm.hardnodes = min<big>(tm.hardnodes, stoull(arg.second));
+                tm.hardnodes = min<u64>(tm.hardnodes, stoull(arg.second));
             else if (arg.first == "depth")
                 tm.maxdepth = min(tm.maxdepth, stoi(arg.second));
             else
@@ -286,13 +286,13 @@ void manageSearch(bool seeInput) {
                     for (int c = 0; c < 8; c++) {
                         int square = (r << 3) | c;
                         int piece = state->root.getfullPiece(square);
-                        if (type(piece) != SPACE) {
+                        if (type(piece) != Void) {
                             ieval->changePiece2<-1, true>(globnnue, square, type(piece),
                                                           color(piece));
                             char repr = id_to_piece[type(piece)];
                             int derived =
                                 overall_eval - ieval->getRaw(state->root.friendlyColor(), globnnue);
-                            if (color(piece) == WHITE)
+                            if (color(piece) == White)
                                 repr = toupper(repr);
                             evals[7 - c] = {repr, derived};
                             ieval->changePiece2<1, false>(globnnue, square, type(piece),
@@ -413,9 +413,9 @@ void manageSearch(bool seeInput) {
                 }
                 sort(Scores.begin(), Scores.end());
                 int size = Scores.size();
-                pair<int, big> scoreThird = {0.0, 0.0}, scoreAll = {0.0, 0.0};
+                pair<int, u64> scoreThird = {0.0, 0.0}, scoreAll = {0.0, 0.0};
                 for (int i = 0; i < size; i++) {
-                    pair<int, big> locScore = {Scores[i].first, Scores[i].second};
+                    pair<int, u64> locScore = {Scores[i].first, Scores[i].second};
                     scoreAll.first += locScore.first;
                     scoreAll.second += locScore.second;
                     if (i >= size / 3 && i < size * 2 / 3) {
@@ -586,14 +586,14 @@ void manageSearch(bool seeInput) {
                     move.from_uci(curMove);
                     int piece = type(state->root.getfullPiece(move.from()));
                     int capture = type(state->root.getfullPiece(move.to()));
-                    if (capture == SPACE && piece == PAWN && abs(move.from() - move.to()) != 8 &&
+                    if (capture == Void && piece == Pawn && abs(move.from() - move.to()) != 8 &&
                         abs(move.from() - move.to()) != 16)
                         move.setFlag(Move::fep), capture = 0;
                     int res;
                     const int value_pieces[7] = {100, 300, 300, 500, 900, 100000, 0};
                     if (isExact) {
                         res = -fastSEE(move, state->root, value_pieces);
-                        if (capture == SPACE)
+                        if (capture == Void)
                             res += value_pieces[capture];
                     } else
                         res = see_ge(0, move, state->root, value_pieces);

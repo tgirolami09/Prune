@@ -13,8 +13,8 @@ class corrhist {
     corrhist();
     int table[2][size];
     void reset();
-    void update(big, bool, int, int);
-    int probe(big, bool) const;
+    void update(u64, bool, int, int);
+    int probe(u64, bool) const;
 };
 
 class corrhists {

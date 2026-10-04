@@ -265,14 +265,14 @@ void play_games(int id) {
         int times[2] = {baseTime, baseTime};
         int result = 1;
         ss.state.fromFen(ss.fen);
-        int phase = countbit(ss.state.board.pieces[PAWN] | ss.state.board.pieces[ROOK] |
-                             ss.state.board.pieces[QUEEN]) *
+        int phase = countbit(ss.state.board.pieces[Pawn] | ss.state.board.pieces[Rook] |
+                             ss.state.board.pieces[Queen]) *
                     2;
-        phase += countbit(ss.state.board.pieces[BISHOP] | ss.state.board.pieces[KNIGHT]);
+        phase += countbit(ss.state.board.pieces[Bishop] | ss.state.board.pieces[Knight]);
         ss.ply = 0;
         while (1) {
             auto start = high_resolution_clock::now();
-            int player = ss.state.friendlyColor() == BLACK;
+            int player = ss.state.friendlyColor() == Black;
             auto res = ss.getEval(player, TM(moveOverhead, times[0], times[1], increment, increment,
                                              ss.state.friendlyColor()));
             auto end = high_resolution_clock::now();
@@ -283,7 +283,7 @@ void play_games(int id) {
                 if (score == 0)
                     break;
                 if (score == -INF) {
-                    result = (ss.state.enemyColor() == WHITE) * 2;
+                    result = (ss.state.enemyColor() == White) * 2;
                     break;
                 }
                 printf("score: %d fen: %s ply: %d times: %d %d\n", get<2>(res),
@@ -296,14 +296,14 @@ void play_games(int id) {
                     "loss on time on thread %d, last time used = %d, time "
                     "now remains=%d\n",
                     id, used_time, times[player]);
-                result = (ss.state.enemyColor() == WHITE) * 2;
+                result = (ss.state.enemyColor() == White) * 2;
                 break;
             }
             int capture = ss.state.board.getCapture(bm);
-            if (capture != SPACE) {
-                phase -= (capture != BISHOP && capture != KNIGHT) + 1;
+            if (capture != Void) {
+                phase -= (capture != Bishop && capture != Knight) + 1;
             }
-            if (bm.promotion() == KNIGHT || bm.promotion() == BISHOP)
+            if (bm.promotion() == Knight || bm.promotion() == Bishop)
                 phase -= 1;
             times[player] += increment;
             ss.state.playMove(bm);
@@ -319,7 +319,7 @@ void play_games(int id) {
                 generator.generateLegalMoves(ss.state, inCheck, legalMoves, dngpos, false);
             if (nbMoves == 0) {
                 if (inCheck) {
-                    result = (ss.state.enemyColor() == WHITE) * 2;
+                    result = (ss.state.enemyColor() == White) * 2;
                 }
                 break;
             }

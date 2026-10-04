@@ -13,25 +13,25 @@ class TM {
     int wtime, winc, btime, binc;
     bool enabledtm;
     int movetime;
-    big hardnodes, softnodes;
+    u64 hardnodes, softnodes;
     bool enablednodes;
     bool enabledtime;
     int maxdepth;
-    sbig hardtime;
-    sbig softtime;
-    sbig originsofttime;
+    i64 hardtime;
+    i64 softtime;
+    i64 originsofttime;
     Move lastbestMove;
     int nbInARow;
-    TM(int moveOverhead = 0, bool color = WHITE, int wtime = INT_MAX, int winc = INT_MAX,
-       int btime = INT_MAX, int binc = INT_MAX, int movetime = INT_MAX, big hardnodes = MAX_BIG,
-       big softnodes = MAX_BIG, int maxdepth = maxDepth);
+    TM(int moveOverhead = 0, bool color = White, int wtime = INT_MAX, int winc = INT_MAX,
+       int btime = INT_MAX, int binc = INT_MAX, int movetime = INT_MAX, u64 hardnodes = MAX_BIG,
+       u64 softnodes = MAX_BIG, int maxdepth = maxDepth);
     void init();
-    bool shouldstop_hard(big nodes, timeMesure::time_point start);
-    bool shouldstop_soft(big nodes, timeMesure::time_point start, int depth, big bestMoveNodes,
-                         big lastUsedNodes, int evaldiff, Move bestmove, const tunables& parameters,
+    bool shouldstop_hard(u64 nodes, timeMesure::time_point start);
+    bool shouldstop_soft(u64 nodes, timeMesure::time_point start, int depth, u64 bestMoveNodes,
+                         u64 lastUsedNodes, int evaldiff, Move bestmove, const tunables& parameters,
                          bool verbose);
-    sbig updateSoft(int depth, big bestMoveNodes, big totalNodes, int evaldiff, Move bestmove,
-                    const tunables& parameters, bool verbose);
+    i64 updateSoft(int depth, u64 bestMoveNodes, u64 totalNodes, int evaldiff, Move bestmove,
+                   const tunables& parameters, bool verbose);
 };
 
 #endif

@@ -22,8 +22,8 @@
 
 #ifdef DEBUG_MACRO
 int nmpVerifAllNode = 0, nmpVerifCutNode = 0, nmpVerifPassCutNode = 0, nmpVerifPassAllNode = 0;
-StatVar<sbig, maxHistory * 2, -maxHistory * 2> quiethistPostStat;
-StatVar<sbig, maxHistory, -maxHistory> capthistPostStat;
+StatVar<i64, maxHistory * 2, -maxHistory * 2> quiethistPostStat;
+StatVar<i64, maxHistory, -maxHistory> capthistPostStat;
 #endif
 
 BestMoveFinder::usefull::usefull(const GameState& state, const tunables& histparameters,
@@ -230,20 +230,20 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
             int flag;
             if (wdl == TB_RESULT_WIN)
-                flag = LOWERBOUND;
+                flag = Bound::Lower;
             else if (wdl == TB_RESULT_LOSS)
-                flag = UPPERBOUND;
+                flag = Bound::Upper;
             else
-                flag = EXACT;
-            if (flag == EXACT || (flag == UPPERBOUND && tbScore <= alpha) ||
-                (flag == LOWERBOUND && tbScore >= beta)) {
+                flag = Bound::Exact;
+            if (flag == Bound::Exact || (flag == Bound::Upper && tbScore <= alpha) ||
+                (flag == Bound::Lower && tbScore >= beta)) {
                 return tbScore;
             }
         }
     }
     int& staticEval = ss.stack[rootDist].static_score;
     int& raw_eval = ss.stack[rootDist].raw_eval;
-    int typeNode = UPPERBOUND;
+    int typeNode = Bound::Upper;
     auto& generator = ss.stack[rootDist].generator;
     bool testCheck = generator.initDangers(state);
     int bestEval = MINIMUM;
@@ -258,12 +258,12 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
                 parameters);
         }
         if (staticEval >= beta) {
-            transposition.push(state, staticEval, LOWERBOUND, nullMove, 0, raw_eval, isPV);
+            transposition.push(state, staticEval, Bound::Lower, nullMove, 0, raw_eval, isPV);
             return staticEval;
         }
         if (staticEval > alpha) {
             alpha = staticEval;
-            typeNode = EXACT;
+            typeNode = Bound::Exact;
         }
         bestEval = staticEval;
     } else {
@@ -299,7 +299,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
         if (ss.stop(stop_flag || smp_abort))
             return 0;
         if (score >= beta) {
-            transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, capture, 0,
+            transposition.push(state, absoluteScore(score, rootDist), Bound::Lower, capture, 0,
                                raw_eval, isPV);
             return score;
         }
@@ -308,7 +308,7 @@ int BestMoveFinder::quiescenceSearch(usefull& ss, GameState& state, int alpha, i
             bestCapture = capture;
             if (score > alpha) {
                 alpha = score;
-                typeNode = EXACT;
+                typeNode = Bound::Exact;
             }
         }
     }
@@ -396,21 +396,21 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             int tbScore = TablebaseProbe::wdlToScore(wdl, rootDist);
             int flag;
             if (wdl == TB_RESULT_WIN)
-                flag = LOWERBOUND;
+                flag = Bound::Lower;
             else if (wdl == TB_RESULT_LOSS)
-                flag = UPPERBOUND;
+                flag = Bound::Upper;
             else
-                flag = EXACT;
-            if (flag == EXACT || (flag == UPPERBOUND && tbScore <= alpha) ||
-                (flag == LOWERBOUND && tbScore >= beta)) {
+                flag = Bound::Exact;
+            if (flag == Bound::Exact || (flag == Bound::Upper && tbScore <= alpha) ||
+                (flag == Bound::Lower && tbScore >= beta)) {
                 if constexpr (isPV)
                     ss.beginLine(rootDist);
                 return tbScore;
             }
             if (isPV) {
-                if (flag == UPPERBOUND)
+                if (flag == Bound::Upper)
                     syzygy_max = tbScore;
-                if (flag == LOWERBOUND) {
+                if (flag == Bound::Lower) {
                     syzygy_min = tbScore;
                     alpha = max(alpha, tbScore);
                 }
@@ -437,7 +437,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         }
         lastBest = transposition.getMove(ttEntry);
     }
-    ubyte typeNode = UPPERBOUND;
+    u8 typeNode = Bound::Upper;
     Order& order = ss.stack[rootDist].order;
     bool improving = false;
     if ((!ttHit || ttEntry.depth + parameters.iir_validity_depth < depth) &&
@@ -500,7 +500,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
     }
     int firstMoveExtension = 0;
     if (!isRoot && ttHit && ttEntry.depth + parameters.se_validity_depth >= depth &&
-        ttEntry.typeNode() != UPPERBOUND && depth >= parameters.se_min_depth && !excludedMove &&
+        ttEntry.typeNode() != Bound::Upper && depth >= parameters.se_min_depth && !excludedMove &&
         abs(ttEntry.score) < MAXIMUM - maxDepth) {
         int goal = ttEntry.score - depth * parameters.se_dmul / (1024 * fracDepth);
         int score = negamax<false>(ss, (depth - fracDepth) / 2, state, goal - 1, goal, relDepth,
@@ -584,7 +584,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
         Move curMove = order.pop_max(flag);
         if (excludedMove == curMove)
             continue;
-        sbig startNodes = ss.nodes;
+        i64 startNodes = ss.nodes;
         if (isRoot && verbose && ss.mainThread && DEBUG && !minimal) {
             printf("info depth %d currmove %s currmovenumber %d nodes %" PRId64 " string flag %d\n",
                    depth, curMove.to_str().c_str(), rankMove + 1, ss.nodes.load(), flag);
@@ -691,7 +691,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             score = clamp(score, syzygy_min, syzygy_max);
             if (score > oldalpha)
                 ss.beginLineMove(rootDist, curMove);
-            transposition.push(state, absoluteScore(score, rootDist), LOWERBOUND, curMove, depth,
+            transposition.push(state, absoluteScore(score, rootDist), Bound::Lower, curMove, depth,
                                raw_eval, isPV);
             if (isRoot) {
                 ss.rootBest = rootMoves[order.moveidx[rankMove]];
@@ -700,7 +700,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                                  order.dangerPositions);
             ss.history.negUpdate(ss.stack[rootDist].searchedMoves, triedMove - 1,
                                  state.friendlyColor(), depth, state, order.dangerPositions);
-            if (curEMove.capture == SPACE && curEMove.move.getFlag() != Move::fpromo) {
+            if (curEMove.capture == Void && curEMove.move.getFlag() != Move::fpromo) {
                 if (score > static_eval && !inCheck)
                     shareds[prune_numa::getNode(ss.idThread)].correctionHistory.update(
                         state, score - static_eval, depth);
@@ -713,7 +713,7 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
                 ss.bestMoveNodes = ss.nodes - startNodes;
             }
             alpha = score;
-            typeNode = EXACT;
+            typeNode = Bound::Exact;
             bestMove = curMove;
             if constexpr (isPV) {
                 if (isDraw)
@@ -726,14 +726,14 @@ int BestMoveFinder::negamax(usefull& ss, int depth, GameState& state, int alpha,
             bestScore = score;
     }
     bestScore = clamp(bestScore, syzygy_min, syzygy_max);
-    if (bestScore > oldalpha && typeNode == UPPERBOUND)
+    if (bestScore > oldalpha && typeNode == Bound::Upper)
         ss.beginLine(rootDist);
-    if ((!isRoot || typeNode != UPPERBOUND) && !excludedMove) {
+    if ((!isRoot || typeNode != Bound::Upper) && !excludedMove) {
         transposition.push(state, absoluteScore(bestScore, rootDist), typeNode, bestMove, depth,
                            raw_eval, isPV);
     }
     if (!inCheck && (bestMove == nullMove || !state.board.isTactical(bestMove)) &&
-        (typeNode != UPPERBOUND || bestScore < static_eval)) {
+        (typeNode != Bound::Upper || bestScore < static_eval)) {
         shareds[prune_numa::getNode(ss.idThread)].correctionHistory.update(
             state, bestScore - static_eval, depth);
     }
@@ -817,7 +817,7 @@ template <bool update>
 void BestMoveFinder::print_info(Record& rec, int depth, int bestScore, string limit, int material) {
     if constexpr (update)
         updatemainSS(localSS, rec);
-    sbig totNodes = localSS.nodes;
+    i64 totNodes = localSS.nodes;
     string PV = localSS.PVprint(localSS.PVlines[0]);
     rootMove bm = localSS.rootBest;
     if (bm.tb_lowerbound_score > bestScore || bm.tb_upperbound_score < bestScore) {
@@ -860,7 +860,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         if (abs(lastScore) > MAXIMUM - maxDepth)
             deltaDown = 1;
         int bestScore = -INF;
-        sbig lastUsedNodes = 0;
+        i64 lastUsedNodes = 0;
         if (depth == 1)
             ss.let_run = true;
         do {
@@ -907,7 +907,7 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
         if (ss.mainThread) {
             updatemainSS(ss, rec);
             double tcpu = getElapsedTime().count() / 1'000'000'000.0;
-            sbig totNodes = ss.nodes;
+            i64 totNodes = ss.nodes;
             double speed = 0;
             if (tcpu != 0)
                 speed = totNodes / tcpu;
@@ -994,8 +994,8 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
     if (verbose) {
         printf("info string use a tt of %" PRId64 " entries (%" PRId64 " MB) (%" PRId64
                "B by cluster)\n",
-               transposition.modulo, (big)transposition.modulo * sizeof(Cluster) / hashMul,
-               (big)sizeof(Cluster));
+               transposition.modulo, (u64)transposition.modulo * sizeof(Cluster) / hashMul,
+               (u64)sizeof(Cluster));
     }
     if (tm.hardnodes == 1) {
         localSS.stack[0].snap.save(state);
@@ -1076,49 +1076,49 @@ void BestMoveFinder::reinit(size_t count) {
 Perft::Perft() {}
 
 template <bool bulk>
-big Perft::_perft(GameState& state, ubyte depth) {
+u64 Perft::_perft(GameState& state, u8 depth) {
     visitedNodes++;
     if (depth == 0)
         return 1;
-    // big lastCall=tt.get_eval(state.zobristHash, depth);
+    // u64 lastCall=tt.get_eval(state.zobristHash, depth);
     // if(lastCall != MAX_BIG)return lastCall;
     bool inCheck;
-    big dangerPositions = 0;
+    u64 dangerPositions = 0;
     generator.initDangers(state);
     int nbMoves = generator.generateLegalMoves(state, inCheck, stack[depth], dangerPositions);
     if constexpr (bulk)
         if (depth == 1)
             return nbMoves;
-    big count = 0;
+    u64 count = 0;
     for (int i = 0; i < nbMoves; i++) {
         PositionSnapshot snap;
         snap.save(state);
         state.playMove(stack[depth][i]);
-        big nbNodes = _perft<bulk>(state, depth - 1);
+        u64 nbNodes = _perft<bulk>(state, depth - 1);
         snap.restore(state);
         count += nbNodes;
     }
     return count;
 }
 template <bool bulk>
-big Perft::perft(GameState& state, ubyte depth, bool verbose) {
+u64 Perft::perft(GameState& state, u8 depth, bool verbose) {
     visitedNodes = 0;
     if (depth == 0)
         return 1;
     clock_t start = clock();
     bool inCheck;
     Move moves[maxMoves];
-    big dangerPositions = 0;
+    u64 dangerPositions = 0;
     generator.initDangers(state);
     int nbMoves = generator.generateLegalMoves(state, inCheck, moves, dangerPositions);
-    big count = 0;
+    u64 count = 0;
     for (int i = 0; i < nbMoves; i++) {
         clock_t startMove = clock();
-        big startVisitedNodes = count;
+        u64 startVisitedNodes = count;
         PositionSnapshot snap;
         snap.save(state);
         state.playMove(moves[i]);
-        big nbNodes = _perft<bulk>(state, depth - 1);
+        u64 nbNodes = _perft<bulk>(state, depth - 1);
         snap.restore(state);
         clock_t end = clock();
         double tcpu = double(end - startMove) / CLOCKS_PER_SEC;
@@ -1138,5 +1138,5 @@ big Perft::perft(GameState& state, ubyte depth, bool verbose) {
     return count;
 }
 
-template big Perft::perft<false>(GameState&, ubyte, bool);
-template big Perft::perft<true>(GameState&, ubyte, bool);
+template u64 Perft::perft<false>(GameState&, u8, bool);
+template u64 Perft::perft<true>(GameState&, u8, bool);

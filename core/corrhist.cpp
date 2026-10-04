@@ -16,7 +16,7 @@ void corrhist<size, maxCorrHist>::reset() {
 }
 
 template <int size, int maxCorrHist>
-int corrhist<size, maxCorrHist>::probe(big key, bool c) const {
+int corrhist<size, maxCorrHist>::probe(u64 key, bool c) const {
     return table[c][key % size];
 }
 
@@ -26,7 +26,7 @@ corrhist<size, maxCorrHist>::corrhist() {
 }
 
 template <int size, int maxCorrHist>
-void corrhist<size, maxCorrHist>::update(big key, bool c, int diff, int weight) {
+void corrhist<size, maxCorrHist>::update(u64 key, bool c, int diff, int weight) {
     int& cur = table[c][key % size];
     cur = ((256 - weight) * cur + diff * weight) / 256;
     cur = clamp(cur, -maxCorrHist, maxCorrHist);
