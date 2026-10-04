@@ -22,16 +22,16 @@ bool isdfrc = true;
 using namespace std;
 const int alloted_space = 16 * 1024 * 1024;
 
-string secondsToStr(big s) {
+string secondsToStr(u64 s) {
     string res = "";
     if (s >= 60) {
-        big m = s / 60;
+        u64 m = s / 60;
         s %= 60;
         if (m >= 60) {
-            big h = m / 60;
+            u64 h = m / 60;
             m %= 60;
             if (h >= 24) {
-                big d = h / 24;
+                u64 d = h / 24;
                 h %= 24;
                 res += to_string(d) + "d ";
             }
@@ -62,22 +62,22 @@ class threadHelper {
         player1.clear();
         game.startPos.fromFen(fen);
         state.fromFen(fen);
-        phase = countbit(state.board.pieces[PAWN] | state.board.pieces[ROOK] |
-                         state.board.pieces[QUEEN]) *
+        phase = countbit(state.board.pieces[Pawn] | state.board.pieces[Rook] |
+                         state.board.pieces[Queen]) *
                 2;
-        phase += countbit(state.board.pieces[BISHOP] | state.board.pieces[KNIGHT]);
+        phase += countbit(state.board.pieces[Bishop] | state.board.pieces[Knight]);
         game.clear();
     }
     void playMove(Move move) {
         ExpendedMove emove = state.playMove(move);
-        if (emove.capture != SPACE) {
-            phase -= (emove.capture != BISHOP && emove.capture != KNIGHT) + 1;
+        if (emove.capture != Void) {
+            phase -= (emove.capture != Bishop && emove.capture != Knight) + 1;
         }
-        if (move.promotion() == KNIGHT || move.promotion() == BISHOP)
+        if (move.promotion() == Knight || move.promotion() == Bishop)
             phase -= 1;
     }
     BestMoveFinder& getPlayer() {
-        if (state.friendlyColor() == WHITE)
+        if (state.friendlyColor() == White)
             return player0;
         else
             return player1;
@@ -87,17 +87,17 @@ class threadHelper {
     }
     void reset(string fen) {
         state.fromFen(fen);
-        phase = countbit(state.board.pieces[PAWN] | state.board.pieces[ROOK] |
-                         state.board.pieces[QUEEN]) *
+        phase = countbit(state.board.pieces[Pawn] | state.board.pieces[Rook] |
+                         state.board.pieces[Queen]) *
                 2;
-        phase += countbit(state.board.pieces[BISHOP] | state.board.pieces[KNIGHT]);
+        phase += countbit(state.board.pieces[Bishop] | state.board.pieces[Knight]);
         game.game.clear();
     }
 };
 const int nbRandomMove = 8;
 
-big genRandom64(big& state) {
-    big z = (state += 0x9E3779B97F4A7C15ULL);
+u64 genRandom64(u64& state) {
+    u64 z = (state += 0x9E3779B97F4A7C15ULL);
     z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
     z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
     return z ^ (z >> 31);
@@ -105,8 +105,8 @@ big genRandom64(big& state) {
 
 bool moveRandom(threadHelper* state, int id) {
     bool inCheck;
-    big dngpos;
-    big s(state->state.zobristHash ^ id);
+    u64 dngpos;
+    u64 s(state->state.zobristHash ^ id);
     for (int i = 0; i < nbRandomMove; i++) {
         state->generator.initDangers(state->state);
         int nbMoves = state->generator.generateLegalMoves(state->state, inCheck, state->legalMoves,
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
     ifstream file(argv[1]);
     vector<string> fens;
     string curFen;
-    big globseed = time(NULL);
+    u64 globseed = time(NULL);
     printf("%ld\n", globseed);
     int limitNodes;
     if (argc > 3)
@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
     int sizeGame = fens.size();
     if (argc > 4)
         sizeGame = atoi(argv[4]);
-    big gamesMade = 0;
+    u64 gamesMade = 0;
     auto start = chrono::high_resolution_clock::now();
     int lastGamesMade = 0;
     int realThread;
@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
     if (argc > 5)
         realThread = atoi(argv[5]);
     // globnnue = NNUE(argv[2]);
-    big nodesSearched = 0;
+    u64 nodesSearched = 0;
 #ifndef NOTHREAD
 #pragma omp parallel for shared(gamesMade, lastGamesMade, nodesSearched)
 #endif
@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
         FILE* fsyd = fopen((nameDataFile + "syd").c_str(), "ab");
         for (int i = startReg; i < endReg; i++) {
             const TM tm = [&]() {
-                TM _tm(0, WHITE);
+                TM _tm(0, White);
                 _tm.softnodes = limitNodes;
                 _tm.hardnodes = limitNodes * 1000;
                 _tm.init();
@@ -216,8 +216,8 @@ int main(int argc, char** argv) {
                 nodetable[idxroot].push_back(curnode);
             }
             int result = 1;  // 0 black win 1 draw 2 white win
-            big dngpos;
-            big localNodes = 0;
+            u64 dngpos;
+            u64 localNodes = 0;
             int curage = 0;
             Link lastlink{(uint32_t)idxroot, 0, nullMove};
             do {
@@ -234,16 +234,20 @@ int main(int argc, char** argv) {
                 const BestMoveFinder& player = state->getPlayer();
                 auto entry = player.transposition.getEntry(state->state, ttHit);
                 if (!ttHit)
-                    entry = infoScore{
-                        (int16_t)score, 0,  3 - EXACT, 0, (uint16_t)(infos.size() * fracDepth),
-                        curMove,        rem};
+                    entry = infoScore{(int16_t)score,
+                                      0,
+                                      3 - Bound::Exact,
+                                      0,
+                                      (uint16_t)(infos.size() * fracDepth),
+                                      curMove,
+                                      rem};
 
                 vector<Move> legalMoves(maxMoves);
                 int _nbMoves;
                 {
                     LegalMoveGenerator generator;
                     bool inCheck;
-                    big dangerPositions;
+                    u64 dangerPositions;
                     generator.initDangers(state->state);
                     _nbMoves = generator.generateLegalMoves(state->state, inCheck, &legalMoves[0],
                                                             dangerPositions);
@@ -283,7 +287,7 @@ int main(int argc, char** argv) {
                     if (score == 0)
                         break;
                     if (score == -INF) {
-                        result = (state->state.enemyColor() == WHITE) * 2;
+                        result = (state->state.enemyColor() == White) * 2;
                         break;
                     }
                     printf("score: %d fen: %s\n", get<2>(res), state->state.toFen().c_str());
@@ -291,13 +295,13 @@ int main(int argc, char** argv) {
                 }
                 if (abs(score) > MAXIMUM - maxDepth) {
                     result = (score > 0) * 2;
-                    if (state->state.friendlyColor() == BLACK)
+                    if (state->state.friendlyColor() == Black)
                         result = 2 - result;
                     break;
                 }
                 MoveInfo curProc;
                 curProc.move = curMove;
-                curProc.score = state->state.friendlyColor() == BLACK ? -score : score;
+                curProc.score = state->state.friendlyColor() == Black ? -score : score;
                 state->playMove(curMove);
                 if (state->state.threefold()) {
                     result = 1;
@@ -312,7 +316,7 @@ int main(int argc, char** argv) {
                     if (inCheck) {
                         if (score == 0)
                             printf("\n%s\n", state->state.toFen().c_str());
-                        result = (state->state.enemyColor() == WHITE) * 2;
+                        result = (state->state.enemyColor() == White) * 2;
                     } else
                         result = 1;
                     break;
@@ -341,10 +345,10 @@ int main(int argc, char** argv) {
             struct winsize w;
             ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
             auto end = chrono::high_resolution_clock::now();
-            big duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
+            u64 duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
             string unit;
             int speed;
-            big nps = nodesSearched * 1000 / duration / realThread;
+            u64 nps = nodesSearched * 1000 / duration / realThread;
             if (duration > gamesMade * 1000) {
                 unit = "s/g";
                 speed = duration * 100 / (gamesMade * 1000);
