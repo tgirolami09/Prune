@@ -33,7 +33,6 @@ DEPENDS := $(OBJECTS:%.o=%.d)
 
 MAIN?=engine.cpp
 MAINFLAGS=
-THENET=model.bin
 BASENAME=prune
 ADDSUFFIX=true
 NOTMAIN=
@@ -156,7 +155,7 @@ permute: permute.cpp
 
 $(NETNAME): $(NEEDINGFILE)
 
-model.bin: $(NETNAME) permute
+model.bin: $(NETNAME).bin permute
 	./permute $(NETNAME).bin model.bin
 
 prune: $(MAIN) $(OBJECTS)
@@ -164,7 +163,7 @@ prune: $(MAIN) $(OBJECTS)
 
 -include $(DEPENDS)
 
-embeder.o: embeder.cpp $(THENET)
+embeder.o: embeder.cpp model.bin
 	$(CXX) -m64 $(myCPPFLAGS) -O3 $(ARCHCOM) -c $(VERSIONNING) -o $@ embeder.cpp
 
 clean:
