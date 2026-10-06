@@ -232,6 +232,7 @@ int main(int argc, char** argv) {
                 bool found = false;
                 bool ttHit = false;
                 const BestMoveFinder& player = state->getPlayer();
+                state->getPlayer().transposition.aging();
                 auto entry = player.transposition.getEntry(state->state, ttHit);
                 if (!ttHit)
                     entry = infoScore{(int16_t)score,
