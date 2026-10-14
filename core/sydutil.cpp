@@ -68,7 +68,7 @@ void totree(GameState& state, const transpositionTable& tt, Link curnode,
             int nextnbMoves =
                 generator.generateLegalMoves(state, inCheck, &nextlegalMoves[0], dangerPositions);
             bool isin = !ttentry.bestMove;
-            for (int idM = 0; idM < nbMoves; idM++) {
+            for (int idM = 0; idM < nextnbMoves; idM++) {
                 const auto& mv = nextlegalMoves[idM];
                 if (mv == ttentry.bestMove) {
                     isin = true;
