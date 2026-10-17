@@ -16,7 +16,7 @@ int main(_unused int argc, char** argv) {
     IncrementalEvaluator eval;
     GameState state;
     string line;
-    big sum_eval = 0;
+    u64 sum_eval = 0;
     int count = 0;
     float loss = 0.0;
     while (getline(file, line)) {
@@ -43,7 +43,7 @@ int main(_unused int argc, char** argv) {
         state.fromFen(fen);
         eval.init(state, globnnue);
         int staticeval = eval.getRaw(state.friendlyColor(), globnnue);
-        if (state.friendlyColor() == BLACK)
+        if (state.friendlyColor() == Black)
             staticeval = -staticeval;
         sum_eval += abs(staticeval);
         loss += pow(sigmoid(staticeval / 400.0) - result, 2);
