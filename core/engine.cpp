@@ -132,7 +132,7 @@ void manageInput() {
 }
 const set<string> keywords = {"fen",      "name",  "value",   "moves", "movetime", "nodes",
                               "depth",    "wtime", "btime",   "winc",  "binc",     "startpos",
-                              "kiwipete", "perft", "nonbulk", "frc",   "dfrc"};
+                              "kiwipete", "perft", "nonbulk", "frc",   "dfrc",     "searchmoves"};
 class Option {
    public:
     string name;
@@ -198,6 +198,7 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
         return make_tuple(nullMove, nullMove, 0, vector<depthInfo>(0));
     } else {
         TM tm(moveOverhead, state.root.friendlyColor() ^ (state.movesFromRoot.size() & 1));
+        vector<Move> searchmoves;
         for (pair<string, string> arg : args) {
             if (arg.first == "btime")
                 tm.btime = min(tm.btime, stoi(arg.second));
@@ -213,11 +214,19 @@ bestMoveResponse goCommand(vector<pair<string, string>> args, Chess& state, bool
                 tm.hardnodes = min<u64>(tm.hardnodes, stoull(arg.second));
             else if (arg.first == "depth")
                 tm.maxdepth = min(tm.maxdepth, stoi(arg.second));
-            else
+            else if (arg.first == "searchmoves") {
+                stringstream ss(arg.second);
+                string mv;
+                while (ss >> mv) {
+                    Move move;
+                    move.from_uci(mv);
+                    searchmoves.push_back(move);
+                }
+            } else
                 printf("info string unknown limit : %s\n", arg.first.c_str());
         }
         tm.init();
-        return bestMoveFinder.bestMove(state.root, tm, state.movesFromRoot, verbose);
+        return bestMoveFinder.bestMove(state.root, tm, state.movesFromRoot, verbose, searchmoves);
     }
 }
 

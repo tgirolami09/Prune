@@ -792,7 +792,7 @@ void BestMoveFinder::updatemainSS(usefull& ss, Record& oldss) {
 }
 
 bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> movesFromRoot,
-                                          bool _verbose) {
+                                          bool _verbose, vector<Move> searchmoves) {
     stop_flag--;
     globtm = tm;
     this->verbose = _verbose;
@@ -808,7 +808,7 @@ bestMoveResponse BestMoveFinder::bestMove(GameState& state, TM tm, vector<Move> 
             helperThreads[i].localState.playPartialMove(move);
         actDepth++;
     }
-    bestMoveResponse res = goState<true>(state, tm, verbose, actDepth);
+    bestMoveResponse res = goState<true>(state, tm, verbose, actDepth, searchmoves);
     snap.restore(state);
     return res;
 }
@@ -929,7 +929,8 @@ bestMoveResponse BestMoveFinder::iterativeDeepening(usefull& ss, GameState& stat
 }
 
 template <bool set>
-bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth) {
+bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose, int actDepth,
+                                         vector<Move> searchmoves) {
     globtm = tm;
     prune_numa::bindThread(localSS.idThread);
     const NNUE& localNNUE = prune_numa::getnnue(localSS.idThread);
@@ -956,11 +957,20 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
         return make_tuple(nullMove, nullMove, score, vector<depthInfo>());
     }
     this->hardBound = INT64_MAX;
-    nbRootMoves = order.nbMoves;
-    for (int i = 0; i < order.nbMoves; i++) {
-        rootMoves[i].move = order.moves[i];
-        rootMoves[i].tb_lowerbound_score = -INF;
-        rootMoves[i].tb_upperbound_score = INF;
+    if (!searchmoves.empty()) {
+        nbRootMoves = searchmoves.size();
+        for (int i = 0; i < nbRootMoves; i++) {
+            rootMoves[i].move = searchmoves[i];
+            rootMoves[i].tb_lowerbound_score = -INF;
+            rootMoves[i].tb_upperbound_score = INF;
+        }
+    } else {
+        nbRootMoves = order.nbMoves;
+        for (int i = 0; i < order.nbMoves; i++) {
+            rootMoves[i].move = order.moves[i];
+            rootMoves[i].tb_lowerbound_score = -INF;
+            rootMoves[i].tb_upperbound_score = INF;
+        }
     }
     if (tbProbe.canProbe(state, localSS.eval.getNbMan())) {
         // DTZ probe failed (no DTZ files) - try WDL-only fallback to filter
@@ -1038,9 +1048,9 @@ bestMoveResponse BestMoveFinder::goState(GameState& state, TM tm, bool _verbose,
 }
 
 template bestMoveResponse BestMoveFinder::goState<false>(GameState& state, TM tm, bool _verbose,
-                                                         int actDepth);
+                                                         int actDepth, vector<Move> searchmoves);
 template bestMoveResponse BestMoveFinder::goState<true>(GameState& state, TM tm, bool _verbose,
-                                                        int actDepth);
+                                                        int actDepth, vector<Move> searchmoves);
 
 void BestMoveFinder::aging() {
     transposition.aging();

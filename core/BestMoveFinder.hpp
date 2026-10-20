@@ -137,9 +137,10 @@ class BestMoveFinder {
    public:
     bestMoveResponse iterativeDeepening(usefull& ss, GameState& state, TM tm, int actDepth);
     bestMoveResponse bestMove(GameState& state, TM tm, vector<Move> movesFromRoot,
-                              bool verbose = true);
+                              bool verbose = true, vector<Move> searchmoves = {});
     template <bool set = false>
-    bestMoveResponse goState(GameState& state, TM tm, bool verbose, int actDepth);
+    bestMoveResponse goState(GameState& state, TM tm, bool verbose, int actDepth,
+                             vector<Move> searchmoves = {});
     int testQuiescenceSearch(GameState& state);
     void clear();
     void reinit(size_t count);
