@@ -153,7 +153,7 @@ download:
 permute: permute.cpp
 	$(CXX) -m64 $(OPT) $(ARCHSIZE) -D_CRT_SECURE_NO_WARNINGS -std=gnu++17 -o permute $(VERSIONNING) permute.cpp $(LDFLAGS)
 
-$(NETNAME): $(NEEDINGFILE)
+$(NETNAME).bin: $(NEEDINGFILE)
 
 model.bin: $(NETNAME).bin permute
 	./permute $(NETNAME).bin model.bin
